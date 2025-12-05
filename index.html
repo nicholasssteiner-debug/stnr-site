@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STNR • Dashboards</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0f0f17;
+      font-family: Arial, sans-serif;
+      color: #ffffff;
+    }
+    .container {
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 32px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #1a1a27;
+      padding: 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: #ffffff;
+      border: 1px solid #2d2d3a;
+      transition: 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: #6c63ff;
+      box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>STNR • Dashboards e Sistemas</h1>
+
+    <div class="grid">
+      <a class="card" href="Controle Formatura.html">
+        <div class="card-title">Controle de Formatura</div>
+        <div class="card-desc">Gerenciamento financeiro, lançamentos e alunos.</div>
+      </a>
+
+      <a class="card" href="Comercial - Atualização Automática.html">
+        <div class="card-title">Dashboard Comercial</div>
+        <div class="card-desc">Análises do setor comercial com atualização dinâmica.</div>
+      </a>
+
+      <a class="card" href="Mapa de Análise Por Conta.html">
+        <div class="card-title">Mapa de Análise por Conta</div>
+        <div class="card-desc">Dashboard contábil detalhado.</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
