@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Verbas - Online</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+        :root {
+            --bg-dark: #1a1a2e;
+            --primary: #6c63ff;
+            --secondary: #4f4f7a;
+            --card-bg: #2e2e4f;
+            --text-light: #e0e0e0;
+            --border-color: #4f4f7a;
+            --danger: #ff6b6b;
+            --success: #4ECDC4;
+            --warning: #fca11a;
+            --info: #3a86ff;
+        }
+        body { font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; padding: 20px; }
+        .container { max-width: 1400px; margin: auto; opacity: 0; transition: opacity 0.5s; } /* Hidden until room join */
+        .container.visible { opacity: 1; }
+        
+        /* Header & Nav */
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        header h1 { margin: 0; font-size: 24px; color: #ffffff; }
+        
+        .room-badge { background: rgba(108, 99, 255, 0.2); border: 1px solid var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .room-badge:hover { background: rgba(108, 99, 255, 0.4); }
+        .status-indicator { width: 10px; height: 10px; background-color: #444; border-radius: 50%; display: inline-block; }
+        .status-indicator.online { background-color: var(--success); box-shadow: 0 0 5px var(--success); }
+        
+        .nav-tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 25px; overflow-x: auto; }
+        .nav-link { background: none; border: none; color: var(--text-light); padding: 12px 25px; cursor: pointer; font-size: 16px; border-bottom: 3px solid transparent; transition: all 0.3s; white-space: nowrap; }
+        .nav-link.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+        .nav-link:hover { color: var(--primary); background-color: rgba(108, 99, 255, 0.1); }
+
+        .content-view { display: none; animation: fadeIn 0.3s ease; }
+        .content-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Grid & Cards */
+        .grid-container { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; }
+        .card { background-color: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+
+        /* Filters */
+        .filter-container { grid-column: 1 / -1; margin-bottom: 20px; background-color: var(--card-bg); padding: 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 20px; border: 1px solid var(--border-color); }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 12px; text-transform: uppercase; color: #a0a0c0; font-weight: bold; }
+        .filter-container select { background-color: var(--bg-dark); color: white; border: 1px solid var(--primary); padding: 10px 15px; border-radius: 6px; font-size: 14px; font-weight: 500; min-width: 200px; cursor: pointer; }
+
+        /* KPIs */
+        .kpi-card { text-align: center; border-left: 5px solid var(--primary); position: relative; overflow: hidden; }
+        .kpi-card h3 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #c0c0ff; }
+        .kpi-card .value { font-size: 32px; font-weight: 700; margin: 0; }
+        #kpi-verba-total, #kpi-despesa, #kpi-saldo { grid-column: span 4; }
+        
+        /* Chart */
+        #chart-container { grid-column: 1 / -1; min-height: 400px; padding: 25px; }
+
+        /* Department & Budget Management Styles */
+        .dept-section { margin-bottom: 30px; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+        .dept-header { background-color: rgba(108, 99, 255, 0.15); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px; }
+        .dept-title { font-size: 20px; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; }
+        .dept-controls { display: flex; gap: 10px; }
+        
+        .budget-list { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .budget-card { background-color: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: transform 0.2s; position: relative; }
+        .budget-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        
+        .budget-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px; }
+        .budget-name { font-weight: bold; color: var(--success); font-size: 1.1em; }
+        
+        /* Inputs */
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; }
+        input[type="number"], input[type="text"], input[type="date"], select { background-color: #151525; border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+
+        /* Buttons */
+        .btn { border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; justify-content: center; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-success { background-color: var(--success); color: #1a1a2e; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-warning { background-color: var(--warning); color: #1a1a2e; }
+        .btn-info { background-color: var(--info); color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
+        .btn:hover { filter: brightness(1.1); }
+
+        /* Revenue List within Budget */
+        .revenue-mini-list { margin-top: 10px; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 4px; }
+        .revenue-item { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; }
+
+        /* Create Section */
+        .create-area { background-color: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed var(--border-color); text-align: center; }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        thead th { background-color: #252540; color: #ffffff; font-weight: 600; }
+        tbody tr:hover { background-color: rgba(255,255,255,0.05); }
+
+        /* MODALS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 12px; width: 90%; max-width: 450px; border: 1px solid var(--border-color); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: white; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .modal-body { margin-bottom: 20px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        
+        /* CSV Hint */
+        .csv-hint { font-size: 12px; color: #aaa; margin-top: 5px; font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; border: 1px dashed var(--border-color); }
+
+        /* LOGIN / ROOM SCREEN */
+        #room-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 2000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        #room-screen h1 { margin-bottom: 30px; font-size: 32px; color: var(--primary); }
+        .room-box { background: var(--card-bg); padding: 40px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .room-divider { margin: 20px 0; color: #888; display: flex; align-items: center; gap: 10px; }
+        .room-divider::before, .room-divider::after { content: ''; flex: 1; height: 1px; background: #444; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-container { display: flex; flex-direction: column; }
+            #kpi-verba-total, #kpi-despesa, #kpi-saldo { width: 100%; }
+            .dept-header { flex-direction: column; align-items: flex-start; }
+            .dept-controls { width: 100%; justify-content: space-between; margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ROOM CONNECT SCREEN -->
+    <div id="room-screen">
+        <h1>Gestão de Verbas Online</h1>
+        <div class="room-box">
+            <h3>Criar Nova Sala</h3>
+            <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">Inicie um novo projeto do zero.</p>
+            <button id="btn-create-room" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">+ Criar Sala</button>
+            
+            <div class="room-divider">OU</div>
+            
+            <h3>Acessar Sala Existente</h3>
+            <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">Cole o ID da sala para colaborar.</p>
+            <div class="input-group">
+                <input type="text" id="room-id-input" placeholder="Cole o ID da sala aqui..." style="text-align: center;">
+            </div>
+            <button id="btn-join-room" class="btn btn-success" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">Entrar</button>
+        </div>
+    </div>
+
+    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+    <div class="container" id="main-app">
+        <header>
+            <div>
+                <h1>Gestão de Verbas</h1>
+                <div style="font-size: 12px; color: #888;">v3.0.2 - Firebase (Clipboard Fix)</div>
+            </div>
+            <div class="room-badge" id="room-info-badge" title="Clique para copiar ID">
+                <span class="status-indicator online"></span>
+                <span>Sala: <strong id="current-room-display">...</strong></span>
+                <span style="font-size: 10px; margin-left: 5px;">(Copiar)</span>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-link active" data-view="dashboard-view">Dashboard & Análise</button>
+            <button class="nav-link" data-view="structure-view">Departamentos & Verbas</button>
+            <button class="nav-link" data-view="lancamentos-view">Lançamentos (Despesas)</button>
+        </nav>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" class="content-view active">
+            <div class="filter-container">
+                <div class="filter-group">
+                    <label>Departamento</label>
+                    <select id="dash-dept-filter"><option value="all">Todos os Departamentos</option></select>
+                </div>
+                <div class="filter-group">
+                    <label>Verba Específica</label>
+                    <select id="dash-budget-filter"><option value="all">Todas as Verbas</option></select>
+                </div>
+                <div style="margin-left: auto;">
+                    <!-- Refresh is automatic with firebase, but keep button for reset filters -->
+                    <button id="refresh-dash-btn" class="btn btn-primary btn-sm">Resetar Filtros</button>
+                </div>
+            </div>
+            
+            <div class="grid-container">
+                <div class="kpi-card card" id="kpi-verba-total" style="border-color: var(--primary);">
+                    <h3>Total Orçado + Receitas</h3>
+                    <p class="value" id="val-total-orcado">R$ 0,00</p>
+                </div>
+                <div class="kpi-card card" id="kpi-despesa" style="border-color: var(--danger);">
+                    <h3>Total Despesas</h3>
+                    <p class="value" id="val-total-despesa">R$ 0,00</p>
+                </div>
+                <div class="kpi-card card" id="kpi-saldo" style="border-color: var(--success);">
+                    <h3>Saldo Disponível</h3>
+                    <p class="value" id="val-total-saldo">R$ 0,00</p>
+                </div>
+                <div class="card" id="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ESTRUTURA VIEW (Departamentos e Verbas) -->
+        <div id="structure-view" class="content-view">
+            <div class="create-area">
+                <h3 style="margin-top:0;">Organização</h3>
+                <p>Crie departamentos para organizar seus setores, e dentro deles, adicione as verbas.</p>
+                <button id="btn-create-dept" class="btn btn-primary">+ Criar Novo Departamento</button>
+            </div>
+            
+            <div id="departments-container">
+                <!-- Departamentos serão renderizados aqui -->
+            </div>
+        </div>
+
+        <!-- LANÇAMENTOS VIEW -->
+        <div id="lancamentos-view" class="content-view">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="margin:0;">Registro de Despesas</h3>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-add-csv" class="btn btn-info">Adicionar com CSV</button>
+                            <button id="btn-replace-csv" class="btn btn-warning">Substituir com CSV</button>
+                            <button id="btn-add-expense" class="btn btn-success">+ Nova Despesa Manual</button>
+                        </div>
+                        <div class="csv-hint">
+                            <strong>Formato CSV exigido:</strong> Departamento; Verba; Data; Descrição; Valor
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-container" style="margin-bottom: 10px; padding: 10px;">
+                    <div class="filter-group">
+                        <label>Filtrar Tabela por Dept.</label>
+                        <select id="table-dept-filter"><option value="all">Todos</option></select>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table id="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Departamento</th>
+                                <th>Verba</th>
+                                <th>Descrição/Emitente</th>
+                                <th>Valor (R$)</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenses-body">
+                            <!-- Linhas preenchidas via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GENÉRICO -->
+    <div id="generic-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header" id="gm-title">Título</div>
+            <div class="modal-body">
+                <p id="gm-message"></p>
+                <input type="text" id="gm-input" class="modal-input" style="display: none; margin-top: 10px;">
+            </div>
+            <div class="modal-actions">
+                <button id="gm-cancel" class="btn btn-danger">Cancelar</button>
+                <button id="gm-confirm" class="btn btn-success">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE DESPESA -->
+    <div id="expense-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header" id="em-title">Nova Despesa</div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Departamento</label>
+                    <select id="em-dept-select"></select>
+                </div>
+                <div class="input-group">
+                    <label>Verba</label>
+                    <select id="em-budget-select" disabled><option>Selecione um Dept primeiro</option></select>
+                </div>
+                <div class="input-group">
+                    <label>Descrição / Fornecedor</label>
+                    <input type="text" id="em-desc">
+                </div>
+                <div class="input-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" step="0.01" id="em-value">
+                </div>
+                <div class="input-group">
+                    <label>Data</label>
+                    <input type="date" id="em-date">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="em-cancel" class="btn btn-danger">Cancelar</button>
+                <button id="em-save" class="btn btn-success">Salvar Despesa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE MODULES -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        
+        // CONFIGURAÇÃO FIREBASE (FORNECIDA)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA2pd4xEo0r4v3yTIhRX26UQQVEuhkszpM",
+            authDomain: "controle-de-verbas-manuais.firebaseapp.com",
+            projectId: "controle-de-verbas-manuais",
+            storageBucket: "controle-de-verbas-manuais.firebasestorage.app",
+            messagingSenderId: "193934709366",
+            appId: "1:193934709366:web:7135dc45d1e80f3f648557",
+            measurementId: "G-SKNFBZ6YW7"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- ESTADO DO APLICATIVO ---
+        let appData = { departments: {} };
+        let dashboardChart = null;
+        let csvUploadMode = 'add';
+        let currentRoomId = null;
+        let isSynced = false;
+
+        // --- UTILITÁRIOS ---
+        const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
+        // --- GERENCIADOR DE MODAIS (UI) ---
+        // (Movemos para o escopo global do módulo para ser acessível, ou usamos window)
+        window.Modal = {
+            show: (title, message, type = 'alert', placeholder = '') => {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('generic-modal');
+                    const titleEl = document.getElementById('gm-title');
+                    const msgEl = document.getElementById('gm-message');
+                    const input = document.getElementById('gm-input');
+                    const confirmBtn = document.getElementById('gm-confirm');
+                    const cancelBtn = document.getElementById('gm-cancel');
+
+                    titleEl.textContent = title;
+                    msgEl.textContent = message;
+                    input.value = '';
+                    
+                    if (type === 'prompt') {
+                        input.style.display = 'block';
+                        input.placeholder = placeholder;
+                        input.focus();
+                        cancelBtn.style.display = 'inline-flex';
+                    } else if (type === 'confirm') {
+                        input.style.display = 'none';
+                        cancelBtn.style.display = 'inline-flex';
+                    } else { 
+                        input.style.display = 'none';
+                        cancelBtn.style.display = 'none';
+                    }
+
+                    modal.classList.add('active');
+
+                    const close = (val) => {
+                        modal.classList.remove('active');
+                        resolve(val);
+                    };
+
+                    // Limpar listeners antigos clonando o botão (hack simples) ou reatribuindo onclick
+                    confirmBtn.onclick = () => close(type === 'prompt' ? input.value : true);
+                    cancelBtn.onclick = () => close(type === 'prompt' ? null : false);
+                });
+            }
+        };
+
+        // --- FIREBASE SYNC LOGIC ---
+
+        // Função Principal de Salvamento
+        const saveData = async () => {
+            if (!currentRoomId) return;
+            try {
+                // Salva no Firestore
+                await setDoc(doc(db, "rooms", currentRoomId), appData);
+                // Não precisa chamar render aqui, o onSnapshot vai capturar a mudança local também (latency compensation)
+            } catch (error) {
+                console.error("Erro ao salvar:", error);
+                // Fallback local se cair a net? O firebase lida com offline persistence automaticamente.
+            }
+        };
+
+        // Entrar na sala e configurar listeners
+        const joinRoom = async (roomId, isNew = false) => {
+            currentRoomId = roomId;
+            
+            // UI Updates
+            document.getElementById('room-screen').style.display = 'none';
+            document.getElementById('main-app').classList.add('visible');
+            document.getElementById('current-room-display').innerText = roomId;
+
+            // Se for nova, salva o estado inicial vazio (ou com dados padrão)
+            if (isNew) {
+                appData = { departments: {} };
+                await saveData();
+            }
+
+            // Listener Realtime
+            onSnapshot(doc(db, "rooms", roomId), (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    appData = docSnapshot.data();
+                    // Garante estrutura mínima
+                    if(!appData.departments) appData.departments = {};
+                    
+                    isSynced = true;
+                    updateSelects();
+                    renderStructure();
+                    renderDashboard();
+                    renderTable();
+                } else {
+                    // Sala não existe, talvez criar?
+                    if(!isNew) {
+                         alert("Sala não encontrada. Criando nova estrutura...");
+                         appData = { departments: {} };
+                         saveData();
+                    }
+                }
+            }, (error) => {
+                console.error("Erro de sincronização:", error);
+                alert("Erro ao conectar com a sala. Verifique sua conexão.");
+            });
+        };
+
+        // Lógica de Inicialização da Sala
+        const initRoomLogic = () => {
+            // Verifica URL parameter ?room=XYZ
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomParam = urlParams.get('room');
+
+            if (roomParam) {
+                document.getElementById('room-id-input').value = roomParam;
+                joinRoom(roomParam);
+            }
+        };
+
+        // Botões da Tela Inicial
+        document.getElementById('btn-create-room').addEventListener('click', () => {
+            const newId = Math.random().toString(36).substring(2, 8).toUpperCase(); // ID Curto
+            // Atualiza URL sem recarregar (Wrapped in Try-Catch to avoid Sandbox SecurityError)
+            try {
+                window.history.pushState({}, '', `?room=${newId}`);
+            } catch (e) {
+                console.warn("History API not supported in this environment (preview mode).");
+            }
+            joinRoom(newId, true);
+        });
+
+        document.getElementById('btn-join-room').addEventListener('click', () => {
+            const val = document.getElementById('room-id-input').value.trim();
+            if(val) {
+                // Atualiza URL sem recarregar (Wrapped in Try-Catch to avoid Sandbox SecurityError)
+                try {
+                    window.history.pushState({}, '', `?room=${val}`);
+                } catch (e) {
+                    console.warn("History API not supported in this environment (preview mode).");
+                }
+                joinRoom(val);
+            } else {
+                alert("Digite um ID válido.");
+            }
+        });
+
+        // Copiar ID da sala (FIXED for iframe/sandbox using execCommand)
+        document.getElementById('room-info-badge').addEventListener('click', () => {
+            if(currentRoomId) {
+                // Fallback method for restricted environments
+                const textArea = document.createElement("textarea");
+                textArea.value = currentRoomId;
+                textArea.style.position = "fixed"; // Avoid scrolling to bottom
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if(successful) {
+                        window.Modal.show('Copiado', 'ID da sala copiado: ' + currentRoomId);
+                    } else {
+                        throw new Error('Copy command failed');
+                    }
+                } catch (err) {
+                    // Last resort: show text for manual copying
+                    window.Modal.show('Atenção', 'Não foi possível copiar automaticamente. O ID é: ' + currentRoomId);
+                }
+                
+                document.body.removeChild(textArea);
+            }
+        });
+
+        // --- RENDERIZAÇÃO: ESTRUTURA ---
+        const renderStructure = () => {
+            const container = document.getElementById('departments-container');
+            container.innerHTML = '';
+            const deptNames = Object.keys(appData.departments).sort();
+
+            if (deptNames.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 40px; color: #666;">Nenhum departamento criado nesta sala.</div>';
+                return;
+            }
+
+            deptNames.forEach(deptName => {
+                const dept = appData.departments[deptName];
+                const deptEl = document.createElement('div');
+                deptEl.className = 'dept-section';
+                
+                deptEl.innerHTML = `
+                    <div class="dept-header">
+                        <div class="dept-title">🏢 ${deptName}</div>
+                        <div class="dept-controls">
+                            <button class="btn btn-success btn-sm" onclick="window.createBudget('${deptName}')">+ Nova Verba</button>
+                            <button class="btn btn-warning btn-sm" onclick="window.renameDept('${deptName}')">Renomear</button>
+                            <button class="btn btn-danger btn-sm" onclick="window.deleteDept('${deptName}')">Excluir Dept</button>
+                        </div>
+                    </div>
+                    <div class="budget-list" id="list-${deptName.replace(/\s+/g, '-')}"></div>
+                `;
+
+                const budgetListEl = deptEl.querySelector('.budget-list');
+                const budgetNames = Object.keys(dept.budgets || {}).sort();
+
+                if (budgetNames.length === 0) {
+                    budgetListEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666; font-style: italic;">Nenhuma verba neste departamento.</div>';
+                }
+
+                budgetNames.forEach(budgetName => {
+                    const budget = dept.budgets[budgetName];
+                    const info = budget.budgetInfo || { budgeted: 0, revenues: [] };
+                    
+                    const card = document.createElement('div');
+                    card.className = 'budget-card';
+                    card.innerHTML = `
+                        <div class="budget-header-row">
+                            <span class="budget-name">${budgetName}</span>
+                            <button class="btn btn-danger btn-sm" style="padding: 2px 6px;" onclick="window.deleteBudget('${deptName}', '${budgetName}')">x</button>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Orçamento Inicial (R$)</label>
+                            <input type="number" step="0.01" 
+                                value="${info.budgeted}" 
+                                onchange="window.updateBudgetInfo('${deptName}', '${budgetName}', 'budgeted', this.value)">
+                        </div>
+
+                        <div class="revenue-section">
+                            <label style="font-size: 12px; color: #aaa; display:block; margin-bottom: 5px;">Entradas Adicionais</label>
+                            <div class="revenue-mini-list" id="rev-list-${deptName}-${budgetName}">
+                                ${info.revenues.map((rev, idx) => `
+                                    <div class="revenue-item">
+                                        <input type="text" placeholder="Obs" value="${rev.obs || ''}" 
+                                            style="width: 40%; font-size: 11px;"
+                                            onchange="window.updateRevenue('${deptName}', '${budgetName}', ${idx}, 'obs', this.value)">
+                                        <input type="number" step="0.01" value="${rev.value}" 
+                                            style="width: 40%; font-size: 11px;"
+                                            onchange="window.updateRevenue('${deptName}', '${budgetName}', ${idx}, 'value', this.value)">
+                                        <button style="background:none; border:none; color:var(--danger); cursor:pointer;" 
+                                            onclick="window.removeRevenue('${deptName}', '${budgetName}', ${idx})">🗑️</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button class="btn btn-sm btn-info" style="width:100%; margin-top:5px;" onclick="window.addRevenue('${deptName}', '${budgetName}')">+ Add Entrada</button>
+                        </div>
+                    `;
+                    budgetListEl.appendChild(card);
+                });
+                container.appendChild(deptEl);
+            });
+        };
+
+        // --- RENDERIZAÇÃO: DASHBOARD ---
+        const renderDashboard = () => {
+            const deptFilter = document.getElementById('dash-dept-filter').value;
+            const budgetFilter = document.getElementById('dash-budget-filter').value;
+
+            let totalBudgeted = 0;
+            let totalExpenses = 0;
+
+            Object.keys(appData.departments).forEach(dName => {
+                if (deptFilter !== 'all' && deptFilter !== dName) return;
+
+                const dept = appData.departments[dName];
+                Object.keys(dept.budgets).forEach(bName => {
+                    if (budgetFilter !== 'all' && budgetFilter !== bName) return;
+
+                    const budget = dept.budgets[bName];
+                    const initial = parseFloat(budget.budgetInfo.budgeted || 0);
+                    const extras = (budget.budgetInfo.revenues || []).reduce((acc, r) => acc + parseFloat(r.value || 0), 0);
+                    totalBudgeted += (initial + extras);
+
+                    const exp = (budget.expenses || []).reduce((acc, e) => acc + parseFloat(e.value || 0), 0);
+                    totalExpenses += exp;
+                });
+            });
+
+            const saldo = totalBudgeted - totalExpenses;
+
+            document.getElementById('val-total-orcado').innerText = formatCurrency(totalBudgeted);
+            document.getElementById('val-total-despesa').innerText = formatCurrency(totalExpenses);
+            
+            const elSaldo = document.getElementById('val-total-saldo');
+            elSaldo.innerText = formatCurrency(saldo);
+            elSaldo.style.color = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
+
+            updateChart(totalBudgeted, totalExpenses, saldo);
+        };
+
+        const updateChart = (receita, despesa, saldo) => {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (dashboardChart) dashboardChart.destroy();
+
+            dashboardChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Visão Geral'],
+                    datasets: [
+                        { label: 'Total Disponível', data: [receita], backgroundColor: '#6c63ff' },
+                        { label: 'Total Gasto', data: [despesa], backgroundColor: '#ff6b6b' },
+                        { label: 'Saldo', data: [saldo], backgroundColor: '#4ECDC4' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: 'white' } } },
+                    scales: {
+                        y: { ticks: { color: '#aaa' }, grid: { color: '#333' } },
+                        x: { ticks: { color: '#aaa' }, grid: { display: false } }
+                    }
+                }
+            });
+        };
+
+        // --- RENDERIZAÇÃO: TABELA ---
+        const renderTable = () => {
+            const tbody = document.getElementById('expenses-body');
+            const deptFilter = document.getElementById('table-dept-filter').value;
+            tbody.innerHTML = '';
+            let allExpenses = [];
+
+            Object.keys(appData.departments).forEach(dName => {
+                if (deptFilter !== 'all' && deptFilter !== dName) return;
+                const dept = appData.departments[dName];
+                Object.keys(dept.budgets).forEach(bName => {
+                    const budget = dept.budgets[bName];
+                    (budget.expenses || []).forEach(exp => {
+                        allExpenses.push({ ...exp, deptName: dName, budgetName: bName });
+                    });
+                });
+            });
+
+            allExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            allExpenses.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.date ? new Date(item.date).toLocaleDateString('pt-BR') : '-'}</td>
+                    <td>${item.deptName}</td>
+                    <td>${item.budgetName}</td>
+                    <td>${item.provider || item.description || '-'}</td>
+                    <td style="color: #ff9999;">${formatCurrency(item.value)}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="window.editExpense('${item.deptName}', '${item.budgetName}', '${item.id}')" title="Editar">✏️</button>
+                        <button class="btn btn-danger btn-sm" onclick="window.deleteExpense('${item.deptName}', '${item.budgetName}', '${item.id}')" title="Excluir">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (allExpenses.length === 0) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Nenhum lançamento.</td></tr>';
+        };
+
+        const updateSelects = () => {
+            const depts = Object.keys(appData.departments).sort();
+            
+            ['dash-dept-filter', 'table-dept-filter'].forEach(id => {
+                const el = document.getElementById(id);
+                const current = el.value;
+                el.innerHTML = id === 'dash-dept-filter' ? '<option value="all">Todos os Departamentos</option>' : '<option value="all">Todos</option>';
+                depts.forEach(d => el.innerHTML += `<option value="${d}">${d}</option>`);
+                if (depts.includes(current) || current === 'all') el.value = current;
+            });
+
+            updateBudgetSelect();
+        };
+
+        const updateBudgetSelect = () => {
+            const dashDeptVal = document.getElementById('dash-dept-filter').value;
+            const dashBudget = document.getElementById('dash-budget-filter');
+            dashBudget.innerHTML = '<option value="all">Todas as Verbas</option>';
+            
+            if (dashDeptVal !== 'all') {
+                dashBudget.disabled = false;
+                const dept = appData.departments[dashDeptVal];
+                if (dept) Object.keys(dept.budgets).sort().forEach(b => dashBudget.innerHTML += `<option value="${b}">${b}</option>`);
+            } else {
+                dashBudget.disabled = true;
+            }
+        };
+
+        // --- EVENTOS E LÓGICA DE BOTÕES ---
+        // (Expostos para window para funcionar com onclick no HTML gerado)
+        
+        document.getElementById('btn-create-dept').addEventListener('click', async () => {
+            const name = await window.Modal.show('Novo Departamento', 'Digite o nome do novo departamento:', 'prompt', 'Ex: TI, RH...');
+            if (name && name.trim()) {
+                if (appData.departments[name.trim()]) {
+                    await window.Modal.show('Erro', 'Departamento já existe!');
+                    return;
+                }
+                appData.departments[name.trim()] = { budgets: {} };
+                saveData();
+            }
+        });
+
+        window.createBudget = async (deptName) => {
+            const name = await window.Modal.show('Nova Verba', `Digite o nome da verba para ${deptName}:`, 'prompt', 'Ex: Alimentação, Hardware...');
+            if (name && name.trim()) {
+                if (appData.departments[deptName].budgets[name.trim()]) {
+                    await window.Modal.show('Erro', 'Verba já existe neste departamento!');
+                    return;
+                }
+                appData.departments[deptName].budgets[name.trim()] = {
+                    budgetInfo: { budgeted: 0, revenues: [] },
+                    expenses: []
+                };
+                saveData();
+            }
+        };
+
+        window.deleteDept = async (deptName) => {
+            const confirmed = await window.Modal.show('Confirmar Exclusão', `Tem certeza que deseja excluir "${deptName}" e TODAS as suas verbas e lançamentos?`, 'confirm');
+            if (confirmed) {
+                delete appData.departments[deptName];
+                saveData();
+            }
+        };
+
+        window.renameDept = async (deptName) => {
+            const newName = await window.Modal.show('Renomear', 'Novo nome para o departamento:', 'prompt', deptName);
+            if (newName && newName.trim() && newName !== deptName) {
+                if (appData.departments[newName]) { 
+                    await window.Modal.show('Erro', 'Nome já existe.'); 
+                    return; 
+                }
+                appData.departments[newName] = appData.departments[deptName];
+                delete appData.departments[deptName];
+                saveData();
+            }
+        };
+
+        window.deleteBudget = async (deptName, budgetName) => {
+            if (await window.Modal.show('Confirmar', `Excluir a verba "${budgetName}"?`, 'confirm')) {
+                delete appData.departments[deptName].budgets[budgetName];
+                saveData();
+            }
+        };
+
+        window.updateBudgetInfo = (deptName, budgetName, field, val) => {
+            if (field === 'budgeted') appData.departments[deptName].budgets[budgetName].budgetInfo.budgeted = parseFloat(val) || 0;
+            saveData(); // OnSnapshot cuidará do render
+        };
+
+        window.addRevenue = (deptName, budgetName) => {
+            appData.departments[deptName].budgets[budgetName].budgetInfo.revenues.push({ value: 0, obs: '' });
+            saveData();
+        };
+
+        window.updateRevenue = (deptName, budgetName, idx, field, val) => {
+            const rev = appData.departments[deptName].budgets[budgetName].budgetInfo.revenues[idx];
+            if (field === 'value') rev.value = parseFloat(val) || 0;
+            else rev.obs = val;
+            saveData();
+        };
+
+        window.removeRevenue = (deptName, budgetName, idx) => {
+            appData.departments[deptName].budgets[budgetName].budgetInfo.revenues.splice(idx, 1);
+            saveData();
+        };
+
+        // --- GESTÃO DE DESPESAS (CRIAR E EDITAR) ---
+        const expenseModal = {
+            el: document.getElementById('expense-modal'),
+            title: document.getElementById('em-title'),
+            deptSelect: document.getElementById('em-dept-select'),
+            budgetSelect: document.getElementById('em-budget-select'),
+            desc: document.getElementById('em-desc'),
+            val: document.getElementById('em-value'),
+            date: document.getElementById('em-date'),
+            cancel: document.getElementById('em-cancel'),
+            save: document.getElementById('em-save'),
+            currentEdit: null,
+            
+            open: (editItem = null) => {
+                const depts = Object.keys(appData.departments).sort();
+                if (depts.length === 0) {
+                    window.Modal.show('Atenção', 'Crie departamentos e verbas antes de lançar despesas.');
+                    return;
+                }
+                
+                expenseModal.deptSelect.innerHTML = '<option value="">Selecione...</option>';
+                depts.forEach(d => expenseModal.deptSelect.innerHTML += `<option value="${d}">${d}</option>`);
+                
+                if (editItem) {
+                    expenseModal.currentEdit = editItem;
+                    expenseModal.title.innerText = "Editar Despesa";
+                    expenseModal.deptSelect.value = editItem.deptName;
+                    expenseModal.populateBudgets(editItem.deptName);
+                    expenseModal.budgetSelect.value = editItem.budgetName;
+                    expenseModal.budgetSelect.disabled = false;
+                    expenseModal.desc.value = editItem.provider;
+                    expenseModal.val.value = editItem.value;
+                    expenseModal.date.value = editItem.date;
+                } else {
+                    expenseModal.currentEdit = null;
+                    expenseModal.title.innerText = "Nova Despesa";
+                    expenseModal.deptSelect.value = "";
+                    expenseModal.budgetSelect.innerHTML = '<option>Selecione um Dept primeiro</option>';
+                    expenseModal.budgetSelect.disabled = true;
+                    expenseModal.desc.value = '';
+                    expenseModal.val.value = '';
+                    expenseModal.date.value = new Date().toISOString().split('T')[0];
+                }
+                expenseModal.el.classList.add('active');
+            },
+
+            populateBudgets: (deptName) => {
+                 expenseModal.budgetSelect.innerHTML = '';
+                 if (!deptName || !appData.departments[deptName]) {
+                    expenseModal.budgetSelect.innerHTML = '<option>Selecione um Dept primeiro</option>';
+                    expenseModal.budgetSelect.disabled = true;
+                    return;
+                }
+                const budgets = Object.keys(appData.departments[deptName].budgets).sort();
+                if (budgets.length === 0) {
+                    expenseModal.budgetSelect.innerHTML = '<option value="">Sem verbas neste dept</option>';
+                    expenseModal.budgetSelect.disabled = true;
+                } else {
+                    budgets.forEach(b => expenseModal.budgetSelect.innerHTML += `<option value="${b}">${b}</option>`);
+                    expenseModal.budgetSelect.disabled = false;
+                }
+            },
+
+            close: () => expenseModal.el.classList.remove('active')
+        };
+
+        expenseModal.deptSelect.addEventListener('change', (e) => expenseModal.populateBudgets(e.target.value));
+        expenseModal.cancel.addEventListener('click', expenseModal.close);
+        
+        expenseModal.save.addEventListener('click', () => {
+            const dept = expenseModal.deptSelect.value;
+            const budget = expenseModal.budgetSelect.value;
+            const desc = expenseModal.desc.value;
+            const val = parseFloat(expenseModal.val.value);
+            const date = expenseModal.date.value;
+
+            if (!dept || !budget || !desc || isNaN(val)) {
+                window.Modal.show('Erro', 'Preencha todos os campos corretamente.');
+                return;
+            }
+
+            if (expenseModal.currentEdit) {
+                const oldDept = expenseModal.currentEdit.deptName;
+                const oldBudget = expenseModal.currentEdit.budgetName;
+                const id = expenseModal.currentEdit.id;
+                
+                const arr = appData.departments[oldDept].budgets[oldBudget].expenses;
+                appData.departments[oldDept].budgets[oldBudget].expenses = arr.filter(e => e.id !== id);
+                
+                appData.departments[dept].budgets[budget].expenses.push({
+                    id: id, date, provider: desc, value: val
+                });
+                window.Modal.show('Sucesso', 'Despesa atualizada!');
+            } else {
+                appData.departments[dept].budgets[budget].expenses.push({
+                    id: generateId(), date, provider: desc, value: val
+                });
+                window.Modal.show('Sucesso', 'Despesa adicionada!');
+            }
+            
+            saveData();
+            expenseModal.close();
+        });
+
+        window.editExpense = (deptName, budgetName, expenseId) => {
+            const expense = appData.departments[deptName].budgets[budgetName].expenses.find(e => e.id === expenseId);
+            if (expense) {
+                expenseModal.open({ ...expense, deptName, budgetName });
+            } else {
+                window.Modal.show('Erro', 'Despesa não encontrada.');
+            }
+        };
+
+        document.getElementById('btn-add-expense').addEventListener('click', () => expenseModal.open(null));
+
+        window.deleteExpense = async (dept, budget, id) => {
+            if(await window.Modal.show('Excluir', 'Tem certeza que deseja apagar este lançamento?', 'confirm')) {
+                const arr = appData.departments[dept].budgets[budget].expenses;
+                appData.departments[dept].budgets[budget].expenses = arr.filter(e => e.id !== id);
+                saveData();
+            }
+        };
+
+        // --- CSV IMPORT ---
+        document.getElementById('btn-add-csv').addEventListener('click', () => {
+            csvUploadMode = 'add';
+            document.getElementById('csv-file-input').click();
+        });
+
+        document.getElementById('btn-replace-csv').addEventListener('click', () => {
+            csvUploadMode = 'replace';
+            document.getElementById('csv-file-input').click();
+        });
+
+        document.getElementById('csv-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            
+            reader.onload = async (evt) => {
+                const buffer = evt.target.result;
+                let text = '';
+                
+                try {
+                    const decoder = new TextDecoder('utf-8', { fatal: true });
+                    text = decoder.decode(buffer);
+                } catch (e) {
+                    console.log("Falha no UTF-8, tentando ISO-8859-1");
+                    const decoder = new TextDecoder('iso-8859-1');
+                    text = decoder.decode(buffer);
+                }
+
+                const lines = text.trim().split(/\r?\n/);
+                const header = lines[0].toLowerCase().split(';').map(h => h.trim().replace(/"/g, ''));
+                
+                const idxDept = header.findIndex(h => h.includes('departamento') || h.includes('centro'));
+                const idxVerba = header.findIndex(h => h.includes('verba') || h.includes('conta'));
+                const idxVal = header.findIndex(h => h.includes('valor'));
+                const idxDate = header.findIndex(h => h.includes('data'));
+                const idxDesc = header.findIndex(h => h.includes('desc') || h.includes('fornecedor'));
+
+                if (idxVal === -1 || idxDept === -1 || idxVerba === -1) { 
+                    await window.Modal.show('Erro CSV', 'Colunas necessárias: Departamento; Verba; Data; Descrição; Valor'); 
+                    return; 
+                }
+
+                if (csvUploadMode === 'replace') {
+                    if (await window.Modal.show('Substituir?', 'Isso limpará os lançamentos existentes, mas MANTERÁ seus Departamentos e Verbas. Continuar?', 'confirm')) {
+                         Object.keys(appData.departments).forEach(dKey => {
+                            const dept = appData.departments[dKey];
+                            if (dept.budgets) {
+                                Object.keys(dept.budgets).forEach(bKey => {
+                                    if(dept.budgets[bKey]) dept.budgets[bKey].expenses = [];
+                                });
+                            }
+                        });
+                    } else {
+                        e.target.value = '';
+                        return;
+                    }
+                }
+
+                let count = 0;
+                lines.slice(1).forEach(line => {
+                    if(!line.trim()) return;
+                    const cols = line.split(';');
+                    const getCol = (i) => i >= 0 && cols[i] ? cols[i].replace(/"/g, '').trim() : '';
+
+                    let dName = getCol(idxDept) || 'Geral';
+                    let bName = getCol(idxVerba) || 'Despesas Gerais';
+                    
+                    let valStr = getCol(idxVal).replace('R$', '').trim();
+                    if(valStr.includes(',') && valStr.includes('.')) valStr = valStr.replace(/\./g, '').replace(',', '.');
+                    else if(valStr.includes(',')) valStr = valStr.replace(',', '.');
+                    
+                    let val = parseFloat(valStr);
+                    if (getCol(idxVal).includes('(')) val = -Math.abs(val);
+                    if (isNaN(val)) return;
+
+                    if (!appData.departments[dName]) appData.departments[dName] = { budgets: {} };
+                    if (!appData.departments[dName].budgets[bName]) {
+                        appData.departments[dName].budgets[bName] = { budgetInfo: { budgeted: 0, revenues: [] }, expenses: [] };
+                    }
+
+                    appData.departments[dName].budgets[bName].expenses.push({
+                        id: generateId(),
+                        date: getCol(idxDate) || new Date().toISOString().split('T')[0],
+                        provider: getCol(idxDesc) || 'Importado CSV',
+                        value: val
+                    });
+                    count++;
+                });
+
+                saveData();
+                await window.Modal.show('Importação', `${count} lançamentos processados!`);
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // --- INIT ---
+        
+        document.querySelectorAll('.nav-link').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.view).classList.add('active');
+            });
+        });
+
+        document.getElementById('dash-dept-filter').addEventListener('change', () => { updateBudgetSelect(); renderDashboard(); });
+        document.getElementById('dash-budget-filter').addEventListener('change', renderDashboard);
+        document.getElementById('table-dept-filter').addEventListener('change', renderTable);
+        document.getElementById('refresh-dash-btn').addEventListener('click', () => {
+             document.getElementById('dash-dept-filter').value = 'all';
+             updateBudgetSelect();
+             renderDashboard();
+        });
+
+        // Inicia
+        initRoomLogic();
+    </script>
+</body>
+</html>

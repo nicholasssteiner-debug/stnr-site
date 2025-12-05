@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Comercial Completo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+        :root {
+            --bg-dark: #1a1a2e;
+            --primary: #6c63ff;
+            --card-bg: #2e2e4f;
+            --text-light: #e0e0e0;
+            --border-color: #4f4f7a;
+        }
+        body { font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; padding: 20px; }
+        .dashboard-container { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; max-width: 1400px; margin: auto; }
+        header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
+        header h1 { margin: 0; font-size: 28px; color: #ffffff; }
+        .header-buttons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .action-button { color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 700; transition: background-color 0.3s; display: flex; align-items: center; justify-content: center; }
+        #upload-btn { background-color: #fca11a; }
+        #upload-btn:hover { background-color: #e49017; }
+        #edit-mode-btn { background-color: #6c63ff; }
+        #edit-mode-btn:hover { background-color: #574fd8; }
+        #gemini-analysis-btn { background-color: #ff6b6b; }
+        #gemini-analysis-btn:hover { background-color: #e05252; }
+        #fullscreen-btn { background-color: #4ECDC4; }
+        #fullscreen-btn:hover { background-color: #3aa89f; }
+        #category-filter {
+            background-color: #57a773;
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            padding-right: 35px;
+            background-image: url("data:image/svg+xml;charset=UTF8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            height: 38px;
+        }
+        .kpi-card { background-color: var(--card-bg); border-radius: 8px; padding: 20px; text-align: center; border-left: 5px solid var(--primary); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .kpi-card h3 { margin: 0 0 10px 0; font-size: 16px; color: #c0c0ff; }
+        .kpi-card .value { font-size: 28px; font-weight: 700; }
+        #kpi-orcado, #kpi-realizado, #kpi-saldo { grid-column: span 4; }
+        .chart-container, .table-container, .ai-container { background-color: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); grid-column: 1 / -1; transition: all 0.3s ease-in-out; }
+        #bar-chart-container { grid-column: 1 / 8; }
+        #doughnut-chart-container { grid-column: 8 / 13; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        thead th { background-color: var(--bg-dark); color: #ffffff; }
+        tbody tr:hover { background-color: #3a3a6e; }
+        td input[type="number"] { width: 90%; padding: 8px; background-color: #1a1a2e; border: 1px solid var(--border-color); color: #e0e0e0; border-radius: 4px; font-size: 14px; }
+        .ai-container { min-height: 100px; }
+        .ai-container h2 { margin-top: 0; color: #ff6b6b; }
+        .ai-container ol { text-align: left; margin-left: 20px; padding-left: 0; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #ff6b6b; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+    <div class="dashboard-container">
+        <header>
+            <h1>Dashboard Comercial</h1>
+            <div class="header-buttons">
+                <select id="category-filter" class="action-button"></select>
+                <button id="upload-btn" class="action-button" title="Carregar ficheiro CSV">⬆️ Atualizar</button>
+                <button id="edit-mode-btn" class="action-button">Editar</button>
+                <button id="gemini-analysis-btn" class="action-button">✨ Gerar Análise</button>
+                <button id="fullscreen-btn" class="action-button" title="Tela Cheia">
+                    <svg id="fullscreen-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/></svg>
+                    <svg id="exit-fullscreen-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="display: none;"><path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 1 0v4A1.5 1.5 0 0 1 14.5 16h-4a.5.5 0 0 1-.5-.5"/></svg>
+                </button>
+            </div>
+        </header>
+        <div class="kpi-card" id="kpi-orcado"><h3 id="kpi-orcado-title">Orçado Total</h3><p class="value" id="total-orcado-value">R$ 0,00</p></div>
+        <div class="kpi-card" id="kpi-realizado"><h3 id="kpi-realizado-title">Gasto Total</h3><p class="value" id="total-realizado-value">R$ 0,00</p></div>
+        <div class="kpi-card" id="kpi-saldo"><h3 id="kpi-saldo-title">Saldo Total</h3><p class="value" id="total-saldo-value">R$ 0,00</p></div>
+        <div class="chart-container" id="bar-chart-container"><canvas id="barChart"></canvas></div>
+        <div class="chart-container" id="doughnut-chart-container"><canvas id="doughnutChart"></canvas></div>
+        <div class="table-container" id="data-table-container"><table><thead><tr><th>Verba</th><th>Orçado (Valor Bruto)</th><th>Gasto (Despesa)</th><th>Saldo (Valor Líquido)</th></tr></thead><tbody id="data-table-body"></tbody></table></div>
+        <div class="ai-container" id="ai-analysis-container"><h2>Análise da IA Gemini</h2><div id="ai-result"><p>Carregue um ficheiro CSV ou conecte uma planilha para começar a análise.</p></div></div>
+    </div>
+    <script>
+        let barChart, doughnutChart;
+        let fullBudgetData = []; 
+        let budgetData = []; 
+        let isEditMode = false;
+
+        const formatCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const calculateAndUpdateAll = () => {
+            if (budgetData.length === 0) return;
+            const isSingleView = budgetData.length === 1;
+            document.getElementById('kpi-orcado-title').textContent = isSingleView ? 'Orçado (Verba)' : 'Orçado Total';
+            document.getElementById('kpi-realizado-title').textContent = isSingleView ? 'Gasto (Verba)' : 'Gasto Total';
+            document.getElementById('kpi-saldo-title').textContent = isSingleView ? 'Saldo (Verba)' : 'Saldo Total';
+            const totalOrcado = budgetData.reduce((sum, item) => sum + item.bruto, 0);
+            const totalRealizado = budgetData.reduce((sum, item) => sum + item.despesa, 0);
+            const totalSaldo = totalOrcado - totalRealizado;
+            document.getElementById('total-orcado-value').textContent = formatCurrency(totalOrcado);
+            document.getElementById('total-realizado-value').textContent = formatCurrency(totalRealizado);
+            document.getElementById('total-saldo-value').textContent = formatCurrency(totalSaldo);
+            populateTable();
+            updateCharts();
+        };
+        
+        const populateTable = () => {
+            const tableBody = document.getElementById('data-table-body');
+            tableBody.innerHTML = ''; 
+            budgetData.forEach((item) => {
+                const liquido = item.bruto - item.despesa;
+                const row = document.createElement('tr');
+                if (isEditMode) {
+                    row.innerHTML = `
+                        <td data-category="${item.category}">${item.category}</td>
+                        <td><input type="number" class="edit-bruto" value="${item.bruto}"></td>
+                        <td><input type="number" class="edit-despesa" value="${item.despesa}"></td>
+                        <td>${formatCurrency(liquido)}</td>
+                    `;
+                } else {
+                    row.innerHTML = `<td>${item.category}</td><td>${formatCurrency(item.bruto)}</td><td>${formatCurrency(item.despesa)}</td><td>${formatCurrency(liquido)}</td>`;
+                }
+                tableBody.appendChild(row);
+            });
+        };
+
+        const createCharts = () => {
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(barCtx, { type: 'bar', options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Orçado vs. Gasto por Verba', color: '#e0e0e0', font: { size: 18 } }, legend: { labels: { color: '#e0e0e0' } } }, scales: { y: { beginAtZero: true, ticks: { color: '#e0e0e0' }, grid: { color: 'rgba(224, 224, 224, 0.2)' } }, x: { ticks: { color: '#e0e0e0' }, grid: { color: 'rgba(224, 224, 224, 0.1)' } } } } });
+            const doughnutCtx = document.getElementById('doughnutChart').getContext('2d');
+            doughnutChart = new Chart(doughnutCtx, { type: 'doughnut', options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Composição do Saldo por Verba', color: '#e0e0e0', font: { size: 18 } }, legend: { position: 'top', labels: { color: '#e0e0e0', boxWidth: 15, padding: 10 } } } } });
+        };
+        
+        const updateCharts = () => {
+            const labels = budgetData.map(item => item.category);
+            const brutoData = budgetData.map(item => item.bruto);
+            const despesaData = budgetData.map(item => item.despesa);
+            const liquidoData = budgetData.map(item => Math.max(0, item.bruto - item.despesa));
+            barChart.data = { labels, datasets: [ { label: 'Valor Bruto (Orçado)', data: brutoData, backgroundColor: 'rgba(108, 99, 255, 0.6)', borderColor: 'rgba(108, 99, 255, 1)', borderWidth: 1 }, { label: 'Gasto (Despesa)', data: despesaData, backgroundColor: 'rgba(255, 107, 107, 0.7)', borderColor: 'rgba(255, 107, 107, 1)', borderWidth: 1 } ] };
+            doughnutChart.data = { labels, datasets: [{ label: 'Valor Líquido (Saldo)', data: liquidoData, backgroundColor: ['#6C63FF', '#FF6B6B', '#4ECDC4', '#FFCF56', '#57A773', '#45A29E', '#F9A828', '#A16AE8'], borderColor: '#2e2e4f', borderWidth: 3 }] };
+            barChart.update();
+            doughnutChart.update();
+        };
+
+        const populateFilter = () => {
+            const filterDropdown = document.getElementById('category-filter');
+            filterDropdown.innerHTML = '<option value="all">Exibir Todas as Verbas</option>';
+            fullBudgetData.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.category;
+                option.textContent = item.category;
+                filterDropdown.appendChild(option);
+            });
+        };
+
+        const filterData = (selectedValue) => {
+            const barContainer = document.getElementById('bar-chart-container');
+            const doughnutContainer = document.getElementById('doughnut-chart-container');
+            if (selectedValue === 'all') {
+                budgetData = [...fullBudgetData];
+                doughnutContainer.style.display = 'block';
+                barContainer.style.gridColumn = '1 / 8';
+            } else {
+                budgetData = fullBudgetData.filter(item => item.category === selectedValue);
+                doughnutContainer.style.display = 'none';
+                barContainer.style.gridColumn = '1 / -1';
+            }
+            calculateAndUpdateAll();
+        };
+
+        document.getElementById('category-filter').addEventListener('change', (e) => filterData(e.target.value));
+
+        const uploadBtn = document.getElementById('upload-btn');
+        const csvFileInput = document.getElementById('csv-file-input');
+        uploadBtn.addEventListener('click', () => csvFileInput.click());
+        csvFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const newData = parseCSV(e.target.result);
+                    if (newData.length === 0) throw new Error("O ficheiro CSV está vazio ou em formato incorreto.");
+                    fullBudgetData = newData;
+                    populateFilter();
+                    filterData('all');
+                } catch (error) {
+                    alert(`Erro ao processar o ficheiro: ${error.message}`);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+            csvFileInput.value = '';
+        });
+
+        // *** FUNÇÃO DE ANÁLISE DE LINHA DE CSV MAIS ROBUSTA ***
+        const parseCsvLine = (line) => {
+            const parts = [];
+            // Regex para corresponder a campos, lidando com aspas
+            const regex = /("([^"]*)"|([^,]*))(,|$)/g;
+            let match;
+            while ((match = regex.exec(line))) {
+                // Se for um campo entre aspas (grupo 2), use esse. Caso contrário, use o campo sem aspas (grupo 3).
+                parts.push(match[2] !== undefined ? match[2] : match[3]);
+                // Para se alcançarmos o final da linha
+                if (match[4] === '') break;
+            }
+            return parts;
+        };
+        
+        // --- FUNÇÃO parseCSV CORRIGIDA E MAIS ROBUSTA ---
+        const parseCSV = (text) => {
+            const allLines = text.trim().split(/\r?\n/);
+            
+            const header = allLines.shift().toLowerCase().split(',');
+            const normalize = str => str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+            const verbaIndex = header.findIndex(h => normalize(h).includes("verba"));
+            const orcadoIndex = header.findIndex(h => normalize(h).includes("orcado"));
+            const gastoIndex = header.findIndex(h => normalize(h).includes("gasto") || normalize(h).includes("despesa"));
+
+            if (verbaIndex === -1 || orcadoIndex === -1 || gastoIndex === -1) {
+                throw new Error("Cabeçalho do CSV inválido. A primeira linha da aba 'DadosParaDashboard' deve conter 'Verba', 'Orçado' e 'Gasto' ou 'Despesa'.");
+            }
+            
+            const parseCurrency = (valueStr) => {
+                if (!valueStr || typeof valueStr !== 'string') return 0;
+                
+                let cleanedStr = valueStr.trim()
+                    .replace(/"/g, '')      // Remove aspas
+                    .replace("R$", "")      // Remove símbolo de moeda
+                    .trim();                // Remove espaços em branco
+                
+                cleanedStr = cleanedStr.replace(/\./g, '');
+                cleanedStr = cleanedStr.replace(',', '.');
+                
+                return parseFloat(cleanedStr) || 0;
+            };
+
+            return allLines.map(line => {
+                // *** USA O NOVO PARSER MAIS ROBUSTO AQUI ***
+                const parts = parseCsvLine(line);
+                const category = parts[verbaIndex]?.trim().replace(/"/g, '');
+                const bruto = parseCurrency(parts[orcadoIndex]);
+                const despesa = parseCurrency(parts[gastoIndex]);
+
+                if (category) {
+                    return { category, bruto, despesa };
+                }
+                return null;
+            }).filter(Boolean);
+        };
+        
+        // --- Edit Mode ---
+        document.getElementById('edit-mode-btn').addEventListener('click', () => {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('edit-mode-btn');
+            if (isEditMode) {
+                btn.textContent = 'Atualizar e Sair';
+                btn.style.backgroundColor = '#4ECDC4';
+                populateTable();
+            } else {
+                const tableRows = document.querySelectorAll('#data-table-body tr');
+                tableRows.forEach(row => {
+                    const category = row.querySelector('td[data-category]').dataset.category;
+                    const brutoInput = row.querySelector('.edit-bruto');
+                    const despesaInput = row.querySelector('.edit-despesa');
+                    const dataItem = fullBudgetData.find(item => item.category === category);
+                    if (dataItem) {
+                        dataItem.bruto = parseFloat(brutoInput.value) || 0;
+                        dataItem.despesa = parseFloat(despesaInput.value) || 0;
+                    }
+                });
+                btn.textContent = 'Editar';
+                btn.style.backgroundColor = '#6c63ff';
+                const currentFilter = document.getElementById('category-filter').value;
+                filterData(currentFilter);
+            }
+        });
+
+        document.getElementById('gemini-analysis-btn').addEventListener('click', () => { alert("Funcionalidade de Análise IA a ser implementada."); });
+        document.getElementById('fullscreen-btn').addEventListener('click', () => { /* Fullscreen logic */ });
+        document.addEventListener('fullscreenchange', () => { /* Fullscreen icon logic */ });
+
+        async function loadDataFromGoogleSheet(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+                const csvText = await response.text();
+                return parseCSV(csvText);
+            } catch (error) {
+                console.error("Falha ao carregar dados do Google Sheets:", error);
+                alert("Falha ao carregar dados do Google Sheets: " + error.message);
+                return [];
+            }
+        }
+
+        window.onload = async () => {
+            createCharts(); 
+            const aiResultDiv = document.getElementById('ai-result');
+            
+            const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpfjPdEiwxtIagig4vfOh-qa9m_qRWLTXOgKrvHvnc86BFEsfRomthWAvTc2G-fQ_vF7M9iVygNBmA/pub?gid=989081483&single=true&output=csv';
+
+            aiResultDiv.innerHTML = '<div class="loader"></div><p>A carregar dados da planilha...</p>';
+            
+            const initialData = await loadDataFromGoogleSheet(googleSheetUrl);
+
+            if (initialData.length > 0) {
+                fullBudgetData = initialData;
+                budgetData = [...fullBudgetData];
+                populateFilter();
+                calculateAndUpdateAll();
+                aiResultDiv.innerHTML = '<p>Dados carregados com sucesso! Clique em "Gerar Análise" para insights.</p>';
+            } else {
+                aiResultDiv.innerHTML = '<p style="color: #ff6b6b;"><strong>Falha ao carregar os dados.</strong><br>Verifique se o link está correto e se a aba "DadosParaDashboard" está publicada corretamente como CSV.</p>';
+            }
+        };
+    </script>
+</body>
+</html>
+
