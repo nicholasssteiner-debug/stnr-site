@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Financeiro Colaborativo</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React Dependencies -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    
+    <!-- Babel para JSX (Configurado para aceitar modules) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Recharts -->
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Script tipo module para permitir imports do Firebase -->
+    <script type="text/babel" data-type="module">
+        // --- IMPORTS DO FIREBASE ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // Configuração fornecida
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4HfH6sI65OD_zPHxsj5DedJjunD1fwyw",
+            authDomain: "relatorio-do-poco.firebaseapp.com",
+            projectId: "relatorio-do-poco",
+            storageBucket: "relatorio-do-poco.firebasestorage.app",
+            messagingSenderId: "145663567296",
+            appId: "1:145663567296:web:5d7be1e8b1f8d5ddd81425",
+            measurementId: "G-FRBN8L829R"
+        };
+
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- Variáveis Globais do React ---
+        const { useState, useEffect, useMemo } = React;
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = window.Recharts || {};
+
+        // --- Ícones ---
+        const Icon = ({ path, size = 20, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {path}
+            </svg>
+        );
+
+        const Icons = {
+            Upload: (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>} />,
+            FileText: (props) => <Icon {...props} path={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></>} />,
+            ExternalLink: (props) => <Icon {...props} path={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></>} />,
+            DollarSign: (props) => <Icon {...props} path={<><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>} />,
+            Calendar: (props) => <Icon {...props} path={<><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>} />,
+            TrendingUp: (props) => <Icon {...props} path={<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>} />,
+            PieChart: (props) => <Icon {...props} path={<><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>} />,
+            Search: (props) => <Icon {...props} path={<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>} />,
+            AlertCircle: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>} />,
+            Trash2: (props) => <Icon {...props} path={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>} />,
+            Settings: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>} />,
+            Plus: (props) => <Icon {...props} path={<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>} />,
+            X: (props) => <Icon {...props} path={<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>} />,
+            Copy: (props) => <Icon {...props} path={<><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>} />,
+            LogOut: (props) => <Icon {...props} path={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>} />,
+            Users: (props) => <Icon {...props} path={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />,
+        };
+
+        // --- COMPONENTE: Seleção de Sala ---
+        const RoomSelection = ({ onJoinRoom }) => {
+            const [roomId, setRoomId] = useState('');
+            const [mode, setMode] = useState('menu'); // 'menu', 'join', 'create'
+
+            const createRoom = () => {
+                // Gera ID aleatório de 6 caracteres
+                const newId = Math.random().toString(36).substring(2, 8).toUpperCase();
+                onJoinRoom(newId);
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center border border-gray-100 fade-in">
+                        <div className="bg-blue-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+                            <Icons.Users size={40} className="text-blue-600" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-800 mb-2">Relatório Colaborativo</h1>
+                        <p className="text-gray-500 mb-8">Gerencie despesas em tempo real com sua equipe.</p>
+
+                        {mode === 'menu' && (
+                            <div className="space-y-4">
+                                <button 
+                                    onClick={createRoom}
+                                    className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-md flex items-center justify-center gap-2"
+                                >
+                                    <Icons.Plus size={20} /> Criar Nova Sala
+                                </button>
+                                <button 
+                                    onClick={() => setMode('join')}
+                                    className="w-full py-3 px-4 bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 rounded-xl font-medium transition-all"
+                                >
+                                    Entrar em Sala Existente
+                                </button>
+                            </div>
+                        )}
+
+                        {mode === 'join' && (
+                            <div className="text-left">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">ID da Sala</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={roomId}
+                                        onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                                        placeholder="Ex: X9Y2Z1"
+                                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono"
+                                    />
+                                    <button 
+                                        onClick={() => roomId && onJoinRoom(roomId)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg font-medium transition-colors"
+                                    >
+                                        Entrar
+                                    </button>
+                                </div>
+                                <button 
+                                    onClick={() => setMode('menu')}
+                                    className="mt-4 text-sm text-gray-500 hover:text-gray-800 underline"
+                                >
+                                    Voltar
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTE PRINCIPAL DO DASHBOARD ---
+        const DashboardRelatorio = ({ roomId, onLogout }) => {
+            const [data, setData] = useState([]);
+            const [fileName, setFileName] = useState(null);
+            const [loading, setLoading] = useState(true);
+            
+            // Estados de UI
+            const [searchTerm, setSearchTerm] = useState('');
+            const [error, setError] = useState(null);
+            const [encoding, setEncoding] = useState('UTF-8');
+            const [showModal, setShowModal] = useState(false);
+            const [copySuccess, setCopySuccess] = useState(false);
+
+            // Estado Form Manual
+            const [manualForm, setManualForm] = useState({
+                emissao: '',
+                tipo: 'NFSe',
+                numero: '',
+                emitente: '',
+                valor: '',
+                centroCusto: '',
+                finalidade: '',
+                link: ''
+            });
+
+            // --- FIREBASE SYNC ---
+            useEffect(() => {
+                if (!roomId) return;
+                setLoading(true);
+
+                const roomRef = doc(db, "salas", roomId);
+
+                const unsubscribe = onSnapshot(roomRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const roomData = docSnap.data();
+                        setData(roomData.data || []);
+                        setFileName(roomData.fileName || null);
+                    } else {
+                        // Sala nova, inicializa vazia
+                        setDoc(roomRef, {
+                            createdAt: new Date(),
+                            data: [],
+                            fileName: null
+                        });
+                        setData([]);
+                    }
+                    setLoading(false);
+                }, (err) => {
+                    console.error("Erro no sync:", err);
+                    setError("Erro ao sincronizar com o banco de dados.");
+                    setLoading(false);
+                });
+
+                return () => unsubscribe();
+            }, [roomId]);
+
+            // --- FUNÇÕES DE DADOS ---
+
+            const saveDataToFirebase = async (newData, newFileName = null) => {
+                try {
+                    const roomRef = doc(db, "salas", roomId);
+                    const updatePayload = { data: newData };
+                    if (newFileName !== null) updatePayload.fileName = newFileName;
+                    
+                    await updateDoc(roomRef, updatePayload);
+                } catch (err) {
+                    console.error("Erro ao salvar:", err);
+                    setError("Erro ao salvar alterações no servidor.");
+                }
+            };
+
+            const clearData = async () => {
+                if (window.confirm('Isso apagará os dados para TODOS os usuários na sala. Continuar?')) {
+                    await saveDataToFirebase([], null); // Passa null explicitamente para limpar filename
+                }
+            };
+
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.readAsText(file, encoding);
+
+                reader.onload = async (e) => {
+                    try {
+                        const text = e.target.result;
+                        const lines = text.split('\n').filter(line => line.trim() !== '');
+                        const headers = lines[0].split(';').map(h => h.trim());
+
+                        const parsedData = lines.slice(1).map((line, idx) => {
+                            const values = line.split(';');
+                            const obj = {};
+                            headers.forEach((header, index) => {
+                                // CORREÇÃO: Ignora cabeçalhos vazios para evitar erro no Firestore
+                                if (!header || header.trim() === '') return;
+                                
+                                let val = values[index] ? values[index].trim() : '';
+                                if (val.startsWith('"') && val.endsWith('"')) {
+                                    val = val.slice(1, -1);
+                                }
+                                obj[header] = val;
+                            });
+                            return obj;
+                        });
+
+                        const validData = parsedData.filter(row => row['Valor'] || row['Emitente']);
+                        
+                        if (validData.length === 0) {
+                            setError("Nenhum dado válido encontrado. Verifique se o separador é ponto e vírgula (;).");
+                        } else {
+                            // Upload substitui os dados (segundo lógica original)
+                            await saveDataToFirebase(validData, file.name);
+                            setError(null);
+                        }
+                    } catch (err) {
+                        setError("Erro ao processar o arquivo.");
+                        console.error(err);
+                    }
+                };
+                event.target.value = '';
+            };
+
+            const handleSubmitManual = async (e) => {
+                e.preventDefault();
+                
+                const dateObj = new Date(manualForm.emissao);
+                const userTimezoneOffset = dateObj.getTimezoneOffset() * 60000;
+                const adjustedDate = new Date(dateObj.getTime() + userTimezoneOffset);
+                
+                const dia = String(adjustedDate.getDate()).padStart(2, '0');
+                const mes = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+                const ano = adjustedDate.getFullYear();
+                const dataFormatada = `${dia}/${mes}/${ano}`;
+
+                const valorFloat = parseFloat(manualForm.valor);
+                const valorFormatado = valorFloat.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                const novoLancamento = {
+                    "Criação": new Date().toLocaleString('pt-BR'),
+                    "Emissão": dataFormatada,
+                    "Tipo": manualForm.tipo,
+                    "Número": manualForm.numero,
+                    "Emitente": manualForm.emitente,
+                    "Valor": valorFormatado,
+                    "Finalidade": manualForm.finalidade,
+                    "Centro de Custo": manualForm.centroCusto || 'Manual',
+                    "Link do Documento": manualForm.link
+                };
+
+                // Manual adiciona ao topo
+                const newData = [novoLancamento, ...data];
+                await saveDataToFirebase(newData);
+                
+                setShowModal(false);
+                setManualForm({ emissao: '', tipo: 'NFSe', numero: '', emitente: '', valor: '', centroCusto: '', finalidade: '', link: '' });
+            };
+
+            const copyRoomId = () => {
+                // Fallback robusto para ambientes onde navigator.clipboard é bloqueado
+                const textArea = document.createElement("textarea");
+                textArea.value = roomId;
+                
+                // Evita que a tela role para o elemento
+                textArea.style.position = "fixed"; 
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2000);
+                    } else {
+                         console.error('Falha ao copiar ID.');
+                    }
+                } catch (err) {
+                    console.error('Erro ao copiar:', err);
+                }
+                
+                document.body.removeChild(textArea);
+            };
+
+            // Helpers
+            const parseCurrency = (valueString) => {
+                if (!valueString) return 0;
+                try {
+                    const cleanString = valueString.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+                    return parseFloat(cleanString) || 0;
+                } catch (e) { return 0; }
+            };
+
+            const stats = useMemo(() => {
+                const totalValor = data.reduce((acc, curr) => acc + parseCurrency(curr['Valor']), 0);
+                const totalDocs = data.length;
+                
+                const porCentroCusto = data.reduce((acc, curr) => {
+                    const cc = curr['Centro de Custo'] || 'Não Identificado';
+                    const valor = parseCurrency(curr['Valor']);
+                    acc[cc] = (acc[cc] || 0) + valor;
+                    return acc;
+                }, {});
+                const chartDataCC = Object.entries(porCentroCusto).map(([name, value]) => ({ name, value }));
+
+                const porTipo = data.reduce((acc, curr) => {
+                    const tipo = curr['Tipo'] || 'Outros';
+                    const valor = parseCurrency(curr['Valor']);
+                    acc[tipo] = (acc[tipo] || 0) + valor;
+                    return acc;
+                }, {});
+                const chartDataTipo = Object.entries(porTipo).map(([name, value]) => ({ name, value }));
+
+                return { totalValor, totalDocs, chartDataCC, chartDataTipo };
+            }, [data]);
+
+            const filteredData = data.filter(row => 
+                Object.values(row).some(val => String(val).toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+
+            const hasCharts = typeof BarChart !== 'undefined' && typeof PieChart !== 'undefined';
+            const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+            
+            if (loading) {
+                return <div className="min-h-screen flex items-center justify-center text-blue-600">Carregando dados da sala...</div>;
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans text-slate-800 relative fade-in">
+                    
+                    {/* TOP BAR COM ID DA SALA */}
+                    <div className="bg-slate-800 text-white px-6 py-3 rounded-t-xl md:rounded-xl shadow-md mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-4">
+                            <span className="text-slate-400 text-sm font-medium">SALA ATUAL:</span>
+                            <div className="flex items-center gap-2 bg-slate-700 px-3 py-1 rounded text-yellow-400 font-mono text-lg font-bold tracking-wider">
+                                {roomId}
+                                <button onClick={copyRoomId} className="text-white hover:text-blue-300 ml-2" title="Copiar ID">
+                                    <Icons.Copy size={16} />
+                                </button>
+                            </div>
+                            {copySuccess && <span className="text-xs text-green-400">Copiado!</span>}
+                        </div>
+                        <button 
+                            onClick={onLogout}
+                            className="text-slate-300 hover:text-white flex items-center gap-2 text-sm font-medium transition-colors"
+                        >
+                            <Icons.LogOut size={16} /> Sair / Trocar Sala
+                        </button>
+                    </div>
+
+                    <header className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                    <Icons.FileText className="text-blue-600" />
+                                    Relatório Financeiro
+                                </h1>
+                                <p className="text-gray-500 text-sm mt-1">
+                                    {fileName ? `Arquivo base: ${fileName}` : 'Modo Colaborativo Online'}
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                                    <Icons.Settings size={14} className="text-gray-400" />
+                                    <select 
+                                        value={encoding} 
+                                        onChange={(e) => setEncoding(e.target.value)}
+                                        className="bg-transparent text-sm text-gray-600 focus:outline-none cursor-pointer"
+                                    >
+                                        <option value="UTF-8">UTF-8</option>
+                                        <option value="ISO-8859-1">ISO-8859-1</option>
+                                    </select>
+                                </div>
+
+                                <button onClick={() => setShowModal(true)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md active:scale-95 whitespace-nowrap">
+                                    <Icons.Plus size={18} /> <span className="font-medium">Novo Lançamento</span>
+                                </button>
+
+                                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md active:scale-95 whitespace-nowrap">
+                                    <Icons.Upload size={18} /> <span className="font-medium">Carregar CSV</span>
+                                    <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                                </label>
+
+                                {data.length > 0 && (
+                                    <button onClick={clearData} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors flex items-center gap-2 border border-transparent hover:border-red-100" title="Limpar Sala">
+                                        <Icons.Trash2 size={18} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    {error && (
+                        <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 text-red-700 flex items-center gap-2 rounded-r">
+                            <Icons.AlertCircle size={20} /> {error}
+                        </div>
+                    )}
+
+                    {/* CONTEÚDO PRINCIPAL (DASHBOARD) */}
+                    {data.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
+                            <div className="bg-blue-50 p-6 rounded-full mb-4"><Icons.Upload size={48} className="text-blue-400" /></div>
+                            <h3 className="text-xl font-bold text-gray-700 mb-2">Sala Sincronizada</h3>
+                            <p className="text-gray-500 text-center max-w-md mb-6">Esta sala está vazia. Importe um CSV ou adicione despesas.</p>
+                            <button onClick={() => setShowModal(true)} className="text-blue-600 font-medium hover:underline flex items-center gap-1">
+                                <Icons.Plus size={16} /> Inserir Manualmente
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+                                    <div className="p-3 bg-green-100 text-green-600 rounded-full"><Icons.DollarSign size={24} /></div>
+                                    <div><p className="text-gray-500 text-sm font-medium">Valor Total</p><h3 className="text-2xl font-bold text-gray-800">{stats.totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h3></div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+                                    <div className="p-3 bg-blue-100 text-blue-600 rounded-full"><Icons.FileText size={24} /></div>
+                                    <div><p className="text-gray-500 text-sm font-medium">Documentos</p><h3 className="text-2xl font-bold text-gray-800">{stats.totalDocs}</h3></div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+                                    <div className="p-3 bg-purple-100 text-purple-600 rounded-full"><Icons.Users size={24} /></div>
+                                    <div><p className="text-gray-500 text-sm font-medium">Sync</p><h3 className="text-lg font-bold text-gray-800 text-green-600">Online</h3></div>
+                                </div>
+                            </div>
+
+                            {hasCharts && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><Icons.PieChart size={20} className="text-gray-500" /> Distribuição por Centro de Custo</h3>
+                                        <div className="h-64 w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie data={stats.chartDataCC} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value">
+                                                        {stats.chartDataCC.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                                                    </Pie>
+                                                    <RechartsTooltip formatter={(value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
+                                                    <Legend layout="vertical" align="right" verticalAlign="middle" />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2"><Icons.TrendingUp size={20} className="text-gray-500" /> Gastos por Tipo</h3>
+                                        <div className="h-64 w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={stats.chartDataTipo}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                                    <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val/1000}k`} />
+                                                    <RechartsTooltip cursor={{fill: '#f3f4f6'}} formatter={(value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-10">
+                                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <h3 className="text-lg font-bold text-gray-800">Lançamentos</h3>
+                                    <div className="relative w-full sm:w-64">
+                                        <Icons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                                        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm" />
+                                    </div>
+                                </div>
+                                
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider font-semibold">
+                                                <th className="p-4 border-b">Emissão</th>
+                                                <th className="p-4 border-b">Tipo</th>
+                                                <th className="p-4 border-b">Número</th>
+                                                <th className="p-4 border-b">Emitente</th>
+                                                <th className="p-4 border-b">Centro de Custo</th>
+                                                <th className="p-4 border-b">Finalidade</th>
+                                                <th className="p-4 border-b text-right">Valor</th>
+                                                <th className="p-4 border-b text-center">Doc</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {filteredData.length > 0 ? (
+                                                filteredData.map((row, index) => (
+                                                    <tr key={index} className="hover:bg-blue-50/50 transition-colors group">
+                                                        <td className="p-4 text-sm text-gray-600 whitespace-nowrap">{row['Emissão']}</td>
+                                                        <td className="p-4 text-sm"><span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap">{row['Tipo']}</span></td>
+                                                        <td className="p-4 text-sm text-gray-800 font-medium">{row['Número']}</td>
+                                                        <td className="p-4 text-sm text-gray-600 max-w-xs truncate" title={row['Emitente']}>{row['Emitente']}</td>
+                                                        <td className="p-4 text-sm text-gray-500 max-w-xs truncate" title={row['Centro de Custo']}>{row['Centro de Custo']}</td>
+                                                        <td className="p-4 text-sm text-gray-500 max-w-xs truncate" title={row['Finalidade']}>{row['Finalidade']}</td>
+                                                        <td className="p-4 text-sm font-bold text-gray-800 text-right whitespace-nowrap">{row['Valor']}</td>
+                                                        <td className="p-4 text-center">
+                                                            {row['Link do Documento'] && row['Link do Documento'].length > 5 ? (
+                                                                <a href={row['Link do Documento']} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm hover:shadow-md"><Icons.ExternalLink size={14} /> Abrir</a>
+                                                            ) : (<span className="text-gray-300 text-xs">-</span>)}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr><td colSpan="8" className="p-8 text-center text-gray-400">Nenhum dado encontrado com os filtros atuais.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* MODAL DE INSERÇÃO MANUAL */}
+                    {showModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+                            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Icons.Plus size={20} /></div>Novo Lançamento</h2>
+                                    <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors"><Icons.X size={20} /></button>
+                                </div>
+                                <form onSubmit={handleSubmitManual} className="p-6 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Data de Emissão *</label><input type="date" name="emissao" required value={manualForm.emissao} onChange={(e) => setManualForm({...manualForm, emissao: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label><input type="number" step="0.01" name="valor" placeholder="0,00" required value={manualForm.valor} onChange={(e) => setManualForm({...manualForm, valor: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label><select name="tipo" value={manualForm.tipo} onChange={(e) => setManualForm({...manualForm, tipo: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"><option value="NFSe">NFSe</option><option value="Boleto">Boleto</option><option value="Recibo">Recibo</option><option value="Fatura">Fatura</option><option value="Outros">Outros</option></select></div>
+                                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Número</label><input type="text" name="numero" value={manualForm.numero} onChange={(e) => setManualForm({...manualForm, numero: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                                    </div>
+                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Emitente *</label><input type="text" name="emitente" required value={manualForm.emitente} onChange={(e) => setManualForm({...manualForm, emitente: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Centro de Custo</label><input type="text" name="centroCusto" value={manualForm.centroCusto} onChange={(e) => setManualForm({...manualForm, centroCusto: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Finalidade</label><textarea name="finalidade" value={manualForm.finalidade} onChange={(e) => setManualForm({...manualForm, finalidade: e.target.value})} rows="2" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea></div>
+                                    <div><label className="block text-sm font-medium text-gray-700 mb-1">Link (URL)</label><input type="url" name="link" value={manualForm.link} onChange={(e) => setManualForm({...manualForm, link: e.target.value})} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                                    <div className="pt-4 flex justify-end gap-3">
+                                        <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">Cancelar</button>
+                                        <button type="submit" className="px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md">Salvar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- ORQUESTRADOR ---
+        const App = () => {
+            const [currentRoom, setCurrentRoom] = useState(() => localStorage.getItem('finance_last_room'));
+
+            const handleJoinRoom = (roomId) => {
+                setCurrentRoom(roomId);
+                localStorage.setItem('finance_last_room', roomId);
+            };
+
+            const handleLogout = () => {
+                setCurrentRoom(null);
+                localStorage.removeItem('finance_last_room');
+            };
+
+            return currentRoom 
+                ? <DashboardRelatorio roomId={currentRoom} onLogout={handleLogout} />
+                : <RoomSelection onJoinRoom={handleJoinRoom} />;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
