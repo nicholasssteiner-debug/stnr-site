@@ -105,12 +105,19 @@
         }
 
         function getLogoHTML(sizeClass = "text-6xl") {
+            // Lógica para ajustar altura da imagem baseada na classe de texto antiga
+            let heightClass = "h-16"; // Padrão
+            if (sizeClass.includes("7xl")) heightClass = "h-32"; // Maior no login
+            if (sizeClass.includes("3xl")) heightClass = "h-10"; // Menor na navbar
+
             return `
-                <div class="logo-wrapper logo-font ${sizeClass} font-black select-none flex items-center justify-center gap-[2px] cursor-pointer">
-                    <span class="letter-animate text-white">V</span>
-                    <span class="letter-animate text-white">A</span>
-                    <span class="letter-animate text-[#00d9e6] glow-text relative" style="top: 2px;">7</span>
-                    <span class="letter-animate text-white">A</span>
+                <div class="flex items-center justify-center cursor-pointer">
+                    <img 
+                        src="https://i.postimg.cc/LXJfTBxp/Gemini-Generated-Image-jznbbvjznbbvjznb-removebg-preview.png" 
+                        alt="Logo VAZA" 
+                        class="${heightClass} w-auto object-contain transition-transform hover:scale-105 drop-shadow-[0_0_15px_rgba(0,217,230,0.3)]"
+                        onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-red-400 font-bold text-xs uppercase\\'>Erro na Imagem</span>';"
+                    >
                 </div>
             `;
         }
