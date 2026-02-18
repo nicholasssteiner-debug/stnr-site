@@ -28,31 +28,21 @@
         .logo-font { font-family: 'Exo 2', sans-serif; font-style: italic; letter-spacing: -0.02em; }
         .glow-text { text-shadow: 0 0 25px rgba(0, 217, 230, 0.5); }
         
-        /* CORREÇÃO DO FOCO (O "Detalhe Circulando") */
-        input, textarea, select { 
-            background: rgba(255, 255, 255, 0.05) !important; 
-            border: 1px solid rgba(255, 255, 255, 0.1) !important; 
-            color: white !important; 
-            outline: none; 
-            transition: all 0.2s; 
-        }
-        /* Efeito de anel neon forte ao focar */
-        input:focus, select:focus, textarea:focus { 
-            border-color: #00d9e6 !important; 
-            box-shadow: 0 0 0 3px rgba(0, 217, 230, 0.4), 0 0 20px rgba(0, 217, 230, 0.2) !important; 
-        }
-
+        /* Foco Neon */
+        input, textarea, select { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; color: white !important; outline: none; transition: all 0.2s; }
+        input:focus, select:focus { border-color: #00d9e6 !important; box-shadow: 0 0 0 3px rgba(0, 217, 230, 0.4), 0 0 20px rgba(0, 217, 230, 0.2) !important; }
+        
         .btn-primary { background: #00d9e6; color: #06162e; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .btn-primary:hover { background: #00f2ff; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 217, 230, 0.4); }
+        
+        /* Botão Editar */
+        .btn-edit { background: #fbbf24; color: #451a03; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s; }
+        .btn-edit:hover { background: #fcd34d; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+
         .status-badge { font-weight: 800; text-transform: uppercase; font-size: 0.6rem; padding: 0.2rem 0.5rem; border-radius: 0.3rem; }
         
-        /* Estilos para input file */
-        input[type="file"]::file-selector-button {
-            margin-right: 20px; border: none; background: #00d9e6; padding: 10px 20px;
-            border-radius: 10px; color: #06162e; cursor: pointer; font-weight: bold;
-        }
-
-        /* Estilo para abas */
+        input[type="file"]::file-selector-button { margin-right: 20px; border: none; background: #00d9e6; padding: 10px 20px; border-radius: 10px; color: #06162e; cursor: pointer; font-weight: bold; }
+        
         .tab-btn { transition: all 0.3s ease; border: 1px solid transparent; }
         .tab-btn.active { background: #00d9e6; color: #06162e; font-weight: 900; box-shadow: 0 0 15px rgba(0, 217, 230, 0.3); }
         .tab-btn.inactive { background: rgba(255,255,255,0.05); color: #94a3b8; border-color: rgba(255,255,255,0.1); }
@@ -66,14 +56,9 @@
 </head>
 <body>
     <div id="app"></div>
-    
-    <!-- Container para Notificações (Toasts) -->
     <div id="toast-container" class="fixed bottom-4 left-4 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
-    
     <button id="fullscreenBtn" class="fixed bottom-4 right-4 z-50 bg-white/5 hover:bg-cyan-400/20 text-gray-400 hover:text-cyan-400 p-3 rounded-full backdrop-blur-sm border border-white/5 transition-all shadow-lg group" title="Tela Cheia">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
     </button>
 
     <script type="module">
@@ -81,22 +66,20 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, onSnapshot, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // --- 1. HELPERS E TOAST ---
+        // ==========================================
+        // 1. HELPERS E TOAST
+        // ==========================================
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            
             let bgClass = 'bg-gray-800/90 border-gray-700';
             let icon = 'ℹ️';
-            
             if (type === 'success') { bgClass = 'bg-green-900/90 border-green-700 text-green-100'; icon = '✅'; } 
             else if (type === 'error') { bgClass = 'bg-red-900/90 border-red-700 text-red-100'; icon = '❌'; } 
             else if (type === 'warning') { bgClass = 'bg-amber-900/90 border-amber-700 text-amber-100'; icon = '⚠️'; } 
             else { bgClass = 'bg-blue-900/90 border-blue-700 text-blue-100'; icon = '⏳'; }
-            
             toast.className = `${bgClass} backdrop-blur-md border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform transition-all duration-500 translate-y-10 opacity-0 pointer-events-auto min-w-[250px] max-w-sm`;
             toast.innerHTML = `<span class="text-lg">${icon}</span><span class="text-xs font-bold uppercase tracking-wide">${message}</span>`;
-            
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
             setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-10'); setTimeout(() => toast.remove(), 500); }, 4000);
@@ -104,9 +87,7 @@
 
         function log(msg, type = 'info') {
             console.log(`[${type.toUpperCase()}] ${msg}`);
-            if(type === 'error' || type === 'success' || msg.includes("Iniciando") || msg.includes("Conectando") || msg.includes("Bem-vindo") || msg.includes("Local")) {
-                showToast(msg, type);
-            }
+            if(type === 'error' || type === 'success' || msg.includes("Iniciando") || msg.includes("Conectando") || msg.includes("Bem-vindo") || msg.includes("Local")) showToast(msg, type);
         }
 
         function getLogoHTML(sizeClass = "text-6xl") {
@@ -127,7 +108,9 @@
             return 'bg-gray-500/20 text-gray-400';
         }
 
-        // --- 2. CONFIGURAÇÃO FIREBASE ---
+        // ==========================================
+        // 2. CONFIGURAÇÃO FIREBASE
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyD_BQH9Re7ynHnGyynxbY2dOMS5MlgN7Jc",
             authDomain: "vaza-84361.firebaseapp.com",
@@ -158,21 +141,111 @@
             else if (document.exitFullscreen) document.exitFullscreen();
         };
 
-        // --- 3. FUNÇÕES GLOBAIS IMPORTANTES (DEFINIDAS PRIMEIRO) ---
+        // ==================================================
+        // 3. FUNÇÕES GLOBAIS
+        // ==================================================
 
-        // Função de deletar usuário (CORRIGIDA E GLOBAL)
-        window.deleteUser = async (id) => {
-            if(!confirm(`Tem certeza que deseja EXCLUIR o usuário "${id}"? Esta ação não pode ser desfeita.`)) return;
-            showLoading(true);
+        // Função de deletar usuário
+        window.deleteUser = async (id, btnElement) => {
+            if(!confirm(`Tem certeza que deseja EXCLUIR o usuário "${id}"?`)) return;
+            
+            // Feedback no botão
+            if(btnElement) {
+                btnElement.innerText = "...";
+                btnElement.disabled = true;
+            }
+            
             try { 
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id)); 
-                showToast("Usuário excluído com sucesso.", 'success'); 
-                if(window.renderAdminUserList) window.renderAdminUserList(); 
+                showToast("Usuário excluído.", 'success'); 
+                // A lista se atualiza sozinha via onSnapshot
             } catch(e) { 
                 log("Erro ao excluir: " + e.message, 'error'); 
-            } finally {
-                showLoading(false);
+                if(btnElement) {
+                    btnElement.innerText = "ERRO";
+                    setTimeout(() => { btnElement.innerText = "EXCLUIR"; btnElement.disabled = false; }, 2000);
+                }
             }
+        };
+
+        // Função de Preencher Formulário (EDITAR)
+        window.prepareEditUser = (id, name, role, password) => {
+            // Preenche os campos
+            document.getElementById('new_role').value = role;
+            document.getElementById('new_id').value = id;
+            document.getElementById('new_name').value = name;
+            document.getElementById('new_pass').value = password;
+            
+            // Efeito visual
+            document.getElementById('form-title').innerText = "✏️ Editar Usuário";
+            document.getElementById('form-btn').innerText = "SALVAR ALTERAÇÕES";
+            document.getElementById('form-btn').classList.replace('bg-white/10', 'bg-amber-500');
+            document.getElementById('form-btn').classList.replace('text-white', 'text-black');
+            
+            // Scroll suave até o topo
+            document.querySelector('.glass-card').scrollIntoView({ behavior: 'smooth' });
+            
+            showToast(`Editando ${name}...`, 'info');
+        };
+
+        window.handleManualAddUser = async (roleOverride) => {
+            const role = roleOverride || document.getElementById('new_role').value;
+            const id = document.getElementById('new_id').value;
+            const name = document.getElementById('new_name').value;
+            const pass = document.getElementById('new_pass').value;
+            if(!role || !id || !name || !pass) { showToast("Preencha todos os campos", 'error'); return; }
+            
+            showLoading(true);
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id), { role, name, password: pass });
+                showToast("Usuário salvo!", 'success');
+                
+                // Limpar e resetar form
+                document.getElementById('new_id').value = ''; 
+                document.getElementById('new_name').value = '';
+                document.getElementById('form-title').innerText = "👤 Cadastro Manual";
+                document.getElementById('form-btn').innerText = "ADICIONAR USUÁRIO";
+                document.getElementById('form-btn').classList.replace('bg-amber-500', 'bg-white/10');
+                document.getElementById('form-btn').classList.replace('text-black', 'text-white');
+
+            } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { showLoading(false); }
+        };
+
+        window.handleCSVUpload = () => {
+            const fileInput = document.getElementById('csv_file');
+            const mode = document.getElementById('csv_mode').value;
+            if (!fileInput.files.length) { showToast("Selecione um arquivo CSV.", 'error'); return; }
+            if (mode === 'replace' && !confirm("ATENÇÃO: Isso apagará TODOS os usuários atuais. Confirmar?")) return;
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n');
+                let count = 0, errors = 0;
+                showLoading(true);
+                showToast("Processando...", 'info');
+                
+                if (mode === 'replace') { 
+                    showToast("Limpando base antiga...", 'info'); 
+                    const q = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'));
+                    const proms = [];
+                    q.forEach((doc) => proms.push(deleteDoc(doc.ref)));
+                    await Promise.all(proms);
+                }
+
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i].trim();
+                    if (!row) continue;
+                    const cols = row.split(',');
+                    if (cols.length < 4) { if(i === 0 && row.toLowerCase().includes('tipo')) continue; errors++; continue; }
+                    const [role, id, name, password] = cols.map(c => c.trim());
+                    if(!role || !id || !name || !password) { errors++; continue; }
+                    try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id), { role, name, password }); count++; } catch (err) { errors++; }
+                }
+                showLoading(false);
+                showToast(`Concluído: ${count} ok, ${errors} erros.`, 'success');
+            };
+            reader.readAsText(fileInput.files[0]);
         };
 
         window.atualizarPedido = async (id, status) => {
@@ -182,18 +255,15 @@
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitacoes', id), { status });
                 showToast(`Pedido ${status.replace('_', ' ')} com sucesso!`, 'success');
             } catch (e) {
-                console.error(e);
                 let msg = e.message;
                 if (msg.includes("permission-denied")) msg = "Permissão negada. Domínio não autorizado no Firebase?";
                 showToast("Erro: " + msg, 'error');
-            } finally {
-                showLoading(false);
-            }
+            } finally { showLoading(false); }
         };
 
         window.seedUsers = async () => {
-            if(!confirm("Resetar banco de dados?\nIsso criará o usuário admin (Fap1624) e outros de teste.")) return;
-            showToast("Iniciando processo...", 'info');
+            if(!confirm("Resetar banco e criar admin (Fap1624)?")) return;
+            showToast("Iniciando...", 'info');
             showLoading(true);
             try {
                 if(!auth.currentUser) await signInAnonymously(auth);
@@ -214,23 +284,9 @@
             else alert("Carregando sistema...");
         };
 
-        window.handleManualAddUser = async (roleOverride) => {
-            const role = roleOverride || document.getElementById('new_role').value;
-            const id = document.getElementById('new_id').value;
-            const name = document.getElementById('new_name').value;
-            const pass = document.getElementById('new_pass').value;
-            if(!role || !id || !name || !pass) { showToast("Preencha todos os campos", 'error'); return; }
-            
-            showLoading(true);
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id), { role, name, password: pass });
-                showToast("Usuário adicionado!", 'success');
-                document.getElementById('new_id').value = ''; document.getElementById('new_name').value = '';
-                if(window.renderAdminUserList) window.renderAdminUserList();
-            } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { showLoading(false); }
-        };
-
-        // --- 4. LÓGICA DE LOGIN E RENDERIZAÇÃO ---
+        // ==========================================
+        // 4. LÓGICA DE LOGIN E RENDERIZAÇÃO
+        // ==========================================
 
         async function handleLogin(e) {
             e.preventDefault();
@@ -250,11 +306,7 @@
                             showToast(`Bem-vindo, ${userData.name}!`, 'success');
                             render();
                             return; 
-                        } else {
-                            showToast("Senha incorreta (Nuvem).", 'error');
-                            showLoading(false);
-                            return;
-                        }
+                        } else { showToast("Senha incorreta (Nuvem).", 'error'); showLoading(false); return; }
                     }
                 }
             } catch (err) { console.warn("Falha no Firebase, tentando local...", err); }
@@ -314,19 +366,18 @@
             else renderPortaria(content);
         }
 
-        // --- 5. TELAS ESPECÍFICAS ---
-
-        // ADMIN
+        // --- SISTEMA DE ABAS DO ADMIN ---
         function renderAdminDashboard(container) {
             container.innerHTML = `
                 <div class="mb-8 flex flex-wrap gap-3 justify-center md:justify-start border-b border-white/10 pb-6">
-                    <button onclick="window.switchTab('management')" id="tab-management" class="tab-btn active px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Gestão</button>
+                    <button onclick="window.switchTab('management')" id="tab-management" class="tab-btn active px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Gestão (Admin)</button>
                     <button onclick="window.switchTab('aluno')" id="tab-aluno" class="tab-btn inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Aluno</button>
                     <button onclick="window.switchTab('preceptor')" id="tab-preceptor" class="tab-btn inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Preceptor</button>
                     <button onclick="window.switchTab('portaria')" id="tab-portaria" class="tab-btn inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Portaria</button>
                 </div>
                 <div id="admin-view-area"></div>
             `;
+
             window.switchTab = (view) => {
                 document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('active'); btn.classList.add('inactive'); });
                 document.getElementById(`tab-${view}`).classList.replace('inactive', 'active');
@@ -336,31 +387,57 @@
                 else if(view === 'preceptor') renderPreceptor(area);
                 else if(view === 'portaria') renderPortaria(area);
             };
+
             window.switchTab('management');
         }
-
-        // FUNÇÃO DE LISTA DE USUÁRIOS (GLOBAL)
-        window.renderAdminUserList = async () => {
-            const list = document.getElementById('admin-users-list');
-            if(!list) return;
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'));
-            list.innerHTML = snap.empty ? '<tr><td colspan="5" class="p-4 text-center italic">Vazio.</td></tr>' : 
-            snap.docs.map(d => `<tr class="border-b border-white/5"><td class="p-3 font-bold text-[10px] text-cyan-400">${d.data().role.toUpperCase()}</td><td class="p-3 text-xs">${d.id}</td><td class="p-3 font-bold">${d.data().name}</td><td class="p-3 text-xs opacity-50">${d.data().password}</td><td class="p-3 text-right"><button onclick="window.deleteUser('${d.id}')" class="text-red-500 font-bold text-[10px] hover:text-red-400 transition-colors uppercase border border-red-500/30 px-2 py-1 rounded">EXCLUIR</button></td></tr>`).join('');
-        };
 
         function renderAdminTools(container) {
             container.innerHTML = `
                 <div class="grid lg:grid-cols-2 gap-8">
-                    <div class="glass-card p-8 rounded-[2rem]"><h2 class="font-bold text-white text-lg mb-4">👤 Novo Usuário</h2><div class="space-y-4">
-                        <select id="new_role" class="w-full p-3 rounded-xl text-sm font-bold text-navy-900"><option value="aluno">Aluno</option><option value="preceptor">Preceptor</option><option value="portaria">Portaria</option><option value="admin">Admin</option></select>
-                        <input type="text" id="new_id" class="w-full p-3 rounded-xl text-sm" placeholder="Login (RA/ID)">
-                        <input type="text" id="new_name" class="w-full p-3 rounded-xl text-sm" placeholder="Nome Completo">
-                        <input type="text" id="new_pass" class="w-full p-3 rounded-xl text-sm" placeholder="Senha" value="123">
-                        <button onclick="window.handleManualAddUser()" class="w-full btn-primary py-3 rounded-xl text-xs font-black">CADASTRAR</button>
-                    </div></div>
-                    <div class="glass-card p-8 rounded-[2rem]"><h2 class="font-bold text-white text-lg mb-4">📋 Usuários</h2><div class="overflow-auto max-h-60"><table class="w-full text-left text-white text-sm"><tbody id="admin-users-list"></tbody></table></div></div>
+                    <div class="glass-card p-8 rounded-[2rem]">
+                        <h2 class="font-bold text-white text-lg mb-6 uppercase tracking-wide border-b border-white/10 pb-4">📁 Importação em Massa (CSV)</h2>
+                        <div class="space-y-6"><div class="p-4 bg-blue-900/20 border border-blue-500/30 rounded-xl"><p class="text-[10px] text-gray-300 uppercase font-bold mb-2">Formato:</p><code class="block bg-black/40 p-2 rounded text-xs text-cyan-400 font-mono">tipo,login,nome,senha</code></div>
+                        <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Modo</label><select id="csv_mode" class="w-full p-4 rounded-xl text-sm font-bold bg-[#0a1f3d]"><option value="append">Adicionar / Atualizar</option><option value="replace">SUBSTITUIR TUDO</option></select></div>
+                        <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Arquivo</label><input type="file" id="csv_file" accept=".csv" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-cyan-400 file:text-navy-900 hover:file:bg-cyan-300"></div>
+                        <button onclick="window.handleCSVUpload()" class="w-full btn-primary py-4 rounded-xl text-xs font-black tracking-wider">Processar CSV</button></div>
+                    </div>
+                    <div class="glass-card p-8 rounded-[2rem]">
+                        <h2 id="form-title" class="font-bold text-white text-lg mb-6 uppercase tracking-wide border-b border-white/10 pb-4">👤 Cadastro Manual</h2>
+                        <div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Tipo</label><select id="new_role" class="w-full p-3 rounded-xl text-sm font-bold text-navy-900"><option value="aluno">Aluno</option><option value="preceptor">Preceptor</option><option value="portaria">Portaria</option><option value="admin">Admin</option></select></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Login</label><input type="text" id="new_id" class="w-full p-3 rounded-xl text-sm" placeholder="Login (RA/ID)"></div></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Nome</label><input type="text" id="new_name" class="w-full p-3 rounded-xl text-sm" placeholder="Nome Completo"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Senha</label><input type="text" id="new_pass" class="w-full p-3 rounded-xl text-sm" placeholder="Senha" value="123"></div>
+                        <button id="form-btn" onclick="window.handleManualAddUser()" class="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl text-xs font-bold tracking-wider transition-all border border-white/10">ADICIONAR USUÁRIO</button></div>
+                    </div>
+                    <div class="glass-card p-8 rounded-[2rem] lg:col-span-2"><h2 class="font-bold text-white text-lg mb-6 uppercase tracking-wide flex justify-between items-center"><span>Base de Usuários</span></h2><div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="text-[10px] text-gray-500 uppercase border-b border-white/10"><th class="p-3">Tipo</th><th class="p-3">Login</th><th class="p-3">Nome</th><th class="p-3">Senha</th><th class="p-3 text-right">Ação</th></tr></thead><tbody id="admin-users-list" class="text-sm text-gray-300"><tr><td colspan="5" class="p-4 text-center italic text-gray-600">Carregando...</td></tr></tbody></table></div></div>
                 </div>`;
-            window.renderAdminUserList();
+            
+            // ATIVA O LISTENER EM TEMPO REAL PARA A LISTA DE USUÁRIOS
+            onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios')), (snap) => {
+                const list = document.getElementById('admin-users-list');
+                if(!list) return;
+                
+                if (snap.empty) { 
+                    list.innerHTML = '<tr><td colspan="5" class="p-4 text-center italic">Vazio.</td></tr>'; 
+                    return; 
+                }
+
+                list.innerHTML = snap.docs.map(d => {
+                    const u = d.data();
+                    const colors = { admin: 'text-purple-400', aluno: 'text-cyan-400', preceptor: 'text-amber-400', portaria: 'text-green-400' };
+                    // Correção de escape para aspas na função de edição
+                    const safeName = u.name ? u.name.replace(/'/g, "\\'") : '';
+                    const safePass = u.password ? u.password.replace(/'/g, "\\'") : '';
+                    return `
+                        <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                            <td class="p-3 font-bold text-[10px] uppercase ${colors[u.role] || 'text-white'}">${u.role}</td>
+                            <td class="p-3 text-xs font-mono">${d.id}</td>
+                            <td class="p-3 font-bold">${u.name}</td>
+                            <td class="p-3 text-xs opacity-30 font-mono">****</td>
+                            <td class="p-3 text-right flex justify-end gap-2">
+                                <button onclick="window.prepareEditUser('${d.id}', '${safeName}', '${u.role}', '${safePass}')" class="btn-edit px-3 py-1 rounded text-[10px] font-bold">EDITAR</button>
+                                <button onclick="window.deleteUser('${d.id}', this)" class="text-red-500 font-bold text-[10px] border border-red-500/30 px-3 py-1 rounded hover:bg-red-500/10 transition-colors">EXCLUIR</button>
+                            </td>
+                        </tr>`;
+                }).join('');
+            });
         }
 
         // ALUNO
@@ -385,19 +462,21 @@
                 const dest = document.getElementById('destino').value, mot = document.getElementById('motivo').value;
                 if(!d_saida || !h_saida || !d_volta || !h_volta || !dest || !mot) { showToast("Preencha tudo!", 'warning'); return; }
                 const btn = document.getElementById('btnSolicitar'); btn.innerText = "ENVIANDO..."; btn.disabled = true;
-                try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes'), { ra: userProfile.uid, aluno: userProfile.name, destino: dest, motivo: mot, data_saida: d_saida, h_saida, data_volta: d_volta, h_volta, status: 'pendente', criadoEm: new Date().toISOString() }); document.getElementById('destino').value = ''; document.getElementById('motivo').value = ''; showToast("Enviado!", 'success'); } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { btn.innerText = "Solicitar Autorização"; btn.disabled = false; }
+                
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes'), { ra: userProfile.uid, aluno: userProfile.name, destino: dest, motivo: mot, data_saida: d_saida, h_saida, data_volta: d_volta, h_volta, status: 'pendente', criadoEm: new Date().toISOString() }); document.getElementById('destino').value = ''; document.getElementById('motivo').value = ''; showToast("Enviado!", 'success'); 
+                } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { btn.innerText = "Solicitar Autorização"; btn.disabled = false; }
             };
         }
 
         // PRECEPTOR
         function renderPreceptor(container) {
-            container.innerHTML = `<div class="mb-6 flex gap-3 border-b border-white/10 pb-4"><button onclick="window.precTab('req')" id="ptab-req" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold uppercase">Solicitações</button><button onclick="window.precTab('block')" id="ptab-block" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Bloqueios</button><button onclick="window.precTab('new')" id="ptab-new" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Cadastrar Aluno</button></div><div id="preceptor-area"></div>`;
+            container.innerHTML = `<div class="mb-6 flex gap-3 border-b border-white/10 pb-4"><button onclick="window.precTab('req')" id="ptab-req" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold uppercase">Solicitações</button><button onclick="window.precTab('new')" id="ptab-new" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Cadastrar Aluno</button></div><div id="preceptor-area"></div>`;
             window.precTab = (t) => {
                 document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('inactive'); });
                 document.getElementById(`ptab-${t}`).classList.replace('inactive', 'active');
                 const area = document.getElementById('preceptor-area');
                 if(t==='req') renderPreceptorRequests(area);
-                if(t==='block') renderPreceptorBlocks(area);
                 if(t==='new') renderPreceptorNewStudent(area);
             };
             renderPreceptorRequests(document.getElementById('preceptor-area'));
@@ -422,23 +501,6 @@
                 const listEl = document.getElementById('req-list');
                 if(!listEl) return;
                 listEl.innerHTML = filtered.map(s => `<div class="glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-amber-400"><div class="flex justify-between mb-2"><h3 class="font-bold text-white">${s.aluno} <span class="text-xs text-gray-500 font-normal">(${s.ra})</span></h3><span class="text-xs text-amber-400 font-bold">PENDENTE</span></div><p class="text-xs text-gray-400 mb-2">Saída: ${s.data_saida} às ${s.h_saida} | Volta: ${s.data_volta} às ${s.h_volta}</p><div class="bg-black/30 p-3 rounded-lg mb-4 text-xs italic text-gray-300">"${s.motivo}"</div><div class="flex gap-2"><button onclick="window.atualizarPedido('${s.id}', 'aprovado')" class="flex-1 btn-primary py-2 rounded-lg text-[10px] font-black">APROVAR</button><button onclick="window.atualizarPedido('${s.id}', 'recusado')" class="flex-1 bg-red-500/20 text-red-400 py-2 rounded-lg text-[10px] font-bold hover:bg-red-500/30">NEGAR</button></div></div>`).join('') || '<p class="col-span-full text-center text-gray-500 italic">Nenhuma solicitação encontrada.</p>';
-            };
-        }
-
-        function renderPreceptorBlocks(area) {
-            area.innerHTML = `<div class="glass-card p-8 rounded-[2rem] max-w-lg mx-auto"><h2 class="font-bold text-white text-lg mb-4">🚫 Bloquear Aluno</h2><div class="space-y-4"><input type="text" id="block_ra" class="w-full p-3 rounded-xl text-sm" placeholder="RA do Aluno"><div class="grid grid-cols-2 gap-3"><div><label class="text-[10px] uppercase font-bold text-gray-500">Início</label><input type="date" id="block_start" class="w-full p-3 rounded-xl text-sm"></div><div><label class="text-[10px] uppercase font-bold text-gray-500">Fim</label><input type="date" id="block_end" class="w-full p-3 rounded-xl text-sm"></div></div><textarea id="block_reason" class="w-full p-3 rounded-xl text-sm" placeholder="Motivo do bloqueio..." rows="2"></textarea><button onclick="window.createBlock()" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider">Criar Bloqueio</button></div></div>`;
-            window.createBlock = async () => {
-                const ra = document.getElementById('block_ra').value;
-                const start = document.getElementById('block_start').value;
-                const end = document.getElementById('block_end').value;
-                const reason = document.getElementById('block_reason').value;
-                if(!ra || !start || !end) { showToast("Preencha os dados obrigatórios.", 'error'); return; }
-                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', ra);
-                const userSnap = await getDoc(userRef);
-                if(!userSnap.exists()) { showToast("Aluno não encontrado no sistema.", 'error'); return; }
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bloqueios'), { ra, start, end, reason, createdBy: userProfile.name });
-                showToast(`Bloqueio criado para ${userSnap.data().name}`, 'success');
-                document.getElementById('block_ra').value = '';
             };
         }
 
