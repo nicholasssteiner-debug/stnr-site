@@ -48,6 +48,20 @@
         .tab-btn.inactive { background: rgba(255,255,255,0.05); color: #94a3b8; border-color: rgba(255,255,255,0.1); }
         .tab-btn.inactive:hover { background: rgba(255,255,255,0.1); color: white; }
 
+        /* Animação de Pulo do Logo */
+        @keyframes jump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .letter-animate { display: inline-block; transition: transform 0.3s; }
+        .logo-wrapper:hover .letter-animate { animation: jump 0.6s ease infinite; }
+        
+        /* Atraso para cada letra criar o efeito de onda */
+        .logo-wrapper:hover .letter-animate:nth-child(1) { animation-delay: 0.0s; }
+        .logo-wrapper:hover .letter-animate:nth-child(2) { animation-delay: 0.1s; }
+        .logo-wrapper:hover .letter-animate:nth-child(3) { animation-delay: 0.2s; }
+        .logo-wrapper:hover .letter-animate:nth-child(4) { animation-delay: 0.3s; }
+
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #06162e; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
@@ -91,7 +105,14 @@
         }
 
         function getLogoHTML(sizeClass = "text-6xl") {
-            return `<div class="logo-font ${sizeClass} font-black select-none flex items-center justify-center gap-[2px]"><span class="text-white">VA</span><span class="text-[#00d9e6] glow-text relative" style="top: 2px;">7</span><span class="text-white">A</span></div>`;
+            return `
+                <div class="logo-wrapper logo-font ${sizeClass} font-black select-none flex items-center justify-center gap-[2px] cursor-pointer">
+                    <span class="letter-animate text-white">V</span>
+                    <span class="letter-animate text-white">A</span>
+                    <span class="letter-animate text-[#00d9e6] glow-text relative" style="top: 2px;">7</span>
+                    <span class="letter-animate text-white">A</span>
+                </div>
+            `;
         }
 
         function getStatusColor(s) {
@@ -271,7 +292,7 @@
                     { id: 'admin', data: { name: 'Administrador', role: 'admin', password: 'Fap1624' } },
                     { id: 'portaria', data: { name: 'Portaria Central', role: 'portaria', password: '123' } },
                     { id: 'preceptoria', data: { name: 'Coordenação Acadêmica', role: 'preceptor', password: '123' } },
-                    { id: '1001', data: { name: 'Ana Souza', role: 'aluno', password: '123' } }
+                    { id: '1001', data: { name: 'Ana Souza', role: 'aluno', password: '123', isBlocked: false } }
                 ];
                 for(const u of users) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', u.id), u.data);
                 showToast("Sucesso! Admin: admin / Fap1624", 'success');
@@ -464,6 +485,13 @@
                 const btn = document.getElementById('btnSolicitar'); btn.innerText = "ENVIANDO..."; btn.disabled = true;
                 
                 try {
+                    const freshUserSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', userProfile.uid));
+                    if(freshUserSnap.exists() && freshUserSnap.data().isBlocked) {
+                        showToast("Você está bloqueado. Procure a preceptoria.", 'error');
+                        btn.innerText = "Solicitar Autorização"; btn.disabled = false;
+                        return; 
+                    }
+
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes'), { ra: userProfile.uid, aluno: userProfile.name, destino: dest, motivo: mot, data_saida: d_saida, h_saida, data_volta: d_volta, h_volta, status: 'pendente', criadoEm: new Date().toISOString() }); document.getElementById('destino').value = ''; document.getElementById('motivo').value = ''; showToast("Enviado!", 'success'); 
                 } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { btn.innerText = "Solicitar Autorização"; btn.disabled = false; }
             };
@@ -471,13 +499,14 @@
 
         // PRECEPTOR
         function renderPreceptor(container) {
-            container.innerHTML = `<div class="mb-6 flex gap-3 border-b border-white/10 pb-4"><button onclick="window.precTab('req')" id="ptab-req" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold uppercase">Solicitações</button><button onclick="window.precTab('new')" id="ptab-new" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Cadastrar Aluno</button></div><div id="preceptor-area"></div>`;
+            container.innerHTML = `<div class="mb-6 flex gap-3 border-b border-white/10 pb-4"><button onclick="window.precTab('req')" id="ptab-req" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold uppercase">Solicitações</button><button onclick="window.precTab('new')" id="ptab-new" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Cadastrar Aluno</button><button onclick="window.precTab('hist')" id="ptab-hist" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Histórico</button></div><div id="preceptor-area"></div>`;
             window.precTab = (t) => {
                 document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('inactive'); });
                 document.getElementById(`ptab-${t}`).classList.replace('inactive', 'active');
                 const area = document.getElementById('preceptor-area');
                 if(t==='req') renderPreceptorRequests(area);
                 if(t==='new') renderPreceptorNewStudent(area);
+                if(t==='hist') renderPreceptorHistory(area);
             };
             renderPreceptorRequests(document.getElementById('preceptor-area'));
         }
@@ -489,19 +518,72 @@
                 window.filterRequests(); 
             });
             window.filterRequests = () => {
-                const nameF = document.getElementById('filter_name').value.toLowerCase();
-                const raF = document.getElementById('filter_ra').value.toLowerCase();
-                const dateF = document.getElementById('filter_date').value;
+                const nameInput = document.getElementById('filter_name');
+                const raInput = document.getElementById('filter_ra');
+                const dateInput = document.getElementById('filter_date');
+                const listEl = document.getElementById('req-list');
+                
+                if (!nameInput || !raInput || !dateInput || !listEl) return;
+                
+                const nameF = nameInput.value.toLowerCase();
+                const raF = raInput.value.toLowerCase();
+                const dateF = dateInput.value;
+                
                 const filtered = window.allRequests.filter(r => {
                     const matchName = r.aluno.toLowerCase().includes(nameF);
                     const matchRa = r.ra.toLowerCase().includes(raF);
                     const matchDate = !dateF || r.data_saida === dateF;
                     return matchName && matchRa && matchDate;
                 });
-                const listEl = document.getElementById('req-list');
-                if(!listEl) return;
+                
                 listEl.innerHTML = filtered.map(s => `<div class="glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-amber-400"><div class="flex justify-between mb-2"><h3 class="font-bold text-white">${s.aluno} <span class="text-xs text-gray-500 font-normal">(${s.ra})</span></h3><span class="text-xs text-amber-400 font-bold">PENDENTE</span></div><p class="text-xs text-gray-400 mb-2">Saída: ${s.data_saida} às ${s.h_saida} | Volta: ${s.data_volta} às ${s.h_volta}</p><div class="bg-black/30 p-3 rounded-lg mb-4 text-xs italic text-gray-300">"${s.motivo}"</div><div class="flex gap-2"><button onclick="window.atualizarPedido('${s.id}', 'aprovado')" class="flex-1 btn-primary py-2 rounded-lg text-[10px] font-black">APROVAR</button><button onclick="window.atualizarPedido('${s.id}', 'recusado')" class="flex-1 bg-red-500/20 text-red-400 py-2 rounded-lg text-[10px] font-bold hover:bg-red-500/30">NEGAR</button></div></div>`).join('') || '<p class="col-span-full text-center text-gray-500 italic">Nenhuma solicitação encontrada.</p>';
             };
+        }
+        
+        function renderPreceptorHistory(area) {
+            area.innerHTML = `
+                <div class="glass-card p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="hist_filter_name" onkeyup="window.filterHistory()" class="p-3 rounded-lg text-sm bg-black/20 text-white placeholder-gray-500" placeholder="Filtrar por Nome...">
+                    <input type="text" id="hist_filter_ra" onkeyup="window.filterHistory()" class="p-3 rounded-lg text-sm bg-black/20 text-white placeholder-gray-500" placeholder="Filtrar por RA...">
+                </div>
+                <div id="hist-list" class="space-y-3"></div>
+            `;
+
+            onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes')), (snap) => {
+                window.allHistory = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(s => s.status !== 'pendente');
+                window.filterHistory();
+            });
+
+            window.filterHistory = () => {
+                const nameInput = document.getElementById('hist_filter_name');
+                const raInput = document.getElementById('hist_filter_ra');
+                const listEl = document.getElementById('hist-list');
+                
+                if(!nameInput || !raInput || !listEl) return;
+                
+                const nameF = nameInput.value.toLowerCase();
+                const raF = raInput.value.toLowerCase();
+
+                const filtered = window.allHistory.filter(r => {
+                    const matchName = r.aluno.toLowerCase().includes(nameF);
+                    const matchRa = r.ra.toLowerCase().includes(raF);
+                    return matchName && matchRa;
+                });
+
+                listEl.innerHTML = filtered.sort((a,b) => b.criadoEm.localeCompare(a.criadoEm)).map(s => `
+                    <div class="glass-card p-5 rounded-xl border-l-4 ${getStatusColor(s.status)} flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-white">${s.aluno} <span class="text-xs text-gray-500">(${s.ra})</span></h3>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-widest">${s.destino}</p>
+                            <p class="text-xs text-cyan-300 mt-1">Saída: ${s.data_saida} ${s.h_saida} | Volta: ${s.data_volta} ${s.h_volta}</p>
+                            <p class="text-[10px] text-gray-500 mt-2 italic">"${s.motivo}"</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="status-badge ${getStatusBadgeColor(s.status)}">${s.status.toUpperCase().replace('_', ' ')}</span>
+                        </div>
+                    </div>
+                `).join('') || '<p class="text-gray-500 italic text-center">Nenhum histórico encontrado.</p>';
+            }
         }
 
         function renderPreceptorNewStudent(area) {
@@ -520,15 +602,19 @@
                 window.filterPortaria(); 
             });
             window.filterPortaria = () => {
-                const textF = document.getElementById('port_filter_text').value.toLowerCase();
-                const dateF = document.getElementById('port_filter_date').value;
+                const textInput = document.getElementById('port_filter_text');
+                const dateInput = document.getElementById('port_filter_date');
+                const listEl = document.getElementById('port-list');
+
+                if (!textInput || !dateInput || !listEl) return;
+                
+                const textF = textInput.value.toLowerCase();
+                const dateF = dateInput.value;
                 const filtered = window.portariaApproved.filter(r => {
                     const matchText = r.aluno.toLowerCase().includes(textF) || r.ra.toLowerCase().includes(textF);
                     const matchDate = !dateF || r.data_saida === dateF;
                     return matchText && matchDate;
                 });
-                const listEl = document.getElementById('port-list');
-                if(!listEl) return;
                 listEl.innerHTML = filtered.map(s => `<div class="glass-card p-5 rounded-xl border-l-4 border-cyan-400 flex flex-col md:flex-row justify-between items-center gap-4"><div><h3 class="font-bold text-white text-lg">${s.aluno}</h3><p class="text-[10px] text-gray-400 uppercase tracking-widest">${s.ra} • Destino: ${s.destino}</p><p class="text-xs text-cyan-300 mt-1 font-mono">Saída: ${s.data_saida} às ${s.h_saida}</p></div><div class="flex gap-2 w-full md:w-auto"><button onclick="window.atualizarPedido('${s.id}', 'finalizado')" class="flex-1 md:flex-none bg-cyan-400 hover:bg-cyan-300 text-navy-900 px-6 py-3 rounded-xl text-xs font-black uppercase shadow-[0_0_15px_rgba(0,217,230,0.4)]">CONFIRMAR SAÍDA</button><button onclick="window.atualizarPedido('${s.id}', 'nao_compareceu')" class="flex-1 md:flex-none bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl text-xs font-bold uppercase">NÃO COMPARECEU</button></div></div>`).join('') || '<p class="text-gray-500 italic text-center py-10">Ninguém aguardando saída com esses filtros.</p>';
             };
         }
