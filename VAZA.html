@@ -195,7 +195,6 @@
             }
 
             // 2. Fallback: Tenta autenticação Local (Hardcoded)
-            // Isso garante que você consiga entrar mesmo se o banco estiver vazio ou off
             if (LOCAL_USERS[identifier]) {
                 const localUser = LOCAL_USERS[identifier];
                 if (localUser.password === pass) {
@@ -245,7 +244,6 @@
             } catch (error) {
                 console.error(error);
                 log("Erro ao criar: " + error.message, 'error');
-                // Mesmo com erro, avisamos que o login local funcionará
                 showToast("Dica: Tente logar com admin/Fap1624 mesmo assim.", 'warning');
             } finally {
                 showLoading(false);
@@ -351,6 +349,7 @@
             try {
                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout conexão")), 5000));
                 await Promise.race([signInAnonymously(auth), timeoutPromise]);
+                log("Sistema Conectado!", 'success');
             } catch (error) {
                 log("Falha na conexão inicial: " + error.message, 'error');
             }
@@ -514,6 +513,19 @@
         // Helpers de Status (inalterados)
         function getStatusColor(s){ if(s=='aprovado')return 'border-cyan-400'; if(s=='pendente')return 'border-amber-400'; return 'border-red-400'; }
         function getStatusBadgeColor(s){ if(s=='aprovado')return 'bg-cyan-400/20 text-cyan-400'; if(s=='pendente')return 'bg-amber-400/20 text-amber-400'; return 'bg-red-400/20 text-red-400'; }
+
+        // --- MISSING FUNCTION RESTORED ---
+        window.atualizarPedido = async (id, status) => {
+            showLoading(true);
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitacoes', id), { status });
+                showToast("Status atualizado.", 'success');
+            } catch (e) {
+                showToast("Erro: " + e.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        };
 
         init();
     </script>
