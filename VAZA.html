@@ -27,8 +27,21 @@
         .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .logo-font { font-family: 'Exo 2', sans-serif; font-style: italic; letter-spacing: -0.02em; }
         .glow-text { text-shadow: 0 0 25px rgba(0, 217, 230, 0.5); }
-        input, textarea, select { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; color: white !important; outline: none; transition: all 0.2s; }
-        input:focus, select:focus { border-color: #00d9e6 !important; box-shadow: 0 0 15px rgba(0, 217, 230, 0.2); }
+        
+        /* CORREÇÃO DO FOCO (O "Detalhe Circulando") */
+        input, textarea, select { 
+            background: rgba(255, 255, 255, 0.05) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.1) !important; 
+            color: white !important; 
+            outline: none; 
+            transition: all 0.2s; 
+        }
+        /* Efeito de anel neon forte ao focar */
+        input:focus, select:focus, textarea:focus { 
+            border-color: #00d9e6 !important; 
+            box-shadow: 0 0 0 3px rgba(0, 217, 230, 0.4), 0 0 20px rgba(0, 217, 230, 0.2) !important; 
+        }
+
         .btn-primary { background: #00d9e6; color: #06162e; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .btn-primary:hover { background: #00f2ff; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 217, 230, 0.4); }
         .status-badge { font-weight: 800; text-transform: uppercase; font-size: 0.6rem; padding: 0.2rem 0.5rem; border-radius: 0.3rem; }
@@ -39,11 +52,11 @@
             border-radius: 10px; color: #06162e; cursor: pointer; font-weight: bold;
         }
 
-        /* Estilo para abas do admin */
-        .admin-tab { transition: all 0.3s ease; border: 1px solid transparent; }
-        .admin-tab.active { background: #00d9e6; color: #06162e; font-weight: 900; box-shadow: 0 0 15px rgba(0, 217, 230, 0.3); }
-        .admin-tab.inactive { background: rgba(255,255,255,0.05); color: #94a3b8; border-color: rgba(255,255,255,0.1); }
-        .admin-tab.inactive:hover { background: rgba(255,255,255,0.1); color: white; }
+        /* Estilo para abas */
+        .tab-btn { transition: all 0.3s ease; border: 1px solid transparent; }
+        .tab-btn.active { background: #00d9e6; color: #06162e; font-weight: 900; box-shadow: 0 0 15px rgba(0, 217, 230, 0.3); }
+        .tab-btn.inactive { background: rgba(255,255,255,0.05); color: #94a3b8; border-color: rgba(255,255,255,0.1); }
+        .tab-btn.inactive:hover { background: rgba(255,255,255,0.1); color: white; }
 
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #06162e; }
@@ -68,7 +81,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, onSnapshot, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // --- SISTEMA DE NOTIFICAÇÃO (TOAST) ---
+        // --- 1. HELPERS E TOAST ---
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -76,32 +89,17 @@
             let bgClass = 'bg-gray-800/90 border-gray-700';
             let icon = 'ℹ️';
             
-            if (type === 'success') {
-                bgClass = 'bg-green-900/90 border-green-700 text-green-100';
-                icon = '✅';
-            } else if (type === 'error') {
-                bgClass = 'bg-red-900/90 border-red-700 text-red-100';
-                icon = '❌';
-            } else if (type === 'warning') {
-                bgClass = 'bg-amber-900/90 border-amber-700 text-amber-100';
-                icon = '⚠️';
-            } else {
-                bgClass = 'bg-blue-900/90 border-blue-700 text-blue-100';
-                icon = '⏳';
-            }
+            if (type === 'success') { bgClass = 'bg-green-900/90 border-green-700 text-green-100'; icon = '✅'; } 
+            else if (type === 'error') { bgClass = 'bg-red-900/90 border-red-700 text-red-100'; icon = '❌'; } 
+            else if (type === 'warning') { bgClass = 'bg-amber-900/90 border-amber-700 text-amber-100'; icon = '⚠️'; } 
+            else { bgClass = 'bg-blue-900/90 border-blue-700 text-blue-100'; icon = '⏳'; }
             
             toast.className = `${bgClass} backdrop-blur-md border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform transition-all duration-500 translate-y-10 opacity-0 pointer-events-auto min-w-[250px] max-w-sm`;
-            toast.innerHTML = `
-                <span class="text-lg">${icon}</span>
-                <span class="text-xs font-bold uppercase tracking-wide">${message}</span>
-            `;
+            toast.innerHTML = `<span class="text-lg">${icon}</span><span class="text-xs font-bold uppercase tracking-wide">${message}</span>`;
             
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-10'); 
-                setTimeout(() => toast.remove(), 500);
-            }, 4000);
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-10'); setTimeout(() => toast.remove(), 500); }, 4000);
         }
 
         function log(msg, type = 'info') {
@@ -111,6 +109,25 @@
             }
         }
 
+        function getLogoHTML(sizeClass = "text-6xl") {
+            return `<div class="logo-font ${sizeClass} font-black select-none flex items-center justify-center gap-[2px]"><span class="text-white">VA</span><span class="text-[#00d9e6] glow-text relative" style="top: 2px;">7</span><span class="text-white">A</span></div>`;
+        }
+
+        function getStatusColor(s) {
+            if (s === 'aprovado') return 'border-cyan-400';
+            if (s === 'pendente') return 'border-amber-400';
+            if (s === 'recusado' || s === 'nao_compareceu') return 'border-red-400';
+            return 'border-gray-500';
+        }
+
+        function getStatusBadgeColor(s) {
+            if (s === 'aprovado') return 'bg-cyan-400/20 text-cyan-400';
+            if (s === 'pendente') return 'bg-amber-400/20 text-amber-400';
+            if (s === 'recusado' || s === 'nao_compareceu') return 'bg-red-400/20 text-red-400';
+            return 'bg-gray-500/20 text-gray-400';
+        }
+
+        // --- 2. CONFIGURAÇÃO FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyD_BQH9Re7ynHnGyynxbY2dOMS5MlgN7Jc",
             authDomain: "vaza-84361.firebaseapp.com",
@@ -127,7 +144,6 @@
         let isLoading = false;
         let isAuthReady = false;
 
-        // USUÁRIOS LOCAIS DE SEGURANÇA (Funcionam mesmo sem internet/banco)
         const LOCAL_USERS = {
             'admin': { name: 'Super Admin', role: 'admin', password: 'Fap1624' },
             'portaria': { name: 'Portaria (Local)', role: 'portaria', password: '123' },
@@ -135,237 +151,125 @@
             '1001': { name: 'Aluno Teste', role: 'aluno', password: '123' }
         };
 
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) {
-            log("Erro fatal na config do Firebase: " + e.message, 'error');
-        }
+        try { app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); } catch (e) { console.error(e); }
 
         document.getElementById('fullscreenBtn').onclick = () => {
             if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e));
             else if (document.exitFullscreen) document.exitFullscreen();
         };
 
-        function getLogoHTML(sizeClass = "text-6xl") {
-            return `
-                <div class="logo-font ${sizeClass} font-black select-none flex items-center justify-center gap-[2px]">
-                    <span class="text-white">VA</span>
-                    <span class="text-[#00d9e6] glow-text relative" style="top: 2px;">7</span>
-                    <span class="text-white">A</span>
-                </div>
-            `;
-        }
+        // --- 3. FUNÇÕES GLOBAIS IMPORTANTES (DEFINIDAS PRIMEIRO) ---
 
-        // --- SISTEMA DE LOGIN HÍBRIDO (NUVEM + LOCAL) ---
-        async function handleLogin(e) {
-            e.preventDefault();
-            
-            const identifier = document.getElementById('login_user').value.trim();
-            const pass = document.getElementById('login_pass').value.trim();
-            
-            if(!identifier || !pass) return;
-
+        // Função de deletar usuário (CORRIGIDA E GLOBAL)
+        window.deleteUser = async (id) => {
+            if(!confirm(`Tem certeza que deseja EXCLUIR o usuário "${id}"? Esta ação não pode ser desfeita.`)) return;
             showLoading(true);
-
-            // 1. Tenta buscar no Firebase (Nuvem)
-            try {
-                if (isAuthReady) {
-                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', identifier);
-                    const userSnap = await getDoc(userDocRef);
-                    
-                    if (userSnap.exists()) {
-                        const userData = userSnap.data();
-                        if (userData.password === pass) {
-                            userProfile = { uid: identifier, name: userData.name, role: userData.role };
-                            log(`Bem-vindo, ${userData.name}!`, 'success');
-                            render();
-                            return; // Login bem-sucedido na nuvem
-                        } else {
-                            // Se achou o usuário na nuvem mas a senha está errada, para aqui por segurança
-                            log("Senha incorreta (Nuvem).", 'error');
-                            showLoading(false);
-                            return;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.warn("Falha no Firebase, tentando local...", err);
-            }
-
-            // 2. Fallback: Tenta autenticação Local (Hardcoded)
-            if (LOCAL_USERS[identifier]) {
-                const localUser = LOCAL_USERS[identifier];
-                if (localUser.password === pass) {
-                    userProfile = { uid: identifier, name: localUser.name, role: localUser.role };
-                    log(`Login Local: ${localUser.name}`, 'success');
-                    showToast("⚠️ Modo Local ativado (Banco pode estar vazio)", 'warning');
-                    render();
-                } else {
-                    log("Senha incorreta.", 'error');
-                }
-            } else {
-                log("Usuário não encontrado.", 'error');
-            }
-            
-            showLoading(false);
-        }
-
-        // --- FUNÇÕES DE ADMINISTRAÇÃO E SEED ---
-
-        window.seedUsers = async () => {
-            if(!confirm("Resetar banco de dados?\nIsso criará o usuário admin (Fap1624) e outros de teste.")) return;
-            
-            showToast("Iniciando processo...", 'info');
-            showLoading(true);
-            
-            try {
-                if(!auth.currentUser) {
-                    showToast("Autenticando no sistema...", 'info');
-                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Firebase demorou a responder")), 10000));
-                    await Promise.race([signInAnonymously(auth), timeoutPromise]);
-                }
-
-                const users = [
-                    { id: 'admin', data: { name: 'Administrador', role: 'admin', password: 'Fap1624' } },
-                    { id: 'portaria', data: { name: 'Portaria Central', role: 'portaria', password: '123' } },
-                    { id: 'preceptoria', data: { name: 'Coordenação Acadêmica', role: 'preceptor', password: '123' } },
-                    { id: '1001', data: { name: 'Ana Souza', role: 'aluno', password: '123' } },
-                    { id: '1002', data: { name: 'Carlos Lima', role: 'aluno', password: '123' } },
-                    { id: '1003', data: { name: 'Beatriz Costa', role: 'aluno', password: '123' } }
-                ];
-
-                for(const u of users) {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', u.id), u.data);
-                }
-                
-                showToast("Sucesso! Admin: admin / Fap1624", 'success');
-            } catch (error) {
-                console.error(error);
-                log("Erro ao criar: " + error.message, 'error');
-                showToast("Dica: Tente logar com admin/Fap1624 mesmo assim.", 'warning');
+            try { 
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id)); 
+                showToast("Usuário excluído com sucesso.", 'success'); 
+                if(window.renderAdminUserList) window.renderAdminUserList(); 
+            } catch(e) { 
+                log("Erro ao excluir: " + e.message, 'error'); 
             } finally {
                 showLoading(false);
             }
         };
 
-        window.safeSeedUsers = () => {
-            if (typeof window.seedUsers === 'function') {
-                window.seedUsers();
-            } else {
-                alert("O sistema ainda está carregando. Aguarde alguns segundos e tente novamente.");
+        window.atualizarPedido = async (id, status) => {
+            showLoading(true);
+            try {
+                if (!db) throw new Error("Banco de dados não conectado.");
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitacoes', id), { status });
+                showToast(`Pedido ${status.replace('_', ' ')} com sucesso!`, 'success');
+            } catch (e) {
+                console.error(e);
+                let msg = e.message;
+                if (msg.includes("permission-denied")) msg = "Permissão negada. Domínio não autorizado no Firebase?";
+                showToast("Erro: " + msg, 'error');
+            } finally {
+                showLoading(false);
             }
         };
 
-        async function deleteAllUsers() {
-            const querySnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'));
-            const deletePromises = [];
-            querySnapshot.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
-            await Promise.all(deletePromises);
-        }
+        window.seedUsers = async () => {
+            if(!confirm("Resetar banco de dados?\nIsso criará o usuário admin (Fap1624) e outros de teste.")) return;
+            showToast("Iniciando processo...", 'info');
+            showLoading(true);
+            try {
+                if(!auth.currentUser) await signInAnonymously(auth);
+                const users = [
+                    { id: 'admin', data: { name: 'Administrador', role: 'admin', password: 'Fap1624' } },
+                    { id: 'portaria', data: { name: 'Portaria Central', role: 'portaria', password: '123' } },
+                    { id: 'preceptoria', data: { name: 'Coordenação Acadêmica', role: 'preceptor', password: '123' } },
+                    { id: '1001', data: { name: 'Ana Souza', role: 'aluno', password: '123' } }
+                ];
+                for(const u of users) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', u.id), u.data);
+                showToast("Sucesso! Admin: admin / Fap1624", 'success');
+            } catch (error) { showToast("Erro: " + error.message, 'error'); } 
+            finally { showLoading(false); }
+        };
 
-        async function processCSV(file, mode) {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const text = e.target.result;
-                const rows = text.split('\n');
-                let count = 0, errors = 0;
+        window.safeSeedUsers = () => {
+            if (typeof window.seedUsers === 'function') window.seedUsers();
+            else alert("Carregando sistema...");
+        };
 
-                showLoading(true);
-                showToast("Processando arquivo...", 'info');
-                
-                if (mode === 'replace') {
-                    showToast("Limpando base antiga...", 'info');
-                    await deleteAllUsers();
-                }
-
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i].trim();
-                    if (!row) continue;
-                    const cols = row.split(',');
-                    if (cols.length < 4) {
-                        if(i === 0 && row.toLowerCase().includes('tipo')) continue;
-                        errors++; continue;
-                    }
-                    const [role, id, name, password] = cols.map(c => c.trim());
-                    if(!role || !id || !name || !password) { errors++; continue; }
-
-                    try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id), { role, name, password });
-                        count++;
-                    } catch (err) { errors++; }
-                }
-                showLoading(false);
-                showToast(`Concluído: ${count} ok, ${errors} erros.`, 'success');
-                if(document.getElementById('admin-users-list')) renderAdminUserList();
-            };
-            reader.readAsText(file);
-        }
-
-        window.handleManualAdd = async () => {
-            const role = document.getElementById('new_role').value;
+        window.handleManualAddUser = async (roleOverride) => {
+            const role = roleOverride || document.getElementById('new_role').value;
             const id = document.getElementById('new_id').value;
             const name = document.getElementById('new_name').value;
             const pass = document.getElementById('new_pass').value;
-            if(!role || !id || !name || !pass) { log("Preencha todos os campos", 'error'); return; }
+            if(!role || !id || !name || !pass) { showToast("Preencha todos os campos", 'error'); return; }
+            
             showLoading(true);
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id), { role, name, password: pass });
                 showToast("Usuário adicionado!", 'success');
                 document.getElementById('new_id').value = ''; document.getElementById('new_name').value = '';
-                renderAdminUserList();
-            } catch (e) { log("Erro ao adicionar: " + e.message, 'error'); } finally { showLoading(false); }
+                if(window.renderAdminUserList) window.renderAdminUserList();
+            } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { showLoading(false); }
         };
 
-        window.handleCSVUpload = () => {
-            const fileInput = document.getElementById('csv_file');
-            const mode = document.getElementById('csv_mode').value;
-            if (!fileInput.files.length) { log("Selecione um arquivo CSV.", 'error'); return; }
-            if (mode === 'replace' && !confirm("ATENÇÃO: Substituir apagará TODOS os usuários atuais. Confirmar?")) return;
-            processCSV(fileInput.files[0], mode);
-        };
+        // --- 4. LÓGICA DE LOGIN E RENDERIZAÇÃO ---
 
-        window.renderAdminUserList = async () => {
-            const list = document.getElementById('admin-users-list');
-            if(!list) return;
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'));
-            if (snap.empty) { list.innerHTML = '<tr><td colspan="5" class="p-4 text-center italic">Nenhum usuário encontrado.</td></tr>'; return; }
-            list.innerHTML = snap.docs.map(d => {
-                const u = d.data();
-                const colors = { admin: 'text-purple-400', aluno: 'text-cyan-400', preceptor: 'text-amber-400', portaria: 'text-green-400' };
-                return `<tr class="border-b border-white/5 hover:bg-white/[0.02]"><td class="p-3 font-bold uppercase text-[10px] ${colors[u.role] || 'text-white'}">${u.role}</td><td class="p-3 font-mono text-xs">${d.id}</td><td class="p-3 font-bold text-white">${u.name}</td><td class="p-3 font-mono text-xs opacity-50">${u.password}</td><td class="p-3 text-right"><button onclick="window.deleteUser('${d.id}')" class="text-red-500 hover:text-red-400 text-[10px] uppercase font-bold">Excluir</button></td></tr>`;
-            }).join('');
-        };
+        async function handleLogin(e) {
+            e.preventDefault();
+            const identifier = document.getElementById('login_user').value.trim();
+            const pass = document.getElementById('login_pass').value.trim();
+            if(!identifier || !pass) return;
 
-        window.deleteUser = async (id) => {
-            if(!confirm(`Excluir usuário ${id}?`)) return;
-            try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id)); renderAdminUserList(); showToast("Usuário excluído.", 'success'); } catch(e) { log("Erro: " + e.message, 'error'); }
-        };
-
-        // --- INICIALIZAÇÃO ---
-        async function init() {
-            render(); 
+            showLoading(true);
             try {
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout conexão")), 5000));
-                await Promise.race([signInAnonymously(auth), timeoutPromise]);
-                log("Sistema Conectado!", 'success');
-            } catch (error) {
-                log("Falha na conexão inicial: " + error.message, 'error');
-            }
-            onAuthStateChanged(auth, (user) => { 
-                isAuthReady = !!user;
-                if (!userProfile) render(); 
-            });
+                if (isAuthReady) {
+                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', identifier);
+                    const userSnap = await getDoc(userDocRef);
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        if (userData.password === pass) {
+                            userProfile = { uid: identifier, name: userData.name, role: userData.role };
+                            showToast(`Bem-vindo, ${userData.name}!`, 'success');
+                            render();
+                            return; 
+                        } else {
+                            showToast("Senha incorreta (Nuvem).", 'error');
+                            showLoading(false);
+                            return;
+                        }
+                    }
+                }
+            } catch (err) { console.warn("Falha no Firebase, tentando local...", err); }
+
+            if (LOCAL_USERS[identifier]) {
+                const localUser = LOCAL_USERS[identifier];
+                if (localUser.password === pass) {
+                    userProfile = { uid: identifier, name: localUser.name, role: localUser.role };
+                    showToast("⚠️ Modo Local ativado", 'warning');
+                    render();
+                } else { showToast("Senha incorreta.", 'error'); }
+            } else { showToast("Usuário não encontrado.", 'error'); }
+            showLoading(false);
         }
 
-        function showLoading(val) { 
-            isLoading = val; 
-            const app = document.getElementById('app');
-            if (!userProfile && app) renderLogin(app);
-        }
-
-        // Renderizadores
         function render() {
             const container = document.getElementById('app');
             if (!userProfile) renderLogin(container);
@@ -385,10 +289,7 @@
                             <div class="relative group"><label class="block text-[10px] font-bold text-gray-500 uppercase ml-1 mb-2 tracking-[0.2em] text-center">Credencial</label><input type="password" id="login_pass" class="w-full p-4 rounded-2xl text-lg text-center font-bold" placeholder="Senha" required></div>
                             <button type="submit" class="w-full btn-primary py-5 rounded-2xl shadow-lg mt-4 text-sm font-black tracking-widest">Entrar</button>
                         </form>
-                        <div class="mt-8 pt-6 border-t border-white/5 text-center">
-                            <button onclick="window.safeSeedUsers()" class="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors uppercase tracking-wider font-bold">[ Criar Usuários de Teste ]</button>
-                            <p class="text-[9px] text-gray-600 mt-4 uppercase">Status: ${isAuthReady ? '<span class="text-green-500 font-bold">Online</span>' : '<span class="text-amber-500 animate-pulse">Conectando...</span>'}</p>
-                        </div>
+                        <div class="mt-8 pt-6 border-t border-white/5 text-center"><button onclick="window.safeSeedUsers()" class="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors uppercase tracking-wider font-bold">[ Criar Usuários de Teste ]</button></div>
                     </div>
                 </div>`;
             const form = document.getElementById('loginForm');
@@ -407,125 +308,189 @@
             document.getElementById('logoutBtn').onclick = () => { userProfile = null; render(); };
             const content = document.getElementById('dashboard-content');
             
-            // LÓGICA DO PAINEL ADMIN COM ABAS
-            if (userProfile.role === 'admin') {
-                renderAdminDashboard(content);
-            } else if (userProfile.role === 'aluno') {
-                renderAluno(content);
-            } else if (userProfile.role === 'preceptor') {
-                renderPreceptor(content);
-            } else {
-                renderPortaria(content);
-            }
+            if (userProfile.role === 'admin') renderAdminDashboard(content);
+            else if (userProfile.role === 'aluno') renderAluno(content);
+            else if (userProfile.role === 'preceptor') renderPreceptor(content);
+            else renderPortaria(content);
         }
 
-        // --- SISTEMA DE ABAS DO ADMIN ---
+        // --- 5. TELAS ESPECÍFICAS ---
+
+        // ADMIN
         function renderAdminDashboard(container) {
             container.innerHTML = `
                 <div class="mb-8 flex flex-wrap gap-3 justify-center md:justify-start border-b border-white/10 pb-6">
-                    <button onclick="window.switchTab('management')" id="tab-management" class="admin-tab active px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Gestão (Admin)</button>
-                    <button onclick="window.switchTab('aluno')" id="tab-aluno" class="admin-tab inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Aluno</button>
-                    <button onclick="window.switchTab('preceptor')" id="tab-preceptor" class="admin-tab inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Preceptor</button>
-                    <button onclick="window.switchTab('portaria')" id="tab-portaria" class="admin-tab inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Portaria</button>
+                    <button onclick="window.switchTab('management')" id="tab-management" class="tab-btn active px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Gestão</button>
+                    <button onclick="window.switchTab('aluno')" id="tab-aluno" class="tab-btn inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Aluno</button>
+                    <button onclick="window.switchTab('preceptor')" id="tab-preceptor" class="tab-btn inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Preceptor</button>
+                    <button onclick="window.switchTab('portaria')" id="tab-portaria" class="tab-btn inactive px-6 py-3 rounded-xl text-xs uppercase tracking-widest font-bold">Visão Portaria</button>
                 </div>
                 <div id="admin-view-area"></div>
             `;
-
             window.switchTab = (view) => {
-                // Atualiza estilos dos botões
-                document.querySelectorAll('.admin-tab').forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.classList.add('inactive');
-                });
-                const activeBtn = document.getElementById(`tab-${view}`);
-                if(activeBtn) {
-                    activeBtn.classList.remove('inactive');
-                    activeBtn.classList.add('active');
-                }
-
-                // Renderiza a view correspondente
+                document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('active'); btn.classList.add('inactive'); });
+                document.getElementById(`tab-${view}`).classList.replace('inactive', 'active');
                 const area = document.getElementById('admin-view-area');
                 if(view === 'management') renderAdminTools(area);
                 else if(view === 'aluno') renderAluno(area);
                 else if(view === 'preceptor') renderPreceptor(area);
                 else if(view === 'portaria') renderPortaria(area);
             };
-
-            // Inicia na aba de gestão
             window.switchTab('management');
         }
+
+        // FUNÇÃO DE LISTA DE USUÁRIOS (GLOBAL)
+        window.renderAdminUserList = async () => {
+            const list = document.getElementById('admin-users-list');
+            if(!list) return;
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'));
+            list.innerHTML = snap.empty ? '<tr><td colspan="5" class="p-4 text-center italic">Vazio.</td></tr>' : 
+            snap.docs.map(d => `<tr class="border-b border-white/5"><td class="p-3 font-bold text-[10px] text-cyan-400">${d.data().role.toUpperCase()}</td><td class="p-3 text-xs">${d.id}</td><td class="p-3 font-bold">${d.data().name}</td><td class="p-3 text-xs opacity-50">${d.data().password}</td><td class="p-3 text-right"><button onclick="window.deleteUser('${d.id}')" class="text-red-500 font-bold text-[10px] hover:text-red-400 transition-colors uppercase border border-red-500/30 px-2 py-1 rounded">EXCLUIR</button></td></tr>`).join('');
+        };
 
         function renderAdminTools(container) {
             container.innerHTML = `
                 <div class="grid lg:grid-cols-2 gap-8">
-                    <div class="glass-card p-8 rounded-[2rem]">
-                        <h2 class="font-bold text-white text-lg mb-6 uppercase tracking-wide border-b border-white/10 pb-4">📁 Importação em Massa (CSV)</h2>
-                        <div class="space-y-6"><div class="p-4 bg-blue-900/20 border border-blue-500/30 rounded-xl"><p class="text-[10px] text-gray-300 uppercase font-bold mb-2">Formato:</p><code class="block bg-black/40 p-2 rounded text-xs text-cyan-400 font-mono">tipo,login,nome,senha</code></div>
-                        <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Modo</label><select id="csv_mode" class="w-full p-4 rounded-xl text-sm font-bold bg-[#0a1f3d]"><option value="append">Adicionar / Atualizar</option><option value="replace">SUBSTITUIR TUDO</option></select></div>
-                        <div><label class="text-[10px] uppercase font-bold text-gray-500 mb-2 block">Arquivo</label><input type="file" id="csv_file" accept=".csv" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-cyan-400 file:text-navy-900 hover:file:bg-cyan-300"></div>
-                        <button onclick="window.handleCSVUpload()" class="w-full btn-primary py-4 rounded-xl text-xs font-black tracking-wider">Processar CSV</button></div>
-                    </div>
-                    <div class="glass-card p-8 rounded-[2rem]">
-                        <h2 class="font-bold text-white text-lg mb-6 uppercase tracking-wide border-b border-white/10 pb-4">👤 Cadastro Manual</h2>
-                        <div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Tipo</label><select id="new_role" class="w-full p-3 rounded-xl text-sm font-bold"><option value="aluno">Aluno</option><option value="preceptor">Preceptor</option><option value="portaria">Portaria</option><option value="admin">Admin</option></select></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Login</label><input type="text" id="new_id" class="w-full p-3 rounded-xl text-sm font-bold"></div></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Nome</label><input type="text" id="new_name" class="w-full p-3 rounded-xl text-sm font-bold"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Senha</label><input type="text" id="new_pass" class="w-full p-3 rounded-xl text-sm font-bold" value="123"></div><button onclick="window.handleManualAdd()" class="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl text-xs font-bold tracking-wider transition-all border border-white/10">Adicionar</button></div>
-                    </div>
-                    <div class="glass-card p-8 rounded-[2rem] lg:col-span-2"><h2 class="font-bold text-white text-lg mb-6 uppercase tracking-wide flex justify-between items-center"><span>Base de Usuários</span><button onclick="window.renderAdminUserList()" class="text-[10px] bg-white/5 px-3 py-1 rounded hover:bg-white/10">Atualizar</button></h2><div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="text-[10px] text-gray-500 uppercase border-b border-white/10"><th class="p-3">Tipo</th><th class="p-3">Login</th><th class="p-3">Nome</th><th class="p-3">Senha</th><th class="p-3 text-right">Ação</th></tr></thead><tbody id="admin-users-list" class="text-sm text-gray-300"><tr><td colspan="5" class="p-4 text-center italic text-gray-600">Carregando...</td></tr></tbody></table></div></div>
+                    <div class="glass-card p-8 rounded-[2rem]"><h2 class="font-bold text-white text-lg mb-4">👤 Novo Usuário</h2><div class="space-y-4">
+                        <select id="new_role" class="w-full p-3 rounded-xl text-sm font-bold text-navy-900"><option value="aluno">Aluno</option><option value="preceptor">Preceptor</option><option value="portaria">Portaria</option><option value="admin">Admin</option></select>
+                        <input type="text" id="new_id" class="w-full p-3 rounded-xl text-sm" placeholder="Login (RA/ID)">
+                        <input type="text" id="new_name" class="w-full p-3 rounded-xl text-sm" placeholder="Nome Completo">
+                        <input type="text" id="new_pass" class="w-full p-3 rounded-xl text-sm" placeholder="Senha" value="123">
+                        <button onclick="window.handleManualAddUser()" class="w-full btn-primary py-3 rounded-xl text-xs font-black">CADASTRAR</button>
+                    </div></div>
+                    <div class="glass-card p-8 rounded-[2rem]"><h2 class="font-bold text-white text-lg mb-4">📋 Usuários</h2><div class="overflow-auto max-h-60"><table class="w-full text-left text-white text-sm"><tbody id="admin-users-list"></tbody></table></div></div>
                 </div>`;
             window.renderAdminUserList();
         }
 
+        // ALUNO
         async function renderAluno(container) {
-            container.innerHTML = `<div class="grid lg:grid-cols-5 gap-8"><div class="lg:col-span-2 space-y-6"><div class="glass-card p-8 rounded-[2rem] relative overflow-hidden"><h2 class="font-bold text-white text-lg mb-8 uppercase tracking-wide flex items-center gap-2"><span class="w-1.5 h-1.5 bg-cyan-400 rounded-full"></span> Nova Saída</h2><div class="space-y-5"><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Destino</label><input type="text" id="destino" class="w-full p-4 rounded-xl text-sm font-semibold" placeholder="Ex: Biblioteca Central"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Motivo</label><textarea id="motivo" class="w-full p-4 rounded-xl text-sm font-semibold" rows="3" placeholder="Ex: Pesquisa para TCC"></textarea></div><div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Saída</label><input type="time" id="h_saida" class="w-full p-4 rounded-xl text-center font-bold text-gray-300"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Retorno</label><input type="time" id="h_volta" class="w-full p-4 rounded-xl text-center font-bold text-gray-300"></div></div><button id="btnSolicitar" class="w-full btn-primary py-4 rounded-xl text-xs font-black tracking-wider mt-2">Solicitar Autorização</button></div></div></div><div class="lg:col-span-3"><h2 class="font-bold text-sm mb-6 text-gray-500 uppercase tracking-widest pl-2">Meus Pedidos</h2><div id="lista-pedidos-aluno" class="space-y-4"></div></div></div>`;
+            container.innerHTML = `<div class="grid lg:grid-cols-5 gap-8"><div class="lg:col-span-2 space-y-6"><div class="glass-card p-8 rounded-[2rem] relative overflow-hidden"><h2 class="font-bold text-white text-lg mb-8 uppercase tracking-wide flex items-center gap-2"><span class="w-1.5 h-1.5 bg-cyan-400 rounded-full"></span> Nova Saída</h2><div class="space-y-5"><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Destino</label><input type="text" id="destino" class="w-full p-4 rounded-xl text-sm font-semibold" placeholder="Ex: Biblioteca Central"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Motivo</label><textarea id="motivo" class="w-full p-4 rounded-xl text-sm font-semibold" rows="3" placeholder="Ex: Pesquisa para TCC"></textarea></div><div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Dia Saída</label><input type="date" id="data_saida" class="w-full p-4 rounded-xl text-center font-bold text-gray-300"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Hora Saída</label><input type="time" id="h_saida" class="w-full p-4 rounded-xl text-center font-bold text-gray-300"></div></div><div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Dia Retorno</label><input type="date" id="data_volta" class="w-full p-4 rounded-xl text-center font-bold text-gray-300"></div><div><label class="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-1 block tracking-wider">Hora Retorno</label><input type="time" id="h_volta" class="w-full p-4 rounded-xl text-center font-bold text-gray-300"></div></div><button id="btnSolicitar" class="w-full btn-primary py-4 rounded-xl text-xs font-black tracking-wider mt-2">Solicitar Autorização</button></div></div></div><div class="lg:col-span-3"><h2 class="font-bold text-sm mb-6 text-gray-500 uppercase tracking-widest pl-2">Meus Pedidos</h2><div id="lista-pedidos-aluno" class="space-y-4"></div></div></div>`;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const dataSaidaEl = document.getElementById('data_saida');
+            const dataVoltaEl = document.getElementById('data_volta');
+            if(dataSaidaEl) dataSaidaEl.value = today;
+            if(dataVoltaEl) dataVoltaEl.value = today;
+
             onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes')), (snap) => {
                 const docs = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(s => s.ra === userProfile.uid);
-                const listEl = document.getElementById('lista-pedidos-aluno');
-                if (!listEl) return;
-                listEl.innerHTML = docs.sort((a,b) => b.criadoEm.localeCompare(a.criadoEm)).map(s => `<div class="glass-card p-6 rounded-2xl flex justify-between items-center hover:bg-white/[0.05] transition-all group border-l-4 ${getStatusColor(s.status)}"><div><span class="status-badge ${getStatusBadgeColor(s.status)}">${s.status}</span><p class="font-bold text-white text-base mt-2 group-hover:text-cyan-400 transition-colors">${s.motivo}</p><p class="text-[10px] text-gray-500 uppercase mt-1 tracking-wider flex items-center gap-2"><span>${s.destino}</span></p></div><div class="text-right pl-4 border-l border-white/5"><p class="text-xs font-bold text-gray-400 mb-1">Horário</p><p class="text-sm font-black text-cyan-400 whitespace-nowrap">${s.h_saida} <span class="text-white/20 mx-1">➜</span> ${s.h_volta}</p></div></div>`).join('') || '<p class="text-gray-500 italic text-center">Nenhum pedido.</p>';
+                const listEl = document.getElementById('lista-pedidos-aluno'); if(!listEl) return;
+                listEl.innerHTML = docs.sort((a,b) => b.criadoEm.localeCompare(a.criadoEm)).map(s => `<div class="glass-card p-6 rounded-2xl flex justify-between items-center hover:bg-white/[0.05] transition-all group border-l-4 ${getStatusColor(s.status)}"><div><span class="status-badge ${getStatusBadgeColor(s.status)}">${s.status}</span><p class="font-bold text-white text-base mt-2 group-hover:text-cyan-400 transition-colors">${s.motivo}</p><p class="text-[10px] text-gray-500 uppercase mt-1 tracking-wider flex items-center gap-2"><span>${s.destino}</span></p></div><div class="text-right pl-4 border-l border-white/5"><p class="text-xs font-bold text-gray-400 mb-1">Saída: ${s.data_saida} ${s.h_saida}</p><p class="text-sm font-black text-cyan-400 whitespace-nowrap">Volta: ${s.data_volta} ${s.h_volta}</p></div></div>`).join('') || '<p class="text-gray-500 italic text-center">Nenhum pedido.</p>';
             });
+
             document.getElementById('btnSolicitar').onclick = async () => {
-                const destino = document.getElementById('destino').value, motivo = document.getElementById('motivo').value, h_saida = document.getElementById('h_saida').value, h_volta = document.getElementById('h_volta').value;
-                if(!destino || !motivo || !h_saida || !h_volta) { showToast("Preencha tudo!", 'error'); return; }
+                const d_saida = document.getElementById('data_saida').value, h_saida = document.getElementById('h_saida').value;
+                const d_volta = document.getElementById('data_volta').value, h_volta = document.getElementById('h_volta').value;
+                const dest = document.getElementById('destino').value, mot = document.getElementById('motivo').value;
+                if(!d_saida || !h_saida || !d_volta || !h_volta || !dest || !mot) { showToast("Preencha tudo!", 'warning'); return; }
                 const btn = document.getElementById('btnSolicitar'); btn.innerText = "ENVIANDO..."; btn.disabled = true;
-                try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes'), { ra: userProfile.uid, aluno: userProfile.name, destino, motivo, h_saida, h_volta, status: 'pendente', criadoEm: new Date().toISOString() }); document.getElementById('destino').value = ''; document.getElementById('motivo').value = ''; showToast("Enviado!", 'success'); } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { btn.innerText = "Solicitar Autorização"; btn.disabled = false; }
+                try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes'), { ra: userProfile.uid, aluno: userProfile.name, destino: dest, motivo: mot, data_saida: d_saida, h_saida, data_volta: d_volta, h_volta, status: 'pendente', criadoEm: new Date().toISOString() }); document.getElementById('destino').value = ''; document.getElementById('motivo').value = ''; showToast("Enviado!", 'success'); } catch (e) { showToast("Erro: " + e.message, 'error'); } finally { btn.innerText = "Solicitar Autorização"; btn.disabled = false; }
             };
         }
 
+        // PRECEPTOR
         function renderPreceptor(container) {
-            container.innerHTML = `<div class="flex justify-between items-end mb-8"><h2 class="font-bold text-white text-xl uppercase tracking-wide flex items-center gap-3"><span class="w-2 h-8 bg-amber-400 rounded-full"></span> Autorizações Pendentes</h2></div><div id="lista-preceptor" class="grid md:grid-cols-2 gap-6"></div>`;
-            onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes')), (snap) => {
-                const pendentes = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(s => s.status === 'pendente');
-                const listEl = document.getElementById('lista-preceptor');
-                if (!listEl) return;
-                listEl.innerHTML = pendentes.map(s => `<div class="glass-card p-8 rounded-[2rem] relative overflow-hidden group hover:border-amber-400/30 transition-colors"><div class="absolute top-0 left-0 w-1.5 h-full bg-amber-400"></div><div class="flex justify-between items-start mb-4"><div><h3 class="font-bold text-lg text-white mb-1 group-hover:text-amber-400 transition-colors">${s.aluno}</h3><p class="text-[10px] text-gray-500 uppercase tracking-widest">RA: ${s.ra}</p></div><div class="text-right"><span class="block text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded mb-1">PENDENTE</span><span class="text-xs font-bold text-white">${s.h_saida} - ${s.h_volta}</span></div></div><div class="bg-black/30 p-4 rounded-xl mb-6 border border-white/5"><p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Motivo</p><p class="text-sm text-gray-300 italic">"${s.motivo}"</p><p class="text-[10px] text-gray-500 uppercase font-bold mt-3 mb-1">Destino</p><p class="text-xs text-white font-bold">${s.destino}</p></div><div class="flex gap-3"><button onclick="window.atualizarPedido('${s.id}', 'aprovado')" class="flex-1 btn-primary py-3 rounded-xl text-[10px] font-black tracking-wider shadow-lg hover:shadow-cyan-400/20">AUTORIZAR</button><button onclick="window.atualizarPedido('${s.id}', 'recusado')" class="flex-1 bg-white/5 hover:bg-red-500/10 text-red-400 border border-white/10 hover:border-red-500/30 py-3 rounded-xl text-[10px] font-bold tracking-wider transition-all">NEGAR</button></div></div>`).join('') || '<p class="text-gray-500 italic col-span-full text-center">Tudo limpo.</p>';
-            });
+            container.innerHTML = `<div class="mb-6 flex gap-3 border-b border-white/10 pb-4"><button onclick="window.precTab('req')" id="ptab-req" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold uppercase">Solicitações</button><button onclick="window.precTab('block')" id="ptab-block" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Bloqueios</button><button onclick="window.precTab('new')" id="ptab-new" class="tab-btn inactive px-4 py-2 rounded-lg text-xs font-bold uppercase">Cadastrar Aluno</button></div><div id="preceptor-area"></div>`;
+            window.precTab = (t) => {
+                document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('inactive'); });
+                document.getElementById(`ptab-${t}`).classList.replace('inactive', 'active');
+                const area = document.getElementById('preceptor-area');
+                if(t==='req') renderPreceptorRequests(area);
+                if(t==='block') renderPreceptorBlocks(area);
+                if(t==='new') renderPreceptorNewStudent(area);
+            };
+            renderPreceptorRequests(document.getElementById('preceptor-area'));
         }
 
+        function renderPreceptorRequests(area) {
+            area.innerHTML = `<div class="glass-card p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-3 gap-4"><input type="text" id="filter_name" onkeyup="window.filterRequests()" class="p-3 rounded-lg text-sm bg-black/20 text-white placeholder-gray-500" placeholder="Filtrar por Nome..."><input type="text" id="filter_ra" onkeyup="window.filterRequests()" class="p-3 rounded-lg text-sm bg-black/20 text-white placeholder-gray-500" placeholder="Filtrar por RA..."><input type="date" id="filter_date" onchange="window.filterRequests()" class="p-3 rounded-lg text-sm bg-black/20 text-white text-gray-400"></div><div id="req-list" class="grid md:grid-cols-2 gap-4"></div>`;
+            onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes')), (snap) => {
+                window.allRequests = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(s => s.status === 'pendente');
+                window.filterRequests(); 
+            });
+            window.filterRequests = () => {
+                const nameF = document.getElementById('filter_name').value.toLowerCase();
+                const raF = document.getElementById('filter_ra').value.toLowerCase();
+                const dateF = document.getElementById('filter_date').value;
+                const filtered = window.allRequests.filter(r => {
+                    const matchName = r.aluno.toLowerCase().includes(nameF);
+                    const matchRa = r.ra.toLowerCase().includes(raF);
+                    const matchDate = !dateF || r.data_saida === dateF;
+                    return matchName && matchRa && matchDate;
+                });
+                const listEl = document.getElementById('req-list');
+                if(!listEl) return;
+                listEl.innerHTML = filtered.map(s => `<div class="glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-amber-400"><div class="flex justify-between mb-2"><h3 class="font-bold text-white">${s.aluno} <span class="text-xs text-gray-500 font-normal">(${s.ra})</span></h3><span class="text-xs text-amber-400 font-bold">PENDENTE</span></div><p class="text-xs text-gray-400 mb-2">Saída: ${s.data_saida} às ${s.h_saida} | Volta: ${s.data_volta} às ${s.h_volta}</p><div class="bg-black/30 p-3 rounded-lg mb-4 text-xs italic text-gray-300">"${s.motivo}"</div><div class="flex gap-2"><button onclick="window.atualizarPedido('${s.id}', 'aprovado')" class="flex-1 btn-primary py-2 rounded-lg text-[10px] font-black">APROVAR</button><button onclick="window.atualizarPedido('${s.id}', 'recusado')" class="flex-1 bg-red-500/20 text-red-400 py-2 rounded-lg text-[10px] font-bold hover:bg-red-500/30">NEGAR</button></div></div>`).join('') || '<p class="col-span-full text-center text-gray-500 italic">Nenhuma solicitação encontrada.</p>';
+            };
+        }
+
+        function renderPreceptorBlocks(area) {
+            area.innerHTML = `<div class="glass-card p-8 rounded-[2rem] max-w-lg mx-auto"><h2 class="font-bold text-white text-lg mb-4">🚫 Bloquear Aluno</h2><div class="space-y-4"><input type="text" id="block_ra" class="w-full p-3 rounded-xl text-sm" placeholder="RA do Aluno"><div class="grid grid-cols-2 gap-3"><div><label class="text-[10px] uppercase font-bold text-gray-500">Início</label><input type="date" id="block_start" class="w-full p-3 rounded-xl text-sm"></div><div><label class="text-[10px] uppercase font-bold text-gray-500">Fim</label><input type="date" id="block_end" class="w-full p-3 rounded-xl text-sm"></div></div><textarea id="block_reason" class="w-full p-3 rounded-xl text-sm" placeholder="Motivo do bloqueio..." rows="2"></textarea><button onclick="window.createBlock()" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider">Criar Bloqueio</button></div></div>`;
+            window.createBlock = async () => {
+                const ra = document.getElementById('block_ra').value;
+                const start = document.getElementById('block_start').value;
+                const end = document.getElementById('block_end').value;
+                const reason = document.getElementById('block_reason').value;
+                if(!ra || !start || !end) { showToast("Preencha os dados obrigatórios.", 'error'); return; }
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', ra);
+                const userSnap = await getDoc(userRef);
+                if(!userSnap.exists()) { showToast("Aluno não encontrado no sistema.", 'error'); return; }
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bloqueios'), { ra, start, end, reason, createdBy: userProfile.name });
+                showToast(`Bloqueio criado para ${userSnap.data().name}`, 'success');
+                document.getElementById('block_ra').value = '';
+            };
+        }
+
+        function renderPreceptorNewStudent(area) {
+            area.innerHTML = `<div class="glass-card p-8 rounded-[2rem] max-w-lg mx-auto"><h2 class="font-bold text-white text-lg mb-4">🎓 Cadastrar Novo Aluno</h2><div class="space-y-4"><input type="text" id="new_id" class="w-full p-3 rounded-xl text-sm" placeholder="RA do Aluno"><input type="text" id="new_name" class="w-full p-3 rounded-xl text-sm" placeholder="Nome Completo"><input type="text" id="new_pass" class="w-full p-3 rounded-xl text-sm" placeholder="Senha Inicial" value="123"><button onclick="window.handleManualAddUser('aluno')" class="w-full btn-primary py-3 rounded-xl text-xs font-black">CADASTRAR</button></div></div>`;
+        }
+
+        // PORTARIA
         function renderPortaria(container) {
-            container.innerHTML = `<div class="flex justify-between items-end mb-8"><h2 class="font-bold text-white text-xl uppercase tracking-wide flex items-center gap-3"><span class="w-2 h-8 bg-cyan-400 rounded-full"></span> Saídas Autorizadas</h2></div><div id="lista-portaria" class="space-y-4"></div>`;
+            container.innerHTML = `<div class="grid lg:grid-cols-3 gap-6 mb-6"><div class="lg:col-span-2"><h2 class="font-bold text-white text-xl mb-4 flex items-center gap-2"><span class="w-2 h-2 bg-cyan-400 rounded-full"></span> Autorizados (Aguardando Saída)</h2><div class="flex gap-2 mb-4"><input type="text" id="port_filter_text" onkeyup="window.filterPortaria()" class="w-full p-3 rounded-lg text-sm bg-black/20 text-white placeholder-gray-500" placeholder="Nome ou RA..."><input type="date" id="port_filter_date" onchange="window.filterPortaria()" class="p-3 rounded-lg text-sm bg-black/20 text-white text-gray-400"></div><div id="port-list" class="space-y-3"></div></div><div class="glass-card p-6 rounded-2xl h-fit"><h2 class="font-bold text-gray-400 text-sm uppercase mb-4 tracking-widest">Últimas Saídas / Histórico</h2><div id="port-history" class="space-y-2 text-xs text-gray-500">Carregando...</div></div></div>`;
             onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'solicitacoes')), (snap) => {
-                const aprovados = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(s => s.status === 'aprovado');
-                const listEl = document.getElementById('lista-portaria');
-                if (!listEl) return;
-                listEl.innerHTML = aprovados.map(s => `<div class="glass-card p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 border-l-4 border-cyan-400 shadow-[0_0_30px_rgba(0,0,0,0.3)]"><div class="flex-1"><div class="flex items-center gap-3 mb-2"><h3 class="font-bold text-white text-xl">${s.aluno}</h3><span class="bg-cyan-400 text-[#06162e] text-[9px] font-black px-2 py-0.5 rounded uppercase">Autorizado</span></div><div class="flex gap-6 text-sm"><div><span class="text-[10px] text-gray-500 uppercase font-bold block">Destino</span><span class="text-cyan-50 font-medium">${s.destino}</span></div><div><span class="text-[10px] text-gray-500 uppercase font-bold block">Horário</span><span class="text-cyan-400 font-bold">${s.h_saida} <span class="text-white/30 mx-1">-</span> ${s.h_volta}</span></div></div></div><button onclick="window.atualizarPedido('${s.id}', 'finalizado')" class="w-full md:w-auto bg-cyan-400 hover:bg-cyan-300 text-[#06162e] px-8 py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(0,217,230,0.3)] hover:shadow-[0_0_30px_rgba(0,217,230,0.5)] transform hover:-translate-y-1">Confirmar Saída</button></div>`).join('') || '<p class="text-gray-500 italic text-center">Nenhuma saída autorizada.</p>';
+                const all = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                window.portariaApproved = all.filter(s => s.status === 'aprovado');
+                const history = all.filter(s => s.status === 'finalizado' || s.status === 'nao_compareceu').sort((a,b) => b.criadoEm.localeCompare(a.criadoEm)).slice(0, 10);
+                const histEl = document.getElementById('port-history');
+                if(histEl) histEl.innerHTML = history.map(h => `<div class="flex justify-between py-2 border-b border-white/5"><span class="${h.status === 'finalizado' ? 'text-cyan-400' : 'text-red-400'} font-bold">${h.aluno}</span><span>${h.status === 'finalizado' ? 'SAIU' : 'FALTOU'}</span></div>`).join('') || 'Sem histórico recente.';
+                window.filterPortaria(); 
             });
+            window.filterPortaria = () => {
+                const textF = document.getElementById('port_filter_text').value.toLowerCase();
+                const dateF = document.getElementById('port_filter_date').value;
+                const filtered = window.portariaApproved.filter(r => {
+                    const matchText = r.aluno.toLowerCase().includes(textF) || r.ra.toLowerCase().includes(textF);
+                    const matchDate = !dateF || r.data_saida === dateF;
+                    return matchText && matchDate;
+                });
+                const listEl = document.getElementById('port-list');
+                if(!listEl) return;
+                listEl.innerHTML = filtered.map(s => `<div class="glass-card p-5 rounded-xl border-l-4 border-cyan-400 flex flex-col md:flex-row justify-between items-center gap-4"><div><h3 class="font-bold text-white text-lg">${s.aluno}</h3><p class="text-[10px] text-gray-400 uppercase tracking-widest">${s.ra} • Destino: ${s.destino}</p><p class="text-xs text-cyan-300 mt-1 font-mono">Saída: ${s.data_saida} às ${s.h_saida}</p></div><div class="flex gap-2 w-full md:w-auto"><button onclick="window.atualizarPedido('${s.id}', 'finalizado')" class="flex-1 md:flex-none bg-cyan-400 hover:bg-cyan-300 text-navy-900 px-6 py-3 rounded-xl text-xs font-black uppercase shadow-[0_0_15px_rgba(0,217,230,0.4)]">CONFIRMAR SAÍDA</button><button onclick="window.atualizarPedido('${s.id}', 'nao_compareceu')" class="flex-1 md:flex-none bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl text-xs font-bold uppercase">NÃO COMPARECEU</button></div></div>`).join('') || '<p class="text-gray-500 italic text-center py-10">Ninguém aguardando saída com esses filtros.</p>';
+            };
         }
 
-        // Helpers de Status (inalterados)
-        function getStatusColor(s){ if(s=='aprovado')return 'border-cyan-400'; if(s=='pendente')return 'border-amber-400'; return 'border-red-400'; }
-        function getStatusBadgeColor(s){ if(s=='aprovado')return 'bg-cyan-400/20 text-cyan-400'; if(s=='pendente')return 'bg-amber-400/20 text-amber-400'; return 'bg-red-400/20 text-red-400'; }
+        function showLoading(val) { 
+            isLoading = val; 
+            const app = document.getElementById('app');
+            if (!userProfile && app) renderLogin(app);
+        }
 
-        // --- MISSING FUNCTION RESTORED ---
-        window.atualizarPedido = async (id, status) => {
-            showLoading(true);
+        async function init() {
+            render(); 
             try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'solicitacoes', id), { status });
-                showToast("Status atualizado.", 'success');
-            } catch (e) {
-                showToast("Erro: " + e.message, 'error');
-            } finally {
-                showLoading(false);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout conexão")), 5000));
+                await Promise.race([signInAnonymously(auth), timeoutPromise]);
+                log("Sistema Conectado!", 'success');
+            } catch (error) {
+                log("Falha na conexão inicial: " + error.message, 'error');
             }
-        };
+            onAuthStateChanged(auth, (user) => { 
+                isAuthReady = !!user;
+                if (!userProfile) render(); 
+            });
+        }
 
         init();
     </script>
