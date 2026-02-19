@@ -41,17 +41,17 @@
                     <div class="h-10 w-px bg-slate-200"></div>
                     <img src="https://ac-landing-pages-user-uploads-production.s3.amazonaws.com/0000134440/ffc592cb-f28e-4dae-a2e6-055d10bffd22.png" alt="Educação Adventista" class="h-10 sm:h-12 w-auto object-contain" />
                 </div>
-                <h2 class="mt-6 text-3xl font-extrabold text-slate-900">Acesso Restrito</h2>
-                <p class="mt-2 text-sm text-slate-600">Insira as suas credenciais para continuar</p>
+                <h2 class="mt-6 text-3xl font-extrabold text-slate-900">Acesso ao Sistema</h2>
+                <p class="mt-2 text-sm text-slate-600">Insira suas credenciais para continuar</p>
             </div>
             <form id="login-form" class="mt-8 space-y-6">
                 <div class="rounded-md shadow-sm space-y-4">
                     <div>
-                        <label for="email-address" class="text-sm font-medium text-slate-700">Endereço de Email</label>
+                        <label for="email-address" class="text-sm font-medium text-slate-700">E-mail</label>
                         <input id="email-address" name="email" type="email" required class="mt-1 appearance-none rounded-lg relative block w-full px-3 py-2 border border-slate-300 placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="exemplo@adventistas.org">
                     </div>
                     <div>
-                        <label for="password" class="text-sm font-medium text-slate-700">Palavra-passe</label>
+                        <label for="password" class="text-sm font-medium text-slate-700">Senha</label>
                         <input id="password" name="password" type="password" required class="mt-1 appearance-none rounded-lg relative block w-full px-3 py-2 border border-slate-300 placeholder-slate-400 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="••••••••">
                     </div>
                 </div>
@@ -59,7 +59,7 @@
                     Credenciais inválidas. Tente novamente.
                 </div>
                 <div>
-                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition-all">
+                    <button type="submit" id="btn-login" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition-all">
                         Entrar
                     </button>
                 </div>
@@ -74,74 +74,109 @@
         <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <img 
-                        src="https://logo-marque.com/wp-content/uploads/2021/03/TIM-Logo.png" 
-                        alt="Logo TIM" 
-                        class="h-8 w-auto object-contain"
-                    />
+                    <img src="https://logo-marque.com/wp-content/uploads/2021/03/TIM-Logo.png" alt="Logo TIM" class="h-8 w-auto object-contain" />
                     <div class="h-6 w-px bg-slate-200"></div>
-                    <h1 class="text-xl font-bold tracking-tight text-slate-800">Controle de Atendimento</h1>
+                    <div class="flex flex-col">
+                        <h1 class="text-lg font-bold tracking-tight text-slate-800 leading-tight">Controle de Atendimento</h1>
+                        <span id="user-greeting" class="text-xs text-slate-500 font-medium">Olá, Usuário</span>
+                    </div>
                 </div>
-                <button 
-                    onclick="window.openModal()"
-                    class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
-                >
-                    <i data-lucide="plus" class="w-5 h-5"></i>
-                    <span class="hidden sm:inline">Novo Protocolo</span>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button id="btn-logout" onclick="window.logout()" class="text-slate-500 hover:text-red-600 text-sm font-medium transition-colors flex items-center gap-1 mr-2">
+                        <i data-lucide="log-out" class="w-4 h-4"></i> <span class="hidden sm:inline">Sair</span>
+                    </button>
+                    <button onclick="window.openModal()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        <span class="hidden sm:inline">Nova Solicitação</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div id="main-nav-container" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav id="main-nav" class="flex gap-6 -mb-px text-sm font-medium">
+                    <!-- Injected via JS -->
+                </nav>
             </div>
         </header>
 
         <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="stats-container">
-                <!-- Injected via JS -->
-            </div>
-
-            <!-- Filters -->
-            <div class="flex flex-col md:flex-row gap-4 mb-6">
-                <div class="relative flex-1">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
-                    <input 
-                        type="text" 
-                        id="search-input"
-                        placeholder="Buscar por linha, protocolo ou descrição..."
-                        class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                    />
-                </div>
-                <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0" id="filter-container">
+            <!-- VIEW: TICKETS -->
+            <div id="view-tickets" class="block">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="stats-container">
                     <!-- Injected via JS -->
                 </div>
-            </div>
 
-            <!-- Table -->
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data / Linha</th>
-                                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Protocolo / Categoria</th>
-                                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Descrição Detalhada</th>
-                                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status / Prioridade</th>
-                                <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tickets-body" class="divide-y divide-slate-100">
-                            <!-- Injected via JS -->
-                        </tbody>
-                    </table>
+                <!-- Filters -->
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                        <input type="text" id="search-input" placeholder="Buscar por linha, protocolo, solicitante ou descrição..." class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0" id="filter-container">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200">
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data / Solicitante</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Linha / Protocolo</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Categoria / Descrição</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status / Prioridade</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tickets-body" class="divide-y divide-slate-100">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <!-- VIEW: USERS CONFIG (Admin Only) -->
+            <div id="view-users" class="hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Gerenciamento de Usuários</h2>
+                    <button onclick="window.openUserModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> Adicionar Usuário
+                    </button>
+                </div>
+                
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200">
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">E-mail (Login)</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Perfil de Acesso</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-body" class="divide-y divide-slate-100">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- Modal -->
+    <!-- TICKET MODAL -->
     <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <h2 id="modal-title" class="text-lg font-bold text-slate-800">Novo Registro TIM</h2>
+                <h2 id="modal-title" class="text-lg font-bold text-slate-800">Nova Solicitação</h2>
                 <button onclick="window.closeModal()" class="text-slate-400 hover:text-slate-600 p-1">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
@@ -150,9 +185,10 @@
             <form id="ticket-form" class="overflow-y-auto p-6 space-y-5 custom-scroll">
                 <input type="hidden" id="ticket-id">
                 
+                <!-- Campos Visíveis para Todos (Obreiro e Admin) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1.5">
-                        <label class="text-sm font-semibold text-slate-700">Data do Atendimento</label>
+                        <label class="text-sm font-semibold text-slate-700">Data da Solicitação</label>
                         <input type="date" id="data" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
                     </div>
                     <div class="space-y-1.5">
@@ -161,25 +197,38 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-1.5">
-                        <label class="text-sm font-semibold text-slate-700">Protocolo TIM</label>
-                        <input type="text" id="protocolo" placeholder="2024..." required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono">
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-sm font-semibold text-slate-700">Categoria</label>
-                        <select id="categoria" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none appearance-none">
-                            <!-- Options injected via JS -->
-                        </select>
-                    </div>
+                <div class="space-y-1.5">
+                    <label class="text-sm font-semibold text-slate-700">Categoria do Problema</label>
+                    <select id="categoria" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none appearance-none">
+                        <!-- Options injected via JS -->
+                    </select>
                 </div>
 
                 <div class="space-y-1.5">
-                    <label class="text-sm font-semibold text-slate-700">Descrição Detalhada</label>
-                    <textarea id="descricao" rows="3" placeholder="Explique o que aconteceu..." required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"></textarea>
+                    <label class="text-sm font-semibold text-slate-700">Descrição Detalhada / Motivo</label>
+                    <textarea id="descricao" rows="3" placeholder="Explique o que aconteceu, o que precisa ser feito..." required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"></textarea>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Bloco de Campos Restritos ao Admin -->
+                <div id="admin-fields" class="space-y-5 pt-4 border-t border-slate-200 mt-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="shield" class="w-4 h-4 text-blue-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Uso Exclusivo do Administrador</h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-sm font-semibold text-slate-700">Protocolo TIM</label>
+                            <input type="text" id="protocolo" placeholder="Aguardando abertura..." class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-sm font-semibold text-slate-700">Status Atual</label>
+                            <select id="status" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                                <!-- Options injected via JS -->
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="space-y-1.5">
                         <label class="text-sm font-semibold text-slate-700">Prioridade</label>
                         <div class="flex gap-2" id="priority-selector">
@@ -187,22 +236,60 @@
                         </div>
                         <input type="hidden" id="prioridade" value="Média">
                     </div>
-                    <div class="space-y-1.5">
-                        <label class="text-sm font-semibold text-slate-700">Status Atual</label>
-                        <select id="status" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
-                            <!-- Options injected via JS -->
-                        </select>
-                    </div>
-                </div>
 
-                <div class="space-y-1.5">
-                    <label class="text-sm font-semibold text-slate-700">Resolução / Observações Finais</label>
-                    <textarea id="resolucao" rows="2" placeholder="Solução, estornos, etc." class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none resize-none"></textarea>
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-semibold text-slate-700">Resolução / Observações Finais</label>
+                        <textarea id="resolucao" rows="2" placeholder="Solução, estornos, etc." class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none resize-none"></textarea>
+                    </div>
                 </div>
 
                 <div class="pt-4 flex gap-3">
                     <button type="button" onclick="window.closeModal()" class="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all">Cancelar</button>
-                    <button type="submit" id="save-btn" class="flex-[2] px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all">Salvar</button>
+                    <button type="submit" id="save-btn" class="flex-[2] px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all">Enviar Solicitação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- USER CONFIG MODAL -->
+    <div id="user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <h2 id="user-modal-title" class="text-lg font-bold text-slate-800">Adicionar Usuário</h2>
+                <button onclick="window.closeUserModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form id="user-form" class="p-6 space-y-4">
+                <input type="hidden" id="u-id">
+                
+                <div class="space-y-1.5">
+                    <label class="text-sm font-semibold text-slate-700">Nome Completo</label>
+                    <input type="text" id="u-nome" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none">
+                </div>
+                
+                <div class="space-y-1.5">
+                    <label class="text-sm font-semibold text-slate-700">E-mail (Login)</label>
+                    <input type="email" id="u-email" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-sm font-semibold text-slate-700">Senha de Acesso</label>
+                    <input type="text" id="u-senha" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-sm font-semibold text-slate-700">Perfil de Acesso</label>
+                    <select id="u-role" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none">
+                        <option value="obreiro">Obreiro (Apenas Solicitações)</option>
+                        <option value="admin">Administrador de Contrato</option>
+                    </select>
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="window.closeUserModal()" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all">Cancelar</button>
+                    <button type="submit" id="user-save-btn" class="flex-[2] px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-all">Salvar Usuário</button>
                 </div>
             </form>
         </div>
@@ -212,7 +299,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         // --- FIREBASE CONFIGURATION ---
         const firebaseConfig = {
@@ -230,13 +317,14 @@
         const db = getFirestore(app);
 
         // --- CONSTANTS ---
-        const CATEGORIAS = ['Cobrança Indevida', 'Problema Técnico', 'Alteração de Plano', 'Cancelamento', 'Portabilidade', 'Outros'];
+        const CATEGORIAS = ['Cobrança Indevida', 'Problema Técnico', 'Alteração de Plano', 'Cancelamento', 'Portabilidade', 'Aquisição de Linha', 'Outros'];
         const PRIORIDADES = [
             { label: 'Baixa', color: 'bg-blue-100 text-blue-700' },
             { label: 'Média', color: 'bg-yellow-100 text-yellow-700' },
             { label: 'Alta', color: 'bg-red-100 text-red-700' }
         ];
         const STATUS_OPTIONS = [
+            { label: 'Chamado Aberto', color: 'bg-purple-100 text-purple-700', icon: 'inbox' },
             { label: 'Aberto - Aguardando TIM', color: 'bg-orange-100 text-orange-700', icon: 'clock' },
             { label: 'Em Tratativa', color: 'bg-blue-100 text-blue-700', icon: 'alert-circle' },
             { label: 'Resolvido', color: 'bg-green-100 text-green-700', icon: 'check-circle-2' },
@@ -245,106 +333,152 @@
 
         // --- STATE ---
         let state = {
-            user: null,
+            user: null, // Firebase anonymous auth
+            currentUser: null, // Custom user profile { nome, email, role }
+            activeTab: 'tickets',
             tickets: [],
+            usersList: [],
             filterStatus: 'Todos',
             searchTerm: '',
-            editingId: null
+            editingId: null,
+            editingUserId: null
         };
 
-        // --- AUTH CREDENTIALS ---
-        const VALID_EMAILS = ["auxiap.cont@adventistas.org", "nicholas.ganhadeiro@adventistas.org"];
-        const VALID_PASS = "Fap1624";
+        // --- MASTER ADMINS (Fallback inicial de segurança) ---
+        const MASTER_ADMINS = ["auxiap.cont@adventistas.org", "nicholas.ganhadeiro@adventistas.org"];
+        const MASTER_PASS = "Fap1624";
 
         function checkLoginState() {
-            const isLogged = sessionStorage.getItem('tim_tracker_logged');
-            if (isLogged === 'true') {
-                init();
+            const savedUser = sessionStorage.getItem('tim_tracker_user');
+            if (savedUser) {
+                state.currentUser = JSON.parse(savedUser);
+                initSystem();
             } else {
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('login-screen').classList.remove('hidden');
             }
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('email-address').value;
+            const email = document.getElementById('email-address').value.trim();
             const pass = document.getElementById('password').value;
+            const btn = document.getElementById('btn-login');
+            
+            btn.textContent = "Verificando...";
+            btn.disabled = true;
 
-            if (VALID_EMAILS.includes(email) && pass === VALID_PASS) {
-                sessionStorage.setItem('tim_tracker_logged', 'true');
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('loading').classList.remove('hidden');
-                init();
-            } else {
-                document.getElementById('login-error').classList.remove('hidden');
-                setTimeout(() => {
-                    document.getElementById('login-error').classList.add('hidden');
-                }, 3000);
+            try {
+                // Autenticar no firebase anonimamente primeiro para poder ler o DB
+                await signInAnonymously(auth);
+                
+                // Checagem 1: Master Admins (Garante que você nunca perca acesso)
+                if (MASTER_ADMINS.includes(email) && pass === MASTER_PASS) {
+                    processLoginSuccess({ nome: "Administrador Master", email: email, role: "admin" });
+                    return;
+                }
+
+                // Checagem 2: Banco de dados de usuários
+                const q = query(collection(db, 'artifacts', 'tim-tracker', 'public', 'data', 'users'), 
+                                where('email', '==', email), 
+                                where('senha', '==', pass));
+                const snapshot = await getDocs(q);
+
+                if (!snapshot.empty) {
+                    const userData = snapshot.docs[0].data();
+                    processLoginSuccess({ nome: userData.nome, email: userData.email, role: userData.role });
+                } else {
+                    showLoginError();
+                }
+
+            } catch (error) {
+                console.error("Erro no login:", error);
+                showLoginError();
+            } finally {
+                btn.textContent = "Entrar";
+                btn.disabled = false;
             }
         }
 
-        // --- INIT ---
-        async function init() {
-            // Populate Static Form Options
+        function processLoginSuccess(userProfile) {
+            sessionStorage.setItem('tim_tracker_user', JSON.stringify(userProfile));
+            state.currentUser = userProfile;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            initSystem();
+        }
+
+        function showLoginError() {
+            document.getElementById('login-error').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('login-error').classList.add('hidden');
+            }, 3000);
+        }
+
+        window.logout = () => {
+            sessionStorage.removeItem('tim_tracker_user');
+            window.location.reload();
+        }
+
+        // --- INIT SYSTEM ---
+        function initSystem() {
+            // Ajustar UI baseado no Role
+            document.getElementById('user-greeting').textContent = `Olá, ${state.currentUser.nome} (${state.currentUser.role === 'admin' ? 'Admin' : 'Obreiro'})`;
+            
+            document.getElementById('main-nav-container').classList.remove('hidden');
+            if (state.currentUser.role === 'admin') {
+                document.getElementById('main-nav').innerHTML = `
+                    <button onclick="window.switchTab('chamados')" id="tab-chamados" class="border-b-2 border-blue-600 text-blue-600 py-3 px-1 transition-colors">Novos Chamados</button>
+                    <button onclick="window.switchTab('solicitacoes')" id="tab-solicitacoes" class="border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-3 px-1 transition-colors">Solicitações em Andamento</button>
+                    <button onclick="window.switchTab('users')" id="tab-users" class="border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-3 px-1 transition-colors">Configurações de Usuários</button>
+                `;
+                state.activeTab = 'chamados';
+            } else {
+                document.getElementById('main-nav').innerHTML = `
+                    <button onclick="window.switchTab('all')" id="tab-all" class="border-b-2 border-blue-600 text-blue-600 py-3 px-1 transition-colors">Minhas Solicitações</button>
+                `;
+                state.activeTab = 'all';
+            }
+
+            // Populate Static Selects
             const catSelect = document.getElementById('categoria');
-            CATEGORIAS.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c;
-                opt.textContent = c;
-                catSelect.appendChild(opt);
-            });
+            catSelect.innerHTML = '';
+            CATEGORIAS.forEach(c => catSelect.appendChild(new Option(c, c)));
 
             const statusSelect = document.getElementById('status');
-            STATUS_OPTIONS.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.label;
-                opt.textContent = s.label;
-                statusSelect.appendChild(opt);
-            });
+            statusSelect.innerHTML = '';
+            STATUS_OPTIONS.forEach(s => statusSelect.appendChild(new Option(s.label, s.label)));
 
-            // Search Listener
+            // Listeners
             document.getElementById('search-input').addEventListener('input', (e) => {
                 state.searchTerm = e.target.value;
                 renderTickets();
             });
-
-            // Form Submit Listener
             document.getElementById('ticket-form').addEventListener('submit', handleFormSubmit);
+            document.getElementById('user-form').addEventListener('submit', handleUserSubmit);
 
             renderFilters();
             renderPrioritySelector();
 
-            // Init Firebase Auth
-            try {
-                await signInAnonymously(auth);
-                onAuthStateChanged(auth, (user) => {
-                    state.user = user;
-                    if (user) {
-                        setupListener();
+            // Setup Data Listeners
+            onAuthStateChanged(auth, (user) => {
+                state.user = user;
+                if (user) {
+                    setupTicketListener();
+                    if (state.currentUser.role === 'admin') {
+                        setupUserListener();
                     }
-                });
-            } catch (error) {
-                console.error("Erro na autenticação Firebase:", error);
-                alert("Não foi possível conectar ao Firebase. Verifique as permissões de acesso.");
-            }
+                }
+            });
         }
 
-        function setupListener() {
-            if (!state.user) return;
-            
-            // Referência à coleção dentro do seu Firestore
+        function setupTicketListener() {
             const colRef = collection(db, 'artifacts', 'tim-tracker', 'public', 'data', 'atendimentos');
-            const q = query(colRef);
-
-            onSnapshot(q, (snapshot) => {
+            onSnapshot(query(colRef), (snapshot) => {
                 const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                // Ordenar por data mais recente
                 data.sort((a, b) => new Date(b.data) - new Date(a.data));
                 state.tickets = data;
                 
-                // Ocultar Loading e Mostrar App
                 document.getElementById('loading').classList.add('opacity-0');
                 setTimeout(() => {
                     document.getElementById('loading').classList.add('hidden');
@@ -352,39 +486,92 @@
                 }, 300);
 
                 renderApp();
-            }, (error) => {
-                console.error("Erro ao sincronizar dados:", error);
-                alert("Erro ao ler dados. O banco de dados pode estar com restrições de permissão.");
-            });
+            }, (error) => console.error("Erro ao ler chamados:", error));
+        }
+
+        function setupUserListener() {
+            const colRef = collection(db, 'artifacts', 'tim-tracker', 'public', 'data', 'users');
+            onSnapshot(query(colRef), (snapshot) => {
+                state.usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUsers();
+            }, (error) => console.error("Erro ao ler usuários:", error));
         }
 
         // --- RENDER FUNCTIONS ---
+        window.switchTab = (tab) => {
+            state.activeTab = tab;
+            document.getElementById('view-tickets').classList.toggle('hidden', tab === 'users');
+            document.getElementById('view-users').classList.toggle('hidden', tab !== 'users');
+            
+            const tabs = ['chamados', 'solicitacoes', 'users', 'all'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if(el) {
+                    el.className = t === tab 
+                        ? 'border-b-2 border-blue-600 text-blue-600 py-3 px-1 transition-colors' 
+                        : 'border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-3 px-1 transition-colors';
+                }
+            });
+
+            if(tab !== 'users') renderApp();
+        };
+
         function renderApp() {
             renderStats();
             renderTickets();
             lucide.createIcons();
         }
 
-        function renderStats() {
-            const total = state.tickets.length;
-            const abertos = state.tickets.filter(t => t.status.includes('Aberto') || t.status === 'Em Tratativa').length;
-            const resolvidos = state.tickets.filter(t => t.status === 'Resolvido').length;
+        function getStatsTickets() {
+            if (state.currentUser.role === 'obreiro') {
+                return state.tickets.filter(t => t.autorEmail === state.currentUser.email);
+            }
+            return state.tickets;
+        }
 
-            const html = `
+        function getTableTickets() {
+            let visible = getStatsTickets();
+            if (state.currentUser.role === 'admin') {
+                if (state.activeTab === 'chamados') {
+                    visible = visible.filter(t => t.status === 'Chamado Aberto');
+                } else if (state.activeTab === 'solicitacoes') {
+                    visible = visible.filter(t => t.status !== 'Chamado Aberto');
+                }
+            }
+            return visible;
+        }
+
+        function renderStats() {
+            const allTickets = getStatsTickets();
+            const total = allTickets.length;
+            const novos = allTickets.filter(t => t.status === 'Chamado Aberto').length;
+            const pendentes = allTickets.filter(t => t.status === 'Aberto - Aguardando TIM' || t.status === 'Em Tratativa').length;
+            const resolvidos = allTickets.filter(t => t.status === 'Resolvido').length;
+
+            const isAdmin = state.currentUser.role === 'admin';
+
+            document.getElementById('stats-container').className = isAdmin ? "grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" : "grid grid-cols-1 md:grid-cols-3 gap-6 mb-8";
+
+            document.getElementById('stats-container').innerHTML = `
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-slate-500 text-sm font-medium">Total de Registros</p>
+                    <p class="text-slate-500 text-sm font-medium">${isAdmin ? 'Total de Registros' : 'Minhas Solicitações'}</p>
                     <p class="text-3xl font-bold mt-1">${total}</p>
                 </div>
+                ${isAdmin ? `
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-orange-600 text-sm font-medium">Pendentes / Em Aberto</p>
-                    <p class="text-3xl font-bold mt-1 text-orange-600">${abertos}</p>
+                    <p class="text-purple-600 text-sm font-medium">Novos Chamados</p>
+                    <p class="text-3xl font-bold mt-1 text-purple-600">${novos}</p>
+                </div>
+                ` : ''}
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-orange-600 text-sm font-medium">Em Andamento com a TIM</p>
+                    <p class="text-3xl font-bold mt-1 text-orange-600">${pendentes}</p>
                 </div>
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <p class="text-green-600 text-sm font-medium">Casos Resolvidos</p>
                     <p class="text-3xl font-bold mt-1 text-green-600">${resolvidos}</p>
                 </div>
             `;
-            document.getElementById('stats-container').innerHTML = html;
         }
 
         function renderFilters() {
@@ -393,29 +580,29 @@
             
             container.innerHTML = statuses.map(status => {
                 const isActive = state.filterStatus === status;
-                const classes = isActive 
-                    ? 'bg-blue-600 border-blue-600 text-white' 
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300';
+                const classes = isActive ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300';
                 return `<button type="button" onclick="window.setFilter('${status}')" class="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium border transition-all ${classes}">${status}</button>`;
             }).join('');
         }
 
         function renderTickets() {
             const tbody = document.getElementById('tickets-body');
+            let visibleTickets = getTableTickets();
             
-            const filtered = state.tickets.filter(t => {
+            const filtered = visibleTickets.filter(t => {
+                const searchLower = state.searchTerm.toLowerCase();
                 const matchesSearch = 
-                    (t.linha || '').toLowerCase().includes(state.searchTerm.toLowerCase()) || 
-                    (t.protocolo || '').toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-                    (t.descricao || '').toLowerCase().includes(state.searchTerm.toLowerCase());
+                    (t.linha || '').toLowerCase().includes(searchLower) || 
+                    (t.protocolo || '').toLowerCase().includes(searchLower) ||
+                    (t.descricao || '').toLowerCase().includes(searchLower) ||
+                    (t.autorNome || '').toLowerCase().includes(searchLower);
                 
                 const matchesStatus = state.filterStatus === 'Todos' || t.status === state.filterStatus;
-                
                 return matchesSearch && matchesStatus;
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">Nenhum registro encontrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">Nenhuma solicitação encontrada.</td></tr>`;
                 return;
             }
 
@@ -423,25 +610,27 @@
                 const statusInfo = STATUS_OPTIONS.find(s => s.label === t.status) || STATUS_OPTIONS[0];
                 const prioInfo = PRIORIDADES.find(p => p.label === t.prioridade) || PRIORIDADES[1];
                 
-                // Tratar datas de maneira robusta
                 let dateStr = t.data;
-                try {
-                    dateStr = new Date(t.data + 'T12:00:00Z').toLocaleDateString('pt-BR');
-                } catch(e) {}
+                try { dateStr = new Date(t.data + 'T12:00:00Z').toLocaleDateString('pt-BR'); } catch(e) {}
+
+                // Somente Admin edita chamados de terceiros, Obreiro só visualiza. 
+                // Exceção: Obreiro pode editar se estiver em "Aberto"? Melhor travar para apenas Admin.
+                const isAdmin = state.currentUser.role === 'admin';
 
                 return `
                     <tr class="hover:bg-slate-50/50 transition-colors group">
                         <td class="px-6 py-4">
                             <div class="text-sm font-medium text-slate-900">${dateStr}</div>
-                            <div class="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                                <i data-lucide="phone" class="w-3 h-3"></i> ${t.linha}
+                            <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                <i data-lucide="user" class="w-3 h-3"></i> ${t.autorNome || 'Desconhecido'}
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm font-mono text-slate-700">${t.protocolo}</div>
-                            <div class="text-xs text-slate-500 mt-1">${t.categoria}</div>
+                            <div class="text-sm font-medium text-slate-800 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${t.linha}</div>
+                            <div class="text-xs font-mono text-slate-500 mt-1">${t.protocolo || 'Sem protocolo TIM'}</div>
                         </td>
                         <td class="px-6 py-4 max-w-xs">
+                            <div class="text-xs font-semibold text-slate-500 mb-1">${t.categoria}</div>
                             <div class="text-sm text-slate-600 line-clamp-2 leading-relaxed">${t.descricao}</div>
                             ${t.resolucao ? `
                             <div class="text-xs text-green-600 mt-2 italic flex items-start gap-1">
@@ -450,7 +639,7 @@
                             </div>` : ''}
                         </td>
                         <td class="px-6 py-4">
-                            <div class="flex flex-col gap-2">
+                            <div class="flex flex-col gap-2 items-start">
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium w-fit ${statusInfo.color}">
                                     <i data-lucide="${statusInfo.icon}" class="w-3 h-3"></i>
                                     ${t.status}
@@ -460,39 +649,55 @@
                                 </span>
                             </div>
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
-                                <button type="button" onclick="window.editTicket('${t.id}')" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Editar">
-                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button type="button" onclick="window.editTicket('${t.id}')" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Ver / Editar">
+                                    <i data-lucide="${isAdmin ? 'edit-2' : 'eye'}" class="w-4 h-4"></i>
                                 </button>
+                                ${isAdmin ? `
                                 <button type="button" onclick="window.deleteTicket('${t.id}')" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Excluir">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
+                                ` : ''}
                             </div>
                         </td>
                     </tr>
                 `;
             }).join('');
+            lucide.createIcons();
+        }
+
+        function renderUsers() {
+            const tbody = document.getElementById('users-body');
+            if (state.usersList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-400">Nenhum usuário cadastrado.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = state.usersList.map(u => `
+                <tr class="hover:bg-slate-50/50">
+                    <td class="px-6 py-4 text-sm font-medium text-slate-900">${u.nome}</td>
+                    <td class="px-6 py-4 text-sm text-slate-600">${u.email}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded text-xs font-semibold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'}">
+                            ${u.role === 'admin' ? 'Administrador' : 'Obreiro'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="window.editUser('${u.id}')" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                        <button onclick="window.deleteUser('${u.id}')" class="p-2 text-slate-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
         }
 
         function renderPrioritySelector() {
             const container = document.getElementById('priority-selector');
             const current = document.getElementById('prioridade').value;
-            
             container.innerHTML = PRIORIDADES.map(p => {
                 const isActive = current === p.label;
-                const classes = isActive 
-                    ? `${p.color} border-current` 
-                    : 'bg-white border-slate-200 text-slate-400';
-                
-                return `
-                    <button type="button" 
-                        onclick="window.setPriority('${p.label}')"
-                        class="flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${classes}"
-                    >
-                        ${p.label}
-                    </button>
-                `;
+                const classes = isActive ? `${p.color} border-current` : 'bg-white border-slate-200 text-slate-400';
+                return `<button type="button" onclick="window.setPriority('${p.label}')" class="flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${classes}">${p.label}</button>`;
             }).join('');
         }
 
@@ -501,7 +706,6 @@
             state.filterStatus = status;
             renderFilters();
             renderTickets();
-            lucide.createIcons();
         };
 
         window.setPriority = (prio) => {
@@ -511,13 +715,21 @@
 
         window.openModal = () => {
             state.editingId = null;
-            document.getElementById('modal-title').textContent = 'Novo Registro TIM';
-            document.getElementById('save-btn').textContent = 'Cadastrar Protocolo';
+            document.getElementById('modal-title').textContent = state.currentUser.role === 'admin' ? 'Novo Registro TIM' : 'Nova Solicitação';
+            document.getElementById('save-btn').textContent = 'Enviar Solicitação';
             
             document.getElementById('ticket-form').reset();
             document.getElementById('data').value = new Date().toISOString().split('T')[0];
             document.getElementById('prioridade').value = 'Média';
+            document.getElementById('status').value = 'Chamado Aberto';
             renderPrioritySelector();
+            
+            // Regra Obreiro: não vê a parte de administração ao criar
+            if (state.currentUser.role === 'obreiro') {
+                document.getElementById('admin-fields').classList.add('hidden');
+            } else {
+                document.getElementById('admin-fields').classList.remove('hidden');
+            }
             
             document.getElementById('modal').classList.remove('hidden');
         };
@@ -527,30 +739,45 @@
             if (!ticket) return;
 
             state.editingId = id;
-            document.getElementById('modal-title').textContent = 'Editar Protocolo';
-            document.getElementById('save-btn').textContent = 'Salvar Alterações';
-
+            document.getElementById('modal-title').textContent = state.currentUser.role === 'admin' ? 'Gerenciar Solicitação' : 'Detalhes da Solicitação';
+            
             document.getElementById('data').value = ticket.data || '';
             document.getElementById('linha').value = ticket.linha || '';
             document.getElementById('protocolo').value = ticket.protocolo || '';
             document.getElementById('categoria').value = ticket.categoria || '';
             document.getElementById('descricao').value = ticket.descricao || '';
             document.getElementById('prioridade').value = ticket.prioridade || 'Média';
-            document.getElementById('status').value = ticket.status || '';
+            document.getElementById('status').value = ticket.status || 'Chamado Aberto';
             document.getElementById('resolucao').value = ticket.resolucao || '';
             
             renderPrioritySelector();
+
+            if (state.currentUser.role === 'obreiro') {
+                // Obreiro só pode ver e não salvar alterações
+                document.getElementById('admin-fields').classList.remove('hidden'); // Ele pode ver a resposta do Admin
+                document.getElementById('save-btn').classList.add('hidden'); // Oculta botão de salvar
+                // Desabilitar campos
+                ['data','linha','protocolo','categoria','descricao','status','resolucao'].forEach(fid => document.getElementById(fid).disabled = true);
+            } else {
+                document.getElementById('admin-fields').classList.remove('hidden');
+                document.getElementById('save-btn').classList.remove('hidden');
+                document.getElementById('save-btn').textContent = 'Salvar Alterações';
+                ['data','linha','protocolo','categoria','descricao','status','resolucao'].forEach(fid => document.getElementById(fid).disabled = false);
+            }
+
             document.getElementById('modal').classList.remove('hidden');
         };
 
         window.closeModal = () => {
             document.getElementById('modal').classList.add('hidden');
+            // Re-habilitar inputs caso tenham sido desativados pelo view do Obreiro
+            ['data','linha','protocolo','categoria','descricao','status','resolucao'].forEach(fid => document.getElementById(fid).disabled = false);
+            document.getElementById('save-btn').classList.remove('hidden');
         };
 
         window.deleteTicket = async (id) => {
-            if (!state.user) return;
+            if (!state.user || state.currentUser.role !== 'admin') return;
             if (!confirm("Deseja realmente excluir este registro?")) return;
-            
             try {
                 await deleteDoc(doc(db, 'artifacts', 'tim-tracker', 'public', 'data', 'atendimentos', id));
             } catch (error) {
@@ -561,24 +788,26 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
-            if (!state.user) {
-                alert("Aguarde a conexão com o servidor...");
-                return;
-            }
+            if (!state.user) return;
 
             const formData = {
                 data: document.getElementById('data').value,
                 linha: document.getElementById('linha').value,
-                protocolo: document.getElementById('protocolo').value,
                 categoria: document.getElementById('categoria').value,
                 descricao: document.getElementById('descricao').value,
-                prioridade: document.getElementById('prioridade').value,
-                status: document.getElementById('status').value,
-                resolucao: document.getElementById('resolucao').value
             };
 
+            // Somente inclui campos de Admin se ele puder editá-los
+            if (state.currentUser.role === 'admin') {
+                formData.protocolo = document.getElementById('protocolo').value || '';
+                formData.prioridade = document.getElementById('prioridade').value || 'Média';
+                formData.status = document.getElementById('status').value || 'Chamado Aberto';
+                formData.resolucao = document.getElementById('resolucao').value || '';
+            } else if (!state.editingId) {
+                formData.status = 'Chamado Aberto';
+            }
+
             const btn = document.getElementById('save-btn');
-            const originalText = btn.textContent;
             btn.textContent = 'Salvando...';
             btn.disabled = true;
 
@@ -590,20 +819,85 @@
                 } else {
                     await addDoc(colRef, {
                         ...formData,
+                        autorNome: state.currentUser.nome,
+                        autorEmail: state.currentUser.email,
+                        autorRole: state.currentUser.role,
                         createdAt: new Date().toISOString()
                     });
                 }
                 window.closeModal();
             } catch (error) {
                 console.error("Erro ao salvar no Firestore:", error);
-                alert("Erro ao salvar o protocolo. Verifique as regras do seu Firebase.");
+                alert("Erro ao salvar a solicitação.");
             } finally {
-                btn.textContent = originalText;
                 btn.disabled = false;
             }
         }
 
-        // --- START ---
+        // --- USER CONFIG ACTIONS ---
+        window.openUserModal = () => {
+            state.editingUserId = null;
+            document.getElementById('user-modal-title').textContent = 'Adicionar Usuário';
+            document.getElementById('user-form').reset();
+            document.getElementById('user-modal').classList.remove('hidden');
+        };
+
+        window.editUser = (id) => {
+            const user = state.usersList.find(u => u.id === id);
+            if (!user) return;
+            state.editingUserId = id;
+            document.getElementById('user-modal-title').textContent = 'Editar Usuário';
+            document.getElementById('u-nome').value = user.nome;
+            document.getElementById('u-email').value = user.email;
+            document.getElementById('u-senha').value = user.senha;
+            document.getElementById('u-role').value = user.role;
+            document.getElementById('user-modal').classList.remove('hidden');
+        };
+
+        window.closeUserModal = () => document.getElementById('user-modal').classList.add('hidden');
+
+        async function handleUserSubmit(e) {
+            e.preventDefault();
+            if (state.currentUser.role !== 'admin') return;
+
+            const userData = {
+                nome: document.getElementById('u-nome').value.trim(),
+                email: document.getElementById('u-email').value.trim(),
+                senha: document.getElementById('u-senha').value.trim(),
+                role: document.getElementById('u-role').value
+            };
+
+            const btn = document.getElementById('user-save-btn');
+            btn.textContent = 'Salvando...';
+            btn.disabled = true;
+
+            try {
+                const colRef = collection(db, 'artifacts', 'tim-tracker', 'public', 'data', 'users');
+                if (state.editingUserId) {
+                    await updateDoc(doc(colRef, state.editingUserId), userData);
+                } else {
+                    await addDoc(colRef, userData);
+                }
+                window.closeUserModal();
+            } catch (error) {
+                console.error("Erro ao salvar usuário:", error);
+                alert("Erro ao salvar usuário.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        window.deleteUser = async (id) => {
+            if (state.currentUser.role !== 'admin') return;
+            if (!confirm("Deseja realmente remover este usuário? Ele perderá o acesso.")) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', 'tim-tracker', 'public', 'data', 'users', id));
+            } catch (error) {
+                alert("Erro ao excluir usuário.");
+            }
+        };
+
+        // --- BOOTSTRAP ---
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('login-form').addEventListener('submit', handleLogin);
