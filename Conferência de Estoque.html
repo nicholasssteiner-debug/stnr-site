@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conferência Online (Firebase)</title>
+    
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDKs (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0; /* Slate 200 */
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .glass-panel {
+            background-color: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .verified-row {
+            background-color: rgba(6, 78, 59, 0.2) !important;
+            border-left: 4px solid #10b981;
+        }
+        .verified-text {
+            color: #94a3b8;
+            text-decoration: line-through;
+        }
+
+        .tab-btn {
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            color: #3b82f6; 
+            border-bottom-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .input-dark {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 0.5rem;
+        }
+        .input-dark:focus {
+            border-color: #3b82f6;
+            outline: none;
+            ring: 2px solid rgba(59, 130, 246, 0.3);
+        }
+
+        /* Animação para o Lobby */
+        .lobby-bg {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+        
+        .logo-img { object-fit: contain; }
+
+        /* Estilos para Filtros Ativos nos Cards */
+        .card-filter {
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-filter:hover {
+            transform: translateY(-2px);
+            background-color: rgba(30, 41, 59, 0.9);
+        }
+        .card-filter.active-filter {
+            background-color: rgba(51, 65, 85, 0.8);
+            border-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+        .card-filter.active-filter::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: currentColor; 
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ================= TELA DE LOGIN / LOBBY ================= -->
+    <div id="lobby-screen" class="fixed inset-0 z-[100] lobby-bg flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+            <div class="text-center mb-8">
+                <!-- LOGO GRANDE -->
+                <div class="flex justify-center mb-6">
+                    <img src="image_b2e299.png" alt="Logo da Empresa" class="h-24 w-auto drop-shadow-xl logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="hidden bg-indigo-600 w-20 h-20 rounded-xl items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <i class="fa-solid fa-boxes-stacked text-4xl text-white"></i>
+                    </div>
+                </div>
+                
+                <h1 class="text-2xl font-bold text-white">Conferência de Estoque</h1>
+                <p class="text-slate-400 text-sm mt-2">Sistema Colaborativo em Tempo Real</p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Criar Sala -->
+                <button onclick="createRoom()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Criar Nova Sala
+                </button>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-slate-700"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-500 text-xs">OU ENTRAR EM EXISTENTE</span>
+                    <div class="flex-grow border-t border-slate-700"></div>
+                </div>
+
+                <!-- Entrar Sala -->
+                <div class="flex gap-2">
+                    <input type="text" id="roomInput" placeholder="ID da Sala (ex: AB12CD)" class="input-dark flex-1 px-4 py-3 text-center uppercase tracking-widest font-mono font-bold">
+                    <button onclick="joinRoom()" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                        Entrar
+                    </button>
+                </div>
+                
+                <!-- ÁREA DE ERRO -->
+                <div id="error-container" class="hidden bg-red-900/50 border border-red-500 rounded-lg p-3 mt-4 text-left">
+                    <div class="flex items-center gap-2 text-red-300 font-bold text-xs uppercase mb-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Erro de Conexão
+                    </div>
+                    <p id="lobby-error-msg" class="text-white text-xs leading-relaxed mb-2"></p>
+                    <p id="lobby-error-action" class="text-yellow-300 text-xs font-semibold pt-1"></p>
+                    <button onclick="retryConnection()" class="mt-3 w-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded transition-colors">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> Tentar Novamente
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <p class="text-[10px] text-slate-600">Conectado ao Firebase Seguro</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= APLICAÇÃO PRINCIPAL ================= -->
+    <div id="app-container" class="hidden flex flex-col min-h-screen">
+        <!-- Navbar -->
+        <nav class="border-b border-slate-700 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+                            <img src="image_b2e299.png" alt="Logo" class="h-full w-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-solid fa-boxes-stacked text-white\'></i>'">
+                        </div>
+                        
+                        <div>
+                            <h1 class="text-xl font-bold text-white tracking-tight">Conferência V2</h1>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <p class="text-xs text-slate-400 font-mono">Sala: <span id="display-room-id" class="text-white font-bold">---</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <button onclick="copyRoomId()" class="text-xs text-slate-400 hover:text-white border border-slate-700 px-2 py-1 rounded bg-slate-800">
+                            <i class="fa-regular fa-copy"></i> Copiar ID
+                        </button>
+
+                        <div class="h-6 w-px bg-slate-700"></div>
+
+                        <!-- Tab Navigation -->
+                        <div class="flex space-x-2 bg-slate-800 p-1 rounded-lg">
+                            <button onclick="switchTab('conferencia')" id="btn-conferencia" class="tab-btn active px-4 py-2 text-sm font-medium rounded-md text-slate-300 hover:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-clipboard-check"></i> Conferência
+                            </button>
+                            <button onclick="switchTab('gestao')" id="btn-gestao" class="tab-btn px-4 py-2 text-sm font-medium rounded-md text-slate-300 hover:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-gear"></i> Gestão
+                            </button>
+                        </div>
+                        
+                        <button onclick="location.reload()" class="text-slate-400 hover:text-red-400 text-sm ml-2" title="Sair da Sala">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow p-6 max-w-[1600px] mx-auto w-full">
+
+            <!-- ================= ABA GESTÃO ================= -->
+            <section id="tab-gestao-content" class="hidden space-y-8 animate-fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 1. Gerenciar Departamentos -->
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span class="bg-purple-500/20 text-purple-400 p-1.5 rounded"><i class="fa-solid fa-building"></i></span>
+                            1. Cadastrar Departamentos
+                        </h2>
+                        <div class="flex gap-2 mb-4">
+                            <input type="text" id="newDeptInput" placeholder="Ex: Almoxarifado, TI..." class="input-dark flex-1 px-4 py-2">
+                            <button onclick="addDepartment()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg transition-colors">Adicionar</button>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-2 min-h-[100px] max-h-[200px] overflow-y-auto border border-slate-700">
+                            <ul id="deptList" class="space-y-2">
+                                <li class="text-center text-slate-500 text-sm py-2">Carregando...</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 2. Importar Dados -->
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span class="bg-emerald-500/20 text-emerald-400 p-1.5 rounded"><i class="fa-solid fa-file-csv"></i></span>
+                            2. Importar CSV
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Departamento de Destino</label>
+                                <select id="importDeptSelect" class="input-dark w-full px-4 py-2">
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Mês de Referência</label>
+                                    <input type="month" id="importMonthInput" class="input-dark w-full px-4 py-2 text-slate-300">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Codificação</label>
+                                    <select id="encodingSelect" class="input-dark w-full px-4 py-2">
+                                        <option value="UTF-8">UTF-8 (Web)</option>
+                                        <option value="ISO-8859-1">ISO-8859-1 (Excel)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-slate-700">
+                                <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="processCSV(event)">
+                                <button onclick="triggerImport()" id="btnImportAction" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-medium transition-all shadow-lg shadow-emerald-900/20">
+                                    <i class="fa-solid fa-upload mr-2"></i> Selecionar Arquivo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= ABA CONFERÊNCIA ================= -->
+            <section id="tab-conferencia-content" class="space-y-6 animate-fade-in">
+                <!-- Filtros -->
+                <div class="glass-panel p-4 rounded-xl border-l-4 border-indigo-500 flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-800">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-filter text-indigo-400"></i>
+                        <span class="font-bold text-white text-sm uppercase tracking-wider">Filtros:</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                        <select id="confDeptSelect" onchange="refreshDashboard()" class="input-dark px-3 py-2 text-sm min-w-[200px]">
+                            <option value="">Selecione o Departamento...</option>
+                        </select>
+                        <input type="month" id="confMonthSelect" onchange="refreshDashboard()" class="input-dark px-3 py-2 text-sm text-slate-300">
+                    </div>
+                </div>
+
+                <!-- Dashboard (Cards Interativos) -->
+                <div id="dashboard-content" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                        
+                        <!-- Card Total (Filtro: Todos) -->
+                        <div onclick="setTableFilter('all')" id="card-all" class="glass-panel card-filter active-filter p-4 rounded-lg border-t-2 border-blue-500 text-blue-500">
+                            <p class="text-xs text-slate-400">Total de Itens</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="stat-total">0</h3>
+                            <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-list mr-1"></i> Mostrar Todos</p>
+                        </div>
+
+                        <!-- Card Conferidos (Filtro: Verified) -->
+                        <div onclick="setTableFilter('verified')" id="card-verified" class="glass-panel card-filter p-4 rounded-lg border-t-2 border-emerald-500 text-emerald-500">
+                            <p class="text-xs text-slate-400">Itens Conferidos</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="stat-verified">0</h3>
+                            <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-filter mr-1"></i> Filtrar Conferidos</p>
+                        </div>
+
+                        <!-- Card Financeiro (Display Duplo) -->
+                        <div class="glass-panel p-4 rounded-lg border-t-2 border-amber-500">
+                            <p class="text-xs text-slate-400 mb-1">Financeiro (Conferido / Total)</p>
+                            <h3 class="text-lg font-bold text-emerald-400" id="stat-money-verified">R$ 0,00</h3>
+                            <p class="text-xs text-slate-500">de <span id="stat-money-total" class="text-slate-300">R$ 0,00</span> previsto</p>
+                            
+                            <!-- Barra de Progresso Financeiro -->
+                            <div class="w-full bg-slate-700 h-1.5 mt-3 rounded-full overflow-hidden">
+                                <div id="money-progress-bar" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Card Divergências (Filtro: Divergence) -->
+                        <div onclick="setTableFilter('divergence')" id="card-divergence" class="glass-panel card-filter p-4 rounded-lg border-t-2 border-purple-500 text-purple-500">
+                            <p class="text-xs text-slate-400">Divergências de Qtd</p>
+                            <h3 class="text-2xl font-bold text-white mt-1" id="stat-div">0</h3>
+                            <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-filter mr-1"></i> Filtrar Erros</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div class="lg:col-span-1 space-y-6">
+                            <div class="glass-panel p-4 rounded-xl">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Buscar</label>
+                                <input type="text" id="tableSearch" placeholder="SKU ou Nome..." class="input-dark w-full mt-2 px-3 py-2 text-sm" onkeyup="renderTable()">
+                                <div class="flex gap-2 mt-3">
+                                    <button onclick="setTableFilter('all')" class="flex-1 py-1 text-xs bg-slate-700 rounded text-slate-300 hover:bg-slate-600 transition-colors">Limpar Filtros</button>
+                                    <button onclick="setTableFilter('pending')" class="flex-1 py-1 text-xs bg-slate-700 rounded text-slate-300 hover:bg-slate-600 transition-colors">Pendentes</button>
+                                </div>
+                            </div>
+                            <div class="glass-panel p-4 rounded-xl">
+                                <h3 class="text-xs font-bold text-white mb-2">Progresso da Conferência</h3>
+                                <div class="h-40 relative"><canvas id="statusChart"></canvas></div>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-3">
+                            <div class="glass-panel rounded-xl overflow-hidden flex flex-col h-[600px]">
+                                <div class="overflow-auto flex-grow">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead class="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0 z-10">
+                                            <tr>
+                                                <th class="px-4 py-3">Status</th>
+                                                <th class="px-4 py-3">Produto / SKU</th>
+                                                <th class="px-4 py-3 text-center">Qtd Sist.</th>
+                                                <th class="px-4 py-3 text-center w-20">Qtd Real</th>
+                                                <th class="px-4 py-3">Observações</th>
+                                                <th class="px-4 py-3 text-right">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody" class="divide-y divide-slate-700/50 text-sm text-slate-300"></tbody>
+                                    </table>
+                                </div>
+                                <div class="bg-slate-800 px-4 py-2 text-xs text-slate-500 border-t border-slate-700 flex justify-between items-center">
+                                    <span>Sincronizado em tempo real.</span>
+                                    <span id="filter-status-text" class="text-indigo-400 font-bold uppercase text-[10px]"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashboard-empty" class="text-center py-20 opacity-50">
+                    <i class="fa-solid fa-filter text-6xl mb-4 text-slate-600"></i>
+                    <h2 class="text-xl font-bold text-white">Selecione os Filtros</h2>
+                    <p class="text-slate-400">Escolha um Departamento e um Mês para ver os dados desta sala.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="fixed inset-0 bg-black/80 hidden z-[200] flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center max-w-sm">
+            <div class="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-green-500">
+                <i class="fa-solid fa-check text-xl"></i>
+            </div>
+            <h3 class="text-white font-bold text-lg">Sucesso!</h3>
+            <p id="feedbackText" class="text-slate-400 text-sm mt-2 mb-4">Operação realizada.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmc7hzT1vfkkq4g9-WxKsgaL-Gg1ANbfE",
+            authDomain: "conferencia-de-estoque.firebaseapp.com",
+            projectId: "conferencia-de-estoque",
+            storageBucket: "conferencia-de-estoque.firebasestorage.app",
+            messagingSenderId: "364443088616",
+            appId: "1:364443088616:web:6dd3a0f9c246da58da7b5d",
+            measurementId: "G-8WK583J28W"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = 'inventory-v3-rooms'; 
+
+        // --- 2. GLOBAL STATE ---
+        let currentRoomId = null;
+        let inventoryData = [];
+        let roomConfig = { departments: [] };
+        let currentChart = null;
+        let tableFilterMode = 'all'; // all, pending, verified, divergence
+
+        // --- 3. LOBBY & AUTH LOGIC ---
+        function createRoom() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            enterApp(result, true);
+        }
+
+        function joinRoom() {
+            const input = document.getElementById('roomInput');
+            const id = input.value.trim().toUpperCase();
+            if (id.length < 3) {
+                showError("O ID da sala deve ter pelo menos 3 caracteres.", "Verifique o código digitado.");
+                return;
+            }
+            enterApp(id, false);
+        }
+
+        function retryConnection() {
+            const id = document.getElementById('roomInput').value.trim().toUpperCase();
+            if(id) {
+                document.getElementById('error-container').classList.add('hidden');
+                enterApp(id, false);
+            } else {
+                createRoom();
+            }
+        }
+
+        async function enterApp(roomId, isNew) {
+            if(event && event.target) {
+                var originalText = event.target.innerHTML;
+                event.target.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ...`;
+            }
+            
+            document.getElementById('error-container').classList.add('hidden');
+
+            try {
+                await auth.signInAnonymously();
+                
+                if(!isNew) {
+                    await db.collection('artifacts').doc(appId)
+                        .collection('public').doc('data')
+                        .collection('rooms').doc(roomId).get();
+                } else {
+                     await db.collection('artifacts').doc(appId)
+                        .collection('public').doc('data')
+                        .collection('rooms').doc(roomId)
+                        .set({
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            departments: []
+                        }, { merge: true });
+                }
+
+                currentRoomId = roomId;
+                document.getElementById('display-room-id').innerText = roomId;
+
+                document.getElementById('lobby-screen').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+
+                setupRealtimeListeners();
+
+                const today = new Date();
+                const monthStr = today.toISOString().slice(0, 7);
+                document.getElementById('importMonthInput').value = monthStr;
+
+            } catch (error) {
+                console.error("ERRO FIREBASE:", error);
+                
+                let friendlyMsg = "Ocorreu um erro desconhecido: " + error.message;
+                let actionMsg = "Tente recarregar a página.";
+
+                if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
+                    friendlyMsg = "O Login Anônimo não está ativado no seu projeto Firebase.";
+                    actionMsg = "Acesse Console Firebase > Authentication > Sign-in method > Ative 'Anônimo'.";
+                } else if (error.code === 'permission-denied') {
+                    friendlyMsg = "O banco de dados bloqueou o acesso. Suas Regras estão como 'if false'.";
+                    actionMsg = "Acesse Console Firebase > Firestore > Regras e mude para 'allow read, write: if true;'";
+                }
+
+                showError(friendlyMsg, actionMsg);
+                if(event && event.target) event.target.innerHTML = originalText;
+            }
+        }
+
+        function showError(msg, action) {
+            const errContainer = document.getElementById('error-container');
+            document.getElementById('lobby-error-msg').innerText = msg;
+            document.getElementById('lobby-error-action').innerText = action;
+            errContainer.classList.remove('hidden');
+        }
+
+        function copyRoomId() {
+            navigator.clipboard.writeText(currentRoomId);
+            showFeedback("ID da Sala copiado!");
+        }
+
+        // --- 4. FIREBASE LISTENERS ---
+        function setupRealtimeListeners() {
+            db.collection('artifacts').doc(appId)
+              .collection('public').doc('data')
+              .collection('rooms').doc(currentRoomId)
+              .onSnapshot(doc => {
+                  if (doc.exists) {
+                      roomConfig = doc.data();
+                      if(!roomConfig.departments) roomConfig.departments = [];
+                      updateDeptLists();
+                  }
+              });
+
+            db.collection('artifacts').doc(appId)
+              .collection('public').doc('data')
+              .collection('inventory_items')
+              .where('roomId', '==', currentRoomId)
+              .onSnapshot(snapshot => {
+                  inventoryData = [];
+                  snapshot.forEach(doc => {
+                      inventoryData.push(doc.data());
+                  });
+                  refreshDashboard(); 
+              });
+        }
+
+        // --- 5. LOGICA DE NEGOCIO ---
+        async function addDepartment() {
+            const input = document.getElementById('newDeptInput');
+            const name = input.value.trim();
+            if(!name) return;
+
+            if(!roomConfig.departments.includes(name)) {
+                const newDepts = [...roomConfig.departments, name];
+                await db.collection('artifacts').doc(appId)
+                        .collection('public').doc('data')
+                        .collection('rooms').doc(currentRoomId)
+                        .update({ departments: newDepts });
+                
+                input.value = '';
+                showFeedback("Departamento adicionado!");
+            }
+        }
+
+        function updateDeptLists() {
+            const listEl = document.getElementById('deptList');
+            if (roomConfig.departments.length === 0) {
+                listEl.innerHTML = '<li class="text-center text-slate-500 text-sm py-2">Nenhum departamento.</li>';
+            } else {
+                listEl.innerHTML = roomConfig.departments.map(d => `
+                    <li class="flex justify-between items-center bg-slate-700/50 px-3 py-2 rounded text-sm text-slate-300">
+                        <span>${d}</span>
+                    </li>
+                `).join('');
+            }
+
+            const renderOptions = '<option value="">Selecione...</option>' + 
+                roomConfig.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            
+            document.getElementById('importDeptSelect').innerHTML = renderOptions;
+            
+            const confSelect = document.getElementById('confDeptSelect');
+            const currentVal = confSelect.value;
+            confSelect.innerHTML = renderOptions;
+            confSelect.value = currentVal;
+        }
+
+        function triggerImport() {
+            const dept = document.getElementById('importDeptSelect').value;
+            const month = document.getElementById('importMonthInput').value;
+            if(!dept || !month) { alert("Selecione Depto e Mês."); return; }
+            document.getElementById('csvInput').click();
+        }
+
+        function processCSV(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const btn = document.getElementById('btnImportAction');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "Lendo arquivo...";
+
+            const dept = document.getElementById('importDeptSelect').value;
+            const month = document.getElementById('importMonthInput').value;
+            const encoding = document.getElementById('encodingSelect').value;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                delimiter: ";", 
+                encoding: encoding,
+                complete: async (results) => {
+                    btn.innerHTML = "Enviando...";
+                    
+                    const batchLimit = 500;
+                    let batch = db.batch();
+                    let count = 0;
+                    let totalProcessed = 0;
+
+                    for(const row of results.data) {
+                        if(!row['SKU'] || !row['Produto']) continue;
+
+                        const sku = row['SKU'].trim();
+                        const uniqueId = `${currentRoomId}_${sku}_${month}_${dept.replace(/\s+/g, '')}`; 
+                        // Melhorar a limpeza do preço
+                        const priceStr = row['Preço Total (R$)'] || "0";
+                        const price = parseFloat(priceStr.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+                        const qty = parseInt(row['Quantidade']) || 0;
+
+                        const docRef = db.collection('artifacts').doc(appId)
+                                         .collection('public').doc('data')
+                                         .collection('inventory_items').doc(uniqueId);
+
+                        const itemData = {
+                            id: uniqueId,
+                            roomId: currentRoomId, 
+                            sku: sku,
+                            produto: row['Produto'],
+                            categoria_original: row['Categoria'] || 'Geral',
+                            unidade: row['Unidade'] || 'UN',
+                            preco_total: price,
+                            qtd_sistema: qty,
+                            departamento_ref: dept,
+                            mes_ref: month,
+                            qtd_real: qty, 
+                            conferido: false,
+                            observacoes: ''
+                        };
+
+                        batch.set(docRef, itemData, { merge: true });
+                        count++;
+                        totalProcessed++;
+
+                        if (count >= batchLimit) {
+                            await batch.commit();
+                            batch = db.batch();
+                            count = 0;
+                        }
+                    }
+
+                    if (count > 0) await batch.commit();
+
+                    showFeedback(`${totalProcessed} itens importados!`);
+                    btn.innerHTML = originalText;
+                    event.target.value = '';
+                }
+            });
+        }
+
+        function refreshDashboard() {
+            renderTable();
+            updateStatsAndCharts();
+        }
+
+        function getFilteredData() {
+            const dept = document.getElementById('confDeptSelect').value;
+            const month = document.getElementById('confMonthSelect').value;
+            const search = document.getElementById('tableSearch').value.toLowerCase();
+            const contentDiv = document.getElementById('dashboard-content');
+            const emptyDiv = document.getElementById('dashboard-empty');
+
+            if(!dept || !month) {
+                contentDiv.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                return [];
+            }
+
+            contentDiv.classList.remove('hidden');
+            emptyDiv.classList.add('hidden');
+
+            // Filtragem Base
+            let items = inventoryData.filter(item => {
+                const matchMeta = item.departamento_ref === dept && item.mes_ref === month;
+                if(!matchMeta) return false;
+                const matchSearch = item.produto.toLowerCase().includes(search) || item.sku.toLowerCase().includes(search);
+                return matchSearch;
+            });
+
+            // Filtragem de Modos (Cards)
+            return items.filter(item => {
+                if (tableFilterMode === 'all') return true;
+                if (tableFilterMode === 'pending') return !item.conferido;
+                if (tableFilterMode === 'verified') return item.conferido;
+                if (tableFilterMode === 'divergence') return item.conferido && (item.qtd_sistema !== item.qtd_real);
+                return true;
+            }).sort((a,b) => (a.conferido === b.conferido) ? a.produto.localeCompare(b.produto) : a.conferido ? 1 : -1);
+        }
+
+        function setTableFilter(mode) {
+            tableFilterMode = mode;
+            
+            // Visual Updates on Cards
+            document.querySelectorAll('.card-filter').forEach(el => el.classList.remove('active-filter'));
+            
+            if(mode === 'all') document.getElementById('card-all').classList.add('active-filter');
+            if(mode === 'verified') document.getElementById('card-verified').classList.add('active-filter');
+            if(mode === 'divergence') document.getElementById('card-divergence').classList.add('active-filter');
+
+            // Update footer text
+            const labels = {
+                'all': 'Mostrando Todos os Itens',
+                'pending': 'Filtrando: Pendentes',
+                'verified': 'Filtrando: Apenas Conferidos',
+                'divergence': 'Filtrando: Apenas Divergências'
+            };
+            document.getElementById('filter-status-text').innerText = labels[mode] || '';
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const data = getFilteredData();
+            const tbody = document.getElementById('tableBody');
+            
+            if(data.length === 0) {
+                const dept = document.getElementById('confDeptSelect').value;
+                if(dept) tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-500">Nenhum item encontrado com este filtro.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                const isVerified = item.conferido;
+                const rowClass = isVerified ? 'verified-row' : 'hover:bg-slate-700/30';
+                
+                let qtdIcon = '';
+                if(isVerified) {
+                    if(item.qtd_real !== item.qtd_sistema) qtdIcon = '<span class="text-red-400 ml-1 font-bold">⚠</span>';
+                    else qtdIcon = '<span class="text-green-400 ml-1">✓</span>';
+                }
+
+                return `
+                <tr class="border-b border-slate-700/50 transition-colors ${rowClass}">
+                    <td class="px-4 py-3">
+                        <span class="text-xs px-2 py-1 rounded ${isVerified ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-500'}">
+                            ${isVerified ? 'Conferido' : 'Pendente'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-white ${isVerified ? 'verified-text' : ''}">${item.produto}</div>
+                        <div class="text-xs text-slate-500">SKU: ${item.sku}</div>
+                    </td>
+                    <td class="px-4 py-3 text-center text-slate-400">${item.qtd_sistema}</td>
+                    <td class="px-4 py-3 text-center">
+                        <input type="number" value="${item.qtd_real}" 
+                            onchange="updateItem('${item.id}', 'qtd_real', this.value)"
+                            class="input-dark w-16 text-center text-sm p-1 ${isVerified ? 'opacity-50' : ''}"
+                            ${isVerified ? 'disabled' : ''}>
+                        ${qtdIcon}
+                    </td>
+                    <td class="px-4 py-3">
+                        <div contenteditable="${!isVerified}" 
+                            onblur="updateItem('${item.id}', 'observacoes', this.innerText)"
+                            class="text-sm text-slate-300 p-1 border border-transparent hover:border-slate-600 rounded cursor-text min-h-[25px]">
+                            ${item.observacoes}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="toggleVerify('${item.id}', ${!isVerified})"
+                            class="text-xs font-bold px-3 py-1.5 rounded transition shadow-lg ${isVerified ? 'bg-slate-700 text-slate-400' : 'bg-indigo-600 text-white hover:bg-indigo-500'}">
+                            ${isVerified ? 'Reabrir' : 'Conferir'}
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function updateItem(docId, field, value) {
+            if(field === 'qtd_real') value = parseFloat(value);
+            db.collection('artifacts').doc(appId)
+              .collection('public').doc('data')
+              .collection('inventory_items').doc(docId)
+              .update({ [field]: value });
+        }
+
+        function toggleVerify(docId, status) {
+            db.collection('artifacts').doc(appId)
+              .collection('public').doc('data')
+              .collection('inventory_items').doc(docId)
+              .update({ conferido: status });
+            if(status) showFeedback("Item conferido!");
+        }
+
+        function updateStatsAndCharts() {
+            // Calcular stats baseados em TODOS os itens do departamento/mês (independente do filtro de tabela atual)
+            const dept = document.getElementById('confDeptSelect').value;
+            const month = document.getElementById('confMonthSelect').value;
+            
+            // Dados brutos do contexto
+            const allContextData = inventoryData.filter(item => 
+                item.departamento_ref === dept && item.mes_ref === month
+            );
+
+            const total = allContextData.length;
+            const verified = allContextData.filter(i => i.conferido).length;
+            const divergence = allContextData.filter(i => i.conferido && i.qtd_sistema !== i.qtd_real).length;
+            
+            // Financeiro
+            const totalMoney = allContextData.reduce((acc, curr) => acc + (curr.preco_total || 0), 0);
+            const verifiedMoney = allContextData.filter(i => i.conferido).reduce((acc, curr) => acc + (curr.preco_total || 0), 0);
+            
+            // Updates de Texto
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-verified').innerText = verified;
+            document.getElementById('stat-div').innerText = divergence;
+            
+            // Updates Financeiro
+            document.getElementById('stat-money-verified').innerText = verifiedMoney.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            document.getElementById('stat-money-total').innerText = totalMoney.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            
+            const progress = totalMoney > 0 ? (verifiedMoney / totalMoney) * 100 : 0;
+            document.getElementById('money-progress-bar').style.width = `${progress}%`;
+
+            // Gráfico
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if(currentChart) currentChart.destroy();
+
+            currentChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Conferido', 'Pendente'],
+                    datasets: [{
+                        data: [verified, total - verified],
+                        backgroundColor: ['#10b981', '#334155'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { color: '#cbd5e1' } } }
+                }
+            });
+        }
+
+        function switchTab(tabName) {
+            document.getElementById('tab-gestao-content').classList.add('hidden');
+            document.getElementById('tab-conferencia-content').classList.add('hidden');
+            document.getElementById('btn-gestao').classList.remove('active');
+            document.getElementById('btn-conferencia').classList.remove('active');
+            document.getElementById(`tab-${tabName}-content`).classList.remove('hidden');
+            document.getElementById(`btn-${tabName}`).classList.add('active');
+        }
+
+        function showFeedback(msg) {
+            const modal = document.getElementById('feedbackModal');
+            document.getElementById('feedbackText').innerText = msg;
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.add('hidden'), 1500);
+        }
+
+    </script>
+</body>
+</html>
