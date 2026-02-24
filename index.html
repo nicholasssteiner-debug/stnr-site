@@ -19,8 +19,28 @@
     }
     h1 {
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       font-size: 32px;
+    }
+    .search-container {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .search-input {
+      width: 100%;
+      max-width: 400px;
+      padding: 12px 20px;
+      border-radius: 25px;
+      border: 1px solid #2d2d3a;
+      background: #1a1a27;
+      color: #ffffff;
+      font-size: 16px;
+      outline: none;
+      transition: 0.3s;
+    }
+    .search-input:focus {
+      border-color: #6c63ff;
+      box-shadow: 0 0 10px rgba(108, 99, 255, 0.2);
     }
     .grid {
       display: grid;
@@ -56,7 +76,11 @@
   <div class="container">
     <h1>STNR • Dashboards e Sistemas</h1>
 
-    <div class="grid">
+    <div class="search-container">
+      <input type="text" id="searchInput" class="search-input" onkeyup="filtrarSistemas()" placeholder="Pesquisar sistema...">
+    </div>
+
+    <div class="grid" id="cardGrid">
       <a class="card" href="Controle Formatura.html">
         <div class="card-title">Controle de Formatura</div>
         <div class="card-desc">Gerenciamento financeiro, lançamentos e alunos.</div>
@@ -92,12 +116,28 @@
         <div class="card-desc">Controle e verificação de inventário.</div>
       </a>
 
-      <a class="card" href="Recibos de Devolução - FAP">
+      <a class="card" href="Recibos de Devolução - FAP.html">
         <div class="card-title">Recibos de Devolução - FAP</div>
         <div class="card-desc">Controle e emissão de recibos de devolução da FAP.</div>
       </a>
-
     </div>
   </div>
+
+  <script>
+    function filtrarSistemas() {
+      let input = document.getElementById('searchInput');
+      let filter = input.value.toLowerCase();
+      let nodes = document.getElementsByClassName('card');
+
+      for (let i = 0; i < nodes.length; i++) {
+        let title = nodes[i].querySelector('.card-title').innerText.toLowerCase();
+        if (title.includes(filter)) {
+          nodes[i].style.display = "block";
+        } else {
+          nodes[i].style.display = "none";
+        }
+      }
+    }
+  </script>
 </body>
 </html>
