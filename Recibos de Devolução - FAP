@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Recibo de Devolução - FAP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .receipt-container { 
+                box-shadow: none !important; 
+                border: 1px solid #eee;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+            body > div { margin: 0; padding: 0; }
+        }
+        .receipt-container {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-view" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border-t-8 border-blue-900">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-blue-900">Contabilidade FAP</h1>
+                <p class="text-gray-500">Sistema de Recibos de Devolução</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">E-mail</label>
+                    <input type="email" id="login-email" placeholder="nome@exemplo.com" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 p-3 border">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Senha</label>
+                    <input type="password" id="login-senha" placeholder="Sua senha" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 p-3 border">
+                </div>
+                <button onclick="fazerLogin()" id="btn-login" class="w-full bg-blue-900 text-white py-3 rounded-lg font-bold hover:bg-blue-800 transition shadow-md mt-2 flex justify-center items-center gap-2">
+                    <span>Entrar no Sistema</span>
+                </button>
+                <p id="login-error" class="text-red-500 text-sm text-center hidden mt-2">Usuário ou senha incorretos.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SISTEMA PRINCIPAL -->
+    <div id="app-view" class="hidden">
+        <nav class="bg-blue-900 text-white shadow-md p-4 no-print">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="font-bold text-xl flex items-center gap-2">
+                    <span>Recibos FAP</span>
+                    <span class="text-xs bg-blue-700 py-1 px-2 rounded-full" id="user-role-badge">---</span>
+                </div>
+                <div class="flex gap-2 lg:gap-4 flex-wrap justify-center">
+                    <button onclick="mudarAba('gerar')" id="btn-aba-gerar" class="px-4 py-2 rounded-lg bg-blue-800 font-medium hover:bg-blue-700 transition">Gerar Recibo</button>
+                    <button onclick="mudarAba('historico')" id="btn-aba-historico" class="px-4 py-2 rounded-lg hover:bg-blue-700 transition">Histórico</button>
+                    <button onclick="mudarAba('usuarios')" id="btn-aba-usuarios" class="px-4 py-2 rounded-lg hover:bg-blue-700 transition hidden">Gerenciar Acessos</button>
+                    <button onclick="fazerLogout()" class="px-4 py-2 border border-blue-400 rounded-lg hover:bg-red-600 hover:border-red-600 transition ml-4">Sair</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto p-4 lg:p-8">
+            <div id="aba-gerar" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <!-- Formulário -->
+                <div class="bg-white p-6 rounded-xl shadow-md no-print overflow-y-auto max-h-[80vh]">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-800">Preencher Dados</h2>
+                    <div class="space-y-4">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <label class="block">
+                                <span class="text-blue-900 font-bold">Sua Área / Setor</span>
+                                <input type="text" id="input-area" placeholder="Ex: Caixa Pagador" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white p-2 border">
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4">
+                            <label class="block">
+                                <span class="text-gray-700 font-medium">Nome do Beneficiário</span>
+                                <input type="text" id="input-beneficiario" placeholder="Quem receberá o valor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 p-2 border">
+                            </label>
+                            <label class="block">
+                                <span class="text-gray-700 font-medium">CPF/CNPJ Beneficiário</span>
+                                <input type="text" id="input-cpf-ben" placeholder="000.000.000-00" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 p-2 border">
+                            </label>
+                        </div>
+                        <hr>
+                        <div>
+                            <span class="text-gray-700 font-medium block mb-2">Forma de Pagamento</span>
+                            <select id="input-forma" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 p-2 border">
+                                <option value="pix">PIX</option>
+                                <option value="conta">Agência e Conta</option>
+                            </select>
+                        </div>
+                        <div id="campos-conta" class="hidden space-y-4 bg-gray-50 p-4 rounded-lg border">
+                            <label class="block"><span class="text-gray-700 font-medium">Banco</span><input type="text" id="input-banco" class="mt-1 block w-full border p-2 rounded"></label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <label class="block"><span class="text-gray-700 font-medium">Agência</span><input type="text" id="input-agencia" class="mt-1 block w-full border p-2 rounded"></label>
+                                <label class="block"><span class="text-gray-700 font-medium">Conta</span><input type="text" id="input-conta" class="mt-1 block w-full border p-2 rounded"></label>
+                            </div>
+                        </div>
+                        <div id="campos-pix" class="space-y-4 bg-gray-50 p-4 rounded-lg border">
+                            <label class="block"><span class="text-gray-700 font-medium">Tipo de Chave</span><select id="input-chave-tipo" class="mt-1 block w-full border p-2 rounded"><option>CPF</option><option>CNPJ</option><option>E-mail</option><option>Telefone</option><option>Chave Aleatória</option></select></label>
+                            <label class="block"><span class="text-gray-700 font-medium">Chave PIX</span><input type="text" id="input-chave-valor" class="mt-1 block w-full border p-2 rounded"></label>
+                        </div>
+                        <hr>
+                        <label class="block"><span class="text-gray-700 font-medium">Descrição / Observações</span><textarea id="input-descricao" rows="2" class="mt-1 block w-full border p-2 rounded"></textarea></label>
+                        <label class="block"><span class="text-gray-700 font-medium text-lg">Valor da Devolução (R$)</span><input type="tel" id="input-valor" placeholder="0,00" class="mt-1 block w-full border-2 border-blue-200 p-3 text-lg font-bold text-blue-900 rounded"></label>
+                        <button onclick="salvarEImprimir()" id="btn-salvar" class="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition shadow-lg mt-4 text-lg">Salvar e Imprimir Recibo</button>
+                    </div>
+                </div>
+
+                <!-- Recibo (Preview) -->
+                <div class="flex justify-center items-start">
+                    <div id="receipt" class="receipt-container bg-white w-full max-w-[500px] p-8 shadow-2xl border-t-8 border-blue-900 text-sm">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-900">Recibo de<br>Devolução</h2>
+                                <div class="h-px bg-gray-300 my-2"></div>
+                                <p class="font-bold text-xs uppercase text-gray-700">Faculdade Adventista do Paraná</p>
+                                <p class="text-[10px] text-gray-500">CNPJ: 76.726.884/0003-90</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-red-600 font-bold text-lg border-b border-red-200" id="view-numero">Nº ----/---</span>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 p-3 border border-gray-200">
+                                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Beneficiário / Pagamento</p>
+                                <p><strong>NOME:</strong> <span id="view-beneficiario">---</span></p>
+                                <p><strong>CPF/CNPJ:</strong> <span id="view-cpf-ben">---</span></p>
+                                <div class="mt-2 pt-2 border-t border-gray-200">
+                                    <p><strong>FORMA DE PAGAMENTO:</strong> <span id="view-forma">PIX</span></p>
+                                    <div id="view-detalhes-pagamento" class="mt-1"></div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-3 border border-gray-200 min-h-[60px]">
+                                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Descrição / Observações</p>
+                                <p id="view-descricao" class="text-xs">---</p>
+                            </div>
+                            <div class="flex justify-between items-center bg-blue-900 text-white p-4 mt-6">
+                                <span class="font-bold uppercase tracking-wider">Total a Devolver:</span>
+                                <span class="text-xl font-bold">R$ <span id="view-valor">0,00</span></span>
+                            </div>
+                            <div class="mt-16 text-center">
+                                <div class="w-4/5 mx-auto border-b border-black mb-1"></div>
+                                <p class="text-xs uppercase font-bold">Contabilidade - <span id="view-area">...</span></p>
+                                <p class="text-[10px] text-gray-400 mt-1" id="view-data-hora"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HISTÓRICO -->
+            <div id="aba-historico" class="hidden no-print">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Histórico de Recibos Sincronizados</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-700 uppercase text-sm">
+                                    <th class="p-3 border-b">Número</th>
+                                    <th class="p-3 border-b">Data</th>
+                                    <th class="p-3 border-b">Beneficiário</th>
+                                    <th class="p-3 border-b">Valor</th>
+                                    <th class="p-3 border-b">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-historico"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USUÁRIOS -->
+            <div id="aba-usuarios" class="hidden no-print">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-md h-fit">
+                        <h2 class="text-xl font-bold mb-4 border-b pb-2">Novo Usuário</h2>
+                        <div class="space-y-4">
+                            <input type="email" id="novo-user-email" placeholder="E-mail" class="w-full border p-2 rounded">
+                            <input type="password" id="novo-user-senha" placeholder="Senha" class="w-full border p-2 rounded">
+                            <select id="novo-user-nivel" class="w-full border p-2 rounded">
+                                <option value="usuario">Apenas Visualizar/Emitir</option>
+                                <option value="gerente">Gerenciador/Admin</option>
+                            </select>
+                            <button onclick="adicionarUsuario()" class="w-full bg-blue-900 text-white py-2 rounded font-bold">Cadastrar</button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-md">
+                        <h2 class="text-xl font-bold mb-4 border-b pb-2">Gestão de Acessos</h2>
+                        <table class="w-full text-left">
+                            <thead><tr class="text-xs uppercase text-gray-400"><th class="p-2">E-mail</th><th class="p-2">Nível</th><th class="p-2">Ação</th></tr></thead>
+                            <tbody id="lista-usuarios"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais -->
+    <div id="modal-recibo" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50 p-4 no-print">
+        <div class="bg-white rounded-xl p-4 w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div id="modal-content" class="flex-1 overflow-y-auto p-4 flex justify-center"></div>
+            <div class="mt-4 flex justify-end gap-2">
+                <button onclick="fecharModal()" class="px-4 py-2 bg-gray-200 rounded">Fechar</button>
+                <button onclick="imprimirReciboAntigo()" class="px-4 py-2 bg-blue-900 text-white font-bold rounded">Re-imprimir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmc7hzT1vfkkq4g9-WxKsgaL-Gg1ANbfE",
+            authDomain: "conferencia-de-estoque.firebaseapp.com",
+            projectId: "conferencia-de-estoque",
+            storageBucket: "conferencia-de-estoque.firebasestorage.app",
+            messagingSenderId: "364443088616",
+            appId: "1:364443088616:web:6dd3a0f9c246da58da7b5d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'recibos-fap-v1';
+
+        // Globais do app
+        window.db = db;
+        window.auth = auth;
+        window.appId = appId;
+        window.recibos = [];
+        window.usuarios = [];
+        window.usuarioLogado = null;
+        window.proximoNumero = '';
+
+        // Autenticação Inicial (Rule 3)
+        async function start() {
+            try {
+                await signInAnonymously(auth);
+            } catch (err) { console.error("Auth failed", err); }
+        }
+        start();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                syncData();
+            }
+        });
+
+        // Sincronização em tempo real (Rule 1 & 2)
+        function syncData() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            // Sync Usuários
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'), (snap) => {
+                window.usuarios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Injetar usuário mestre se não existir
+                if (window.usuarios.length === 0) {
+                    const mestre = { email: 'nicholas.ganhadeiro@adventistas.org', senha: 'Fap1624', nivel: 'gerente' };
+                    addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'usuarios'), mestre);
+                }
+                if (window.abaAtiva === 'usuarios') renderUsuarios();
+            }, (err) => console.log(err));
+
+            // Sync Recibos
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'recibos'), (snap) => {
+                window.recibos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                atualizarProximoNumero();
+                if (window.abaAtiva === 'historico') renderHistorico();
+            }, (err) => console.log(err));
+        }
+    </script>
+
+    <script>
+        // Lógica da Interface
+        const inputs = {
+            area: document.getElementById('input-area'),
+            beneficiario: document.getElementById('input-beneficiario'),
+            cpfBen: document.getElementById('input-cpf-ben'),
+            descricao: document.getElementById('input-descricao'),
+            forma: document.getElementById('input-forma'),
+            banco: document.getElementById('input-banco'),
+            agencia: document.getElementById('input-agencia'),
+            conta: document.getElementById('input-conta'),
+            chaveTipo: document.getElementById('input-chave-tipo'),
+            chaveValor: document.getElementById('input-chave-valor'),
+            valor: document.getElementById('input-valor')
+        };
+
+        const views = {
+            numero: document.getElementById('view-numero'),
+            area: document.getElementById('view-area'),
+            beneficiario: document.getElementById('view-beneficiario'),
+            cpfBen: document.getElementById('view-cpf-ben'),
+            descricao: document.getElementById('view-descricao'),
+            forma: document.getElementById('view-forma'),
+            detalhes: document.getElementById('view-detalhes-pagamento'),
+            valor: document.getElementById('view-valor'),
+            dataHora: document.getElementById('view-data-hora')
+        };
+
+        window.abaAtiva = 'gerar';
+
+        function fazerLogin() {
+            const email = document.getElementById('login-email').value;
+            const senha = document.getElementById('login-senha').value;
+            const btn = document.getElementById('btn-login');
+            
+            btn.disabled = true;
+            btn.innerHTML = "Validando...";
+
+            setTimeout(() => {
+                const user = window.usuarios.find(u => u.email === email && u.senha === senha);
+                if (user) {
+                    window.usuarioLogado = user;
+                    document.getElementById('login-view').classList.add('hidden');
+                    document.getElementById('app-view').classList.remove('hidden');
+                    document.getElementById('user-role-badge').innerText = user.nivel === 'gerente' ? 'Gerenciador' : 'Usuário';
+                    if(user.nivel === 'gerente') document.getElementById('btn-aba-usuarios').classList.remove('hidden');
+                    updatePreview();
+                } else {
+                    document.getElementById('login-error').classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = "Entrar no Sistema";
+                }
+            }, 800);
+        }
+
+        function fazerLogout() {
+            window.usuarioLogado = null;
+            location.reload();
+        }
+
+        function mudarAba(abaId) {
+            window.abaAtiva = abaId;
+            ['gerar', 'historico', 'usuarios'].forEach(id => {
+                document.getElementById(`aba-${id}`).classList.add('hidden');
+                document.getElementById(`btn-aba-${id}`).classList.remove('bg-blue-800');
+            });
+            document.getElementById(`aba-${abaId}`).classList.remove('hidden');
+            document.getElementById(`btn-aba-${abaId}`).classList.add('bg-blue-800');
+
+            if(abaId === 'historico') renderHistorico();
+            if(abaId === 'usuarios') renderUsuarios();
+        }
+
+        function atualizarProximoNumero() {
+            const ano = new Date().getFullYear();
+            const recibosDoAno = window.recibos.filter(r => r.ano === ano);
+            const count = recibosDoAno.length + 1;
+            window.proximoNumero = `${ano}-${count.toString().padStart(3, '0')}`;
+            views.numero.innerText = `Nº ${window.proximoNumero}`;
+        }
+
+        function updatePreview() {
+            views.beneficiario.innerText = inputs.beneficiario.value || '---';
+            views.cpfBen.innerText = inputs.cpfBen.value || '---';
+            views.descricao.innerText = inputs.descricao.value || '---';
+            views.valor.innerText = inputs.valor.value || '0,00';
+            views.area.innerText = inputs.area.value || '...';
+            
+            const agora = new Date();
+            views.dataHora.innerText = `${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}`;
+
+            if (inputs.forma.value === 'pix') {
+                document.getElementById('campos-pix').classList.remove('hidden');
+                document.getElementById('campos-conta').classList.add('hidden');
+                views.detalhes.innerHTML = `<p><strong>CHAVE (${inputs.chaveTipo.value}):</strong> ${inputs.chaveValor.value || '---'}</p>`;
+            } else {
+                document.getElementById('campos-pix').classList.add('hidden');
+                document.getElementById('campos-conta').classList.remove('hidden');
+                views.detalhes.innerHTML = `<p><strong>BANCO:</strong> ${inputs.banco.value || '---'}</p><p><strong>AG/CC:</strong> ${inputs.agencia.value || '--'} / ${inputs.conta.value || '--'}</p>`;
+            }
+        }
+
+        async function salvarEImprimir() {
+            if (!inputs.beneficiario.value || !inputs.valor.value) {
+                alert("Preencha o beneficiário e o valor!");
+                return;
+            }
+
+            const btn = document.getElementById('btn-salvar');
+            btn.disabled = true;
+            btn.innerText = "Salvando na Nuvem...";
+
+            const agora = new Date();
+            const payload = {
+                numero: window.proximoNumero,
+                ano: agora.getFullYear(),
+                dataFull: agora.toISOString(),
+                beneficiario: inputs.beneficiario.value,
+                cpfBen: inputs.cpfBen.value,
+                valor: inputs.valor.value,
+                area: inputs.area.value,
+                descricao: inputs.descricao.value,
+                htmlOriginal: document.getElementById('receipt').outerHTML
+            };
+
+            try {
+                // Rule 1: Firestore Path
+                const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'recibos'), payload);
+                
+                executarImpressaoHTML(payload.htmlOriginal);
+                
+                inputs.beneficiario.value = '';
+                inputs.valor.value = '';
+                updatePreview();
+            } catch (e) {
+                alert("Erro ao salvar. Verifique sua conexão.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Salvar e Imprimir Recibo";
+            }
+        }
+
+        function executarImpressaoHTML(html) {
+            const janela = window.open('', '', 'height=600,width=800');
+            janela.document.write('<html><head><script src="https://cdn.tailwindcss.com"><\/script><style>body{font-family:monospace;padding:20px;}</style></head><body>');
+            janela.document.write(html);
+            janela.document.write('<script>window.onload=()=>{setTimeout(()=>{window.print();window.close();},500)}<\/script></body></html>');
+            janela.document.close();
+        }
+
+        function renderHistorico() {
+            const tbody = document.getElementById('lista-historico');
+            tbody.innerHTML = '';
+            [...window.recibos].sort((a,b) => b.dataFull.localeCompare(a.dataFull)).forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b text-sm';
+                tr.innerHTML = `<td class="p-3 font-bold">${r.numero}</td><td class="p-3">${new Date(r.dataFull).toLocaleDateString()}</td><td class="p-3">${r.beneficiario}</td><td class="p-3">R$ ${r.valor}</td><td class="p-3"><button onclick="verReciboAntigo('${r.id}')" class="bg-gray-100 p-1 rounded text-xs">Ver</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.verReciboAntigo = (id) => {
+            const r = window.recibos.find(x => x.id === id);
+            window.reciboVisualizando = r;
+            document.getElementById('modal-content').innerHTML = r.htmlOriginal;
+            document.getElementById('modal-recibo').classList.remove('hidden');
+            document.getElementById('modal-recibo').classList.add('flex');
+        };
+
+        window.fecharModal = () => document.getElementById('modal-recibo').classList.add('hidden');
+
+        window.imprimirReciboAntigo = () => executarImpressaoHTML(window.reciboVisualizando.htmlOriginal);
+
+        function renderUsuarios() {
+            const tbody = document.getElementById('lista-usuarios');
+            tbody.innerHTML = '';
+            window.usuarios.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b text-sm';
+                tr.innerHTML = `<td class="p-2">${u.email}</td><td class="p-2 uppercase font-bold text-xs">${u.nivel}</td><td class="p-2">${u.email !== 'nicholas.ganhadeiro@adventistas.org' ? `<button onclick="removerUser('${u.id}')" class="text-red-500">Excluir</button>` : ''}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function adicionarUsuario() {
+            const email = document.getElementById('novo-user-email').value;
+            const senha = document.getElementById('novo-user-senha').value;
+            const nivel = document.getElementById('novo-user-nivel').value;
+            if(!email || !senha) return alert("Preencha tudo");
+            
+            const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            await addDoc(collection(window.db, 'artifacts', window.appId, 'public', 'data', 'usuarios'), { email, senha, nivel });
+            
+            document.getElementById('novo-user-email').value = '';
+            document.getElementById('novo-user-senha').value = '';
+            alert("Usuário adicionado!");
+        }
+
+        async function removerUser(id) {
+            if(!confirm("Remover este acesso?")) return;
+            const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            await deleteDoc(doc(window.db, 'artifacts', window.appId, 'public', 'data', 'usuarios', id));
+        }
+
+        // Listeners
+        Object.values(inputs).forEach(input => input.addEventListener('input', updatePreview));
+        inputs.valor.addEventListener('input', function(e) {
+            let v = e.target.value.replace(/\D/g, '');
+            if(!v) return;
+            e.target.value = (parseInt(v)/100).toLocaleString('pt-BR', {minimumFractionDigits:2});
+            updatePreview();
+        });
+    </script>
+</body>
+</html>
