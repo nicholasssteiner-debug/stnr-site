@@ -102,6 +102,7 @@
                             <select id="input-forma" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 p-2 border">
                                 <option value="pix">PIX</option>
                                 <option value="conta">Agência e Conta</option>
+                                <option value="dinheiro">Dinheiro</option>
                             </select>
                         </div>
                         <div id="campos-conta" class="hidden space-y-4 bg-gray-50 p-4 rounded-lg border">
@@ -382,14 +383,22 @@
             const agora = new Date();
             views.dataHora.innerText = `${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}`;
 
+            // Atualiza o texto da forma de pagamento exibida no recibo
+            views.forma.innerText = inputs.forma.options[inputs.forma.selectedIndex].text.toUpperCase();
+
             if (inputs.forma.value === 'pix') {
                 document.getElementById('campos-pix').classList.remove('hidden');
                 document.getElementById('campos-conta').classList.add('hidden');
                 views.detalhes.innerHTML = `<p><strong>CHAVE (${inputs.chaveTipo.value}):</strong> ${inputs.chaveValor.value || '---'}</p>`;
-            } else {
+            } else if (inputs.forma.value === 'conta') {
                 document.getElementById('campos-pix').classList.add('hidden');
                 document.getElementById('campos-conta').classList.remove('hidden');
                 views.detalhes.innerHTML = `<p><strong>BANCO:</strong> ${inputs.banco.value || '---'}</p><p><strong>AG/CC:</strong> ${inputs.agencia.value || '--'} / ${inputs.conta.value || '--'}</p>`;
+            } else if (inputs.forma.value === 'dinheiro') {
+                // Esconde ambos os campos se for dinheiro
+                document.getElementById('campos-pix').classList.add('hidden');
+                document.getElementById('campos-conta').classList.add('hidden');
+                views.detalhes.innerHTML = `<p><strong>DETALHES:</strong> Retirada em espécie</p>`;
             }
         }
 
