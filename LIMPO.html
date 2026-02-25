@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
@@ -114,22 +113,23 @@
     </div>
 
     <div id="app-layout" class="hidden flex-col md:flex-row min-h-screen">
-        <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-10 h-screen md:h-auto shrink-0">
-            <div class="p-6 border-b border-slate-800 relative overflow-hidden">
+        
+        <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-10 h-[40vh] md:h-screen shrink-0">
+            <div class="p-4 md:p-6 border-b border-slate-800 relative overflow-hidden shrink-0">
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
-                <h1 class="text-2xl font-black text-cyan-400 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] tracking-widest">
-                    <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                <h1 class="text-xl md:text-2xl font-black text-cyan-400 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] tracking-widest">
+                    <i data-lucide="clipboard-check" class="w-5 h-5 md:w-6 md:h-6"></i>
                     LIMPO
                 </h1>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">Levantamento Interno de Manutenção<br>e Padrão Organizacional</p>
+                <p class="hidden md:block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">Levantamento Interno de Manutenção<br>e Padrão Organizacional</p>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 flex flex-col">
-                <div class="text-xs font-semibold text-cyan-500/70 uppercase tracking-widest mb-2 mt-2">
+                <div class="text-[10px] md:text-xs font-semibold text-cyan-500/70 uppercase tracking-widest mb-2">
                     Quartos Registados
                 </div>
 
-                <div class="mb-4 relative shrink-0">
+                <div class="mb-3 relative shrink-0">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500/50"></i>
                     <input type="text" id="search-room" placeholder="Buscar quarto..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 bg-slate-950 text-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] placeholder-slate-600 transition-all" autocomplete="off">
                 </div>
@@ -137,64 +137,63 @@
                 <div id="rooms-list" class="space-y-2 flex-1 overflow-y-auto">
                     </div>
 
-                <div id="add-room-container" class="mt-4 hidden">
-                    <button id="btn-show-add-room" class="w-full flex items-center justify-center gap-2 p-3 border border-slate-700 border-dashed rounded-xl text-slate-400 font-medium hover:border-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/20 hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all bg-slate-900/50">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
+                <div id="add-room-container" class="mt-3 hidden shrink-0">
+                    <button id="btn-show-add-room" class="w-full flex items-center justify-center gap-2 p-2 border border-slate-700 border-dashed rounded-xl text-slate-400 text-sm font-medium hover:border-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/20 hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all bg-slate-900/50">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
                         Adicionar Quarto
                     </button>
                     
                     <form id="form-add-room" class="hidden p-3 bg-slate-950 rounded-xl border border-slate-800 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
                         <input type="text" id="input-new-room" placeholder="Nome do quarto..." class="w-full p-2 text-sm border border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-slate-900 text-slate-200 mb-2 placeholder-slate-600" autocomplete="off">
                         <div class="flex gap-2">
-                            <button type="submit" class="flex-1 bg-cyan-600 text-white text-sm py-1.5 rounded-lg font-medium hover:bg-cyan-500 hover:shadow-[0_0_10px_rgba(34,211,238,0.4)] transition-all">Salvar</button>
-                            <button type="button" id="btn-cancel-add-room" class="flex-1 bg-slate-800 text-slate-300 text-sm py-1.5 rounded-lg border border-slate-700 font-medium hover:bg-slate-700 transition-all">Cancelar</button>
+                            <button type="submit" class="flex-1 bg-cyan-600 text-white text-xs py-1.5 rounded-lg font-medium hover:bg-cyan-500 hover:shadow-[0_0_10px_rgba(34,211,238,0.4)] transition-all">Salvar</button>
+                            <button type="button" id="btn-cancel-add-room" class="flex-1 bg-slate-800 text-slate-300 text-xs py-1.5 rounded-lg border border-slate-700 font-medium hover:bg-slate-700 transition-all">Cancelar</button>
                         </div>
                     </form>
                 </div>
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-[#0a0f1c]">
+        <main class="flex-1 flex flex-col h-[60vh] md:h-screen overflow-hidden bg-[#0a0f1c]">
             
-            <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-10 shadow-md">
-                <div class="flex items-center gap-4 w-full md:w-auto justify-between bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] shrink-0">
-                    <button id="btn-prev-day" class="p-2 hover:bg-slate-800 hover:text-cyan-400 rounded-xl text-slate-400 transition-all" title="Dia anterior">
-                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-3 md:p-6 flex flex-row items-center justify-between gap-4 sticky top-0 z-10 shadow-md">
+                <div class="flex items-center gap-2 md:gap-4 justify-between bg-slate-950 p-1 md:p-1.5 rounded-2xl border border-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] shrink-0">
+                    <button id="btn-prev-day" class="p-1.5 md:p-2 hover:bg-slate-800 hover:text-cyan-400 rounded-xl text-slate-400 transition-all" title="Dia anterior">
+                        <i data-lucide="chevron-left" class="w-4 h-4 md:w-5 md:h-5"></i>
                     </button>
                     
-                    <div class="flex items-center gap-2 px-4 py-1 font-medium text-slate-200 whitespace-nowrap">
-                        <i data-lucide="calendar" class="w-4 h-4 text-cyan-500 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"></i>
-                        <span id="display-date" class="text-sm md:text-base"></span>
-                        <span id="badge-today" class="hidden ml-2 text-[10px] uppercase tracking-wider font-bold bg-cyan-950 text-cyan-400 py-0.5 px-2 rounded-full border border-cyan-800 shadow-[0_0_8px_rgba(34,211,238,0.2)]">Hoje</span>
+                    <div class="flex items-center gap-1.5 px-2 md:px-4 py-1 font-medium text-slate-200 whitespace-nowrap">
+                        <i data-lucide="calendar" class="w-3 h-3 md:w-4 md:h-4 text-cyan-500 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"></i>
+                        <span id="display-date" class="text-xs md:text-base"></span>
                     </div>
                     
-                    <button id="btn-next-day" class="p-2 rounded-xl transition-all hover:bg-slate-800 hover:text-cyan-400 text-slate-400" title="Próximo dia">
-                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    <button id="btn-next-day" class="p-1.5 md:p-2 rounded-xl transition-all hover:bg-slate-800 hover:text-cyan-400 text-slate-400" title="Próximo dia">
+                        <i data-lucide="chevron-right" class="w-4 h-4 md:w-5 md:h-5"></i>
                     </button>
                 </div>
 
-                <div class="flex flex-col-reverse md:flex-row items-end md:items-center gap-4 md:gap-8 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-4 md:gap-8 justify-end">
                     
-                    <div id="status-container" class="hidden flex items-center gap-4">
-                        <div class="text-right">
+                    <div id="status-container" class="hidden flex items-center gap-2 md:gap-4">
+                        <div class="text-right hidden sm:block">
                             <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Estado</div>
-                            <div id="status-text" class="text-sm font-semibold text-slate-200">0 de 10</div>
+                            <div id="status-text" class="text-xs md:text-sm font-semibold text-slate-200">0 de 10</div>
                         </div>
-                        <div id="status-icon-complete" class="hidden bg-emerald-950/50 text-emerald-400 p-2 rounded-full border border-emerald-800 shadow-[0_0_15px_rgba(52,211,153,0.2)]" title="Análise Completa">
-                            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                        <div id="status-icon-complete" class="hidden bg-emerald-950/50 text-emerald-400 p-1.5 md:p-2 rounded-full border border-emerald-800 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </div>
-                        <div id="status-icon-incomplete" class="hidden bg-amber-950/50 text-amber-400 p-2 rounded-full border border-amber-800 shadow-[0_0_15px_rgba(251,191,36,0.2)]" title="Análise Incompleta">
-                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                        <div id="status-icon-incomplete" class="hidden bg-amber-950/50 text-amber-400 p-1.5 md:p-2 rounded-full border border-amber-800 shadow-[0_0_15px_rgba(251,191,36,0.2)]">
+                            <i data-lucide="alert-circle" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-3 pl-0 md:pl-6 border-l-0 md:border-l border-slate-800">
-                        <div class="text-right">
+                    <div class="flex items-center gap-3 md:pl-6 border-l-0 md:border-l border-slate-800">
+                        <div class="text-right hidden sm:block">
                             <div id="current-user-name" class="text-sm font-bold text-slate-200">Utilizador</div>
                             <div id="current-user-role-badge" class="text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Admin</div>
                         </div>
-                        <button id="btn-logout" class="p-2 bg-slate-900 hover:bg-rose-950/50 hover:text-rose-400 hover:border-rose-900 border border-slate-800 rounded-xl transition-all shadow-sm" title="Sair da sessão">
-                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                        <button id="btn-logout" class="p-1.5 md:p-2 bg-slate-900 hover:bg-rose-950/50 hover:text-rose-400 hover:border-rose-900 border border-slate-800 rounded-xl transition-all shadow-sm" title="Sair da sessão">
+                            <i data-lucide="log-out" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </button>
                     </div>
 
@@ -205,42 +204,42 @@
                 <div id="empty-state" class="h-full flex flex-col items-center justify-center text-slate-500">
                     <div class="relative mb-4">
                         <div class="absolute inset-0 bg-cyan-500 blur-[30px] opacity-10 rounded-full"></div>
-                        <i data-lucide="clipboard-list" class="w-20 h-20 text-slate-700 relative z-10"></i>
+                        <i data-lucide="clipboard-list" class="w-16 h-16 md:w-20 md:h-20 text-slate-700 relative z-10"></i>
                     </div>
-                    <h2 class="text-xl font-semibold text-slate-300 mb-2">Nenhum alvo selecionado</h2>
-                    <p class="text-center max-w-sm">Selecione um quarto no painel lateral para iniciar a varredura.</p>
+                    <h2 class="text-lg md:text-xl font-semibold text-slate-300 mb-2">Nenhum alvo selecionado</h2>
+                    <p class="text-center text-xs md:text-sm max-w-sm">Selecione um quarto no painel superior para iniciar a varredura.</p>
                 </div>
 
                 <div id="evaluation-content" class="hidden max-w-4xl mx-auto pb-12">
                     
-                    <div class="bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-slate-800 p-6 mb-8 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                    <div class="bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-slate-800 p-4 md:p-6 mb-6 flex flex-col md:flex-row items-center gap-4 md:gap-8 relative overflow-hidden">
                         <div class="absolute -right-20 -top-20 w-64 h-64 bg-cyan-500/5 blur-[80px] rounded-full pointer-events-none"></div>
                         <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/5 blur-[80px] rounded-full pointer-events-none"></div>
 
                         <div class="flex-1 text-center md:text-left relative z-10">
-                            <h2 id="summary-room-name" class="text-3xl font-bold text-slate-100 mb-1 tracking-tight">Nome do Quarto</h2>
-                            <p id="summary-date" class="text-cyan-500/70 font-medium">Avaliação referente ao dia...</p>
+                            <h2 id="summary-room-name" class="text-2xl md:text-3xl font-bold text-slate-100 mb-1 tracking-tight">Nome do Quarto</h2>
+                            <p id="summary-date" class="text-cyan-500/70 text-xs md:text-sm font-medium">Avaliação referente ao dia...</p>
                         </div>
                         
-                        <div class="flex items-center gap-6 w-full md:w-auto bg-slate-950/80 p-4 rounded-xl border border-slate-800 justify-center relative z-10 backdrop-blur-sm shadow-[inset_0_2px_10px_rgba(0,0,0,0.4)]">
+                        <div class="flex items-center gap-4 md:gap-6 w-full md:w-auto bg-slate-950/80 p-3 md:p-4 rounded-xl border border-slate-800 justify-center relative z-10 backdrop-blur-sm shadow-[inset_0_2px_10px_rgba(0,0,0,0.4)]">
                             <div class="text-center">
                                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total</div>
-                                <div class="text-2xl font-bold text-slate-200"><span id="score-total" class="drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">0</span><span class="text-sm text-slate-600 font-normal">/100</span></div>
+                                <div class="text-xl md:text-2xl font-bold text-slate-200"><span id="score-total" class="drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">0</span><span class="text-xs md:text-sm text-slate-600 font-normal">/100</span></div>
                             </div>
-                            <div class="w-px h-12 bg-slate-800"></div>
-                            <div class="text-center min-w-[80px]">
+                            <div class="w-px h-10 md:h-12 bg-slate-800"></div>
+                            <div class="text-center min-w-[70px] md:min-w-[80px]">
                                 <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Média</div>
-                                <div id="score-average" class="inline-flex items-center justify-center px-3 py-1 rounded-lg border font-bold text-xl bg-slate-900 text-slate-500 border-slate-800 shadow-inner">
+                                <div id="score-average" class="inline-flex items-center justify-center px-2 py-1 md:px-3 rounded-lg border font-bold text-lg md:text-xl bg-slate-900 text-slate-500 border-slate-800 shadow-inner">
                                     0.0
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="criteria-list" class="space-y-4">
+                    <div id="criteria-list" class="space-y-3 md:space-y-4">
                         </div>
                     
-                    <div class="mt-8 text-center flex items-center justify-center gap-2 text-slate-500 text-sm">
+                    <div class="mt-8 text-center flex items-center justify-center gap-2 text-slate-500 text-xs md:text-sm">
                         <i data-lucide="globe-2" class="w-4 h-4 text-cyan-500 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"></i>
                         Sincronização global em tempo real ativada.
                     </div>
@@ -254,17 +253,14 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Sistema de Credenciais (Hardcoded conforme solicitado) ---
         const USERS = {
             'steiner': { pass: '626233', role: 'admin', display: 'Steiner' },
             'preceptoria': { pass: 'Iap@iasd', role: 'admin', display: 'Preceptoria' },
             'estudante': { pass: 'estudante', role: 'student', display: 'Estudante' }
         };
 
-        // Estado do Utilizador Ativo
         let activeUser = null; 
 
-        // --- Configuração do Firebase ---
         const firebaseConfig = {
             apiKey: "AIzaSyD_BQH9Re7ynHnGyynxbY2dOMS5MlgN7Jc",
             authDomain: "vaza-84361.firebaseapp.com",
@@ -280,7 +276,6 @@
         const db = getFirestore(app);
         const appNamespace = "vaza-84361";
 
-        // --- Constantes e Dados Iniciais ---
         const CRITERIA = [
             { id: 'c1', label: 'Organização das camas', icon: 'bed' },
             { id: 'c2', label: 'Organização das bancadas', icon: 'layout-dashboard' },
@@ -312,7 +307,6 @@
             return formatted.charAt(0).toUpperCase() + formatted.slice(1);
         };
 
-        // --- Estado Global da Aplicação ---
         let state = {
             rooms: [],
             selectedRoomId: null,
@@ -321,7 +315,6 @@
         };
         let searchQuery = "";
 
-        // --- Sincronização Compartilhada com Firebase ---
         const saveState = async () => {
             if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
             try {
@@ -335,12 +328,11 @@
             }
         };
 
-        let unsubscribeSnapshot = null; // Para prevenir multiplos listeners
+        let unsubscribeSnapshot = null;
 
         const loadStateFromFirebase = () => {
             if (!auth.currentUser) return;
             
-            // Limpa conexões antigas se existirem
             if (unsubscribeSnapshot) {
                 unsubscribeSnapshot();
             }
@@ -368,7 +360,6 @@
             });
         };
 
-        // --- Lógica de Login e UI ---
         const handleLogin = async (e) => {
             e.preventDefault();
             const userIn = document.getElementById('login-username').value.trim().toLowerCase();
@@ -381,7 +372,6 @@
                 activeUser = userFound;
                 errorEl.classList.add('hidden');
                 
-                // Atualiza UI de perfil
                 document.getElementById('current-user-name').textContent = activeUser.display;
                 const roleBadge = document.getElementById('current-user-role-badge');
                 if (activeUser.role === 'admin') {
@@ -396,7 +386,7 @@
 
                 try {
                     await signInAnonymously(auth);
-                    loadStateFromFirebase(); // Força a busca dos dados ao confirmar o login
+                    loadStateFromFirebase();
                 } catch (error) {
                     console.error("Erro na autenticação anónima:", error);
                 }
@@ -421,7 +411,6 @@
         };
 
         onAuthStateChanged(auth, (user) => {
-            // Isso previne que a tela carregue dados sozinhos sem o usuário ter feito login no formulário
             if (user && activeUser) {
                 loadStateFromFirebase();
             }
@@ -430,7 +419,6 @@
         document.getElementById('login-form').addEventListener('submit', handleLogin);
         document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
-        // --- Lógica de Renderização e Atualização ---
         const getScoreColorClasses = (score) => {
             if (score >= 8) return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/50', shadow: 'shadow-[0_0_10px_rgba(52,211,153,0.3)]' };
             if (score >= 5) return { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/50', shadow: 'shadow-[0_0_10px_rgba(251,191,36,0.3)]' };
@@ -446,14 +434,14 @@
             );
 
             if (state.rooms.length === 0) {
-                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg border border-dashed border-slate-800">Nenhum quarto registado.</div>`;
+                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg border border-dashed border-slate-800">Nenhum quarto.</div>`;
             } else if (filteredRooms.length === 0) {
-                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg border border-dashed border-slate-800">Nenhum alvo encontrado.</div>`;
+                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg border border-dashed border-slate-800">Nada encontrado.</div>`;
             } else {
                 filteredRooms.forEach(room => {
                     const isSelected = state.selectedRoomId === room.id;
                     const el = document.createElement('div');
-                    el.className = `group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 ${
+                    el.className = `group flex items-center justify-between p-2.5 md:p-3 rounded-xl cursor-pointer transition-all duration-300 ${
                         isSelected 
                             ? 'bg-cyan-950/40 border-cyan-500/50 border text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.15)]' 
                             : 'bg-slate-900 border-transparent border hover:bg-slate-800 hover:border-slate-700 text-slate-300'
@@ -462,9 +450,9 @@
                     const isAdmin = activeUser && activeUser.role === 'admin';
 
                     el.innerHTML = `
-                        <div class="flex items-center gap-3 font-medium truncate pr-2">
-                            <i data-lucide="${isSelected ? 'scan-line' : 'box'}" class="w-5 h-5 flex-shrink-0 ${isSelected ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'text-slate-500'}"></i>
-                            <span class="truncate">${room.name}</span>
+                        <div class="flex items-center gap-2 md:gap-3 font-medium truncate pr-2">
+                            <i data-lucide="${isSelected ? 'scan-line' : 'box'}" class="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 ${isSelected ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'text-slate-500'}"></i>
+                            <span class="truncate text-sm md:text-base">${room.name}</span>
                         </div>
                         ${isAdmin ? `
                         <button class="btn-delete-room p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" title="Excluir quarto" data-id="${room.id}">
@@ -483,7 +471,7 @@
                         if (deleteBtn) {
                             deleteBtn.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                if (confirm('Tem a certeza que deseja excluir este quarto e todo o seu histórico?')) {
+                                if (confirm('Excluir quarto e todo o histórico?')) {
                                     state.rooms = state.rooms.filter(r => r.id !== room.id);
                                     delete state.evaluations[room.id];
                                     if (state.selectedRoomId === room.id) {
@@ -553,7 +541,7 @@
             const avgEl = document.getElementById('score-average');
             avgEl.textContent = avgScore;
             
-            avgEl.className = 'inline-flex items-center justify-center px-3 py-1 rounded-lg border font-bold text-xl transition-all duration-300';
+            avgEl.className = 'inline-flex items-center justify-center px-2 py-1 md:px-3 rounded-lg border font-bold text-lg md:text-xl transition-all duration-300';
             if (filledCount === 0) {
                 avgEl.classList.add('bg-slate-900', 'text-slate-500', 'border-slate-800', 'shadow-inner');
             } else {
@@ -575,35 +563,35 @@
                 const score = hasScore ? currentEvals[criterion.id] : 5; 
                 
                 const el = document.createElement('div');
-                el.className = `criterion-card bg-slate-900 rounded-2xl p-5 md:p-6 shadow-md border transition-all duration-300 ${
+                el.className = `criterion-card bg-slate-900 rounded-2xl p-4 md:p-6 shadow-md border transition-all duration-300 ${
                     hasScore ? 'border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.05)]' : 'border-slate-800'
                 }`;
                 el.id = `criterion-card-${criterion.id}`;
 
                 let scoreDisplayHTML = hasScore 
-                    ? `<div class="score-box w-full h-full flex items-center justify-center rounded-xl font-bold text-lg border ${getScoreColorClasses(score).bg} ${getScoreColorClasses(score).text} ${getScoreColorClasses(score).border} ${getScoreColorClasses(score).shadow} transition-all duration-300">${score}</div>`
-                    : `<div class="score-box w-full h-full flex items-center justify-center rounded-xl bg-slate-950 border border-slate-800 text-slate-600 font-medium text-sm transition-all duration-300 shadow-inner">--</div>`;
+                    ? `<div class="score-box w-full h-full flex items-center justify-center rounded-xl font-bold text-base md:text-lg border ${getScoreColorClasses(score).bg} ${getScoreColorClasses(score).text} ${getScoreColorClasses(score).border} ${getScoreColorClasses(score).shadow} transition-all duration-300">${score}</div>`
+                    : `<div class="score-box w-full h-full flex items-center justify-center rounded-xl bg-slate-950 border border-slate-800 text-slate-600 font-medium text-xs md:text-sm transition-all duration-300 shadow-inner">--</div>`;
 
                 el.innerHTML = `
-                    <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
-                        <div class="flex-1 flex items-start gap-4">
-                            <div class="bg-slate-950 border border-slate-800 w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${hasScore ? 'text-cyan-400 border-cyan-900 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-500'} transition-all duration-300">
-                                <i data-lucide="${criterion.icon}" class="w-6 h-6"></i>
+                    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-8">
+                        <div class="flex-1 flex items-start gap-3 md:gap-4">
+                            <div class="bg-slate-950 border border-slate-800 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 ${hasScore ? 'text-cyan-400 border-cyan-900 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-500'} transition-all duration-300">
+                                <i data-lucide="${criterion.icon}" class="w-5 h-5 md:w-6 md:h-6"></i>
                             </div>
                             <div>
-                                <div class="text-[10px] font-bold ${hasScore ? 'text-cyan-500' : 'text-slate-500'} mb-1 uppercase tracking-widest transition-colors">Critério ${index + 1}</div>
-                                <h3 class="font-semibold text-slate-200 text-lg leading-tight">${criterion.label}</h3>
+                                <div class="text-[9px] md:text-[10px] font-bold ${hasScore ? 'text-cyan-500' : 'text-slate-500'} mb-0.5 md:mb-1 uppercase tracking-widest transition-colors">Critério ${index + 1}</div>
+                                <h3 class="font-semibold text-slate-200 text-sm md:text-lg leading-tight">${criterion.label}</h3>
                             </div>
                         </div>
 
-                        <div class="w-full md:w-1/2 flex items-center gap-4">
-                            <span class="text-slate-500 font-medium text-sm">0</span>
+                        <div class="w-full md:w-1/2 flex items-center gap-3 md:gap-4">
+                            <span class="text-slate-500 font-medium text-xs md:text-sm">0</span>
                             <input type="range" min="0" max="10" step="1" value="${score}" data-id="${criterion.id}"
                                 ${!isAdmin ? 'disabled' : ''}
                                 class="${hasScore ? 'range-has-score' : 'opacity-60'} ${isAdmin ? 'hover:opacity-100' : ''}">
-                            <span class="text-slate-500 font-medium text-sm">10</span>
+                            <span class="text-slate-500 font-medium text-xs md:text-sm">10</span>
                             
-                            <div class="ml-2 w-14 h-14 flex-shrink-0" id="display-${criterion.id}">
+                            <div class="ml-1 md:ml-2 w-10 h-10 md:w-14 md:h-14 flex-shrink-0" id="display-${criterion.id}">
                                 ${scoreDisplayHTML}
                             </div>
                         </div>
@@ -613,7 +601,7 @@
                 if (isAdmin) {
                     const rangeInput = el.querySelector('input[type=range]');
                     
-                    // Evento INPUT: Atualiza apenas o visual e o estado local
+                    // EVENTO INPUT: Atualiza a interface
                     rangeInput.addEventListener('input', (e) => {
                         const val = parseInt(e.target.value);
                         
@@ -640,15 +628,15 @@
 
                         const displayContainer = document.getElementById(`display-${criterion.id}`);
                         const colors = getScoreColorClasses(val);
-                        displayContainer.innerHTML = `<div class="score-box w-full h-full flex items-center justify-center rounded-xl font-bold text-lg border ${colors.bg} ${colors.text} ${colors.border} ${colors.shadow} transition-all duration-300">${val}</div>`;
+                        displayContainer.innerHTML = `<div class="score-box w-full h-full flex items-center justify-center rounded-xl font-bold text-base md:text-lg border ${colors.bg} ${colors.text} ${colors.border} ${colors.shadow} transition-all duration-300">${val}</div>`;
 
                         updateStats();
                     });
 
-                    // Evento CHANGE: Envia para o Firebase apenas quando o usuário solta o toque
-                    rangeInput.addEventListener('change', () => {
-                        saveState();
-                    });
+                    // FIREBASE SYNC: Dispara no PC (change) e no Celular (touchend)
+                    const syncData = () => { saveState(); };
+                    rangeInput.addEventListener('change', syncData);
+                    rangeInput.addEventListener('touchend', syncData);
                 }
 
                 list.appendChild(el);
@@ -738,13 +726,11 @@
                     formAddRoom.classList.add('hidden');
                     btnShowAddRoom.classList.remove('hidden');
                     
-                    // Força a atualização local na hora para que o botão reapareça
                     updateUI(); 
                 }
             });
         };
 
-        // SETUP GLOBAL: Liga os botões independente do carregamento na nuvem!
         setupEventListeners();
         lucide.createIcons();
 
