@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Verbas</title>
+    <!-- Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons para os ícones -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Estilos adicionais para scrollbar suave */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        /* Loading Overlay */
+        #loadingOverlay {
+            backdrop-filter: blur(2px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans">
+
+    <!-- OVERLAY DE CARREGAMENTO GLOBAL -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex-col items-center justify-center text-white">
+        <i data-lucide="loader-2" class="w-12 h-12 animate-spin mb-4"></i>
+        <h2 id="loadingText" class="text-xl font-semibold">Carregando dados...</h2>
+        <p class="text-sm text-slate-300 mt-2">Por favor, aguarde.</p>
+    </div>
+
+    <!-- TELA DE LOGIN -->
+    <div id="loginView" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-blue-600"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900">Acesso Restrito</h1>
+                <p class="text-sm text-slate-500 mt-1">Controle de Verbas e Setores</p>
+            </div>
+
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                        <input type="email" id="loginEmail" required class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="seu@email.com">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                        <input type="password" id="loginSenha" required class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div id="loginError" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 text-center">
+                    Credenciais incorretas. Tente novamente.
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                    Entrar no Sistema
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL (Oculto inicialmente) -->
+    <div id="mainView" class="hidden min-h-screen p-4 md:p-8">
+        <div class="max-w-7xl mx-auto space-y-6">
+            
+            <!-- Navegação Superior -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-2 px-4">
+                    <i data-lucide="wallet" class="text-blue-600"></i>
+                    <span class="font-bold text-slate-800">Controle de Verbas</span>
+                </div>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button id="tabVerbas" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Consulta
+                    </button>
+                    <button id="tabUsuarios" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4"></i> Usuários
+                    </button>
+                    <div class="w-px h-6 bg-slate-200 mx-2 hidden sm:block"></div>
+                    <button id="btnLogout" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============================== -->
+            <!-- SEÇÃO 1: CONSULTA DE VERBAS    -->
+            <!-- ============================== -->
+            <div id="secaoVerbas" class="space-y-6 block">
+                <!-- Cabeçalho e Área de Importação -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Quadro de Consulta</h2>
+                        <p class="text-sm text-slate-500 mt-1">Filtre, pesquise e atualize os departamentos do banco de dados.</p>
+                    </div>
+
+                    <!-- Controles de Importação -->
+                    <div class="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full lg:w-auto">
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <i data-lucide="file-spreadsheet" class="text-slate-400 w-5 h-5 hidden sm:block"></i>
+                            <input type="file" id="fileInput" accept=".csv" class="text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer w-full">
+                        </div>
+                        
+                        <select id="encodingSelect" class="bg-white border border-slate-300 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 w-full sm:w-auto cursor-pointer outline-none">
+                            <option value="UTF-8">UTF-8</option>
+                            <option value="ISO-8859-1">ISO-8859-1</option>
+                        </select>
+
+                        <button id="importBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 w-full sm:w-auto justify-center shadow-sm whitespace-nowrap">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                            Substituir Dados
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Área de Filtros -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="filter" class="w-4 h-4 text-slate-400"></i>
+                        Filtros de Pesquisa
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Diretoria / Grupo</label>
+                            <div class="relative">
+                                <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                                <select id="filterDiretoria" class="w-full pl-3 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer">
+                                    <option value="">Todas as Diretorias</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Tipo de Setor</label>
+                            <div class="relative">
+                                <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                                <select id="filterTipo" class="w-full pl-3 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer">
+                                    <option value="">Todos os Tipos</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Nome / Departamento</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                                <input type="text" id="filterNome" placeholder="Ex: Pós Graduação" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Resultados -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                        <span class="text-sm font-medium text-slate-600">Resultados da Consulta</span>
+                        <span id="contadorResultados" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">0 registros</span>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-100 text-slate-600 font-medium">
+                                <tr>
+                                    <th class="px-6 py-3 border-b border-slate-200 w-1/4">Diretoria / Grupo</th>
+                                    <th class="px-6 py-3 border-b border-slate-200 w-1/4">Tipo de Setor</th>
+                                    <th class="px-6 py-3 border-b border-slate-200 w-2/4">Departamento / Nome</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaCorpo" class="divide-y divide-slate-100">
+                                <!-- Preenchido por JS -->
+                            </tbody>
+                        </table>
+                        
+                        <div id="mensagemVazia" class="flex flex-col items-center justify-center p-12 text-slate-500">
+                            <i data-lucide="database" class="w-12 h-12 text-slate-300 mb-3"></i>
+                            <p class="text-base font-medium">Banco de dados vazio</p>
+                            <p class="text-sm">Importe um arquivo CSV para começar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================== -->
+            <!-- SEÇÃO 2: GERENCIAR USUÁRIOS    -->
+            <!-- ============================== -->
+            <div id="secaoUsuarios" class="space-y-6 hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+                        <i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i>
+                        Adicionar Novo Usuário
+                    </h2>
+                    
+                    <form id="formNovoUsuario" class="flex flex-col md:flex-row gap-4 items-end">
+                        <div class="w-full md:w-2/5">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">E-mail</label>
+                            <input type="email" id="novoUserEmail" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="email@adventistas.org">
+                        </div>
+                        <div class="w-full md:w-2/5">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Senha</label>
+                            <input type="text" id="novoUserSenha" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Senha do usuário">
+                        </div>
+                        <div class="w-full md:w-1/5">
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 h-[42px]">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                        <span class="text-sm font-medium text-slate-600">Usuários Cadastrados</span>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-100 text-slate-600 font-medium">
+                                <tr>
+                                    <th class="px-6 py-3 border-b border-slate-200">E-mail</th>
+                                    <th class="px-6 py-3 border-b border-slate-200">Senha</th>
+                                    <th class="px-6 py-3 border-b border-slate-200 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaUsuarios" class="divide-y divide-slate-100">
+                                <!-- Preenchido por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Módulo Firebase e Lógica da Aplicação -->
+    <script type="module">
+        // Importando Firebase do CDN oficial v11
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuração do Firebase fornecida
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4HfH6sI65OD_zPHxsj5DedJjunD1fwyw",
+            authDomain: "relatorio-do-poco.firebaseapp.com",
+            projectId: "relatorio-do-poco",
+            storageBucket: "relatorio-do-poco.firebasestorage.app",
+            messagingSenderId: "145663567296",
+            appId: "1:145663567296:web:5d7be1e8b1f8d5ddd81425",
+            measurementId: "G-FRBN8L829R"
+        };
+
+        // Inicializar Firebase e Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Inicializar ícones do Lucide
+        lucide.createIcons();
+
+        // Variáveis de Estado
+        let dadosOriginais = []; // Começa limpo
+        let usuariosCadastrados = [];
+
+        // Referências DOM - Navegação e UI Global
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const loginView = document.getElementById('loginView');
+        const mainView = document.getElementById('mainView');
+
+        // Referências DOM - Login
+        const loginForm = document.getElementById('loginForm');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginSenha = document.getElementById('loginSenha');
+        const loginError = document.getElementById('loginError');
+        const btnLogout = document.getElementById('btnLogout');
+
+        // Referências DOM - Tabs
+        const tabVerbas = document.getElementById('tabVerbas');
+        const tabUsuarios = document.getElementById('tabUsuarios');
+        const secaoVerbas = document.getElementById('secaoVerbas');
+        const secaoUsuarios = document.getElementById('secaoUsuarios');
+
+        // Referências DOM - Verbas
+        const inputsDeFiltro = {
+            diretoria: document.getElementById('filterDiretoria'),
+            tipo: document.getElementById('filterTipo'),
+            nome: document.getElementById('filterNome')
+        };
+        const tabelaCorpo = document.getElementById('tabelaCorpo');
+        const mensagemVazia = document.getElementById('mensagemVazia');
+        const contadorResultados = document.getElementById('contadorResultados');
+        const fileInput = document.getElementById('fileInput');
+        const encodingSelect = document.getElementById('encodingSelect');
+        const importBtn = document.getElementById('importBtn');
+
+        // Referências DOM - Usuários
+        const formNovoUsuario = document.getElementById('formNovoUsuario');
+        const tabelaUsuarios = document.getElementById('tabelaUsuarios');
+
+        // ==========================================
+        // UTILIDADES
+        // ==========================================
+        function showLoading(texto = "Processando...") {
+            loadingText.textContent = texto;
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+        }
+
+        function normalizarTexto(texto) {
+            if (!texto) return "";
+            return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+
+        // ==========================================
+        // SISTEMA DE NAVEGAÇÃO / TABS
+        // ==========================================
+        function switchTab(tab) {
+            if (tab === 'verbas') {
+                secaoVerbas.classList.remove('hidden');
+                secaoUsuarios.classList.add('hidden');
+                tabVerbas.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2";
+                tabUsuarios.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2";
+            } else {
+                secaoUsuarios.classList.remove('hidden');
+                secaoVerbas.classList.add('hidden');
+                tabUsuarios.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2";
+                tabVerbas.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2";
+                carregarUsuarios(); // Recarrega sempre que abrir a aba
+            }
+        }
+
+        tabVerbas.addEventListener('click', () => switchTab('verbas'));
+        tabUsuarios.addEventListener('click', () => switchTab('usuarios'));
+
+        // ==========================================
+        // SISTEMA DE LOGIN E AUTENTICAÇÃO
+        // ==========================================
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginError.classList.add('hidden');
+            const email = loginEmail.value.trim();
+            const senha = loginSenha.value.trim();
+
+            showLoading("Autenticando...");
+
+            try {
+                // Usuário Master Mestre Codificado
+                if (email === "nicholas.ganhadeiro@adventistas.org" && senha === "FAP1624") {
+                    entrarNoSistema();
+                    return;
+                }
+
+                // Verifica no Firebase (Coleção usuarios)
+                const querySnapshot = await getDocs(collection(db, "usuarios"));
+                let usuarioEncontrado = false;
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.email === email && data.senha === senha) {
+                        usuarioEncontrado = true;
+                    }
+                });
+
+                if (usuarioEncontrado) {
+                    entrarNoSistema();
+                } else {
+                    hideLoading();
+                    loginError.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Erro ao autenticar:", error);
+                hideLoading();
+                alert("Erro ao conectar com o banco de dados. Verifique a configuração.");
+            }
+        });
+
+        function entrarNoSistema() {
+            loginView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            carregarDadosDoFirebase();
+        }
+
+        btnLogout.addEventListener('click', () => {
+            mainView.classList.add('hidden');
+            loginView.classList.remove('hidden');
+            loginEmail.value = '';
+            loginSenha.value = '';
+        });
+
+        // ==========================================
+        // LÓGICA DO QUADRO DE VERBAS (FIREBASE)
+        // ==========================================
+        async function carregarDadosDoFirebase() {
+            showLoading("Buscando dados no Firebase...");
+            try {
+                const querySnapshot = await getDocs(collection(db, "verbas"));
+                const dadosCarregados = [];
+                
+                querySnapshot.forEach((doc) => {
+                    dadosCarregados.push(doc.data());
+                });
+
+                dadosOriginais = dadosCarregados;
+                atualizarOpcoesFiltros();
+                aplicarFiltrosERenderizar();
+            } catch (error) {
+                console.error("Erro ao carregar dados:", error);
+                alert("Houve um erro ao tentar puxar os dados salvos.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function atualizarOpcoesFiltros() {
+            const diretoriasUnicas = [...new Set(dadosOriginais.map(item => item.diretoria))].sort();
+            const tiposUnicos = [...new Set(dadosOriginais.map(item => item.tipo))].sort();
+
+            const valDiretoria = inputsDeFiltro.diretoria.value;
+            const valTipo = inputsDeFiltro.tipo.value;
+
+            inputsDeFiltro.diretoria.innerHTML = '<option value="">Todas as Diretorias</option>';
+            diretoriasUnicas.forEach(d => {
+                if(d) inputsDeFiltro.diretoria.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+
+            inputsDeFiltro.tipo.innerHTML = '<option value="">Todos os Tipos</option>';
+            tiposUnicos.forEach(t => {
+                if(t) inputsDeFiltro.tipo.innerHTML += `<option value="${t}">${t}</option>`;
+            });
+
+            if (diretoriasUnicas.includes(valDiretoria)) inputsDeFiltro.diretoria.value = valDiretoria;
+            if (tiposUnicos.includes(valTipo)) inputsDeFiltro.tipo.value = valTipo;
+        }
+
+        function aplicarFiltrosERenderizar() {
+            const termoDiretoria = inputsDeFiltro.diretoria.value;
+            const termoTipo = inputsDeFiltro.tipo.value;
+            const termoNome = normalizarTexto(inputsDeFiltro.nome.value);
+
+            const dadosFiltrados = dadosOriginais.filter(item => {
+                const matchDiretoria = termoDiretoria === "" || item.diretoria === termoDiretoria;
+                const matchTipo = termoTipo === "" || item.tipo === termoTipo;
+                const matchNome = normalizarTexto(item.nome).includes(termoNome);
+                return matchDiretoria && matchTipo && matchNome;
+            });
+
+            tabelaCorpo.innerHTML = '';
+
+            if (dadosFiltrados.length === 0) {
+                mensagemVazia.classList.remove('hidden');
+                mensagemVazia.classList.add('flex');
+                if(dadosOriginais.length > 0) {
+                    mensagemVazia.innerHTML = `
+                        <i data-lucide="search-X" class="w-12 h-12 text-slate-300 mb-3"></i>
+                        <p class="text-base font-medium">Nenhum registro encontrado</p>
+                        <p class="text-sm">Tente ajustar seus filtros de pesquisa.</p>`;
+                } else {
+                    mensagemVazia.innerHTML = `
+                        <i data-lucide="database" class="w-12 h-12 text-slate-300 mb-3"></i>
+                        <p class="text-base font-medium">Banco de dados vazio</p>
+                        <p class="text-sm">Importe um arquivo CSV para começar.</p>`;
+                }
+                lucide.createIcons();
+            } else {
+                mensagemVazia.classList.add('hidden');
+                mensagemVazia.classList.remove('flex');
+                
+                dadosFiltrados.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition-colors group";
+                    tr.innerHTML = `
+                        <td class="px-6 py-3 border-b border-slate-100 group-last:border-0 text-slate-700 font-medium">${item.diretoria}</td>
+                        <td class="px-6 py-3 border-b border-slate-100 group-last:border-0 text-slate-600">
+                            <span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-xs font-medium text-slate-700">
+                                ${item.tipo}
+                            </span>
+                        </td>
+                        <td class="px-6 py-3 border-b border-slate-100 group-last:border-0 text-slate-700">${item.nome}</td>
+                    `;
+                    tabelaCorpo.appendChild(tr);
+                });
+            }
+
+            contadorResultados.textContent = `${dadosFiltrados.length} registro${dadosFiltrados.length !== 1 ? 's' : ''}`;
+        }
+
+        inputsDeFiltro.diretoria.addEventListener('change', aplicarFiltrosERenderizar);
+        inputsDeFiltro.tipo.addEventListener('change', aplicarFiltrosERenderizar);
+        inputsDeFiltro.nome.addEventListener('input', aplicarFiltrosERenderizar);
+
+        // ==========================================
+        // LÓGICA DE IMPORTAÇÃO (SUBSTITUIÇÃO NO FIREBASE)
+        // ==========================================
+        importBtn.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Por favor, selecione um arquivo CSV primeiro.");
+                return;
+            }
+
+            const encoding = encodingSelect.value;
+            const reader = new FileReader();
+
+            showLoading("Lendo arquivo CSV...");
+
+            reader.onload = function(e) {
+                const text = e.target.result;
+                processarCSV(text);
+            };
+
+            reader.onerror = function() {
+                alert("Erro ao ler o arquivo.");
+                hideLoading();
+            };
+
+            reader.readAsText(file, encoding);
+        });
+
+        async function processarCSV(textoCsv) {
+            const linhas = textoCsv.split(/\r?\n/).filter(linha => linha.trim() !== '');
+            if (linhas.length <= 1) {
+                alert("O arquivo parece estar vazio ou só contém o cabeçalho.");
+                hideLoading();
+                return;
+            }
+
+            const novosDados = [];
+            for (let i = 1; i < linhas.length; i++) {
+                const colunas = linhas[i].split(';');
+                if (colunas.length >= 3) {
+                    novosDados.push({
+                        diretoria: colunas[0].trim(),
+                        tipo: colunas[1].trim(),
+                        nome: colunas[2].trim()
+                    });
+                }
+            }
+
+            if (novosDados.length > 0) {
+                await substituirDadosNoFirebase(novosDados);
+            } else {
+                alert("Nenhum dado válido encontrado. Verifique se estão separados por ponto-e-vírgula (;)");
+                hideLoading();
+            }
+        }
+
+        async function substituirDadosNoFirebase(novosDados) {
+            showLoading("Limpando dados antigos e salvando os novos no Firebase...");
+            try {
+                const verbasRef = collection(db, 'verbas');
+                
+                // 1. Apagar tudo (Em Lotes de 400 por causa dos limites do Firestore)
+                const snapshot = await getDocs(verbasRef);
+                let batch = writeBatch(db);
+                let count = 0;
+
+                for (const document of snapshot.docs) {
+                    batch.delete(document.ref);
+                    count++;
+                    if (count === 400) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                        count = 0;
+                    }
+                }
+                if (count > 0) await batch.commit(); // comita o restante
+
+                // 2. Inserir Novos (Em Lotes de 400)
+                batch = writeBatch(db);
+                count = 0;
+
+                for (const item of novosDados) {
+                    const newDocRef = doc(verbasRef);
+                    batch.set(newDocRef, item);
+                    count++;
+                    if (count === 400) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                        count = 0;
+                    }
+                }
+                if (count > 0) await batch.commit(); // comita o restante
+
+                // 3. Atualizar Interface
+                alert("Dados atualizados com sucesso no Firebase!");
+                fileInput.value = ''; // Limpa o input
+                carregarDadosDoFirebase(); // Puxa do banco novamente
+
+            } catch (error) {
+                console.error("Erro ao substituir dados no Firebase: ", error);
+                alert("Houve um erro ao processar os dados para o Firebase.");
+                hideLoading();
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DE GERENCIAMENTO DE USUÁRIOS
+        // ==========================================
+        async function carregarUsuarios() {
+            showLoading("Carregando usuários...");
+            try {
+                const querySnapshot = await getDocs(collection(db, "usuarios"));
+                tabelaUsuarios.innerHTML = '';
+                
+                // Exibe o usuário master como inalterável
+                const trMaster = document.createElement('tr');
+                trMaster.className = "bg-blue-50/50";
+                trMaster.innerHTML = `
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">nicholas.ganhadeiro@adventistas.org <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-2">Mestre</span></td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-500 italic">Protegido</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-right">-</td>
+                `;
+                tabelaUsuarios.appendChild(trMaster);
+
+                querySnapshot.forEach((documento) => {
+                    const data = documento.data();
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.email}</td>
+                        <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.senha}</td>
+                        <td class="px-6 py-3 border-b border-slate-100 text-right">
+                            <button class="btn-excluir text-red-500 hover:text-red-700 p-1 rounded transition-colors" data-id="${documento.id}" title="Excluir Usuário">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    `;
+                    tabelaUsuarios.appendChild(tr);
+                });
+
+                // Adicionar eventos de exclusão
+                document.querySelectorAll('.btn-excluir').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.currentTarget.getAttribute('data-id');
+                        if(confirm('Tem certeza que deseja remover este usuário?')) {
+                            await excluirUsuario(id);
+                        }
+                    });
+                });
+
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error("Erro ao carregar usuários:", error);
+                alert("Erro ao carregar a lista de usuários.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        formNovoUsuario.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('novoUserEmail').value;
+            const senha = document.getElementById('novoUserSenha').value;
+
+            showLoading("Adicionando usuário...");
+            try {
+                await addDoc(collection(db, "usuarios"), {
+                    email: email,
+                    senha: senha
+                });
+                
+                document.getElementById('novoUserEmail').value = '';
+                document.getElementById('novoUserSenha').value = '';
+                carregarUsuarios(); // Recarrega a tabela
+
+            } catch (error) {
+                console.error("Erro ao adicionar usuário: ", error);
+                alert("Erro ao adicionar usuário ao Firebase.");
+                hideLoading();
+            }
+        });
+
+        async function excluirUsuario(idDoc) {
+            showLoading("Excluindo usuário...");
+            try {
+                await deleteDoc(doc(db, "usuarios", idDoc));
+                carregarUsuarios();
+            } catch (error) {
+                console.error("Erro ao excluir usuário: ", error);
+                alert("Erro ao excluir o usuário.");
+                hideLoading();
+            }
+        }
+
+    </script>
+</body>
+</html>
