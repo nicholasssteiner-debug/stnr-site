@@ -1,143 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>STNR • Dashboards</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: #0f0f17;
-      font-family: Arial, sans-serif;
-      color: #ffffff;
-    }
-    .container {
-      max-width: 900px;
-      margin: 50px auto;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 32px;
-    }
-    .search-container {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    .search-input {
-      width: 100%;
-      max-width: 400px;
-      padding: 12px 20px;
-      border-radius: 25px;
-      border: 1px solid #2d2d3a;
-      background: #1a1a27;
-      color: #ffffff;
-      font-size: 16px;
-      outline: none;
-      transition: 0.3s;
-    }
-    .search-input:focus {
-      border-color: #6c63ff;
-      box-shadow: 0 0 10px rgba(108, 99, 255, 0.2);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: #1a1a27;
-      padding: 20px;
-      border-radius: 12px;
-      text-decoration: none;
-      color: #ffffff;
-      border: 1px solid #2d2d3a;
-      transition: 0.2s;
-    }
-    .card:hover {
-      transform: translateY(-3px);
-      border-color: #6c63ff;
-      box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
-    }
-    .card-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-    .card-desc {
-      font-size: 14px;
-      opacity: 0.8;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <!-- Redirecionamento automático via tag meta para o arquivo do sistema -->
+    <meta http-equiv="refresh" content="0; url=Quadro%20de%20Consultas.html">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acessando Sistema...</title>
+    <!-- Tailwind CSS apenas para a tela rápida de transição -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="container">
-    <h1>STNR • Dashboards e Sistemas</h1>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen font-sans m-0">
+    
+    <script>
+        // Redirecionamento instantâneo e invisível via JavaScript (Fallback principal)
+        window.location.replace("Quadro de Consultas.html");
+    </script>
 
-    <div class="search-container">
-      <input type="text" id="searchInput" class="search-input" onkeyup="filtrarSistemas()" placeholder="Pesquisar sistema...">
+    <!-- Interface exibida apenas caso a internet do usuário esteja lenta e demore 1 segundo para redirecionar -->
+    <div class="text-center px-4">
+        <svg class="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <h2 class="text-xl font-semibold text-slate-800 mb-2">Conectando ao Quadro de Consultas...</h2>
+        <p class="text-sm text-slate-500">
+            Se não carregar automaticamente, 
+            <a href="Quadro de Consultas.html" class="text-blue-600 hover:underline font-medium">clique aqui</a>.
+        </p>
     </div>
 
-    <div class="grid" id="cardGrid">
-      <a class="card" href="Controle Formatura.html">
-        <div class="card-title">Controle de Formatura</div>
-        <div class="card-desc">Gerenciamento financeiro, lançamentos e alunos.</div>
-      </a>
-
-      <a class="card" href="Comercial - Atualização Automática.html">
-        <div class="card-title">Dashboard Comercial</div>
-        <div class="card-desc">Análises do setor comercial com atualização dinâmica.</div>
-      </a>
-
-      <a class="card" href="Mapa de Análise Por Conta.html">
-        <div class="card-title">Mapa de Análise por Conta</div>
-        <div class="card-desc">Dashboard contábil detalhado.</div>
-      </a>
-
-      <a class="card" href="Relatório de Manutenção do Poço.html">
-        <div class="card-title">Relatório de Manutenção do Poço</div>
-        <div class="card-desc">Registro das manutenções e ocorrências do poço.</div>
-      </a>
-
-      <a class="card" href="VAZA.html">
-        <div class="card-title">VAZA - Zona Acadêmica</div>
-        <div class="card-desc">Verificação e Autorização de Saída (App).</div>
-      </a>
-
-      <a class="card" href="Controle de Atendimento TIM.html">
-        <div class="card-title">Controle de Atendimento TIM</div>
-        <div class="card-desc">Gestão e controle de atendimentos da TIM.</div>
-      </a>
-
-      <a class="card" href="Conferência de Estoque.html">
-        <div class="card-title">Conferência de Estoque</div>
-        <div class="card-desc">Controle e verificação de inventário.</div>
-      </a>
-
-      <a class="card" href="Recibos de Devolução - FAP.html">
-        <div class="card-title">Recibos de Devolução - FAP</div>
-        <div class="card-desc">Controle e emissão de recibos de devolução da FAP.</div>
-      </a>
-    </div>
-  </div>
-
-  <script>
-    function filtrarSistemas() {
-      let input = document.getElementById('searchInput');
-      let filter = input.value.toLowerCase();
-      let nodes = document.getElementsByClassName('card');
-
-      for (let i = 0; i < nodes.length; i++) {
-        let title = nodes[i].querySelector('.card-title').innerText.toLowerCase();
-        if (title.includes(filter)) {
-          nodes[i].style.display = "block";
-        } else {
-          nodes[i].style.display = "none";
-        }
-      }
-    }
-  </script>
 </body>
 </html>
