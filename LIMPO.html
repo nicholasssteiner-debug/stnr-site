@@ -279,7 +279,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appNamespace = "vaza-84361";
-        let isInitialized = false;
 
         // --- Constantes e Dados Iniciais ---
         const CRITERIA = [
@@ -336,11 +335,19 @@
             }
         };
 
+        let unsubscribeSnapshot = null; // Para prevenir multiplos listeners
+
         const loadStateFromFirebase = () => {
             if (!auth.currentUser) return;
+            
+            // Limpa conexões antigas se existirem
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+            }
+
             const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared');
             
-            onSnapshot(docRef, (docSnap) => {
+            unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     state.rooms = data.rooms || state.rooms;
@@ -355,10 +362,6 @@
                     saveState(); 
                 }
                 
-                if (!isInitialized) {
-                    isInitialized = true;
-                    setupEventListeners(); 
-                }
                 updateUI();
             }, (error) => {
                 console.error("Erro de sincronização onSnapshot:", error);
@@ -393,6 +396,7 @@
 
                 try {
                     await signInAnonymously(auth);
+                    loadStateFromFirebase(); // Força a busca dos dados ao confirmar o login
                 } catch (error) {
                     console.error("Erro na autenticação anónima:", error);
                 }
@@ -417,6 +421,7 @@
         };
 
         onAuthStateChanged(auth, (user) => {
+            // Isso previne que a tela carregue dados sozinhos sem o usuário ter feito login no formulário
             if (user && activeUser) {
                 loadStateFromFirebase();
             }
@@ -732,11 +737,15 @@
                     inputNewRoom.value = '';
                     formAddRoom.classList.add('hidden');
                     btnShowAddRoom.classList.remove('hidden');
+                    
+                    // Força a atualização local na hora para que o botão reapareça
+                    updateUI(); 
                 }
             });
         };
 
-        // Cria os ícones iniciais do login
+        // SETUP GLOBAL: Liga os botões independente do carregamento na nuvem!
+        setupEventListeners();
         lucide.createIcons();
 
     </script>
