@@ -16,7 +16,6 @@
         body {
             font-family: 'JetBrains Mono', monospace;
         }
-        /* Estilos personalizados para a barra de rolagem e range inputs - Tema Neon */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
@@ -112,9 +111,9 @@
         </div>
     </div>
 
-    <div id="app-layout" class="hidden flex-col md:flex-row min-h-screen">
+    <div id="app-layout" class="hidden h-[100dvh] w-full overflow-hidden flex-col md:flex-row">
         
-        <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-10 h-[40vh] md:h-screen shrink-0">
+        <aside class="w-full md:w-80 h-[35%] md:h-full bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-10 shrink-0">
             <div class="p-4 md:p-6 border-b border-slate-800 relative overflow-hidden shrink-0">
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
                 <h1 class="text-xl md:text-2xl font-black text-cyan-400 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] tracking-widest">
@@ -154,9 +153,9 @@
             </div>
         </aside>
 
-        <main class="flex-1 flex flex-col h-[60vh] md:h-screen overflow-hidden bg-[#0a0f1c]">
+        <main class="flex-1 h-[65%] md:h-full flex flex-col overflow-hidden bg-[#0a0f1c]">
             
-            <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-3 md:p-6 flex flex-row items-center justify-between gap-4 sticky top-0 z-10 shadow-md">
+            <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-3 md:p-6 flex flex-row items-center justify-between gap-4 sticky top-0 z-10 shadow-md shrink-0">
                 <div class="flex items-center gap-2 md:gap-4 justify-between bg-slate-950 p-1 md:p-1.5 rounded-2xl border border-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] shrink-0">
                     <button id="btn-prev-day" class="p-1.5 md:p-2 hover:bg-slate-800 hover:text-cyan-400 rounded-xl text-slate-400 transition-all" title="Dia anterior">
                         <i data-lucide="chevron-left" class="w-4 h-4 md:w-5 md:h-5"></i>
@@ -200,7 +199,7 @@
                 </div>
             </header>
 
-            <div class="flex-1 overflow-y-auto p-4 md:p-8">
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 relative">
                 <div id="empty-state" class="h-full flex flex-col items-center justify-center text-slate-500">
                     <div class="relative mb-4">
                         <div class="absolute inset-0 bg-cyan-500 blur-[30px] opacity-10 rounded-full"></div>
@@ -601,7 +600,6 @@
                 if (isAdmin) {
                     const rangeInput = el.querySelector('input[type=range]');
                     
-                    // EVENTO INPUT: Atualiza a interface
                     rangeInput.addEventListener('input', (e) => {
                         const val = parseInt(e.target.value);
                         
@@ -633,7 +631,6 @@
                         updateStats();
                     });
 
-                    // FIREBASE SYNC: Dispara no PC (change) e no Celular (touchend)
                     const syncData = () => { saveState(); };
                     rangeInput.addEventListener('change', syncData);
                     rangeInput.addEventListener('touchend', syncData);
