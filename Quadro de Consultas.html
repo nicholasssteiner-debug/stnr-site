@@ -91,23 +91,25 @@
                     <span class="font-bold text-slate-800">Controle de Verbas</span>
                 </div>
                 
-                <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <button id="tabVerbas" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2">
+                <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+                    <button id="tabVerbas" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
                         <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Consulta
                     </button>
-                    <button id="tabUsuarios" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                    <!-- NOVA ABA: DEPARTAMENTOS -->
+                    <button id="tabDeptos" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                        <i data-lucide="folder-open" class="w-4 h-4"></i> Deptos 25/26
+                    </button>
+                    <button id="tabUsuarios" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
                         <i data-lucide="users" class="w-4 h-4"></i> Usuários
                     </button>
                     <div class="w-px h-6 bg-slate-200 mx-2 hidden sm:block"></div>
-                    <button id="btnLogout" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2">
+                    <button id="btnLogout" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
                         <i data-lucide="log-out" class="w-4 h-4"></i> Sair
                     </button>
                 </div>
             </div>
 
-            <!-- ============================== -->
-            <!-- SEÇÃO 1: CONSULTA DE VERBAS    -->
-            <!-- ============================== -->
+            <!-- SEÇÃO 1: CONSULTA DE VERBAS -->
             <div id="secaoVerbas" class="space-y-6 block">
                 <!-- Cabeçalho e Área de Importação -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
@@ -202,9 +204,80 @@
                 </div>
             </div>
 
-            <!-- ============================== -->
-            <!-- SEÇÃO 2: GERENCIAR USUÁRIOS    -->
-            <!-- ============================== -->
+            <!-- ============================================== -->
+            <!-- SEÇÃO 1.5: DEPARTAMENTOS 2025/2026             -->
+            <!-- ============================================== -->
+            <div id="secaoDeptos" class="space-y-6 hidden">
+                <!-- Cabeçalho e Importação -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Departamentos 2025 / 2026</h2>
+                        <p class="text-sm text-slate-500 mt-1">Pesquise em qualquer coluna e visualize a linha inteira dos dados.</p>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full lg:w-auto">
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <i data-lucide="file-spreadsheet" class="text-slate-400 w-5 h-5 hidden sm:block"></i>
+                            <input type="file" id="fileDeptosInput" accept=".csv" class="text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer w-full">
+                        </div>
+                        
+                        <select id="encodingDeptosSelect" class="bg-white border border-slate-300 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 p-2 w-full sm:w-auto cursor-pointer outline-none">
+                            <option value="UTF-8">UTF-8</option>
+                            <option value="ISO-8859-1">ISO-8859-1</option>
+                        </select>
+
+                        <button id="importDeptosBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 w-full sm:w-auto justify-center shadow-sm whitespace-nowrap">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                            Importar Dados
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Área de Pesquisa Universal -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                        Pesquisa Global por Texto
+                    </h2>
+                    <div class="relative w-full">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                        <input type="text" id="inputBuscaDeptos" placeholder="Digite para procurar em qualquer uma das colunas..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <!-- Tabela de Resultados -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                        <span class="text-sm font-medium text-slate-600">Resultados</span>
+                        <span id="contadorDeptos" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">0 registros</span>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-100 text-slate-600 font-medium">
+                                <tr>
+                                    <!-- Nomes reais das colunas baseados no CSV -->
+                                    <th class="px-6 py-3 border-b border-slate-200">Código 2025</th>
+                                    <th class="px-6 py-3 border-b border-slate-200">Nome Depto 2025</th>
+                                    <th class="px-6 py-3 border-b border-slate-200">Código 2026</th>
+                                    <th class="px-6 py-3 border-b border-slate-200">Nome Depto 2026</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaDeptosCorpo" class="divide-y divide-slate-100">
+                                <!-- Preenchido por JS -->
+                            </tbody>
+                        </table>
+                        
+                        <div id="mensagemVaziaDeptos" class="flex flex-col items-center justify-center p-12 text-slate-500">
+                            <i data-lucide="database" class="w-12 h-12 text-slate-300 mb-3"></i>
+                            <p class="text-base font-medium">Nenhum dado encontrado</p>
+                            <p class="text-sm">Importe o CSV ou limpe a pesquisa.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 2: GERENCIAR USUÁRIOS -->
             <div id="secaoUsuarios" class="space-y-6 hidden">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
@@ -254,54 +327,62 @@
         </div>
     </div>
 
-    <!-- Módulo Firebase e Lógica da Aplicação -->
     <script type="module">
-        // Importando Firebase do CDN oficial v11
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuração do Firebase fornecida
-        const firebaseConfig = {
-            apiKey: "AIzaSyB4HfH6sI65OD_zPHxsj5DedJjunD1fwyw",
-            authDomain: "relatorio-do-poco.firebaseapp.com",
-            projectId: "relatorio-do-poco",
-            storageBucket: "relatorio-do-poco.firebasestorage.app",
-            messagingSenderId: "145663567296",
-            appId: "1:145663567296:web:5d7be1e8b1f8d5ddd81425",
-            measurementId: "G-FRBN8L829R"
-        };
-
-        // Inicializar Firebase e Firestore
+        // Configuração e Inicialização
+        const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // Inicializar ícones do Lucide
+        // Paths seguindo a regra MANDATÓRIA
+        const pathVerbas = collection(db, 'artifacts', appId, 'public', 'data', 'verbas');
+        const pathUsuarios = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios');
+        const pathDeptos = collection(db, 'artifacts', appId, 'public', 'data', 'departamentos2526');
+
+        // Estado Global
+        let dadosOriginais = [];
+        let dadosDeptos = [];
+        let user = null;
+
+        // Inicializar Lucide
         lucide.createIcons();
 
-        // Variáveis de Estado
-        let dadosOriginais = []; // Começa limpo
-        let usuariosCadastrados = [];
+        // Autenticação Obrigatória antes de Queries
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
 
-        // Referências DOM - Navegação e UI Global
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+        });
+
+        initAuth();
+
+        // Referências DOM
         const loadingOverlay = document.getElementById('loadingOverlay');
         const loadingText = document.getElementById('loadingText');
         const loginView = document.getElementById('loginView');
         const mainView = document.getElementById('mainView');
-
-        // Referências DOM - Login
         const loginForm = document.getElementById('loginForm');
         const loginEmail = document.getElementById('loginEmail');
         const loginSenha = document.getElementById('loginSenha');
         const loginError = document.getElementById('loginError');
         const btnLogout = document.getElementById('btnLogout');
-
-        // Referências DOM - Tabs
         const tabVerbas = document.getElementById('tabVerbas');
         const tabUsuarios = document.getElementById('tabUsuarios');
+        const tabDeptos = document.getElementById('tabDeptos');
         const secaoVerbas = document.getElementById('secaoVerbas');
         const secaoUsuarios = document.getElementById('secaoUsuarios');
-
-        // Referências DOM - Verbas
+        const secaoDeptos = document.getElementById('secaoDeptos');
         const inputsDeFiltro = {
             diretoria: document.getElementById('filterDiretoria'),
             tipo: document.getElementById('filterTipo'),
@@ -313,56 +394,66 @@
         const fileInput = document.getElementById('fileInput');
         const encodingSelect = document.getElementById('encodingSelect');
         const importBtn = document.getElementById('importBtn');
+        
+        // Elementos Deptos
+        const tabelaDeptosCorpo = document.getElementById('tabelaDeptosCorpo');
+        const inputBuscaDeptos = document.getElementById('inputBuscaDeptos');
+        const contadorDeptos = document.getElementById('contadorDeptos');
+        const importDeptosBtn = document.getElementById('importDeptosBtn');
+        const fileDeptosInput = document.getElementById('fileDeptosInput');
+        const encodingDeptosSelect = document.getElementById('encodingDeptosSelect');
+        const mensagemVaziaDeptos = document.getElementById('mensagemVaziaDeptos');
 
-        // Referências DOM - Usuários
         const formNovoUsuario = document.getElementById('formNovoUsuario');
         const tabelaUsuarios = document.getElementById('tabelaUsuarios');
 
-        // ==========================================
-        // UTILIDADES
-        // ==========================================
+        // Helpers UI
         function showLoading(texto = "Processando...") {
             loadingText.textContent = texto;
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.classList.add('flex');
+            loadingOverlay.classList.replace('hidden', 'flex');
         }
-
         function hideLoading() {
-            loadingOverlay.classList.add('hidden');
-            loadingOverlay.classList.remove('flex');
+            loadingOverlay.classList.replace('flex', 'hidden');
         }
-
         function normalizarTexto(texto) {
-            if (!texto) return "";
-            return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return (texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         }
 
-        // ==========================================
-        // SISTEMA DE NAVEGAÇÃO / TABS
-        // ==========================================
+        // Navegação
         function switchTab(tab) {
+            secaoVerbas.classList.add('hidden');
+            secaoUsuarios.classList.add('hidden');
+            if(secaoDeptos) secaoDeptos.classList.add('hidden');
+
+            const classInativa = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 whitespace-nowrap";
+            const classAtiva = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2 whitespace-nowrap";
+
+            tabVerbas.className = classInativa;
+            tabUsuarios.className = classInativa;
+            if(tabDeptos) tabDeptos.className = classInativa;
+
             if (tab === 'verbas') {
                 secaoVerbas.classList.remove('hidden');
-                secaoUsuarios.classList.add('hidden');
-                tabVerbas.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2";
-                tabUsuarios.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2";
-            } else {
+                tabVerbas.className = classAtiva;
+            } else if (tab === 'usuarios') {
                 secaoUsuarios.classList.remove('hidden');
-                secaoVerbas.classList.add('hidden');
-                tabUsuarios.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2";
-                tabVerbas.className = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2";
-                carregarUsuarios(); // Recarrega sempre que abrir a aba
+                tabUsuarios.className = classAtiva;
+                carregarUsuarios();
+            } else if (tab === 'deptos' && secaoDeptos) {
+                secaoDeptos.classList.remove('hidden');
+                tabDeptos.className = classAtiva;
+                carregarDeptosDoFirebase();
             }
         }
 
-        tabVerbas.addEventListener('click', () => switchTab('verbas'));
-        tabUsuarios.addEventListener('click', () => switchTab('usuarios'));
+        tabVerbas.onclick = () => switchTab('verbas');
+        tabUsuarios.onclick = () => switchTab('usuarios');
+        if(tabDeptos) tabDeptos.onclick = () => switchTab('deptos');
 
-        // ==========================================
-        // SISTEMA DE LOGIN E AUTENTICAÇÃO
-        // ==========================================
-        loginForm.addEventListener('submit', async (e) => {
+        // Login
+        loginForm.onsubmit = async (e) => {
             e.preventDefault();
+            if (!user) return;
             loginError.classList.add('hidden');
             const email = loginEmail.value.trim();
             const senha = loginSenha.value.trim();
@@ -370,35 +461,27 @@
             showLoading("Autenticando...");
 
             try {
-                // Usuário Master Mestre Codificado
                 if (email === "nicholas.ganhadeiro@adventistas.org" && senha === "Fap1624") {
                     entrarNoSistema();
                     return;
                 }
 
-                // Verifica no Firebase (Coleção usuarios)
-                const querySnapshot = await getDocs(collection(db, "usuarios"));
-                let usuarioEncontrado = false;
-
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.email === email && data.senha === senha) {
-                        usuarioEncontrado = true;
-                    }
+                const querySnapshot = await getDocs(pathUsuarios);
+                let encontrado = false;
+                querySnapshot.forEach(doc => {
+                    if (doc.data().email === email && doc.data().senha === senha) encontrado = true;
                 });
 
-                if (usuarioEncontrado) {
-                    entrarNoSistema();
-                } else {
+                if (encontrado) entrarNoSistema();
+                else {
                     hideLoading();
                     loginError.classList.remove('hidden');
                 }
-            } catch (error) {
-                console.error("Erro ao autenticar:", error);
+            } catch (err) {
                 hideLoading();
-                alert("Erro ao conectar com o banco de dados. Verifique a configuração.");
+                console.error(err);
             }
-        });
+        };
 
         function entrarNoSistema() {
             loginView.classList.add('hidden');
@@ -406,309 +489,313 @@
             carregarDadosDoFirebase();
         }
 
-        btnLogout.addEventListener('click', () => {
+        btnLogout.onclick = () => {
             mainView.classList.add('hidden');
             loginView.classList.remove('hidden');
             loginEmail.value = '';
             loginSenha.value = '';
-        });
+        };
 
-        // ==========================================
-        // LÓGICA DO QUADRO DE VERBAS (FIREBASE)
-        // ==========================================
+        // Lógica Verbas
         async function carregarDadosDoFirebase() {
-            showLoading("Buscando dados no Firebase...");
+            if (!user) return;
+            showLoading("Buscando dados...");
             try {
-                const querySnapshot = await getDocs(collection(db, "verbas"));
-                const dadosCarregados = [];
-                
-                querySnapshot.forEach((doc) => {
-                    dadosCarregados.push(doc.data());
-                });
-
-                dadosOriginais = dadosCarregados;
+                const querySnapshot = await getDocs(pathVerbas);
+                dadosOriginais = querySnapshot.docs.map(d => d.data());
                 atualizarOpcoesFiltros();
                 aplicarFiltrosERenderizar();
-            } catch (error) {
-                console.error("Erro ao carregar dados:", error);
-                alert("Houve um erro ao tentar puxar os dados salvos.");
+            } catch (err) {
+                console.error(err);
             } finally {
                 hideLoading();
             }
         }
 
         function atualizarOpcoesFiltros() {
-            const diretoriasUnicas = [...new Set(dadosOriginais.map(item => item.diretoria))].sort();
-            const tiposUnicos = [...new Set(dadosOriginais.map(item => item.tipo))].sort();
+            const diretorias = [...new Set(dadosOriginais.map(i => i.diretoria))].sort();
+            const tipos = [...new Set(dadosOriginais.map(i => i.tipo))].sort();
 
-            const valDiretoria = inputsDeFiltro.diretoria.value;
-            const valTipo = inputsDeFiltro.tipo.value;
-
-            inputsDeFiltro.diretoria.innerHTML = '<option value="">Todas as Diretorias</option>';
-            diretoriasUnicas.forEach(d => {
-                if(d) inputsDeFiltro.diretoria.innerHTML += `<option value="${d}">${d}</option>`;
-            });
-
-            inputsDeFiltro.tipo.innerHTML = '<option value="">Todos os Tipos</option>';
-            tiposUnicos.forEach(t => {
-                if(t) inputsDeFiltro.tipo.innerHTML += `<option value="${t}">${t}</option>`;
-            });
-
-            if (diretoriasUnicas.includes(valDiretoria)) inputsDeFiltro.diretoria.value = valDiretoria;
-            if (tiposUnicos.includes(valTipo)) inputsDeFiltro.tipo.value = valTipo;
+            inputsDeFiltro.diretoria.innerHTML = '<option value="">Todas as Diretorias</option>' + 
+                diretorias.map(d => `<option value="${d}">${d}</option>`).join('');
+            inputsDeFiltro.tipo.innerHTML = '<option value="">Todos os Tipos</option>' + 
+                tipos.map(t => `<option value="${t}">${t}</option>`).join('');
         }
 
         function aplicarFiltrosERenderizar() {
-            const termoDiretoria = inputsDeFiltro.diretoria.value;
-            const termoTipo = inputsDeFiltro.tipo.value;
-            const termoNome = normalizarTexto(inputsDeFiltro.nome.value);
+            const d = inputsDeFiltro.diretoria.value;
+            const t = inputsDeFiltro.tipo.value;
+            const n = normalizarTexto(inputsDeFiltro.nome.value);
 
-            const dadosFiltrados = dadosOriginais.filter(item => {
-                const matchDiretoria = termoDiretoria === "" || item.diretoria === termoDiretoria;
-                const matchTipo = termoTipo === "" || item.tipo === termoTipo;
-                const matchNome = normalizarTexto(item.nome).includes(termoNome);
-                return matchDiretoria && matchTipo && matchNome;
+            const filtrados = dadosOriginais.filter(i => {
+                return (d === "" || i.diretoria === d) &&
+                       (t === "" || i.tipo === t) &&
+                       (normalizarTexto(i.nome).includes(n));
             });
 
             tabelaCorpo.innerHTML = '';
+            mensagemVazia.classList.toggle('hidden', filtrados.length > 0);
+            mensagemVazia.classList.toggle('flex', filtrados.length === 0);
 
-            if (dadosFiltrados.length === 0) {
-                mensagemVazia.classList.remove('hidden');
-                mensagemVazia.classList.add('flex');
-                if(dadosOriginais.length > 0) {
-                    mensagemVazia.innerHTML = `
-                        <i data-lucide="search-X" class="w-12 h-12 text-slate-300 mb-3"></i>
-                        <p class="text-base font-medium">Nenhum registro encontrado</p>
-                        <p class="text-sm">Tente ajustar seus filtros de pesquisa.</p>`;
-                } else {
-                    mensagemVazia.innerHTML = `
-                        <i data-lucide="database" class="w-12 h-12 text-slate-300 mb-3"></i>
-                        <p class="text-base font-medium">Banco de dados vazio</p>
-                        <p class="text-sm">Importe um arquivo CSV para começar.</p>`;
-                }
-                lucide.createIcons();
-            } else {
-                mensagemVazia.classList.add('hidden');
-                mensagemVazia.classList.remove('flex');
-                
-                dadosFiltrados.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50 transition-colors group";
-                    tr.innerHTML = `
-                        <td class="px-6 py-3 border-b border-slate-100 group-last:border-0 text-slate-700 font-medium">${item.diretoria}</td>
-                        <td class="px-6 py-3 border-b border-slate-100 group-last:border-0 text-slate-600">
-                            <span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-xs font-medium text-slate-700">
-                                ${item.tipo}
-                            </span>
-                        </td>
-                        <td class="px-6 py-3 border-b border-slate-100 group-last:border-0 text-slate-700">${item.nome}</td>
-                    `;
-                    tabelaCorpo.appendChild(tr);
-                });
-            }
+            filtrados.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors group";
+                tr.innerHTML = `
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${i.diretoria}</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-600">
+                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-xs font-medium text-slate-700">${i.tipo}</span>
+                    </td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${i.nome}</td>
+                `;
+                tabelaCorpo.appendChild(tr);
+            });
 
-            contadorResultados.textContent = `${dadosFiltrados.length} registro${dadosFiltrados.length !== 1 ? 's' : ''}`;
+            contadorResultados.textContent = `${filtrados.length} registro${filtrados.length !== 1 ? 's' : ''}`;
         }
 
-        inputsDeFiltro.diretoria.addEventListener('change', aplicarFiltrosERenderizar);
-        inputsDeFiltro.tipo.addEventListener('change', aplicarFiltrosERenderizar);
-        inputsDeFiltro.nome.addEventListener('input', aplicarFiltrosERenderizar);
-
-        // ==========================================
-        // LÓGICA DE IMPORTAÇÃO (SUBSTITUIÇÃO NO FIREBASE)
-        // ==========================================
-        importBtn.addEventListener('click', () => {
-            const file = fileInput.files[0];
-            if (!file) {
-                alert("Por favor, selecione um arquivo CSV primeiro.");
-                return;
+        Object.values(inputsDeFiltro).forEach(el => {
+            if(el) {
+                el.oninput = aplicarFiltrosERenderizar;
+                el.onchange = aplicarFiltrosERenderizar;
             }
-
-            const encoding = encodingSelect.value;
-            const reader = new FileReader();
-
-            showLoading("Lendo arquivo CSV...");
-
-            reader.onload = function(e) {
-                const text = e.target.result;
-                processarCSV(text);
-            };
-
-            reader.onerror = function() {
-                alert("Erro ao ler o arquivo.");
-                hideLoading();
-            };
-
-            reader.readAsText(file, encoding);
         });
 
-        async function processarCSV(textoCsv) {
-            const linhas = textoCsv.split(/\r?\n/).filter(linha => linha.trim() !== '');
-            if (linhas.length <= 1) {
-                alert("O arquivo parece estar vazio ou só contém o cabeçalho.");
+        // Importação
+        importBtn.onclick = () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            showLoading("Processando CSV...");
+            reader.onload = (e) => processarCSV(e.target.result);
+            reader.readAsText(file, encodingSelect.value);
+        };
+
+        async function processarCSV(text) {
+            const rows = text.split(/\r?\n/).filter(l => l.trim() !== '');
+            const novos = [];
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(';');
+                if (cols.length >= 3) {
+                    novos.push({ diretoria: cols[0].trim(), tipo: cols[1].trim(), nome: cols[2].trim() });
+                }
+            }
+
+            if (novos.length === 0) {
                 hideLoading();
                 return;
             }
 
-            const novosDados = [];
-            for (let i = 1; i < linhas.length; i++) {
-                const colunas = linhas[i].split(';');
-                if (colunas.length >= 3) {
-                    novosDados.push({
-                        diretoria: colunas[0].trim(),
-                        tipo: colunas[1].trim(),
-                        nome: colunas[2].trim()
+            try {
+                // Deletar Antigos (Batch)
+                const snapshot = await getDocs(pathVerbas);
+                let batch = writeBatch(db);
+                let c = 0;
+                for (const doc of snapshot.docs) {
+                    batch.delete(doc.ref);
+                    if (++c === 400) { await batch.commit(); batch = writeBatch(db); c = 0; }
+                }
+                if (c > 0) await batch.commit();
+
+                // Inserir Novos (Batch)
+                batch = writeBatch(db);
+                c = 0;
+                for (const item of novos) {
+                    batch.set(doc(pathVerbas), item);
+                    if (++c === 400) { await batch.commit(); batch = writeBatch(db); c = 0; }
+                }
+                if (c > 0) await batch.commit();
+
+                fileInput.value = '';
+                carregarDadosDoFirebase();
+            } catch (err) {
+                console.error(err);
+                hideLoading();
+            }
+        }
+
+        // ==========================================
+        // LÓGICA: DEPARTAMENTOS 25/26
+        // ==========================================
+        async function carregarDeptosDoFirebase() {
+            if (!user) return;
+            showLoading("Buscando departamentos...");
+            try {
+                const querySnapshot = await getDocs(pathDeptos);
+                dadosDeptos = querySnapshot.docs.map(d => d.data());
+                aplicarFiltroDeptos();
+            } catch (err) {
+                console.error(err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function aplicarFiltroDeptos() {
+            if(!inputBuscaDeptos) return;
+            const termo = normalizarTexto(inputBuscaDeptos.value);
+            
+            const filtrados = dadosDeptos.filter(i => {
+                // A mágica acontece aqui: A pesquisa universal verifica se o termo 
+                // existe em QUALQUER UMA das 4 colunas cadastradas.
+                return normalizarTexto(i.codigo2025).includes(termo) ||
+                       normalizarTexto(i.nome2025).includes(termo) ||
+                       normalizarTexto(i.codigo2026).includes(termo) ||
+                       normalizarTexto(i.nome2026).includes(termo);
+            });
+
+            if(tabelaDeptosCorpo) tabelaDeptosCorpo.innerHTML = '';
+            if(mensagemVaziaDeptos) {
+                mensagemVaziaDeptos.classList.toggle('hidden', filtrados.length > 0);
+                mensagemVaziaDeptos.classList.toggle('flex', filtrados.length === 0);
+            }
+
+            filtrados.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors group";
+                // Exibe as 4 colunas em linha para o dado filtrado
+                tr.innerHTML = `
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${i.codigo2025 || '-'}</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${i.nome2025 || '-'}</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${i.codigo2026 || '-'}</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${i.nome2026 || '-'}</td>
+                `;
+                if(tabelaDeptosCorpo) tabelaDeptosCorpo.appendChild(tr);
+            });
+
+            if(contadorDeptos) contadorDeptos.textContent = `${filtrados.length} registro${filtrados.length !== 1 ? 's' : ''}`;
+        }
+
+        if(inputBuscaDeptos) {
+            inputBuscaDeptos.oninput = aplicarFiltroDeptos;
+        }
+
+        if(importDeptosBtn) {
+            importDeptosBtn.onclick = () => {
+                const file = fileDeptosInput.files[0];
+                if (!file) { alert("Selecione um arquivo CSV."); return; }
+                const reader = new FileReader();
+                showLoading("Processando CSV...");
+                reader.onload = (e) => processarCSVDeptos(e.target.result);
+                reader.readAsText(file, encodingDeptosSelect.value);
+            };
+        }
+
+        async function processarCSVDeptos(text) {
+            const rows = text.split(/\r?\n/).filter(l => l.trim() !== '');
+            const novos = [];
+            
+            // i=1 assume que a primeira linha é o cabeçalho (pula o cabeçalho)
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(';');
+                // Validamos se a linha tem as 4 colunas, ignorando linhas completamente vazias com ;;;;
+                if (cols.length >= 4 && (cols[0].trim() !== '' || cols[1].trim() !== '')) {
+                    novos.push({ 
+                        codigo2025: (cols[0] || '').trim(), 
+                        nome2025: (cols[1] || '').trim(), 
+                        codigo2026: (cols[2] || '').trim(), 
+                        nome2026: (cols[3] || '').trim() 
                     });
                 }
             }
 
-            if (novosDados.length > 0) {
-                await substituirDadosNoFirebase(novosDados);
-            } else {
-                alert("Nenhum dado válido encontrado. Verifique se estão separados por ponto-e-vírgula (;)");
-                hideLoading();
+            if (novos.length === 0) { 
+                alert("Nenhum dado válido encontrado! Verifique a estrutura do arquivo.");
+                hideLoading(); 
+                return; 
             }
-        }
 
-        async function substituirDadosNoFirebase(novosDados) {
-            showLoading("Limpando dados antigos e salvando os novos no Firebase...");
             try {
-                const verbasRef = collection(db, 'verbas');
-                
-                // 1. Apagar tudo (Em Lotes de 400 por causa dos limites do Firestore)
-                const snapshot = await getDocs(verbasRef);
+                // Deleta coleção antiga
+                const snapshot = await getDocs(pathDeptos);
                 let batch = writeBatch(db);
-                let count = 0;
-
-                for (const document of snapshot.docs) {
-                    batch.delete(document.ref);
-                    count++;
-                    if (count === 400) {
-                        await batch.commit();
-                        batch = writeBatch(db);
-                        count = 0;
-                    }
+                let c = 0;
+                for (const doc of snapshot.docs) {
+                    batch.delete(doc.ref);
+                    if (++c === 400) { await batch.commit(); batch = writeBatch(db); c = 0; }
                 }
-                if (count > 0) await batch.commit(); // comita o restante
+                if (c > 0) await batch.commit();
 
-                // 2. Inserir Novos (Em Lotes de 400)
+                // Insere novos dados em massa
                 batch = writeBatch(db);
-                count = 0;
-
-                for (const item of novosDados) {
-                    const newDocRef = doc(verbasRef);
-                    batch.set(newDocRef, item);
-                    count++;
-                    if (count === 400) {
-                        await batch.commit();
-                        batch = writeBatch(db);
-                        count = 0;
-                    }
+                c = 0;
+                for (const item of novos) {
+                    batch.set(doc(pathDeptos), item);
+                    if (++c === 400) { await batch.commit(); batch = writeBatch(db); c = 0; }
                 }
-                if (count > 0) await batch.commit(); // comita o restante
+                if (c > 0) await batch.commit();
 
-                // 3. Atualizar Interface
-                alert("Dados atualizados com sucesso no Firebase!");
-                fileInput.value = ''; // Limpa o input
-                carregarDadosDoFirebase(); // Puxa do banco novamente
-
-            } catch (error) {
-                console.error("Erro ao substituir dados no Firebase: ", error);
-                alert("Houve um erro ao processar os dados para o Firebase.");
+                fileDeptosInput.value = '';
+                carregarDeptosDoFirebase();
+            } catch (err) {
+                console.error(err);
+                alert("Ocorreu um erro na gravação. Tente novamente.");
                 hideLoading();
             }
         }
 
-        // ==========================================
-        // LÓGICA DE GERENCIAMENTO DE USUÁRIOS
-        // ==========================================
+        // Usuários
         async function carregarUsuarios() {
-            showLoading("Carregando usuários...");
+            if (!user) return;
+            showLoading();
             try {
-                const querySnapshot = await getDocs(collection(db, "usuarios"));
-                tabelaUsuarios.innerHTML = '';
-                
-                // Exibe o usuário master como inalterável
-                const trMaster = document.createElement('tr');
-                trMaster.className = "bg-blue-50/50";
-                trMaster.innerHTML = `
-                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">nicholas.ganhadeiro@adventistas.org <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-2">Mestre</span></td>
-                    <td class="px-6 py-3 border-b border-slate-100 text-slate-500 italic">Protegido</td>
-                    <td class="px-6 py-3 border-b border-slate-100 text-right">-</td>
+                const snap = await getDocs(pathUsuarios);
+                tabelaUsuarios.innerHTML = `
+                    <tr class="bg-blue-50/50">
+                        <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">nicholas.ganhadeiro@adventistas.org <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-2">Mestre</span></td>
+                        <td class="px-6 py-3 border-b border-slate-100 text-slate-500 italic">Protegido</td>
+                        <td class="px-6 py-3 border-b border-slate-100 text-right">-</td>
+                    </tr>
                 `;
-                tabelaUsuarios.appendChild(trMaster);
-
-                querySnapshot.forEach((documento) => {
-                    const data = documento.data();
+                snap.forEach(d => {
+                    const data = d.data();
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-50 transition-colors";
                     tr.innerHTML = `
                         <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.email}</td>
                         <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.senha}</td>
                         <td class="px-6 py-3 border-b border-slate-100 text-right">
-                            <button class="btn-excluir text-red-500 hover:text-red-700 p-1 rounded transition-colors" data-id="${documento.id}" title="Excluir Usuário">
+                            <button class="text-red-500 hover:text-red-700 p-1" data-id="${d.id}">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </td>
                     `;
+                    tr.querySelector('button').onclick = () => excluirUsuario(d.id);
                     tabelaUsuarios.appendChild(tr);
                 });
-
-                // Adicionar eventos de exclusão
-                document.querySelectorAll('.btn-excluir').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = e.currentTarget.getAttribute('data-id');
-                        if(confirm('Tem certeza que deseja remover este usuário?')) {
-                            await excluirUsuario(id);
-                        }
-                    });
-                });
-
                 lucide.createIcons();
-
-            } catch (error) {
-                console.error("Erro ao carregar usuários:", error);
-                alert("Erro ao carregar a lista de usuários.");
             } finally {
                 hideLoading();
             }
         }
 
-        formNovoUsuario.addEventListener('submit', async (e) => {
+        formNovoUsuario.onsubmit = async (e) => {
             e.preventDefault();
+            if (!user) return;
             const email = document.getElementById('novoUserEmail').value;
             const senha = document.getElementById('novoUserSenha').value;
-
-            showLoading("Adicionando usuário...");
+            showLoading();
             try {
-                await addDoc(collection(db, "usuarios"), {
-                    email: email,
-                    senha: senha
-                });
-                
+                await addDoc(pathUsuarios, { email, senha });
                 document.getElementById('novoUserEmail').value = '';
                 document.getElementById('novoUserSenha').value = '';
-                carregarUsuarios(); // Recarrega a tabela
-
-            } catch (error) {
-                console.error("Erro ao adicionar usuário: ", error);
-                alert("Erro ao adicionar usuário ao Firebase.");
+                carregarUsuarios();
+            } catch (err) {
+                console.error(err);
                 hideLoading();
             }
-        });
+        };
 
-        async function excluirUsuario(idDoc) {
-            showLoading("Excluindo usuário...");
+        async function excluirUsuario(id) {
+            if (!user || !confirm('Deseja remover este usuário?')) return;
+            showLoading();
             try {
-                await deleteDoc(doc(db, "usuarios", idDoc));
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id));
                 carregarUsuarios();
-            } catch (error) {
-                console.error("Erro ao excluir usuário: ", error);
-                alert("Erro ao excluir o usuário.");
+            } catch (err) {
+                console.error(err);
                 hideLoading();
             }
         }
-
     </script>
 </body>
 </html>
