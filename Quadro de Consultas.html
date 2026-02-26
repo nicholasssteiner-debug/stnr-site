@@ -252,11 +252,10 @@
                         <span id="contadorDeptos" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">0 registros</span>
                     </div>
                     
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm whitespace-nowrap">
+                    <div class="overflow-x-auto w-full">
+                        <table class="w-full text-left text-sm whitespace-nowrap min-w-full">
                             <thead class="bg-slate-100 text-slate-600 font-medium">
                                 <tr>
-                                    <!-- Nomes reais das colunas baseados no CSV -->
                                     <th class="px-6 py-3 border-b border-slate-200">Código 2025</th>
                                     <th class="px-6 py-3 border-b border-slate-200">Nome Depto 2025</th>
                                     <th class="px-6 py-3 border-b border-slate-200">Código 2026</th>
@@ -307,8 +306,8 @@
                         <span class="text-sm font-medium text-slate-600">Usuários Cadastrados</span>
                     </div>
                     
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm whitespace-nowrap">
+                    <div class="overflow-x-auto w-full">
+                        <table class="w-full text-left text-sm whitespace-nowrap min-w-full">
                             <thead class="bg-slate-100 text-slate-600 font-medium">
                                 <tr>
                                     <th class="px-6 py-3 border-b border-slate-200">E-mail</th>
@@ -330,16 +329,30 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuração e Inicialização
-        const firebaseConfig = JSON.parse(__firebase_config);
+        // Configuração segura e com Fallback
+        let firebaseConfig;
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+                apiKey: "AIzaSyB4HfH6sI65OD_zPHxsj5DedJjunD1fwyw",
+                authDomain: "relatorio-do-poco.firebaseapp.com",
+                projectId: "relatorio-do-poco",
+                storageBucket: "relatorio-do-poco.firebasestorage.app",
+                messagingSenderId: "145663567296",
+                appId: "1:145663567296:web:5d7be1e8b1f8d5ddd81425",
+                measurementId: "G-FRBN8L829R"
+            };
+        } catch (e) {
+            console.error("Configuração do Firebase falhou", e);
+        }
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // Paths seguindo a regra MANDATÓRIA
+        // Paths seguindo regras de segurança da estrutura
         const pathVerbas = collection(db, 'artifacts', appId, 'public', 'data', 'verbas');
         const pathUsuarios = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios');
         const pathDeptos = collection(db, 'artifacts', appId, 'public', 'data', 'departamentos2526');
@@ -347,24 +360,24 @@
         // Estado Global
         let dadosOriginais = [];
         let dadosDeptos = [];
-        let user = null;
 
         // Inicializar Lucide
         lucide.createIcons();
 
         // Autenticação Obrigatória antes de Queries
         const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Erro no Auth:", err);
             }
         };
 
-        onAuthStateChanged(auth, (u) => {
-            user = u;
-        });
-
+        // Força a inicialização da Auth ao abrir a página
         initAuth();
 
         // Referências DOM
@@ -383,6 +396,7 @@
         const secaoVerbas = document.getElementById('secaoVerbas');
         const secaoUsuarios = document.getElementById('secaoUsuarios');
         const secaoDeptos = document.getElementById('secaoDeptos');
+        
         const inputsDeFiltro = {
             diretoria: document.getElementById('filterDiretoria'),
             tipo: document.getElementById('filterTipo'),
@@ -395,7 +409,6 @@
         const encodingSelect = document.getElementById('encodingSelect');
         const importBtn = document.getElementById('importBtn');
         
-        // Elementos Deptos
         const tabelaDeptosCorpo = document.getElementById('tabelaDeptosCorpo');
         const inputBuscaDeptos = document.getElementById('inputBuscaDeptos');
         const contadorDeptos = document.getElementById('contadorDeptos');
@@ -409,33 +422,33 @@
 
         // Helpers UI
         function showLoading(texto = "Processando...") {
-            loadingText.textContent = texto;
-            loadingOverlay.classList.replace('hidden', 'flex');
+            if(loadingText) loadingText.textContent = texto;
+            if(loadingOverlay) loadingOverlay.classList.replace('hidden', 'flex');
         }
         function hideLoading() {
-            loadingOverlay.classList.replace('flex', 'hidden');
+            if(loadingOverlay) loadingOverlay.classList.replace('flex', 'hidden');
         }
         function normalizarTexto(texto) {
-            return (texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return (texto || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         }
 
         // Navegação
         function switchTab(tab) {
-            secaoVerbas.classList.add('hidden');
-            secaoUsuarios.classList.add('hidden');
+            if(secaoVerbas) secaoVerbas.classList.add('hidden');
+            if(secaoUsuarios) secaoUsuarios.classList.add('hidden');
             if(secaoDeptos) secaoDeptos.classList.add('hidden');
 
             const classInativa = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 whitespace-nowrap";
             const classAtiva = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2 whitespace-nowrap";
 
-            tabVerbas.className = classInativa;
-            tabUsuarios.className = classInativa;
+            if(tabVerbas) tabVerbas.className = classInativa;
+            if(tabUsuarios) tabUsuarios.className = classInativa;
             if(tabDeptos) tabDeptos.className = classInativa;
 
-            if (tab === 'verbas') {
+            if (tab === 'verbas' && secaoVerbas) {
                 secaoVerbas.classList.remove('hidden');
                 tabVerbas.className = classAtiva;
-            } else if (tab === 'usuarios') {
+            } else if (tab === 'usuarios' && secaoUsuarios) {
                 secaoUsuarios.classList.remove('hidden');
                 tabUsuarios.className = classAtiva;
                 carregarUsuarios();
@@ -446,61 +459,75 @@
             }
         }
 
-        tabVerbas.onclick = () => switchTab('verbas');
-        tabUsuarios.onclick = () => switchTab('usuarios');
+        if(tabVerbas) tabVerbas.onclick = () => switchTab('verbas');
+        if(tabUsuarios) tabUsuarios.onclick = () => switchTab('usuarios');
         if(tabDeptos) tabDeptos.onclick = () => switchTab('deptos');
 
         // Login
-        loginForm.onsubmit = async (e) => {
-            e.preventDefault();
-            if (!user) return;
-            loginError.classList.add('hidden');
-            const email = loginEmail.value.trim();
-            const senha = loginSenha.value.trim();
+        if (loginForm) {
+            loginForm.onsubmit = async (e) => {
+                e.preventDefault();
+                if(loginError) loginError.classList.add('hidden');
+                
+                const email = loginEmail.value.trim();
+                const senha = loginSenha.value.trim();
 
-            showLoading("Autenticando...");
+                showLoading("Autenticando...");
 
-            try {
-                if (email === "nicholas.ganhadeiro@adventistas.org" && senha === "Fap1624") {
-                    entrarNoSistema();
-                    return;
-                }
+                try {
+                    // Espera pela conexão real se ainda não finalizou
+                    if (!auth.currentUser) {
+                        await initAuth();
+                    }
 
-                const querySnapshot = await getDocs(pathUsuarios);
-                let encontrado = false;
-                querySnapshot.forEach(doc => {
-                    if (doc.data().email === email && doc.data().senha === senha) encontrado = true;
-                });
+                    // Acesso master (Bypass)
+                    if (email === "nicholas.ganhadeiro@adventistas.org" && senha === "Fap1624") {
+                        entrarNoSistema();
+                        return;
+                    }
 
-                if (encontrado) entrarNoSistema();
-                else {
+                    const querySnapshot = await getDocs(pathUsuarios);
+                    let encontrado = false;
+                    
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.email === email && data.senha === senha) encontrado = true;
+                    });
+
+                    if (encontrado) {
+                        entrarNoSistema();
+                    } else {
+                        hideLoading();
+                        if(loginError) loginError.classList.remove('hidden');
+                    }
+                } catch (err) {
                     hideLoading();
-                    loginError.classList.remove('hidden');
+                    console.error("Erro durante o Login:", err);
+                    alert("Falha ao comunicar com o banco de dados. Tente novamente.");
                 }
-            } catch (err) {
-                hideLoading();
-                console.error(err);
-            }
-        };
+            };
+        }
 
         function entrarNoSistema() {
-            loginView.classList.add('hidden');
-            mainView.classList.remove('hidden');
+            if(loginView) loginView.classList.add('hidden');
+            if(mainView) mainView.classList.remove('hidden');
             carregarDadosDoFirebase();
         }
 
-        btnLogout.onclick = () => {
-            mainView.classList.add('hidden');
-            loginView.classList.remove('hidden');
-            loginEmail.value = '';
-            loginSenha.value = '';
-        };
+        if(btnLogout) {
+            btnLogout.onclick = () => {
+                if(mainView) mainView.classList.add('hidden');
+                if(loginView) loginView.classList.remove('hidden');
+                if(loginEmail) loginEmail.value = '';
+                if(loginSenha) loginSenha.value = '';
+            };
+        }
 
         // Lógica Verbas
         async function carregarDadosDoFirebase() {
-            if (!user) return;
             showLoading("Buscando dados...");
             try {
+                if (!auth.currentUser) await initAuth();
                 const querySnapshot = await getDocs(pathVerbas);
                 dadosOriginais = querySnapshot.docs.map(d => d.data());
                 atualizarOpcoesFiltros();
@@ -513,19 +540,23 @@
         }
 
         function atualizarOpcoesFiltros() {
-            const diretorias = [...new Set(dadosOriginais.map(i => i.diretoria))].sort();
-            const tipos = [...new Set(dadosOriginais.map(i => i.tipo))].sort();
+            const diretorias = [...new Set(dadosOriginais.map(i => i.diretoria))].filter(Boolean).sort();
+            const tipos = [...new Set(dadosOriginais.map(i => i.tipo))].filter(Boolean).sort();
 
-            inputsDeFiltro.diretoria.innerHTML = '<option value="">Todas as Diretorias</option>' + 
-                diretorias.map(d => `<option value="${d}">${d}</option>`).join('');
-            inputsDeFiltro.tipo.innerHTML = '<option value="">Todos os Tipos</option>' + 
-                tipos.map(t => `<option value="${t}">${t}</option>`).join('');
+            if(inputsDeFiltro.diretoria) {
+                inputsDeFiltro.diretoria.innerHTML = '<option value="">Todas as Diretorias</option>' + 
+                    diretorias.map(d => `<option value="${d}">${d}</option>`).join('');
+            }
+            if(inputsDeFiltro.tipo) {
+                inputsDeFiltro.tipo.innerHTML = '<option value="">Todos os Tipos</option>' + 
+                    tipos.map(t => `<option value="${t}">${t}</option>`).join('');
+            }
         }
 
         function aplicarFiltrosERenderizar() {
-            const d = inputsDeFiltro.diretoria.value;
-            const t = inputsDeFiltro.tipo.value;
-            const n = normalizarTexto(inputsDeFiltro.nome.value);
+            const d = inputsDeFiltro.diretoria ? inputsDeFiltro.diretoria.value : '';
+            const t = inputsDeFiltro.tipo ? inputsDeFiltro.tipo.value : '';
+            const n = inputsDeFiltro.nome ? normalizarTexto(inputsDeFiltro.nome.value) : '';
 
             const filtrados = dadosOriginais.filter(i => {
                 return (d === "" || i.diretoria === d) &&
@@ -533,24 +564,26 @@
                        (normalizarTexto(i.nome).includes(n));
             });
 
-            tabelaCorpo.innerHTML = '';
-            mensagemVazia.classList.toggle('hidden', filtrados.length > 0);
-            mensagemVazia.classList.toggle('flex', filtrados.length === 0);
+            if(tabelaCorpo) tabelaCorpo.innerHTML = '';
+            if(mensagemVazia) {
+                mensagemVazia.classList.toggle('hidden', filtrados.length > 0);
+                mensagemVazia.classList.toggle('flex', filtrados.length === 0);
+            }
 
             filtrados.forEach(i => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors group";
                 tr.innerHTML = `
-                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${i.diretoria}</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${i.diretoria || '-'}</td>
                     <td class="px-6 py-3 border-b border-slate-100 text-slate-600">
-                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-xs font-medium text-slate-700">${i.tipo}</span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-xs font-medium text-slate-700">${i.tipo || '-'}</span>
                     </td>
-                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${i.nome}</td>
+                    <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${i.nome || '-'}</td>
                 `;
-                tabelaCorpo.appendChild(tr);
+                if(tabelaCorpo) tabelaCorpo.appendChild(tr);
             });
 
-            contadorResultados.textContent = `${filtrados.length} registro${filtrados.length !== 1 ? 's' : ''}`;
+            if(contadorResultados) contadorResultados.textContent = `${filtrados.length} registro${filtrados.length !== 1 ? 's' : ''}`;
         }
 
         Object.values(inputsDeFiltro).forEach(el => {
@@ -560,33 +593,35 @@
             }
         });
 
-        // Importação
-        importBtn.onclick = () => {
-            const file = fileInput.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            showLoading("Processando CSV...");
-            reader.onload = (e) => processarCSV(e.target.result);
-            reader.readAsText(file, encodingSelect.value);
-        };
+        // Importação Verbas
+        if (importBtn) {
+            importBtn.onclick = () => {
+                const file = fileInput.files[0];
+                if (!file) { alert("Selecione um arquivo CSV."); return; }
+                const reader = new FileReader();
+                showLoading("Processando CSV...");
+                reader.onload = (e) => processarCSV(e.target.result);
+                reader.readAsText(file, encodingSelect.value);
+            };
+        }
 
         async function processarCSV(text) {
             const rows = text.split(/\r?\n/).filter(l => l.trim() !== '');
             const novos = [];
             for (let i = 1; i < rows.length; i++) {
                 const cols = rows[i].split(';');
-                if (cols.length >= 3) {
+                if (cols.length >= 3 && (cols[0].trim() !== '' || cols[1].trim() !== '')) {
                     novos.push({ diretoria: cols[0].trim(), tipo: cols[1].trim(), nome: cols[2].trim() });
                 }
             }
 
             if (novos.length === 0) {
                 hideLoading();
+                alert("Nenhum dado encontrado ou arquivo inválido.");
                 return;
             }
 
             try {
-                // Deletar Antigos (Batch)
                 const snapshot = await getDocs(pathVerbas);
                 let batch = writeBatch(db);
                 let c = 0;
@@ -596,7 +631,6 @@
                 }
                 if (c > 0) await batch.commit();
 
-                // Inserir Novos (Batch)
                 batch = writeBatch(db);
                 c = 0;
                 for (const item of novos) {
@@ -605,10 +639,11 @@
                 }
                 if (c > 0) await batch.commit();
 
-                fileInput.value = '';
+                if(fileInput) fileInput.value = '';
                 carregarDadosDoFirebase();
             } catch (err) {
                 console.error(err);
+                alert("Erro ao salvar os dados.");
                 hideLoading();
             }
         }
@@ -617,9 +652,9 @@
         // LÓGICA: DEPARTAMENTOS 25/26
         // ==========================================
         async function carregarDeptosDoFirebase() {
-            if (!user) return;
             showLoading("Buscando departamentos...");
             try {
+                if (!auth.currentUser) await initAuth();
                 const querySnapshot = await getDocs(pathDeptos);
                 dadosDeptos = querySnapshot.docs.map(d => d.data());
                 aplicarFiltroDeptos();
@@ -635,8 +670,6 @@
             const termo = normalizarTexto(inputBuscaDeptos.value);
             
             const filtrados = dadosDeptos.filter(i => {
-                // A mágica acontece aqui: A pesquisa universal verifica se o termo 
-                // existe em QUALQUER UMA das 4 colunas cadastradas.
                 return normalizarTexto(i.codigo2025).includes(termo) ||
                        normalizarTexto(i.nome2025).includes(termo) ||
                        normalizarTexto(i.codigo2026).includes(termo) ||
@@ -652,7 +685,6 @@
             filtrados.forEach(i => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors group";
-                // Exibe as 4 colunas em linha para o dado filtrado
                 tr.innerHTML = `
                     <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${i.codigo2025 || '-'}</td>
                     <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${i.nome2025 || '-'}</td>
@@ -684,10 +716,8 @@
             const rows = text.split(/\r?\n/).filter(l => l.trim() !== '');
             const novos = [];
             
-            // i=1 assume que a primeira linha é o cabeçalho (pula o cabeçalho)
             for (let i = 1; i < rows.length; i++) {
                 const cols = rows[i].split(';');
-                // Validamos se a linha tem as 4 colunas, ignorando linhas completamente vazias com ;;;;
                 if (cols.length >= 4 && (cols[0].trim() !== '' || cols[1].trim() !== '')) {
                     novos.push({ 
                         codigo2025: (cols[0] || '').trim(), 
@@ -705,7 +735,6 @@
             }
 
             try {
-                // Deleta coleção antiga
                 const snapshot = await getDocs(pathDeptos);
                 let batch = writeBatch(db);
                 let c = 0;
@@ -715,7 +744,6 @@
                 }
                 if (c > 0) await batch.commit();
 
-                // Insere novos dados em massa
                 batch = writeBatch(db);
                 c = 0;
                 for (const item of novos) {
@@ -724,7 +752,7 @@
                 }
                 if (c > 0) await batch.commit();
 
-                fileDeptosInput.value = '';
+                if(fileDeptosInput) fileDeptosInput.value = '';
                 carregarDeptosDoFirebase();
             } catch (err) {
                 console.error(err);
@@ -735,64 +763,73 @@
 
         // Usuários
         async function carregarUsuarios() {
-            if (!user) return;
-            showLoading();
+            showLoading("Carregando usuários...");
             try {
+                if (!auth.currentUser) await initAuth();
                 const snap = await getDocs(pathUsuarios);
-                tabelaUsuarios.innerHTML = `
-                    <tr class="bg-blue-50/50">
-                        <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">nicholas.ganhadeiro@adventistas.org <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-2">Mestre</span></td>
-                        <td class="px-6 py-3 border-b border-slate-100 text-slate-500 italic">Protegido</td>
-                        <td class="px-6 py-3 border-b border-slate-100 text-right">-</td>
-                    </tr>
-                `;
-                snap.forEach(d => {
-                    const data = d.data();
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50 transition-colors";
-                    tr.innerHTML = `
-                        <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.email}</td>
-                        <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.senha}</td>
-                        <td class="px-6 py-3 border-b border-slate-100 text-right">
-                            <button class="text-red-500 hover:text-red-700 p-1" data-id="${d.id}">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </td>
+                if(tabelaUsuarios) {
+                    tabelaUsuarios.innerHTML = `
+                        <tr class="bg-blue-50/50">
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">nicholas.ganhadeiro@adventistas.org <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-2">Mestre</span></td>
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-500 italic">Protegido</td>
+                            <td class="px-6 py-3 border-b border-slate-100 text-right">-</td>
+                        </tr>
                     `;
-                    tr.querySelector('button').onclick = () => excluirUsuario(d.id);
-                    tabelaUsuarios.appendChild(tr);
-                });
+                    snap.forEach(d => {
+                        const data = d.data();
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-50 transition-colors";
+                        tr.innerHTML = `
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.email || ''}</td>
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.senha || ''}</td>
+                            <td class="px-6 py-3 border-b border-slate-100 text-right">
+                                <button class="text-red-500 hover:text-red-700 p-1" data-id="${d.id}">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        `;
+                        tr.querySelector('button').onclick = () => excluirUsuario(d.id);
+                        tabelaUsuarios.appendChild(tr);
+                    });
+                }
                 lucide.createIcons();
+            } catch (err) {
+                console.error(err);
             } finally {
                 hideLoading();
             }
         }
 
-        formNovoUsuario.onsubmit = async (e) => {
-            e.preventDefault();
-            if (!user) return;
-            const email = document.getElementById('novoUserEmail').value;
-            const senha = document.getElementById('novoUserSenha').value;
-            showLoading();
-            try {
-                await addDoc(pathUsuarios, { email, senha });
-                document.getElementById('novoUserEmail').value = '';
-                document.getElementById('novoUserSenha').value = '';
-                carregarUsuarios();
-            } catch (err) {
-                console.error(err);
-                hideLoading();
-            }
-        };
+        if (formNovoUsuario) {
+            formNovoUsuario.onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('novoUserEmail').value;
+                const senha = document.getElementById('novoUserSenha').value;
+                showLoading();
+                try {
+                    if (!auth.currentUser) await initAuth();
+                    await addDoc(pathUsuarios, { email, senha });
+                    document.getElementById('novoUserEmail').value = '';
+                    document.getElementById('novoUserSenha').value = '';
+                    carregarUsuarios();
+                } catch (err) {
+                    console.error(err);
+                    alert("Erro ao adicionar usuário.");
+                    hideLoading();
+                }
+            };
+        }
 
         async function excluirUsuario(id) {
-            if (!user || !confirm('Deseja remover este usuário?')) return;
+            if (!confirm('Deseja remover este usuário?')) return;
             showLoading();
             try {
+                if (!auth.currentUser) await initAuth();
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id));
                 carregarUsuarios();
             } catch (err) {
                 console.error(err);
+                alert("Erro ao excluir usuário.");
                 hideLoading();
             }
         }
