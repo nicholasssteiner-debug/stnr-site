@@ -24,17 +24,17 @@
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
         
         .score-btn.active {
-            background-color: #0891b2; /* cyan-600 */
+            background-color: #0891b2; 
             color: white;
-            border-color: #22d3ee; /* cyan-400 */
+            border-color: #22d3ee; 
             box-shadow: 0 0 15px rgba(34,211,238,0.4);
             transform: scale(1.05);
         }
         
         .criterion-toggle.active {
-            background-color: #164e63; /* cyan-900 */
-            border-color: #06b6d4; /* cyan-500 */
-            color: #22d3ee; /* cyan-400 */
+            background-color: #164e63; 
+            border-color: #06b6d4; 
+            color: #22d3ee; 
             box-shadow: inset 0 0 10px rgba(34,211,238,0.2);
         }
         
@@ -49,6 +49,7 @@
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen overflow-hidden selection:bg-cyan-500/30">
 
+    <!-- LOGIN SCREEN -->
     <div id="login-screen" class="fixed inset-0 z-50 bg-[#0a0f1c] flex items-center justify-center p-4">
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none"></div>
         <div class="absolute top-1/4 right-1/4 w-[300px] h-[300px] bg-purple-500/10 blur-[80px] rounded-full pointer-events-none"></div>
@@ -60,6 +61,9 @@
                 </div>
                 <h1 class="text-4xl font-black text-slate-100 tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] mb-2">LIMPO</h1>
                 <h2 class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-4 leading-relaxed">Levantamento Interno de Manutenção<br>e Padrão Organizacional</h2>
+                <p class="text-xs text-slate-500 mt-2 text-center border-t border-slate-800 pt-3">
+                    Estudantes: Use o número do quarto como login e o nome da Ala como senha (junto e minúsculo).
+                </p>
             </div>
 
             <form id="login-form" class="space-y-5">
@@ -72,7 +76,7 @@
                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Login</label>
                     <div class="relative">
                         <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"></i>
-                        <input type="text" id="login-username" required class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-slate-200 placeholder-slate-600 transition-all shadow-inner" placeholder="Login">
+                        <input type="text" id="login-username" required class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-slate-200 placeholder-slate-600 transition-all shadow-inner" placeholder="Login (ex: 101 ou monitor)">
                     </div>
                 </div>
 
@@ -92,7 +96,7 @@
         </div>
     </div>
 
-    <!-- Layout Base -->
+    <!-- MAIN APP LAYOUT -->
     <div id="app-layout" class="hidden h-[100dvh] w-full overflow-hidden flex-row relative bg-[#0a0f1c]">
         
         <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
@@ -111,10 +115,10 @@
                 </button>
             </div>
 
-            <!-- Listagem de Quartos -->
+            <!-- Listagem de Alas -->
             <div id="sidebar-rooms" class="flex-1 overflow-y-auto p-4 flex flex-col">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-[10px] md:text-xs font-semibold text-cyan-500/70 uppercase tracking-widest">Quartos Registados</div>
+                    <div class="text-[10px] md:text-xs font-semibold text-cyan-500/70 uppercase tracking-widest">Alas e Quartos</div>
                     <button id="btn-secret-clear" class="hidden text-slate-600 hover:text-slate-400 transition-colors p-1 rounded cursor-pointer" title="Ações Avançadas">
                         <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
                     </button>
@@ -123,11 +127,11 @@
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500/50"></i>
                     <input type="text" id="search-room" placeholder="Buscar quarto..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 bg-slate-950 text-slate-200" autocomplete="off">
                 </div>
-                <div id="rooms-list" class="space-y-2 flex-1 overflow-y-auto pr-1"></div>
+                <div id="rooms-list" class="flex-1 overflow-y-auto pr-1 pb-4"></div>
             </div>
         </aside>
 
-        <!-- Conteúdo Principal -->
+        <!-- Main Content -->
         <main class="flex-1 h-full flex flex-col overflow-hidden bg-[#0a0f1c] w-full relative">
             
             <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-2 md:p-6 flex flex-row items-center justify-between gap-2 md:gap-4 sticky top-0 z-10 shadow-md shrink-0">
@@ -151,7 +155,6 @@
                 </div>
 
                 <div class="flex items-center gap-2 md:gap-6 justify-end">
-                    <!-- Botão de alternância Avaliação/Dashboard -->
                     <button id="btn-toggle-view" class="flex items-center gap-2 px-2.5 py-1.5 md:px-4 md:py-2 bg-cyan-950/40 border border-cyan-800 hover:bg-cyan-900/60 rounded-xl text-cyan-400 text-xs md:text-sm font-bold transition-all shadow-[0_0_10px_rgba(34,211,238,0.1)]">
                         <i id="toggle-view-icon" data-lucide="bar-chart-2" class="w-4 h-4"></i>
                         <span id="toggle-view-text" class="hidden sm:inline">Relatórios</span>
@@ -178,7 +181,7 @@
                         <i data-lucide="clipboard-list" class="w-16 h-16 md:w-20 md:h-20 text-slate-700 relative z-10"></i>
                     </div>
                     <h2 class="text-lg md:text-xl font-semibold text-slate-300 mb-2">Nenhum alvo selecionado</h2>
-                    <p class="text-center text-xs md:text-sm max-w-sm">Selecione um quarto no menu lateral para iniciar.</p>
+                    <p class="text-center text-xs md:text-sm max-w-sm">Selecione um quarto para visualizar ou avaliar.</p>
                 </div>
 
                 <!-- TELA 1: AVALIAÇÃO -->
@@ -190,6 +193,9 @@
                             <h2 id="summary-room-name" class="text-2xl md:text-3xl font-bold text-slate-100 mb-1 tracking-tight">Nome do Quarto</h2>
                             <p id="summary-date" class="text-cyan-500/70 text-xs md:text-sm font-medium">Avaliação referente ao dia...</p>
                         </div>
+                        <div id="student-wing-badge" class="hidden items-center gap-2 bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl text-slate-300 font-bold">
+                            <!-- Injetado por JS -->
+                        </div>
                     </div>
 
                     <!-- Bloco 1: Nota Geral -->
@@ -197,9 +203,7 @@
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <i data-lucide="star" class="w-4 h-4 text-amber-400"></i> Nota Geral do Quarto
                         </h3>
-                        <div id="score-buttons" class="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto pb-2">
-                            <!-- Injetado JS -->
-                        </div>
+                        <div id="score-buttons" class="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto pb-2"></div>
                     </div>
 
                     <!-- Bloco 2: Critérios / Pontos de Atenção -->
@@ -208,9 +212,7 @@
                             <i data-lucide="check-square" class="w-4 h-4 text-cyan-400"></i> Pontos de Atenção
                         </h3>
                         <p class="text-xs text-slate-500 mb-4">Marque os itens que impactaram negativamente a nota.</p>
-                        <div id="criteria-toggles" class="space-y-3 mt-4">
-                            <!-- Injetado JS -->
-                        </div>
+                        <div id="criteria-toggles" class="space-y-3 mt-4"></div>
                     </div>
 
                     <!-- Bloco 3: Observações -->
@@ -219,6 +221,14 @@
                             <i data-lucide="message-square" class="w-4 h-4 text-purple-400"></i> Observações e Melhorias
                         </h3>
                         <textarea id="obs-textarea" rows="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all resize-none" placeholder="Descreva o estado do quarto, problemas encontrados ou orientações..."></textarea>
+                    </div>
+
+                    <!-- Bloco Avançar / Concluir (Apenas para Admin) -->
+                    <div id="advance-room-container" class="mt-4 flex justify-end border-t border-slate-800/50 pt-6 hidden">
+                        <button id="btn-advance-room" class="flex items-center gap-2 px-6 py-3 text-white font-bold rounded-xl transition-all">
+                            <span id="advance-room-text">Próximo Quarto</span>
+                            <i id="advance-room-icon" data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
                     </div>
 
                 </div>
@@ -243,28 +253,26 @@
                         </div>
                     </div>
 
-                    <!-- Cards de Ranking -->
+                    <!-- Cards de Ranking e Pódio -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Ranking Primário (Hoje ou Mês) -->
-                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col h-[300px]">
+                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col h-[450px]">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
                                 <span id="ranking-title-1">Ranking de Hoje</span>
                                 <i id="ranking-icon-1" data-lucide="calendar-days" class="w-4 h-4 text-cyan-400"></i>
                             </h3>
-                            <div id="ranking-list-1" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                                <!-- Injetado JS -->
-                            </div>
+                            <div id="podium-1" class="mb-4 shrink-0"></div> <!-- Pódio 1 -->
+                            <div id="ranking-list-1" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
                         </div>
 
                         <!-- Ranking Secundário (Mês ou Ano) -->
-                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col h-[300px]">
+                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col h-[450px]">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
                                 <span id="ranking-title-2">Ranking Mensal (Média)</span>
                                 <i id="ranking-icon-2" data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
                             </h3>
-                            <div id="ranking-list-2" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                                <!-- Injetado JS -->
-                            </div>
+                            <div id="podium-2" class="mb-4 shrink-0"></div> <!-- Pódio 2 -->
+                            <div id="ranking-list-2" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
                         </div>
                     </div>
 
@@ -288,6 +296,35 @@
                             </div>
                             <div class="relative h-[250px] w-full">
                                 <canvas id="chart-individual"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ZONA GAMIFICADA: CORRIDA -->
+                    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 col-span-1 lg:col-span-2 mt-2">
+                        <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2 mb-6 border-b border-slate-800 pb-4">
+                            <i data-lucide="flag" class="w-6 h-6 text-emerald-400"></i> Corrida
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Corrida das Alas -->
+                            <div>
+                                <h4 class="text-xs font-bold text-cyan-500 uppercase tracking-widest mb-4 flex items-center justify-between">
+                                    Disputa entre Alas
+                                    <span class="text-slate-500 font-normal text-[10px]" id="race-wing-period"></span>
+                                </h4>
+                                <div id="race-wings" class="space-y-4"></div>
+                            </div>
+                            
+                            <!-- Corrida dos Quartos -->
+                            <div>
+                                <h4 class="text-xs font-bold text-purple-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                                    Disputa na Ala 
+                                    <select id="race-wing-select" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-purple-500 ml-2 shadow-inner cursor-pointer">
+                                        <!-- Injetado via JS -->
+                                    </select>
+                                </h4>
+                                <div id="race-rooms" class="space-y-4"></div>
                             </div>
                         </div>
                     </div>
@@ -329,12 +366,58 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configurações
+        // Mapeamento e Configuração de Alas e Quartos (Com Ícones Minimalistas de Carros Lucide)
+        const WINGS = [
+            { id: 'w1', name: 'Lamborghini', icon: 'car', color: 'text-yellow-400', rooms: ['room-101', 'room-102', 'room-103', 'room-104', 'room-105', 'room-106', 'room-107', 'room-108'] },
+            { id: 'w2', name: 'MC Laren', icon: 'car', color: 'text-orange-400', rooms: ['room-201', 'room-202', 'room-203', 'room-204', 'room-205', 'room-206', 'room-207', 'room-208'] },
+            { id: 'w3', name: 'Kombi', icon: 'bus', color: 'text-blue-400', rooms: ['room-209', 'room-210', 'room-211', 'room-212', 'room-213', 'room-214', 'room-215', 'room-216', 'room-217'] },
+            { id: 'w4', name: 'Audi', icon: 'car', color: 'text-slate-300', rooms: ['room-218', 'room-219', 'room-220', 'room-221', 'room-222', 'room-223', 'room-224', 'room-225'] },
+            { id: 'w5', name: 'Ferrari', icon: 'car', color: 'text-red-500', rooms: ['room-301', 'room-302', 'room-303', 'room-304', 'room-305', 'room-306', 'room-307', 'room-308'] },
+            { id: 'w6', name: 'Fusca', icon: 'car', color: 'text-indigo-400', rooms: ['room-309', 'room-310', 'room-311', 'room-312', 'room-313', 'room-314', 'room-315', 'room-316', 'room-317', 'room-318', 'room-319', 'room-320', 'room-321'] },
+            { id: 'w7', name: 'Porsche', icon: 'car', color: 'text-rose-400', rooms: ['room-322', 'room-323', 'room-324', 'room-325', 'room-326', 'room-327', 'room-328', 'room-329'] },
+            { id: 'w8', name: 'BMW', icon: 'car', color: 'text-sky-300', rooms: ['room-330', 'room-331', 'room-332', 'room-333', 'room-334', 'room-335', 'room-336', 'room-337'] }
+        ];
+
+        let state = {
+            view: 'evaluation', 
+            dashPeriod: 'monthly',
+            rooms: [], // Popula dinamicamente
+            expandedWings: {}, 
+            selectedRoomId: null,
+            dashSelectedRoomId: null,
+            raceSelectedWingId: 'w1',
+            currentDate: '', 
+            evaluations: {} 
+        };
+
+        // Popula os Quartos em uma lista plana para facilitar consultas
+        WINGS.forEach(wing => {
+            wing.rooms.forEach(roomId => {
+                const roomNum = roomId.split('-')[1];
+                state.rooms.push({ id: roomId, name: `Quarto ${roomNum}`, wingId: wing.id, wingName: wing.name });
+            });
+        });
+
+        // Configuração Dinâmica de Usuários
         const USERS = {
             'steiner': { pass: '626233', role: 'admin', display: 'Steiner' },
             'preceptoria': { pass: 'Iap@iasd', role: 'admin', display: 'Preceptoria' },
-            'estudante': { pass: 'estudante', role: 'student', display: 'Estudante' }
+            'monitor': { pass: 'rmasc@iasd', role: 'admin', display: 'Monitor' }
         };
+
+        // Cria usuários pros alunos: Login = Número Quarto | Senha = Nome da ala (minúsculo e sem espaços)
+        WINGS.forEach(wing => {
+            const passwordStr = wing.name.toLowerCase().replace(/\s+/g, '');
+            wing.rooms.forEach(roomId => {
+                const roomNum = roomId.split('-')[1];
+                USERS[roomNum] = {
+                    pass: passwordStr,
+                    role: 'student',
+                    display: `Quarto ${roomNum}`,
+                    roomId: roomId
+                };
+            });
+        });
 
         const CRITERIA = [
             { id: 'c1', label: 'Camas desorganizadas', icon: 'bed' },
@@ -347,43 +430,6 @@
             { id: 'c8', label: 'Varanda/Janelas desorganizadas', icon: 'blinds' },
             { id: 'c9', label: 'Odor desagradável', icon: 'flower-2' },
             { id: 'c10', label: 'Desorganização geral', icon: 'star' },
-        ];
-
-        const FIXED_ROOMS = [
-            // Bloco 101 - 108
-            { id: 'room-101', name: 'Quarto 101' }, { id: 'room-102', name: 'Quarto 102' }, { id: 'room-103', name: 'Quarto 103' }, { id: 'room-104', name: 'Quarto 104' },
-            { id: 'room-105', name: 'Quarto 105' }, { id: 'room-106', name: 'Quarto 106' }, { id: 'room-107', name: 'Quarto 107' }, { id: 'room-108', name: 'Quarto 108' },
-            
-            // Bloco 201 - 208
-            { id: 'room-201', name: 'Quarto 201' }, { id: 'room-202', name: 'Quarto 202' }, { id: 'room-203', name: 'Quarto 203' }, { id: 'room-204', name: 'Quarto 204' },
-            { id: 'room-205', name: 'Quarto 205' }, { id: 'room-206', name: 'Quarto 206' }, { id: 'room-207', name: 'Quarto 207' }, { id: 'room-208', name: 'Quarto 208' },
-            
-            // Bloco 209 - 217
-            { id: 'room-209', name: 'Quarto 209' }, { id: 'room-210', name: 'Quarto 210' }, { id: 'room-211', name: 'Quarto 211' }, { id: 'room-212', name: 'Quarto 212' },
-            { id: 'room-213', name: 'Quarto 213' }, { id: 'room-214', name: 'Quarto 214' }, { id: 'room-215', name: 'Quarto 215' }, { id: 'room-216', name: 'Quarto 216' },
-            { id: 'room-217', name: 'Quarto 217' },
-
-            // Bloco 218 - 225
-            { id: 'room-218', name: 'Quarto 218' }, { id: 'room-219', name: 'Quarto 219' }, { id: 'room-220', name: 'Quarto 220' }, { id: 'room-221', name: 'Quarto 221' },
-            { id: 'room-222', name: 'Quarto 222' }, { id: 'room-223', name: 'Quarto 223' }, { id: 'room-224', name: 'Quarto 224' }, { id: 'room-225', name: 'Quarto 225' },
-            
-            // Bloco 301 - 308
-            { id: 'room-301', name: 'Quarto 301' }, { id: 'room-302', name: 'Quarto 302' }, { id: 'room-303', name: 'Quarto 303' }, { id: 'room-304', name: 'Quarto 304' },
-            { id: 'room-305', name: 'Quarto 305' }, { id: 'room-306', name: 'Quarto 306' }, { id: 'room-307', name: 'Quarto 307' }, { id: 'room-308', name: 'Quarto 308' },
-            
-            // Bloco 309 - 321
-            { id: 'room-309', name: 'Quarto 309' }, { id: 'room-310', name: 'Quarto 310' }, { id: 'room-311', name: 'Quarto 311' }, { id: 'room-312', name: 'Quarto 312' },
-            { id: 'room-313', name: 'Quarto 313' }, { id: 'room-314', name: 'Quarto 314' }, { id: 'room-315', name: 'Quarto 315' }, { id: 'room-316', name: 'Quarto 316' },
-            { id: 'room-317', name: 'Quarto 317' }, { id: 'room-318', name: 'Quarto 318' }, { id: 'room-319', name: 'Quarto 319' }, { id: 'room-320', name: 'Quarto 320' },
-            { id: 'room-321', name: 'Quarto 321' },
-
-            // Bloco 322 - 329
-            { id: 'room-322', name: 'Quarto 322' }, { id: 'room-323', name: 'Quarto 323' }, { id: 'room-324', name: 'Quarto 324' }, { id: 'room-325', name: 'Quarto 325' },
-            { id: 'room-326', name: 'Quarto 326' }, { id: 'room-327', name: 'Quarto 327' }, { id: 'room-328', name: 'Quarto 328' }, { id: 'room-329', name: 'Quarto 329' },
-
-            // Bloco 330 - 337
-            { id: 'room-330', name: 'Quarto 330' }, { id: 'room-331', name: 'Quarto 331' }, { id: 'room-332', name: 'Quarto 332' }, { id: 'room-333', name: 'Quarto 333' },
-            { id: 'room-334', name: 'Quarto 334' }, { id: 'room-335', name: 'Quarto 335' }, { id: 'room-336', name: 'Quarto 336' }, { id: 'room-337', name: 'Quarto 337' }
         ];
 
         const firebaseConfig = {
@@ -400,11 +446,11 @@
         const db = getFirestore(app);
         const appNamespace = "vaza-84361";
 
-        // Estado do App
         let activeUser = null; 
         let unsubscribeSnapshot = null;
         let chartInstOverall = null;
         let chartInstIndividual = null;
+        let searchQuery = "";
 
         const getTodayStr = () => {
             const d = new Date();
@@ -427,16 +473,9 @@
             return d.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
         };
 
-        let state = {
-            view: 'evaluation', // 'evaluation' ou 'dashboard'
-            dashPeriod: 'monthly', // 'monthly' ou 'annual'
-            rooms: FIXED_ROOMS,
-            selectedRoomId: FIXED_ROOMS[0].id,
-            dashSelectedRoomId: FIXED_ROOMS[0].id,
-            currentDate: getTodayStr(),
-            evaluations: {} 
-        };
-        let searchQuery = "";
+        state.currentDate = getTodayStr();
+        state.selectedRoomId = state.rooms[0].id;
+        state.dashSelectedRoomId = state.rooms[0].id;
 
         // FIREBASE
         const saveState = async () => {
@@ -465,6 +504,18 @@
             });
         };
 
+        const syncToggleButton = () => {
+            const btnIcon = document.getElementById('toggle-view-icon');
+            const btnText = document.getElementById('toggle-view-text');
+            if(state.view === 'dashboard') {
+                btnIcon.setAttribute('data-lucide', 'edit-3');
+                btnText.textContent = 'Avaliação';
+            } else {
+                btnIcon.setAttribute('data-lucide', 'bar-chart-2');
+                btnText.textContent = 'Relatórios';
+            }
+        };
+
         // AUTH
         const handleLogin = async (e) => {
             e.preventDefault();
@@ -479,13 +530,26 @@
                 
                 document.getElementById('current-user-name').textContent = activeUser.display;
                 const roleBadge = document.getElementById('current-user-role-badge');
+                
                 if (activeUser.role === 'admin') {
-                    roleBadge.textContent = 'Admin / Preceptoria';
+                    roleBadge.textContent = 'Preceptoria/Monitor';
                     roleBadge.className = 'text-[10px] font-bold text-cyan-500 uppercase tracking-widest';
+                    state.view = 'dashboard';
+                    document.getElementById('btn-secret-clear').classList.remove('hidden');
+                    document.getElementById('btn-open-sidebar').classList.remove('hidden');
                 } else {
                     roleBadge.textContent = 'Estudante (Leitura)';
                     roleBadge.className = 'text-[10px] font-bold text-slate-500 uppercase tracking-widest';
+                    state.view = 'evaluation';
+                    state.selectedRoomId = activeUser.roomId;
+                    state.dashSelectedRoomId = activeUser.roomId;
+                    
+                    document.getElementById('btn-secret-clear').classList.add('hidden');
+                    document.getElementById('btn-open-sidebar').classList.add('hidden');
                 }
+
+                document.getElementById('btn-toggle-view').classList.remove('hidden'); // Liberado para todos navegarem pros relatórios
+                syncToggleButton();
 
                 try {
                     await signInAnonymously(auth);
@@ -496,13 +560,6 @@
                 document.getElementById('app-layout').classList.remove('hidden');
                 document.getElementById('app-layout').classList.add('flex');
                 
-                // Exibe o botão secreto apenas para admins/preceptoria
-                if (activeUser.role === 'admin') {
-                    document.getElementById('btn-secret-clear').classList.remove('hidden');
-                } else {
-                    document.getElementById('btn-secret-clear').classList.add('hidden');
-                }
-
                 updateUI();
             } else {
                 errorEl.classList.remove('hidden');
@@ -525,6 +582,8 @@
 
         // SIDEBAR E HEADER
         const toggleSidebar = (forceClose = false) => {
+            if (activeUser && activeUser.role === 'student') return; 
+
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
             if (forceClose || !sidebar.classList.contains('-translate-x-full')) {
@@ -542,21 +601,12 @@
 
         document.getElementById('btn-toggle-view').addEventListener('click', () => {
             state.view = state.view === 'evaluation' ? 'dashboard' : 'evaluation';
-            const btnIcon = document.getElementById('toggle-view-icon');
-            const btnText = document.getElementById('toggle-view-text');
-            
-            if(state.view === 'dashboard') {
-                btnIcon.setAttribute('data-lucide', 'edit-3');
-                btnText.textContent = 'Avaliar';
-            } else {
-                btnIcon.setAttribute('data-lucide', 'bar-chart-2');
-                btnText.textContent = 'Relatórios';
-            }
+            syncToggleButton();
             lucide.createIcons();
             updateUI();
         });
 
-        // UTILITÁRIOS DE DADOS
+        // UTILITÁRIOS
         const getRoomEval = (roomId, date) => {
             if (!state.evaluations[roomId]) return { score: null, criteria: [], obs: "" };
             return state.evaluations[roomId][date] || { score: null, criteria: [], obs: "" };
@@ -568,57 +618,87 @@
             saveState();
         };
 
-        const getScoreColor = (score) => {
-            if (score === null || score === undefined || isNaN(score)) return 'text-slate-500 bg-slate-800 border-slate-700';
-            if (score >= 8) return 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30';
-            if (score >= 5) return 'text-amber-400 bg-amber-500/10 border border-amber-500/30';
-            return 'text-rose-400 bg-rose-500/10 border border-rose-500/30';
+        const getScoreColor = (score, isBorder = false) => {
+            if (score === null || score === undefined || isNaN(score)) return isBorder ? 'border-slate-700' : 'text-slate-500 bg-slate-800 border-slate-700';
+            if (score >= 8) return isBorder ? 'border-emerald-500/50' : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30';
+            if (score >= 5) return isBorder ? 'border-amber-500/50' : 'text-amber-400 bg-amber-500/10 border border-amber-500/30';
+            return isBorder ? 'border-rose-500/50' : 'text-rose-400 bg-rose-500/10 border border-rose-500/30';
         };
 
         // RENDERIZAÇÃO
         const renderRooms = () => {
             const list = document.getElementById('rooms-list');
             list.innerHTML = '';
-            const filteredRooms = state.rooms.filter(room => room.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            
+            if (activeUser && activeUser.role === 'student') return;
 
-            if (filteredRooms.length === 0) {
-                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg">Nada encontrado.</div>`;
-            } else {
+            WINGS.forEach(wing => {
+                const wingRooms = wing.rooms.map(id => state.rooms.find(r => r.id === id)).filter(Boolean);
+                const filteredRooms = wingRooms.filter(room => room.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+                if (filteredRooms.length === 0 && searchQuery) return;
+
+                const isExpanded = state.expandedWings[wing.id] || searchQuery !== '';
+
+                const wingEl = document.createElement('div');
+                wingEl.className = 'mb-2';
+                
+                wingEl.innerHTML = `
+                    <div class="flex items-center justify-between p-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer border border-slate-800 transition-colors">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="${wing.icon}" class="w-4 h-4 ${wing.color}"></i>
+                            <span class="font-bold text-sm text-slate-200 tracking-wide">${wing.name}</span>
+                        </div>
+                        <i data-lucide="chevron-${isExpanded ? 'up' : 'down'}" class="w-4 h-4 text-slate-500 transition-transform"></i>
+                    </div>
+                    <div class="${isExpanded ? 'block' : 'hidden'} pl-2 pr-1 py-1 space-y-1 border-l-2 border-slate-800/50 ml-3 mt-1.5 transition-all"></div>
+                `;
+                
+                wingEl.querySelector('.bg-slate-900').addEventListener('click', () => {
+                    if (!searchQuery) {
+                        state.expandedWings[wing.id] = !state.expandedWings[wing.id];
+                        renderRooms();
+                        lucide.createIcons();
+                    }
+                });
+
+                const roomsContainer = wingEl.querySelector('.space-y-1');
+
                 filteredRooms.forEach(room => {
                     const isSelected = state.selectedRoomId === room.id && state.view === 'evaluation';
-                    const el = document.createElement('div');
-                    
-                    // Mostrar um mini indicador se já foi avaliado hoje
                     const todayEval = getRoomEval(room.id, state.currentDate);
                     const hasEval = todayEval.score !== null;
-                    const evalDot = hasEval ? `<div class="w-2 h-2 rounded-full ${todayEval.score >= 8 ? 'bg-emerald-500' : (todayEval.score >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>` : '';
+                    const evalDot = hasEval ? `<div class="w-1.5 h-1.5 rounded-full ${todayEval.score >= 8 ? 'bg-emerald-500' : (todayEval.score >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>` : '';
 
-                    el.className = `group flex items-center justify-between p-2.5 md:p-3 rounded-xl cursor-pointer transition-all duration-300 ${
+                    const roomEl = document.createElement('div');
+                    roomEl.className = `group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all duration-300 ${
                         isSelected 
-                            ? 'bg-cyan-950/40 border-cyan-500/50 border text-cyan-400' 
-                            : 'bg-slate-900 border-transparent border hover:bg-slate-800 hover:border-slate-700 text-slate-300'
+                            ? 'bg-cyan-950/50 border border-cyan-500/30 text-cyan-400' 
+                            : 'bg-transparent border border-transparent hover:bg-slate-800/50 text-slate-400 hover:text-slate-200'
                     }`;
 
-                    el.innerHTML = `
-                        <div class="flex items-center gap-3 font-medium truncate">
-                            <i data-lucide="${isSelected ? 'scan-line' : 'box'}" class="w-4 h-4 md:w-5 md:h-5 shrink-0 ${isSelected ? 'text-cyan-400' : 'text-slate-500'}"></i>
-                            <span class="truncate text-sm md:text-base">${room.name}</span>
+                    roomEl.innerHTML = `
+                        <div class="flex items-center gap-2 font-medium truncate">
+                            <i data-lucide="${isSelected ? 'scan-line' : 'box'}" class="w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-cyan-400' : 'text-slate-600'}"></i>
+                            <span class="truncate text-xs md:text-sm">${room.name.replace('Quarto ', 'Q.')}</span>
                         </div>
                         ${evalDot}
                     `;
                     
-                    el.addEventListener('click', () => {
+                    roomEl.addEventListener('click', () => {
                         state.selectedRoomId = room.id;
                         if(state.view !== 'evaluation') {
-                            document.getElementById('btn-toggle-view').click(); // Volta pra avaliação
-                        } else {
-                            updateUI();
+                            state.view = 'evaluation';
+                            syncToggleButton();
                         }
+                        updateUI();
                         if (window.innerWidth < 768) toggleSidebar(true);
                     });
-                    list.appendChild(el);
+                    roomsContainer.appendChild(roomEl);
                 });
-            }
+
+                list.appendChild(wingEl);
+            });
         };
 
         const renderEvaluationContent = () => {
@@ -628,10 +708,21 @@
             document.getElementById('summary-room-name').textContent = room.name;
             document.getElementById('summary-date').textContent = `Avaliação referente ao dia ${displayDate(state.currentDate)}`;
 
+            // Info de Ala pro Aluno (Mostra a qual ele pertence)
+            const badgeEl = document.getElementById('student-wing-badge');
+            if (activeUser && activeUser.role === 'student') {
+                const rWing = WINGS.find(w => w.id === room.wingId);
+                badgeEl.innerHTML = `<i data-lucide="${rWing.icon}" class="w-4 h-4 ${rWing.color}"></i> Ala ${rWing.name}`;
+                badgeEl.classList.remove('hidden');
+                badgeEl.classList.add('flex');
+            } else {
+                badgeEl.classList.add('hidden');
+                badgeEl.classList.remove('flex');
+            }
+
             const currentEval = getRoomEval(state.selectedRoomId, state.currentDate);
             const isAdmin = activeUser && activeUser.role === 'admin';
 
-            // 1. Botões de Nota
             const scoreContainer = document.getElementById('score-buttons');
             scoreContainer.innerHTML = '';
             for (let i = 0; i <= 10; i++) {
@@ -648,10 +739,8 @@
                 scoreContainer.appendChild(btn);
             }
 
-            // 2. Botões de Critérios
             const criteriaContainer = document.getElementById('criteria-toggles');
             criteriaContainer.innerHTML = '';
-            
             const activeCriteria = currentEval.criteria || [];
             
             CRITERIA.forEach((crit, index) => {
@@ -701,15 +790,212 @@
                 criteriaContainer.appendChild(btn);
             });
 
-            // 3. Observações
             const obsEl = document.getElementById('obs-textarea');
             obsEl.value = currentEval.obs || "";
             obsEl.disabled = !isAdmin;
-            
-            // Usar um debounce simples para o campo de texto
             obsEl.onchange = (e) => {
                 if (isAdmin) setRoomEval(state.selectedRoomId, state.currentDate, { obs: e.target.value });
             };
+
+            const advanceContainer = document.getElementById('advance-room-container');
+            if (isAdmin) {
+                advanceContainer.classList.remove('hidden');
+                
+                let currentWing = null;
+                let currentIdx = -1;
+                WINGS.forEach(w => {
+                    const idx = w.rooms.indexOf(state.selectedRoomId);
+                    if (idx !== -1) { currentWing = w; currentIdx = idx; }
+                });
+
+                const btnAdvance = document.getElementById('btn-advance-room');
+                const clone = btnAdvance.cloneNode(true);
+                btnAdvance.parentNode.replaceChild(clone, btnAdvance);
+
+                if (currentWing && currentIdx < currentWing.rooms.length - 1) {
+                    const nextRoomId = currentWing.rooms[currentIdx + 1];
+                    const nextRoomName = nextRoomId.split('-')[1];
+
+                    clone.querySelector('#advance-room-text').textContent = `Avançar para Quarto ${nextRoomName}`;
+                    clone.querySelector('#advance-room-icon').setAttribute('data-lucide', 'arrow-right');
+                    clone.className = 'flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all';
+                    
+                    clone.addEventListener('click', () => {
+                        state.selectedRoomId = nextRoomId;
+                        updateUI();
+                        document.querySelector('.flex-1.overflow-y-auto.p-4').scrollTo({ top: 0, behavior: 'smooth' });
+                    });
+                } else {
+                    clone.querySelector('#advance-room-text').textContent = `Concluir Ala ${currentWing ? currentWing.name : ''}`;
+                    clone.querySelector('#advance-room-icon').setAttribute('data-lucide', 'check-circle-2');
+                    clone.className = 'flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(52,211,153,0.4)] transition-all';
+                    
+                    clone.addEventListener('click', () => {
+                        state.view = 'dashboard';
+                        syncToggleButton();
+                        updateUI();
+                    });
+                }
+            } else {
+                advanceContainer.classList.add('hidden');
+            }
+        };
+
+        const renderPodium = (elementId, validData) => {
+            const el = document.getElementById(elementId);
+            if (validData.length === 0) {
+                el.innerHTML = '';
+                return;
+            }
+            
+            const first = validData[0];
+            const second = validData[1] || { name: '-', score: '-' };
+            const third = validData[2] || { name: '-', score: '-' };
+
+            el.innerHTML = `
+                <div class="flex items-end justify-center gap-2 h-28 mt-4 border-b border-slate-800/50 pb-2">
+                    <!-- 2nd -->
+                    <div class="flex flex-col items-center w-1/3 opacity-90">
+                        <div class="text-[10px] text-slate-300 font-bold mb-1 truncate max-w-full px-1 text-center" title="${second.name}">${second.name}</div>
+                        <div class="w-full bg-slate-800 border-t-[3px] border-slate-300 rounded-t-lg flex flex-col items-center justify-end pb-2 transition-all hover:bg-slate-700" style="height: 50px">
+                            <span class="text-slate-200 font-black text-xs">${second.score}</span>
+                            <span class="text-lg">🥈</span>
+                        </div>
+                    </div>
+                    <!-- 1st -->
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="text-[10px] text-yellow-400 font-bold mb-1 truncate max-w-full px-1 text-center" title="${first.name}">${first.name}</div>
+                        <div class="w-full bg-yellow-400/10 border-t-[3px] border-yellow-400 rounded-t-lg flex flex-col items-center justify-end pb-2 shadow-[0_0_15px_rgba(250,204,21,0.2)] transition-all hover:bg-yellow-400/20" style="height: 70px">
+                            <span class="text-yellow-400 font-black text-sm">${first.score}</span>
+                            <span class="text-2xl drop-shadow-md">🥇</span>
+                        </div>
+                    </div>
+                    <!-- 3rd -->
+                    <div class="flex flex-col items-center w-1/3 opacity-80">
+                        <div class="text-[10px] text-amber-600 font-bold mb-1 truncate max-w-full px-1 text-center" title="${third.name}">${third.name}</div>
+                        <div class="w-full bg-slate-800 border-t-[3px] border-amber-600 rounded-t-lg flex flex-col items-center justify-end pb-2 transition-all hover:bg-slate-700" style="height: 35px">
+                            <span class="text-amber-500 font-black text-xs">${third.score}</span>
+                            <span class="text-lg">🥉</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderRaces = (isAnnual, currentMonthPrefix, currentYear) => {
+            const wingsData = [];
+            
+            // 1. Calcular médias para as Alas
+            WINGS.forEach(wing => {
+                let wTotal = 0, wCount = 0;
+                wing.rooms.forEach(roomId => {
+                    const evals = state.evaluations[roomId] || {};
+                    Object.keys(evals).forEach(date => {
+                        const checkPrefix = isAnnual ? currentYear : currentMonthPrefix;
+                        if (date.startsWith(checkPrefix) && evals[date].score !== null) {
+                            wTotal += evals[date].score;
+                            wCount++;
+                        }
+                    });
+                });
+                wingsData.push({
+                    name: wing.name,
+                    icon: wing.icon,
+                    color: wing.color,
+                    score: wCount > 0 ? (wTotal/wCount) : 0 
+                });
+            });
+
+            wingsData.sort((a,b) => b.score - a.score);
+
+            const containerWings = document.getElementById('race-wings');
+            containerWings.innerHTML = '';
+            
+            wingsData.forEach((w, i) => {
+                const widthPercent = w.score > 0 ? (w.score / 10) * 100 : 0;
+                const positionIcon = i === 0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : ''));
+                
+                containerWings.innerHTML += `
+                    <div class="flex items-center gap-3">
+                        <div class="w-20 text-[10px] font-bold text-slate-400 truncate text-right">${positionIcon} ${w.name}</div>
+                        <div class="flex-1 h-8 bg-slate-900 rounded-full relative overflow-hidden border border-slate-800">
+                            <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent to-cyan-500/30" style="width: ${widthPercent}%"></div>
+                            <div class="absolute top-1/2 -translate-y-1/2 drop-shadow-lg transition-all duration-1000 z-10" style="left: calc(${widthPercent}% - 22px)">
+                                <i data-lucide="${w.icon}" class="w-5 h-5 ${w.color}"></i>
+                            </div>
+                        </div>
+                        <div class="w-8 text-right font-bold text-xs ${getScoreColor(w.score).split(' ')[0]}">${w.score > 0 ? w.score.toFixed(1) : '-'}</div>
+                    </div>
+                `;
+            });
+
+            // 2. Calcular corrida Interna da Ala selecionada via Dropdown
+            const raceWingSelect = document.getElementById('race-wing-select');
+            if (raceWingSelect.options.length === 0) {
+                WINGS.forEach(w => {
+                    const opt = document.createElement('option');
+                    opt.value = w.id;
+                    opt.textContent = w.name;
+                    raceWingSelect.appendChild(opt);
+                });
+                raceWingSelect.value = state.raceSelectedWingId;
+                raceWingSelect.addEventListener('change', (e) => {
+                    state.raceSelectedWingId = e.target.value;
+                    const isAnnualState = state.dashPeriod === 'annual';
+                    const currYear = state.currentDate.substring(0, 4);
+                    const currMonthPrefix = state.currentDate.substring(0, 7);
+                    renderRaces(isAnnualState, currMonthPrefix, currYear);
+                });
+            } else {
+                raceWingSelect.value = state.raceSelectedWingId;
+            }
+
+            const currentWing = WINGS.find(w => w.id === state.raceSelectedWingId);
+            document.getElementById('race-wing-period').textContent = isAnnual ? `Ano: ${currentYear}` : `Mês: ${getMonthDisplay(state.currentDate)}`;
+
+            const roomsData = [];
+            currentWing.rooms.forEach(roomId => {
+                const rNum = roomId.split('-')[1];
+                const evals = state.evaluations[roomId] || {};
+                let rTotal = 0, rCount = 0;
+                Object.keys(evals).forEach(date => {
+                    const checkPrefix = isAnnual ? currentYear : currentMonthPrefix;
+                    if (date.startsWith(checkPrefix) && evals[date].score !== null) {
+                        rTotal += evals[date].score;
+                        rCount++;
+                    }
+                });
+                roomsData.push({
+                    name: `Q.${rNum}`,
+                    score: rCount > 0 ? (rTotal/rCount) : 0
+                });
+            });
+
+            roomsData.sort((a,b) => b.score - a.score);
+
+            const containerRooms = document.getElementById('race-rooms');
+            containerRooms.innerHTML = '';
+
+            const carIconHTML = `<i data-lucide="${currentWing.icon}" class="w-4 h-4 ${currentWing.color}"></i>`;
+
+            roomsData.forEach((r, i) => {
+                const widthPercent = r.score > 0 ? (r.score / 10) * 100 : 0;
+                const isSelectedRoom = r.name === `Q.${state.dashSelectedRoomId.split('-')[1]}`;
+                const positionIcon = i === 0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : ''));
+
+                containerRooms.innerHTML += `
+                    <div class="flex items-center gap-3">
+                        <div class="w-16 text-[10px] font-bold ${isSelectedRoom ? 'text-purple-400' : 'text-slate-400'} truncate text-right">${positionIcon} ${r.name}</div>
+                        <div class="flex-1 h-6 bg-slate-900 rounded-full relative overflow-hidden border ${isSelectedRoom ? 'border-purple-500/50' : 'border-slate-800'}">
+                            <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent ${isSelectedRoom ? 'to-purple-500/30' : 'to-slate-500/30'}" style="width: ${widthPercent}%"></div>
+                            <div class="absolute top-1/2 -translate-y-1/2 drop-shadow-md transition-all duration-1000 z-10" style="left: calc(${widthPercent}% - 18px)">${carIconHTML}</div>
+                        </div>
+                        <div class="w-8 text-right font-bold text-xs ${getScoreColor(r.score).split(' ')[0]}">${r.score > 0 ? r.score.toFixed(1) : '-'}</div>
+                    </div>
+                `;
+            });
+            
+            lucide.createIcons();
         };
 
         const renderDashboardContent = () => {
@@ -717,7 +1003,6 @@
             const currentYear = state.currentDate.substring(0, 4);
             const currentMonthPrefix = state.currentDate.substring(0, 7);
 
-            // Textos Dinâmicos da UI
             document.getElementById('dash-period-display').textContent = isAnnual ? currentYear : getMonthDisplay(state.currentDate);
             document.getElementById('dash-period-select').value = state.dashPeriod;
 
@@ -728,30 +1013,39 @@
             document.getElementById('ranking-icon-2').setAttribute('data-lucide', isAnnual ? 'award' : 'trophy');
             lucide.createIcons();
 
-            // Select individual config
             const roomSelect = document.getElementById('dash-room-select');
-            if (roomSelect.options.length === 0) {
-                state.rooms.forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r.id;
-                    opt.textContent = r.name;
-                    roomSelect.appendChild(opt);
-                });
-                roomSelect.value = state.dashSelectedRoomId;
-                roomSelect.addEventListener('change', (e) => {
-                    state.dashSelectedRoomId = e.target.value;
-                    renderCharts();
-                });
+            roomSelect.innerHTML = ''; 
+            
+            state.rooms.forEach(r => {
+                if (activeUser && activeUser.role === 'student' && activeUser.roomId !== r.id) return;
+                
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                roomSelect.appendChild(opt);
+            });
+            
+            if (activeUser && activeUser.role === 'student') {
+                state.dashSelectedRoomId = activeUser.roomId;
             }
+            
+            if (!Array.from(roomSelect.options).some(opt => opt.value === state.dashSelectedRoomId)) {
+                state.dashSelectedRoomId = roomSelect.options[0]?.value || state.rooms[0].id;
+            }
+            roomSelect.value = state.dashSelectedRoomId;
 
-            // Cálculos para os Rankings
-            let data1 = []; // Hoje(Mensal) ou Mês(Anual)
-            let data2 = []; // Mês(Mensal) ou Ano(Anual)
+            roomSelect.addEventListener('change', (e) => {
+                state.dashSelectedRoomId = e.target.value;
+                renderCharts();
+                renderRaces(isAnnual, currentMonthPrefix, currentYear); 
+            });
+
+            let data1 = []; 
+            let data2 = []; 
 
             state.rooms.forEach(room => {
                 const roomEvals = state.evaluations[room.id] || {};
                 
-                // Cálculo Data 1
                 if (!isAnnual) {
                     const todayEval = roomEvals[state.currentDate] || { score: null };
                     data1.push({ name: room.name, score: todayEval.score });
@@ -762,10 +1056,9 @@
                             total += roomEvals[date].score; count++;
                         }
                     });
-                    data1.push({ name: room.name, score: count > 0 ? (total/count).toFixed(1) : null });
+                    data1.push({ name: room.name, score: count > 0 ? parseFloat((total/count).toFixed(1)) : null });
                 }
 
-                // Cálculo Data 2
                 if (!isAnnual) {
                     let total = 0, count = 0;
                     Object.keys(roomEvals).forEach(date => {
@@ -773,7 +1066,7 @@
                             total += roomEvals[date].score; count++;
                         }
                     });
-                    data2.push({ name: room.name, score: count > 0 ? (total/count).toFixed(1) : null });
+                    data2.push({ name: room.name, score: count > 0 ? parseFloat((total/count).toFixed(1)) : null });
                 } else {
                     let total = 0, count = 0;
                     Object.keys(roomEvals).forEach(date => {
@@ -781,7 +1074,7 @@
                             total += roomEvals[date].score; count++;
                         }
                     });
-                    data2.push({ name: room.name, score: count > 0 ? (total/count).toFixed(1) : null });
+                    data2.push({ name: room.name, score: count > 0 ? parseFloat((total/count).toFixed(1)) : null });
                 }
             });
 
@@ -789,36 +1082,47 @@
                 if (a.score === null && b.score === null) return 0;
                 if (a.score === null) return 1;
                 if (b.score === null) return -1;
-                return parseFloat(b.score) - parseFloat(a.score);
+                return b.score - a.score; 
             };
 
             data1.sort(sortFn);
             data2.sort(sortFn);
 
-            // Renderizar Rankings
             const renderList = (elementId, data) => {
                 const listEl = document.getElementById(elementId);
                 listEl.innerHTML = '';
                 data.forEach((d, i) => {
                     const scDisp = d.score !== null ? d.score : '-';
-                    const colorClass = getScoreColor(d.score !== null ? parseFloat(d.score) : null);
                     
+                    let medalColorClass = 'text-slate-500';
+                    let bgClass = 'bg-slate-950 border-slate-800';
+                    let posText = `${i+1}º`;
+
+                    if (d.score !== null) {
+                        if (i === 0) { medalColorClass = 'text-yellow-400'; bgClass = 'bg-yellow-400/10 border-yellow-400/30 shadow-[0_0_10px_rgba(250,204,21,0.1)]'; posText = '🥇'; }
+                        else if (i === 1) { medalColorClass = 'text-slate-300'; bgClass = 'bg-slate-300/10 border-slate-300/30'; posText = '🥈'; }
+                        else if (i === 2) { medalColorClass = 'text-amber-500'; bgClass = 'bg-amber-600/10 border-amber-600/30'; posText = '🥉'; }
+                    }
+
                     listEl.innerHTML += `
-                        <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
+                        <div class="flex items-center justify-between p-2 rounded-lg border mb-2 ${bgClass}">
                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-slate-500 w-8">${i+1}º</span>
-                                <span class="text-sm text-slate-200">${d.name}</span>
+                                <span class="text-xs font-bold w-6 text-center ${medalColorClass}">${posText}</span>
+                                <span class="text-sm text-slate-200 font-medium">${d.name}</span>
                             </div>
-                            <span class="px-2 py-0.5 rounded font-bold text-xs ${colorClass}">${scDisp}</span>
+                            <span class="px-2 py-0.5 rounded font-black text-xs ${getScoreColor(d.score)}">${scDisp}</span>
                         </div>`;
                 });
             };
 
-            // A correção foi feita aqui: mudamos de 'ranking-daily-list'/'ranking-monthly-list' para os IDs corretos
+            renderPodium('podium-1', data1.filter(d => d.score !== null));
+            renderPodium('podium-2', data2.filter(d => d.score !== null));
+
             renderList('ranking-list-1', data1);
             renderList('ranking-list-2', data2);
 
             renderCharts();
+            renderRaces(isAnnual, currentMonthPrefix, currentYear);
         };
 
         const renderCharts = () => {
@@ -831,7 +1135,6 @@
             let indScores = [];
 
             if (!isAnnual) {
-                // Gráficos Mensais (Dias no eixo X)
                 const daysInMonth = new Date(state.currentDate.split('-')[0], state.currentDate.split('-')[1], 0).getDate();
                 labels = Array.from({length: daysInMonth}, (_, i) => `${i + 1}`);
 
@@ -849,7 +1152,6 @@
                     indScores.push(indSc !== null ? indSc : null);
                 }
             } else {
-                // Gráficos Anuais (Meses no eixo X)
                 labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
                 for (let month = 1; month <= 12; month++) {
@@ -883,7 +1185,6 @@
                 plugins: { legend: { display: false } }
             };
 
-            // Destrói os antigos para recriar
             if (chartInstOverall) chartInstOverall.destroy();
             if (chartInstIndividual) chartInstIndividual.destroy();
 
@@ -959,7 +1260,7 @@
             lucide.createIcons();
         };
 
-        // EVENTOS BASICO
+        // EVENTOS BÁSICOS
         const setupEventListeners = () => {
             const searchInput = document.getElementById('search-room');
             if (searchInput) {
@@ -1001,23 +1302,18 @@
             if (!activeUser || activeUser.role !== 'admin') return;
             
             if (!isClearPrimed) {
-                // Primeiro clique: Prepara (pula e fica vermelho)
                 isClearPrimed = true;
                 btnSecretClear.classList.remove('text-slate-600');
                 btnSecretClear.classList.add('text-rose-500', 'animate-jump');
                 
-                setTimeout(() => {
-                    btnSecretClear.classList.remove('animate-jump');
-                }, 400);
+                setTimeout(() => { btnSecretClear.classList.remove('animate-jump'); }, 400);
 
-                // Desarma depois de 3 segundos se não houver segundo clique
                 clearPrimedTimeout = setTimeout(() => {
                     isClearPrimed = false;
                     btnSecretClear.classList.remove('text-rose-500');
                     btnSecretClear.classList.add('text-slate-600');
                 }, 3000);
             } else {
-                // Segundo clique: Executa (Abre modal)
                 clearTimeout(clearPrimedTimeout);
                 isClearPrimed = false;
                 btnSecretClear.classList.remove('text-rose-500');
@@ -1037,7 +1333,6 @@
         document.getElementById('btn-confirm-clear').addEventListener('click', () => {
             const passInput = document.getElementById('clear-password').value;
             if (passInput === activeUser.pass) {
-                // Apaga todas as avaliações do dia atual
                 let modificationsMade = false;
                 Object.keys(state.evaluations).forEach(roomId => {
                     if (state.evaluations[roomId][state.currentDate]) {
