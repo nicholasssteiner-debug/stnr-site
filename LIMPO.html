@@ -11,54 +11,39 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
             font-family: 'JetBrains Mono', monospace;
         }
-        /* Estilos personalizados para a barra de rolagem e range inputs - Tema Neon */
-        ::-webkit-scrollbar { width: 6px; }
+        /* Estilos personalizados para a barra de rolagem */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
         
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
+        .score-btn.active {
+            background-color: #0891b2; /* cyan-600 */
+            color: white;
+            border-color: #22d3ee; /* cyan-400 */
+            box-shadow: 0 0 15px rgba(34,211,238,0.4);
+            transform: scale(1.05);
         }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            background: #22d3ee;
-            cursor: pointer;
-            margin-top: -6px;
-            box-shadow: 0 0 12px rgba(34,211,238,0.8);
+        
+        .criterion-toggle.active {
+            background-color: #164e63; /* cyan-900 */
+            border-color: #06b6d4; /* cyan-500 */
+            color: #22d3ee; /* cyan-400 */
+            box-shadow: inset 0 0 10px rgba(34,211,238,0.2);
         }
-        input[type=range]:disabled::-webkit-slider-thumb {
-            background: #475569;
-            box-shadow: none;
-            cursor: not-allowed;
+        
+        @keyframes jump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
         }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 8px;
-            cursor: pointer;
-            background: #1e293b;
-            border-radius: 4px;
-        }
-        input[type=range]:disabled::-webkit-slider-runnable-track {
-            cursor: not-allowed;
-        }
-        .range-has-score::-webkit-slider-runnable-track {
-            background: #0891b2;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
-        }
-        .range-has-score:disabled::-webkit-slider-runnable-track {
-            background: #334155;
-            box-shadow: none;
+        .animate-jump {
+            animation: jump 0.4s ease;
         }
     </style>
 </head>
@@ -75,7 +60,6 @@
                 </div>
                 <h1 class="text-4xl font-black text-slate-100 tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] mb-2">LIMPO</h1>
                 <h2 class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-4 leading-relaxed">Levantamento Interno de Manutenção<br>e Padrão Organizacional</h2>
-                <p class="text-slate-500 text-sm mt-4">Insira as suas credenciais para continuar</p>
             </div>
 
             <form id="login-form" class="space-y-5">
@@ -105,150 +89,231 @@
                     <i data-lucide="log-in" class="w-5 h-5"></i>
                 </button>
             </form>
-            
-            <div class="mt-6 text-center text-xs text-slate-500 flex flex-col gap-1">
-                <span>Comunicação criptografada ativada</span>
-            </div>
         </div>
     </div>
 
-    <!-- Layout Base: Flex Row nativo garantindo o lado a lado -->
+    <!-- Layout Base -->
     <div id="app-layout" class="hidden h-[100dvh] w-full overflow-hidden flex-row relative bg-[#0a0f1c]">
         
-        <!-- Overlay escuro para quando o menu lateral abrir no celular -->
         <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
 
-        <!-- Sidebar - Menu Lateral (Fixo na esquerda no PC, Retrátil no Celular) -->
+        <!-- Sidebar -->
         <aside id="sidebar" class="absolute md:relative z-40 w-[280px] md:w-80 h-full bg-slate-900 border-r border-slate-800 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.5)] transition-transform duration-300 -translate-x-full md:translate-x-0 shrink-0">
             <div class="p-4 md:p-6 border-b border-slate-800 relative overflow-hidden shrink-0 flex justify-between items-center">
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
                 <div>
-                    <h1 class="text-xl md:text-2xl font-black text-cyan-400 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(34,211,238,0.4)] tracking-widest">
-                        <i data-lucide="clipboard-check" class="w-5 h-5 md:w-6 md:h-6"></i>
-                        LIMPO
+                    <h1 class="text-xl md:text-2xl font-black text-cyan-400 flex items-center gap-2 tracking-widest">
+                        <i data-lucide="clipboard-check" class="w-5 h-5 md:w-6 md:h-6"></i> LIMPO
                     </h1>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">Levantamento Interno de Manutenção</p>
                 </div>
-                <!-- Botão Fechar Menu no Celular -->
                 <button id="btn-close-sidebar" class="md:hidden p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-4 flex flex-col">
-                <div class="text-[10px] md:text-xs font-semibold text-cyan-500/70 uppercase tracking-widest mb-2">
-                    Quartos Registados
+            <!-- Listagem de Quartos -->
+            <div id="sidebar-rooms" class="flex-1 overflow-y-auto p-4 flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[10px] md:text-xs font-semibold text-cyan-500/70 uppercase tracking-widest">Quartos Registados</div>
+                    <button id="btn-secret-clear" class="hidden text-slate-600 hover:text-slate-400 transition-colors p-1 rounded cursor-pointer" title="Ações Avançadas">
+                        <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+                    </button>
                 </div>
-
                 <div class="mb-3 relative shrink-0">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500/50"></i>
-                    <input type="text" id="search-room" placeholder="Buscar quarto..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 bg-slate-950 text-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] placeholder-slate-600 transition-all" autocomplete="off">
+                    <input type="text" id="search-room" placeholder="Buscar quarto..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 bg-slate-950 text-slate-200" autocomplete="off">
                 </div>
-                
-                <div id="rooms-list" class="space-y-2 flex-1 overflow-y-auto pr-1">
-                    <!-- Quartos injetados aqui -->
-                </div>
+                <div id="rooms-list" class="space-y-2 flex-1 overflow-y-auto pr-1"></div>
             </div>
         </aside>
 
         <!-- Conteúdo Principal -->
-        <main class="flex-1 h-full flex flex-col overflow-hidden bg-[#0a0f1c] w-full">
+        <main class="flex-1 h-full flex flex-col overflow-hidden bg-[#0a0f1c] w-full relative">
             
             <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-3 md:p-6 flex flex-row items-center justify-between gap-4 sticky top-0 z-10 shadow-md shrink-0">
                 <div class="flex items-center gap-2 md:gap-4 justify-between shrink-0">
-                    <!-- Botão Abrir Menu no Celular -->
-                    <button id="btn-open-sidebar" class="md:hidden p-2 bg-slate-950 border border-slate-800 hover:bg-slate-800 hover:text-cyan-400 rounded-xl text-slate-400 transition-all shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
+                    <button id="btn-open-sidebar" class="md:hidden p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">
                         <i data-lucide="menu" class="w-5 h-5"></i>
                     </button>
                     
-                    <div class="flex items-center gap-2 md:gap-4 justify-between bg-slate-950 p-1 md:p-1.5 rounded-xl md:rounded-2xl border border-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]">
-                        <button id="btn-prev-day" class="p-1.5 md:p-2 hover:bg-slate-800 hover:text-cyan-400 rounded-xl text-slate-400 transition-all" title="Dia anterior">
+                    <div class="flex items-center gap-2 md:gap-4 bg-slate-950 p-1 md:p-1.5 rounded-xl border border-slate-800">
+                        <button id="btn-prev-day" class="p-1.5 hover:bg-slate-800 text-slate-400 rounded-xl transition-all">
                             <i data-lucide="chevron-left" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </button>
-                        
                         <div class="flex items-center gap-1.5 px-2 md:px-4 py-1 font-medium text-slate-200 whitespace-nowrap">
-                            <i data-lucide="calendar" class="w-3 h-3 md:w-4 md:h-4 text-cyan-500 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"></i>
+                            <i data-lucide="calendar" class="w-3 h-3 md:w-4 md:h-4 text-cyan-500"></i>
                             <span id="display-date" class="text-xs md:text-base"></span>
                         </div>
-                        
-                        <button id="btn-next-day" class="p-1.5 md:p-2 rounded-xl transition-all hover:bg-slate-800 hover:text-cyan-400 text-slate-400" title="Próximo dia">
+                        <button id="btn-next-day" class="p-1.5 hover:bg-slate-800 text-slate-400 rounded-xl transition-all">
                             <i data-lucide="chevron-right" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </button>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-4 md:gap-8 justify-end">
-                    <div id="status-container" class="hidden flex items-center gap-2 md:gap-4">
-                        <div class="text-right hidden sm:block">
-                            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Estado</div>
-                            <div id="status-text" class="text-xs md:text-sm font-semibold text-slate-200">0 de 10</div>
-                        </div>
-                        <div id="status-icon-complete" class="hidden bg-emerald-950/50 text-emerald-400 p-1.5 md:p-2 rounded-full border border-emerald-800 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
-                            <i data-lucide="check-circle-2" class="w-4 h-4 md:w-5 md:h-5"></i>
-                        </div>
-                        <div id="status-icon-incomplete" class="hidden bg-amber-950/50 text-amber-400 p-1.5 md:p-2 rounded-full border border-amber-800 shadow-[0_0_15px_rgba(251,191,36,0.2)]">
-                            <i data-lucide="alert-circle" class="w-4 h-4 md:w-5 md:h-5"></i>
-                        </div>
-                    </div>
+                <div class="flex items-center gap-3 md:gap-6 justify-end">
+                    <!-- Botão de alternância Avaliação/Dashboard -->
+                    <button id="btn-toggle-view" class="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-cyan-950/40 border border-cyan-800 hover:bg-cyan-900/60 rounded-xl text-cyan-400 text-xs md:text-sm font-bold transition-all shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+                        <i id="toggle-view-icon" data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                        <span id="toggle-view-text" class="hidden sm:inline">Relatórios</span>
+                    </button>
 
                     <div class="flex items-center gap-3 md:pl-6 border-l-0 md:border-l border-slate-800">
                         <div class="text-right hidden sm:block">
                             <div id="current-user-name" class="text-sm font-bold text-slate-200">Utilizador</div>
                             <div id="current-user-role-badge" class="text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Admin</div>
                         </div>
-                        <button id="btn-logout" class="p-1.5 md:p-2 bg-slate-900 hover:bg-rose-950/50 hover:text-rose-400 hover:border-rose-900 border border-slate-800 rounded-xl transition-all shadow-sm" title="Sair da sessão">
+                        <button id="btn-logout" class="p-1.5 bg-slate-900 hover:bg-rose-950/50 hover:text-rose-400 hover:border-rose-900 border border-slate-800 rounded-xl transition-all">
                             <i data-lucide="log-out" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </button>
                     </div>
                 </div>
             </header>
 
-            <div class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 relative w-full h-full">
+                
+                <!-- ESTADO VAZIO -->
                 <div id="empty-state" class="h-full flex flex-col items-center justify-center text-slate-500 hidden">
                     <div class="relative mb-4">
                         <div class="absolute inset-0 bg-cyan-500 blur-[30px] opacity-10 rounded-full"></div>
                         <i data-lucide="clipboard-list" class="w-16 h-16 md:w-20 md:h-20 text-slate-700 relative z-10"></i>
                     </div>
                     <h2 class="text-lg md:text-xl font-semibold text-slate-300 mb-2">Nenhum alvo selecionado</h2>
-                    <p class="text-center text-xs md:text-sm max-w-sm">Selecione um quarto no menu lateral para iniciar a varredura.</p>
+                    <p class="text-center text-xs md:text-sm max-w-sm">Selecione um quarto no menu lateral para iniciar.</p>
                 </div>
 
-                <div id="evaluation-content" class="hidden max-w-4xl mx-auto pb-12 w-full">
-                    <div class="bg-slate-900 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-slate-800 p-4 md:p-6 mb-6 flex flex-col md:flex-row items-center gap-4 md:gap-8 relative overflow-hidden">
+                <!-- TELA 1: AVALIAÇÃO -->
+                <div id="evaluation-content" class="hidden max-w-3xl mx-auto pb-12 w-full flex flex-col gap-6">
+                    
+                    <div class="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-6 flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden">
                         <div class="absolute -right-20 -top-20 w-64 h-64 bg-cyan-500/5 blur-[80px] rounded-full pointer-events-none"></div>
-                        <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/5 blur-[80px] rounded-full pointer-events-none"></div>
-
                         <div class="flex-1 text-center md:text-left relative z-10">
                             <h2 id="summary-room-name" class="text-2xl md:text-3xl font-bold text-slate-100 mb-1 tracking-tight">Nome do Quarto</h2>
                             <p id="summary-date" class="text-cyan-500/70 text-xs md:text-sm font-medium">Avaliação referente ao dia...</p>
                         </div>
-                        
-                        <div class="flex items-center gap-4 md:gap-6 w-full md:w-auto bg-slate-950/80 p-3 md:p-4 rounded-xl border border-slate-800 justify-center relative z-10 backdrop-blur-sm shadow-[inset_0_2px_10px_rgba(0,0,0,0.4)]">
-                            <div class="text-center">
-                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total</div>
-                                <div class="text-xl md:text-2xl font-bold text-slate-200"><span id="score-total" class="drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">0</span><span class="text-xs md:text-sm text-slate-600 font-normal">/100</span></div>
+                    </div>
+
+                    <!-- Bloco 1: Nota Geral -->
+                    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i data-lucide="star" class="w-4 h-4 text-amber-400"></i> Nota Geral do Quarto
+                        </h3>
+                        <div id="score-buttons" class="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto pb-2">
+                            <!-- Injetado JS -->
+                        </div>
+                    </div>
+
+                    <!-- Bloco 2: Critérios / Pontos de Atenção -->
+                    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <i data-lucide="check-square" class="w-4 h-4 text-cyan-400"></i> Pontos de Atenção
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">Marque os itens que impactaram negativamente a nota.</p>
+                        <div id="criteria-toggles" class="space-y-3 mt-4">
+                            <!-- Injetado JS -->
+                        </div>
+                    </div>
+
+                    <!-- Bloco 3: Observações -->
+                    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i data-lucide="message-square" class="w-4 h-4 text-purple-400"></i> Observações e Melhorias
+                        </h3>
+                        <textarea id="obs-textarea" rows="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all resize-none" placeholder="Descreva o estado do quarto, problemas encontrados ou orientações..."></textarea>
+                    </div>
+
+                </div>
+
+                <!-- TELA 2: DASHBOARD / RELATÓRIOS -->
+                <div id="dashboard-content" class="hidden max-w-5xl mx-auto pb-12 w-full flex flex-col gap-6">
+                    
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-6 h-6 text-cyan-500"></i> Painel de Relatórios
+                        </h2>
+                        <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-sm font-medium text-cyan-400">
+                            Mês: <span id="dash-month-display"></span>
+                        </div>
+                    </div>
+
+                    <!-- Cards de Ranking -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Ranking do Dia -->
+                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col h-[300px]">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                                <span>Ranking de Hoje</span>
+                                <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                            </h3>
+                            <div id="ranking-daily-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                                <!-- Injetado JS -->
                             </div>
-                            <div class="w-px h-10 md:h-12 bg-slate-800"></div>
-                            <div class="text-center min-w-[70px] md:min-w-[80px]">
-                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Média</div>
-                                <div id="score-average" class="inline-flex items-center justify-center px-2 py-1 md:px-3 rounded-lg border font-bold text-lg md:text-xl bg-slate-900 text-slate-500 border-slate-800 shadow-inner">
-                                    0.0
-                                </div>
+                        </div>
+
+                        <!-- Ranking do Mês -->
+                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col h-[300px]">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                                <span>Ranking Mensal (Média)</span>
+                                <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
+                            </h3>
+                            <div id="ranking-monthly-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                                <!-- Injetado JS -->
                             </div>
                         </div>
                     </div>
 
-                    <div id="criteria-list" class="space-y-3 md:space-y-4">
-                        <!-- Critérios Injetados JS -->
+                    <!-- Gráficos -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+                        <!-- Gráfico Geral -->
+                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Desempenho Geral do Residencial</h3>
+                            <div class="relative h-[250px] w-full">
+                                <canvas id="chart-overall"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico Individual -->
+                        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Evolução Individual</h3>
+                                <select id="dash-room-select" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                                    <!-- Options injetadas via JS -->
+                                </select>
+                            </div>
+                            <div class="relative h-[250px] w-full">
+                                <canvas id="chart-individual"></canvas>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mt-8 text-center flex items-center justify-center gap-2 text-slate-500 text-xs md:text-sm">
-                        <i data-lucide="globe-2" class="w-4 h-4 text-cyan-500 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]"></i>
-                        Sincronização global em tempo real ativada.
-                    </div>
+
                 </div>
+
             </div>
         </main>
+    </div>
+
+    <!-- Modal Limpeza Diária (Secreto) -->
+    <div id="modal-clear-day" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-rose-500/50 p-6 rounded-2xl shadow-[0_0_40px_rgba(244,63,94,0.2)] w-full max-w-sm relative">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/50 mb-4 text-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-100 mb-2">Aviso de Segurança</h3>
+                <p class="text-sm text-slate-400">Deseja apagar <strong class="text-rose-400 uppercase tracking-wider">todas</strong> as avaliações referentes ao dia <br><span id="modal-clear-date" class="text-slate-200 font-semibold mt-1 inline-block"></span>?</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Senha de Autorização</label>
+                    <input type="password" id="clear-password" class="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 text-slate-200 placeholder-slate-600" placeholder="Sua senha">
+                    <p id="clear-error" class="text-rose-400 text-xs mt-2 hidden flex items-center gap-1"><i data-lucide="x-circle" class="w-3 h-3"></i> Senha incorreta.</p>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                    <button id="btn-cancel-clear" class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-all">Cancelar</button>
+                    <button id="btn-confirm-clear" class="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(244,63,94,0.4)]">Apagar Tudo</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -256,40 +321,24 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Configurações
         const USERS = {
             'steiner': { pass: '626233', role: 'admin', display: 'Steiner' },
             'preceptoria': { pass: 'Iap@iasd', role: 'admin', display: 'Preceptoria' },
             'estudante': { pass: 'estudante', role: 'student', display: 'Estudante' }
         };
 
-        let activeUser = null; 
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyD_BQH9Re7ynHnGyynxbY2dOMS5MlgN7Jc",
-            authDomain: "vaza-84361.firebaseapp.com",
-            projectId: "vaza-84361",
-            storageBucket: "vaza-84361.firebasestorage.app",
-            messagingSenderId: "362255002224",
-            appId: "1:362255002224:web:ea3eb4d7c6d37ceb4062b5",
-            measurementId: "G-YGPYBVJ2E4"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appNamespace = "vaza-84361";
-
         const CRITERIA = [
-            { id: 'c1', label: 'Organização das camas', icon: 'bed' },
-            { id: 'c2', label: 'Organização das bancadas', icon: 'layout-dashboard' },
-            { id: 'c3', label: 'Limpeza do piso/chão', icon: 'sparkles' },
-            { id: 'c4', label: 'Limpeza do banheiro (pia, vaso, box)', icon: 'bath' },
-            { id: 'c5', label: 'Lixeiras (quarto e banheiro)', icon: 'trash-2' },
-            { id: 'c6', label: 'Presença de poeira nos móveis', icon: 'wind' },
-            { id: 'c7', label: 'Organização de roupas e pertences', icon: 'shirt' },
-            { id: 'c8', label: 'Organização da varanda/janelas', icon: 'blinds' },
-            { id: 'c9', label: 'Cheiro do ambiente', icon: 'flower-2' },
-            { id: 'c10', label: 'Organização geral do quarto', icon: 'star' },
+            { id: 'c1', label: 'Camas desorganizadas', icon: 'bed' },
+            { id: 'c2', label: 'Bancadas sujas/desorganizadas', icon: 'layout-dashboard' },
+            { id: 'c3', label: 'Piso necessita limpeza', icon: 'sparkles' },
+            { id: 'c4', label: 'Banheiro sujo', icon: 'bath' },
+            { id: 'c5', label: 'Lixeiras cheias', icon: 'trash-2' },
+            { id: 'c6', label: 'Poeira nos móveis', icon: 'wind' },
+            { id: 'c7', label: 'Roupas espalhadas', icon: 'shirt' },
+            { id: 'c8', label: 'Varanda/Janelas desorganizadas', icon: 'blinds' },
+            { id: 'c9', label: 'Odor desagradável', icon: 'flower-2' },
+            { id: 'c10', label: 'Desorganização geral', icon: 'star' },
         ];
 
         const FIXED_ROOMS = [
@@ -300,6 +349,26 @@
             { id: 'room-301', name: 'Quarto 301' }, { id: 'room-302', name: 'Quarto 302' }, { id: 'room-303', name: 'Quarto 303' }, { id: 'room-304', name: 'Quarto 304' },
             { id: 'room-305', name: 'Quarto 305' }, { id: 'room-306', name: 'Quarto 306' }, { id: 'room-307', name: 'Quarto 307' }, { id: 'room-308', name: 'Quarto 308' }
         ];
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_BQH9Re7ynHnGyynxbY2dOMS5MlgN7Jc",
+            authDomain: "vaza-84361.firebaseapp.com",
+            projectId: "vaza-84361",
+            storageBucket: "vaza-84361.firebasestorage.app",
+            messagingSenderId: "362255002224",
+            appId: "1:362255002224:web:ea3eb4d7c6d37ceb4062b5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appNamespace = "vaza-84361";
+
+        // Estado do App
+        let activeUser = null; 
+        let unsubscribeSnapshot = null;
+        let chartInstOverall = null;
+        let chartInstIndividual = null;
 
         const getTodayStr = () => {
             const d = new Date();
@@ -315,55 +384,53 @@
         const displayDate = (dateStr) => {
             const d = new Date(dateStr + 'T12:00:00');
             const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
-            let formatted = d.toLocaleDateString('pt-PT', options);
-            return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+            return d.toLocaleDateString('pt-PT', options);
+        };
+
+        const getMonthDisplay = (dateStr) => {
+            const d = new Date(dateStr + 'T12:00:00');
+            return d.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
         };
 
         let state = {
+            view: 'evaluation', // 'evaluation' ou 'dashboard'
             rooms: FIXED_ROOMS,
             selectedRoomId: FIXED_ROOMS[0].id,
+            dashSelectedRoomId: FIXED_ROOMS[0].id,
             currentDate: getTodayStr(),
-            evaluations: {}
+            evaluations: {} 
+            // Formato novo: evaluations[roomId][date] = { score: 10, criteria: ['c1'], obs: "texto" }
         };
         let searchQuery = "";
 
+        // FIREBASE
         const saveState = async () => {
             if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
             try {
-                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared');
-                await setDoc(docRef, {
-                    evaluations: state.evaluations
-                });
+                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                await setDoc(docRef, { evaluations: state.evaluations });
             } catch (error) {
-                console.error("Erro ao salvar no Firebase:", error);
+                console.error("Erro ao salvar:", error);
             }
         };
-
-        let unsubscribeSnapshot = null;
 
         const loadStateFromFirebase = () => {
             if (!auth.currentUser) return;
-            
-            if (unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-            }
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
 
-            const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared');
+            const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
             
             unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    state.evaluations = data.evaluations || state.evaluations;
+                    state.evaluations = docSnap.data().evaluations || {};
                 } else if (activeUser && activeUser.role === 'admin') {
                     saveState(); 
                 }
-                
                 updateUI();
-            }, (error) => {
-                console.error("Erro de sincronização onSnapshot:", error);
             });
         };
 
+        // AUTH
         const handleLogin = async (e) => {
             e.preventDefault();
             const userIn = document.getElementById('login-username').value.trim().toLowerCase();
@@ -371,7 +438,6 @@
             const errorEl = document.getElementById('login-error');
 
             const userFound = USERS[userIn];
-
             if (userFound && userFound.pass === passIn) {
                 activeUser = userFound;
                 errorEl.classList.add('hidden');
@@ -389,14 +455,19 @@
                 try {
                     await signInAnonymously(auth);
                     loadStateFromFirebase();
-                } catch (error) {
-                    console.error("Erro na autenticação anónima:", error);
-                }
+                } catch (error) {}
 
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-layout').classList.remove('hidden');
                 document.getElementById('app-layout').classList.add('flex');
                 
+                // Exibe o botão secreto apenas para admins/preceptoria
+                if (activeUser.role === 'admin') {
+                    document.getElementById('btn-secret-clear').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-secret-clear').classList.add('hidden');
+                }
+
                 updateUI();
             } else {
                 errorEl.classList.remove('hidden');
@@ -412,20 +483,15 @@
             document.getElementById('login-screen').classList.remove('hidden');
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user && activeUser) {
-                loadStateFromFirebase();
-            }
-        });
+        onAuthStateChanged(auth, (user) => { if (user && activeUser) loadStateFromFirebase(); });
 
         document.getElementById('login-form').addEventListener('submit', handleLogin);
         document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
-        // Lógica do Menu Lateral (Drawer) para Telemóveis
+        // SIDEBAR E HEADER
         const toggleSidebar = (forceClose = false) => {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            
             if (forceClose || !sidebar.classList.contains('-translate-x-full')) {
                 sidebar.classList.add('-translate-x-full');
                 overlay.classList.add('hidden');
@@ -439,224 +505,393 @@
         document.getElementById('btn-close-sidebar').addEventListener('click', () => toggleSidebar(true));
         document.getElementById('sidebar-overlay').addEventListener('click', () => toggleSidebar(true));
 
-        const getScoreColorClasses = (score) => {
-            if (score >= 8) return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/50', shadow: 'shadow-[0_0_10px_rgba(52,211,153,0.3)]' };
-            if (score >= 5) return { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/50', shadow: 'shadow-[0_0_10px_rgba(251,191,36,0.3)]' };
-            return { text: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/50', shadow: 'shadow-[0_0_10px_rgba(244,63,94,0.3)]' };
+        document.getElementById('btn-toggle-view').addEventListener('click', () => {
+            state.view = state.view === 'evaluation' ? 'dashboard' : 'evaluation';
+            const btnIcon = document.getElementById('toggle-view-icon');
+            const btnText = document.getElementById('toggle-view-text');
+            
+            if(state.view === 'dashboard') {
+                btnIcon.setAttribute('data-lucide', 'edit-3');
+                btnText.textContent = 'Avaliar';
+            } else {
+                btnIcon.setAttribute('data-lucide', 'bar-chart-2');
+                btnText.textContent = 'Relatórios';
+            }
+            lucide.createIcons();
+            updateUI();
+        });
+
+        // UTILITÁRIOS DE DADOS
+        const getRoomEval = (roomId, date) => {
+            if (!state.evaluations[roomId]) return { score: null, criteria: [], obs: "" };
+            return state.evaluations[roomId][date] || { score: null, criteria: [], obs: "" };
         };
 
+        const setRoomEval = (roomId, date, dataObj) => {
+            if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
+            state.evaluations[roomId][date] = { ...getRoomEval(roomId, date), ...dataObj };
+            saveState();
+        };
+
+        const getScoreColor = (score) => {
+            if (score === null || score === undefined) return 'text-slate-500 bg-slate-800';
+            if (score >= 8) return 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30';
+            if (score >= 5) return 'text-amber-400 bg-amber-500/10 border border-amber-500/30';
+            return 'text-rose-400 bg-rose-500/10 border border-rose-500/30';
+        };
+
+        // RENDERIZAÇÃO
         const renderRooms = () => {
             const list = document.getElementById('rooms-list');
             list.innerHTML = '';
-
-            const filteredRooms = state.rooms.filter(room => 
-                room.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            const filteredRooms = state.rooms.filter(room => room.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
             if (filteredRooms.length === 0) {
-                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg border border-dashed border-slate-800">Nada encontrado.</div>`;
+                list.innerHTML = `<div class="text-center p-4 text-slate-500 text-sm bg-slate-950 rounded-lg">Nada encontrado.</div>`;
             } else {
                 filteredRooms.forEach(room => {
-                    const isSelected = state.selectedRoomId === room.id;
+                    const isSelected = state.selectedRoomId === room.id && state.view === 'evaluation';
                     const el = document.createElement('div');
+                    
+                    // Mostrar um mini indicador se já foi avaliado hoje
+                    const todayEval = getRoomEval(room.id, state.currentDate);
+                    const hasEval = todayEval.score !== null;
+                    const evalDot = hasEval ? `<div class="w-2 h-2 rounded-full ${todayEval.score >= 8 ? 'bg-emerald-500' : (todayEval.score >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>` : '';
+
                     el.className = `group flex items-center justify-between p-2.5 md:p-3 rounded-xl cursor-pointer transition-all duration-300 ${
                         isSelected 
-                            ? 'bg-cyan-950/40 border-cyan-500/50 border text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.15)]' 
+                            ? 'bg-cyan-950/40 border-cyan-500/50 border text-cyan-400' 
                             : 'bg-slate-900 border-transparent border hover:bg-slate-800 hover:border-slate-700 text-slate-300'
                     }`;
 
                     el.innerHTML = `
-                        <div class="flex items-center gap-2 md:gap-3 font-medium truncate pr-2">
-                            <i data-lucide="${isSelected ? 'scan-line' : 'box'}" class="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 ${isSelected ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'text-slate-500'}"></i>
+                        <div class="flex items-center gap-3 font-medium truncate">
+                            <i data-lucide="${isSelected ? 'scan-line' : 'box'}" class="w-4 h-4 md:w-5 md:h-5 shrink-0 ${isSelected ? 'text-cyan-400' : 'text-slate-500'}"></i>
                             <span class="truncate text-sm md:text-base">${room.name}</span>
                         </div>
+                        ${evalDot}
                     `;
                     
                     el.addEventListener('click', () => {
                         state.selectedRoomId = room.id;
-                        updateUI();
-                        // Fecha o menu lateral automaticamente em telemóveis após escolher o quarto!
-                        if (window.innerWidth < 768) {
-                            toggleSidebar(true);
+                        if(state.view !== 'evaluation') {
+                            document.getElementById('btn-toggle-view').click(); // Volta pra avaliação
+                        } else {
+                            updateUI();
                         }
+                        if (window.innerWidth < 768) toggleSidebar(true);
                     });
-
                     list.appendChild(el);
                 });
             }
         };
 
-        const renderHeader = () => {
-            const todayStr = getTodayStr();
-            document.getElementById('display-date').textContent = displayDate(state.currentDate);
-        };
+        const renderEvaluationContent = () => {
+            const room = state.rooms.find(r => r.id === state.selectedRoomId);
+            if (!room) return;
 
-        const updateStats = () => {
-            if (!state.selectedRoomId) return;
+            document.getElementById('summary-room-name').textContent = room.name;
+            document.getElementById('summary-date').textContent = `Avaliação referente ao dia ${displayDate(state.currentDate).toLowerCase()}`;
 
-            const roomEvals = state.evaluations[state.selectedRoomId] || {};
-            const currentEvals = roomEvals[state.currentDate] || {};
-
-            const filledCount = Object.keys(currentEvals).length;
-            const isFullyEvaluated = filledCount === CRITERIA.length;
-            
-            let totalScore = 0;
-            for (let key in currentEvals) {
-                totalScore += currentEvals[key];
-            }
-            const avgScore = filledCount > 0 ? (totalScore / filledCount).toFixed(1) : '0.0';
-
-            const statusContainer = document.getElementById('status-container');
-            statusContainer.classList.remove('hidden');
-            document.getElementById('status-text').textContent = `${filledCount} de ${CRITERIA.length}`;
-            
-            const iconComplete = document.getElementById('status-icon-complete');
-            const iconIncomplete = document.getElementById('status-icon-incomplete');
-            
-            if (isFullyEvaluated) {
-                iconComplete.classList.remove('hidden');
-                iconIncomplete.classList.add('hidden');
-            } else {
-                iconComplete.classList.add('hidden');
-                iconIncomplete.classList.remove('hidden');
-            }
-
-            document.getElementById('score-total').textContent = totalScore;
-            const avgEl = document.getElementById('score-average');
-            avgEl.textContent = avgScore;
-            
-            avgEl.className = 'inline-flex items-center justify-center px-2 py-1 md:px-3 rounded-lg border font-bold text-lg md:text-xl transition-all duration-300';
-            if (filledCount === 0) {
-                avgEl.classList.add('bg-slate-900', 'text-slate-500', 'border-slate-800', 'shadow-inner');
-            } else {
-                const colors = getScoreColorClasses(parseFloat(avgScore));
-                avgEl.classList.add(colors.bg, colors.text, colors.border, colors.shadow);
-            }
-        };
-
-        const buildCriteriaList = () => {
-            const list = document.getElementById('criteria-list');
-            list.innerHTML = '';
-            
-            if (!state.selectedRoomId) return;
-
-            const roomEvals = state.evaluations[state.selectedRoomId] || {};
-            const currentEvals = roomEvals[state.currentDate] || {};
-
+            const currentEval = getRoomEval(state.selectedRoomId, state.currentDate);
             const isAdmin = activeUser && activeUser.role === 'admin';
 
-            CRITERIA.forEach((criterion, index) => {
-                const hasScore = currentEvals[criterion.id] !== undefined;
-                const score = hasScore ? currentEvals[criterion.id] : 5; 
-                
-                const el = document.createElement('div');
-                el.className = `criterion-card bg-slate-900 rounded-2xl p-4 md:p-6 shadow-md border transition-all duration-300 ${
-                    hasScore ? 'border-cyan-500/30 shadow-[0_0_20px_rgba(34,211,238,0.05)]' : 'border-slate-800'
+            // 1. Botões de Nota
+            const scoreContainer = document.getElementById('score-buttons');
+            scoreContainer.innerHTML = '';
+            for (let i = 0; i <= 10; i++) {
+                const btn = document.createElement('button');
+                btn.className = `score-btn w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl font-bold text-sm sm:text-base transition-all border ${currentEval.score === i ? 'active' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-600'}`;
+                btn.textContent = i;
+                if (!isAdmin) btn.disabled = true;
+                if (isAdmin) {
+                    btn.addEventListener('click', () => {
+                        setRoomEval(state.selectedRoomId, state.currentDate, { score: i });
+                        updateUI();
+                    });
+                }
+                scoreContainer.appendChild(btn);
+            }
+
+            // 2. Botões de Critérios
+            const criteriaContainer = document.getElementById('criteria-toggles');
+            criteriaContainer.innerHTML = '';
+            
+            const activeCriteria = currentEval.criteria || [];
+            
+            CRITERIA.forEach((crit, index) => {
+                const isActive = activeCriteria.includes(crit.id);
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left bg-slate-900 rounded-2xl p-4 shadow-md border transition-all duration-300 flex items-center justify-between group ${
+                    isActive 
+                        ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.1)] bg-cyan-950/20' 
+                        : 'border-slate-800 hover:border-slate-700 hover:bg-slate-800/50'
                 }`;
-
-                let scoreDisplayHTML = hasScore 
-                    ? `<div class="score-box w-full h-full flex items-center justify-center rounded-xl font-bold text-base md:text-lg border ${getScoreColorClasses(score).bg} ${getScoreColorClasses(score).text} ${getScoreColorClasses(score).border} ${getScoreColorClasses(score).shadow} transition-all duration-300">${score}</div>`
-                    : `<div class="score-box w-full h-full flex items-center justify-center rounded-xl bg-slate-950 border border-slate-800 text-slate-600 font-medium text-xs md:text-sm transition-all duration-300 shadow-inner">--</div>`;
-
-                el.innerHTML = `
-                    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-8">
-                        <div class="flex-1 flex items-start gap-3 md:gap-4">
-                            <div class="bg-slate-950 border border-slate-800 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 ${hasScore ? 'text-cyan-400 border-cyan-900 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-500'} transition-all duration-300">
-                                <i data-lucide="${criterion.icon}" class="w-5 h-5 md:w-6 md:h-6"></i>
-                            </div>
-                            <div>
-                                <div class="text-[9px] md:text-[10px] font-bold ${hasScore ? 'text-cyan-500' : 'text-slate-500'} mb-0.5 md:mb-1 uppercase tracking-widest transition-colors">Critério ${index + 1}</div>
-                                <h3 class="font-semibold text-slate-200 text-sm md:text-lg leading-tight">${criterion.label}</h3>
-                            </div>
+                
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3 md:gap-4">
+                        <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${
+                            isActive 
+                                ? 'bg-cyan-950 border border-cyan-900 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)]' 
+                                : 'bg-slate-950 border border-slate-800 text-slate-500 group-hover:text-slate-400'
+                        }">
+                            <i data-lucide="${crit.icon}" class="w-5 h-5 md:w-6 md:h-6"></i>
                         </div>
-
-                        <div class="w-full md:w-1/2 flex items-center gap-3 md:gap-4">
-                            <span class="text-slate-500 font-medium text-xs md:text-sm">0</span>
-                            <input type="range" min="0" max="10" step="1" value="${score}" data-id="${criterion.id}"
-                                ${!isAdmin ? 'disabled' : ''}
-                                class="flex-1 ${hasScore ? 'range-has-score' : 'opacity-60'} ${isAdmin ? 'hover:opacity-100' : ''}">
-                            <span class="text-slate-500 font-medium text-xs md:text-sm">10</span>
-                            
-                            <div class="ml-1 md:ml-2 w-10 h-10 md:w-14 md:h-14 flex-shrink-0" id="display-${criterion.id}">
-                                ${scoreDisplayHTML}
-                            </div>
+                        <div>
+                            <div class="text-[9px] md:text-[10px] font-bold mb-0.5 md:mb-1 uppercase tracking-widest transition-colors ${
+                                isActive ? 'text-cyan-500' : 'text-slate-500'
+                            }">Critério ${index + 1}</div>
+                            <h3 class="font-semibold text-sm md:text-base leading-tight transition-colors ${
+                                isActive ? 'text-cyan-100' : 'text-slate-300 group-hover:text-slate-200'
+                            }">${crit.label}</h3>
                         </div>
                     </div>
+                    <div class="shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                        isActive ? 'border-cyan-400 bg-cyan-400 text-slate-900 shadow-[0_0_10px_rgba(34,211,238,0.4)]' : 'border-slate-700 text-transparent group-hover:border-slate-500'
+                    }">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                    </div>
                 `;
-
+                
+                if (!isAdmin) btn.disabled = true;
                 if (isAdmin) {
-                    const rangeInput = el.querySelector('input[type=range]');
-                    
-                    rangeInput.addEventListener('input', (e) => {
-                        const val = parseInt(e.target.value);
-                        
-                        if (!state.evaluations[state.selectedRoomId]) {
-                            state.evaluations[state.selectedRoomId] = {};
-                        }
-                        if (!state.evaluations[state.selectedRoomId][state.currentDate]) {
-                            state.evaluations[state.selectedRoomId][state.currentDate] = {};
-                        }
-                        state.evaluations[state.selectedRoomId][state.currentDate][criterion.id] = val;
-
-                        e.target.classList.add('range-has-score');
-                        e.target.classList.remove('opacity-60', 'hover:opacity-100');
-                        el.classList.add('border-cyan-500/30', 'shadow-[0_0_20px_rgba(34,211,238,0.05)]');
-                        el.classList.remove('border-slate-800');
-
-                        const iconContainer = el.querySelector('.shrink-0');
-                        iconContainer.classList.add('text-cyan-400', 'border-cyan-900', 'shadow-[0_0_10px_rgba(34,211,238,0.2)]');
-                        iconContainer.classList.remove('text-slate-500', 'border-slate-800');
-                        
-                        const labelTitle = el.querySelector('.tracking-widest');
-                        labelTitle.classList.add('text-cyan-500');
-                        labelTitle.classList.remove('text-slate-500');
-
-                        const displayContainer = document.getElementById(`display-${criterion.id}`);
-                        const colors = getScoreColorClasses(val);
-                        displayContainer.innerHTML = `<div class="score-box w-full h-full flex items-center justify-center rounded-xl font-bold text-base md:text-lg border ${colors.bg} ${colors.text} ${colors.border} ${colors.shadow} transition-all duration-300">${val}</div>`;
-
-                        updateStats();
+                    btn.addEventListener('click', () => {
+                        let newCriteria = [...activeCriteria];
+                        if (isActive) newCriteria = newCriteria.filter(id => id !== crit.id);
+                        else newCriteria.push(crit.id);
+                        setRoomEval(state.selectedRoomId, state.currentDate, { criteria: newCriteria });
+                        updateUI();
                     });
-
-                    const syncData = () => { saveState(); };
-                    rangeInput.addEventListener('change', syncData);
-                    rangeInput.addEventListener('touchend', syncData);
                 }
+                criteriaContainer.appendChild(btn);
+            });
 
-                list.appendChild(el);
+            // 3. Observações
+            const obsEl = document.getElementById('obs-textarea');
+            obsEl.value = currentEval.obs || "";
+            obsEl.disabled = !isAdmin;
+            
+            // Usar um debounce simples para o campo de texto para não salvar a cada tecla
+            obsEl.onchange = (e) => {
+                if (isAdmin) setRoomEval(state.selectedRoomId, state.currentDate, { obs: e.target.value });
+            };
+        };
+
+        const renderDashboardContent = () => {
+            const currentMonthPrefix = state.currentDate.substring(0, 7); // "YYYY-MM"
+            document.getElementById('dash-month-display').textContent = getMonthDisplay(state.currentDate);
+
+            // Popula select de quartos para o gráfico individual
+            const roomSelect = document.getElementById('dash-room-select');
+            if (roomSelect.options.length === 0) {
+                state.rooms.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.textContent = r.name;
+                    roomSelect.appendChild(opt);
+                });
+                roomSelect.value = state.dashSelectedRoomId;
+                roomSelect.addEventListener('change', (e) => {
+                    state.dashSelectedRoomId = e.target.value;
+                    renderCharts(); // Atualiza só os graficos
+                });
+            }
+
+            // Cálculos para os Rankings
+            let dailyData = [];
+            let monthlyData = [];
+
+            state.rooms.forEach(room => {
+                // Hoje
+                const todayEval = getRoomEval(room.id, state.currentDate);
+                dailyData.push({ name: room.name, score: todayEval.score });
+
+                // Mês
+                const roomEvals = state.evaluations[room.id] || {};
+                let monthTotal = 0;
+                let monthCount = 0;
+                
+                Object.keys(roomEvals).forEach(date => {
+                    if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
+                        monthTotal += roomEvals[date].score;
+                        monthCount++;
+                    }
+                });
+
+                if (monthCount > 0) {
+                    monthlyData.push({ name: room.name, avg: (monthTotal / monthCount).toFixed(1) });
+                } else {
+                    monthlyData.push({ name: room.name, avg: null });
+                }
+            });
+
+            // Ordenar do MELHOR (maior nota) para o PIOR (menor nota)
+            // Quartos sem avaliação (null) vão para o final da lista
+            dailyData.sort((a, b) => {
+                if (a.score === null && b.score === null) return 0;
+                if (a.score === null) return 1;
+                if (b.score === null) return -1;
+                return b.score - a.score;
+            });
+
+            monthlyData.sort((a, b) => {
+                if (a.avg === null && b.avg === null) return 0;
+                if (a.avg === null) return 1;
+                if (b.avg === null) return -1;
+                return parseFloat(b.avg) - parseFloat(a.avg);
+            });
+
+            // Renderizar Daily Ranking
+            const dailyList = document.getElementById('ranking-daily-list');
+            dailyList.innerHTML = '';
+            dailyData.forEach((d, i) => {
+                const scoreDisplay = d.score !== null ? d.score : '-';
+                const colorClass = d.score !== null ? getScoreColor(d.score) : 'text-slate-500 bg-slate-800 border-slate-700';
+                
+                dailyList.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500 w-8">${i+1}º</span>
+                            <span class="text-sm text-slate-200">${d.name}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded font-bold text-xs ${colorClass}">${scoreDisplay}</span>
+                    </div>`;
+            });
+
+            // Renderizar Monthly Ranking
+            const monthlyList = document.getElementById('ranking-monthly-list');
+            monthlyList.innerHTML = '';
+            monthlyData.forEach((d, i) => {
+                const scoreDisplay = d.avg !== null ? d.avg : '-';
+                const colorClass = d.avg !== null ? getScoreColor(parseFloat(d.avg)) : 'text-slate-500 bg-slate-800 border-slate-700';
+                
+                monthlyList.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500 w-8">${i+1}º</span>
+                            <span class="text-sm text-slate-200">${d.name}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded font-bold text-xs ${colorClass}">${scoreDisplay}</span>
+                    </div>`;
+            });
+
+            renderCharts();
+        };
+
+        const renderCharts = () => {
+            const currentMonthPrefix = state.currentDate.substring(0, 7); // "YYYY-MM"
+            const daysInMonth = new Date(state.currentDate.split('-')[0], state.currentDate.split('-')[1], 0).getDate();
+            const labels = Array.from({length: daysInMonth}, (_, i) => `${i + 1}`);
+
+            // Prepara dados - GRÁFICO GERAL
+            const overallAverages = [];
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayStr = `${currentMonthPrefix}-${String(i).padStart(2, '0')}`;
+                let total = 0;
+                let count = 0;
+                
+                state.rooms.forEach(room => {
+                    const sc = getRoomEval(room.id, dayStr).score;
+                    if (sc !== null) { total += sc; count++; }
+                });
+                overallAverages.push(count > 0 ? (total/count).toFixed(1) : null);
+            }
+
+            // Prepara dados - GRÁFICO INDIVIDUAL
+            const indScores = [];
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayStr = `${currentMonthPrefix}-${String(i).padStart(2, '0')}`;
+                const sc = getRoomEval(state.dashSelectedRoomId, dayStr).score;
+                indScores.push(sc !== null ? sc : null);
+            }
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { min: 0, max: 10, grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
+                    x: { grid: { display: false }, ticks: { color: '#64748b' } }
+                },
+                plugins: { legend: { display: false } }
+            };
+
+            // Destrói os antigos para recriar
+            if (chartInstOverall) chartInstOverall.destroy();
+            if (chartInstIndividual) chartInstIndividual.destroy();
+
+            const ctxOverall = document.getElementById('chart-overall').getContext('2d');
+            chartInstOverall = new Chart(ctxOverall, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Média Geral',
+                        data: overallAverages,
+                        borderColor: '#22d3ee', // cyan-400
+                        backgroundColor: 'rgba(34,211,238,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        spanGaps: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            const ctxIndividual = document.getElementById('chart-individual').getContext('2d');
+            chartInstIndividual = new Chart(ctxIndividual, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Nota do Quarto',
+                        data: indScores,
+                        borderColor: '#c084fc', // purple-400
+                        backgroundColor: 'rgba(192,132,252,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        spanGaps: true
+                    }]
+                },
+                options: chartOptions
             });
         };
 
         const updateMainContent = () => {
+            document.getElementById('display-date').textContent = displayDate(state.currentDate);
+
             const emptyState = document.getElementById('empty-state');
             const evalContent = document.getElementById('evaluation-content');
-            const statusContainer = document.getElementById('status-container');
+            const dashContent = document.getElementById('dashboard-content');
 
-            const room = state.selectedRoomId ? state.rooms.find(r => r.id === state.selectedRoomId) : null;
-
-            if (!room) {
-                emptyState.classList.remove('hidden');
-                evalContent.classList.add('hidden');
-                statusContainer.classList.add('hidden');
-            } else {
+            if (state.view === 'dashboard') {
                 emptyState.classList.add('hidden');
-                evalContent.classList.remove('hidden');
+                evalContent.classList.add('hidden');
+                dashContent.classList.remove('hidden');
+                renderDashboardContent();
+            } else {
+                dashContent.classList.add('hidden');
+                const room = state.selectedRoomId ? state.rooms.find(r => r.id === state.selectedRoomId) : null;
                 
-                document.getElementById('summary-room-name').textContent = room.name;
-                document.getElementById('summary-date').textContent = `Avaliação referente ao dia ${displayDate(state.currentDate).toLowerCase()}`;
-                
-                buildCriteriaList();
-                updateStats();
+                if (!room) {
+                    emptyState.classList.remove('hidden');
+                    evalContent.classList.add('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                    evalContent.classList.remove('hidden');
+                    renderEvaluationContent();
+                }
             }
         };
 
         const updateUI = () => {
             renderRooms();
-            renderHeader();
             updateMainContent();
             lucide.createIcons();
         };
 
+        // EVENTOS BASICO
         const setupEventListeners = () => {
             const searchInput = document.getElementById('search-room');
             if (searchInput) {
@@ -673,7 +908,7 @@
             });
 
             document.getElementById('btn-next-day').addEventListener('click', () => {
-                if (state.currentDate < getTodayStr()) {
+                if (state.currentDate < getTodayStr() || state.view === 'dashboard') {
                     state.currentDate = addDays(state.currentDate, 1);
                     updateUI();
                 }
@@ -681,6 +916,74 @@
         };
 
         setupEventListeners();
+
+        // --- LÓGICA DO BOTÃO SECRETO DE LIMPEZA ---
+        let isClearPrimed = false;
+        let clearPrimedTimeout = null;
+        
+        const btnSecretClear = document.getElementById('btn-secret-clear');
+        const modalClearDay = document.getElementById('modal-clear-day');
+        
+        btnSecretClear.addEventListener('click', () => {
+            if (!activeUser || activeUser.role !== 'admin') return;
+            
+            if (!isClearPrimed) {
+                // Primeiro clique: Prepara (pula e fica vermelho)
+                isClearPrimed = true;
+                btnSecretClear.classList.remove('text-slate-600');
+                btnSecretClear.classList.add('text-rose-500', 'animate-jump');
+                
+                setTimeout(() => {
+                    btnSecretClear.classList.remove('animate-jump');
+                }, 400);
+
+                // Desarma depois de 3 segundos se não houver segundo clique
+                clearPrimedTimeout = setTimeout(() => {
+                    isClearPrimed = false;
+                    btnSecretClear.classList.remove('text-rose-500');
+                    btnSecretClear.classList.add('text-slate-600');
+                }, 3000);
+            } else {
+                // Segundo clique: Executa (Abre modal)
+                clearTimeout(clearPrimedTimeout);
+                isClearPrimed = false;
+                btnSecretClear.classList.remove('text-rose-500');
+                btnSecretClear.classList.add('text-slate-600');
+                
+                document.getElementById('modal-clear-date').textContent = displayDate(state.currentDate);
+                document.getElementById('clear-password').value = '';
+                document.getElementById('clear-error').classList.add('hidden');
+                modalClearDay.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('btn-cancel-clear').addEventListener('click', () => {
+            modalClearDay.classList.add('hidden');
+        });
+
+        document.getElementById('btn-confirm-clear').addEventListener('click', () => {
+            const passInput = document.getElementById('clear-password').value;
+            if (passInput === activeUser.pass) {
+                // Apaga todas as avaliações do dia atual
+                let modificationsMade = false;
+                Object.keys(state.evaluations).forEach(roomId => {
+                    if (state.evaluations[roomId][state.currentDate]) {
+                        delete state.evaluations[roomId][state.currentDate];
+                        modificationsMade = true;
+                    }
+                });
+                
+                if (modificationsMade) {
+                    saveState();
+                    updateUI();
+                }
+                
+                modalClearDay.classList.add('hidden');
+            } else {
+                document.getElementById('clear-error').classList.remove('hidden');
+            }
+        });
+
         lucide.createIcons();
 
     </script>
