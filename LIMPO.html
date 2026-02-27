@@ -625,6 +625,37 @@
             return isBorder ? 'border-rose-500/50' : 'text-rose-400 bg-rose-500/10 border border-rose-500/30';
         };
 
+        // --- FUNÇÕES DE LÓGICA DE RANKING E DESEMPATE ---
+        const getAverage = (roomId, prefix) => {
+            const evals = state.evaluations[roomId] || {};
+            let total = 0, count = 0;
+            Object.keys(evals).forEach(date => {
+                if (date.startsWith(prefix) && evals[date].score !== null) {
+                    total += evals[date].score;
+                    count++;
+                }
+            });
+            return count > 0 ? (total / count) : 0;
+        };
+
+        const getStreak = (roomId, startDate) => {
+            let streak = 0;
+            let checkDate = startDate;
+            const evals = state.evaluations[roomId] || {};
+            
+            while (true) {
+                const ev = evals[checkDate];
+                if (ev && ev.score === 10) {
+                    streak++;
+                    checkDate = addDays(checkDate, -1);
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        };
+        // --- FIM DAS FUNÇÕES AUXILIARES DE RANKING ---
+
         // RENDERIZAÇÃO
         const renderRooms = () => {
             const list = document.getElementById('rooms-list');
@@ -1040,53 +1071,110 @@
                 renderRaces(isAnnual, currentMonthPrefix, currentYear); 
             });
 
+            // --- AQUI COMEÇA A NOVA LÓGICA DE RANKING INTEGRADA ---
             let data1 = []; 
             let data2 = []; 
 
             state.rooms.forEach(room => {
                 const roomEvals = state.evaluations[room.id] || {};
-                
+                const streak = getStreak(room.id, state.currentDate);
+                const monthlyAvg = getAverage(room.id, currentMonthPrefix);
+                const annualAvg = getAverage(room.id, currentYear);
+
+                // --- DATA 1 (Ranking Principal: Hoje ou Mensal) ---
                 if (!isAnnual) {
-                    const todayEval = roomEvals[state.currentDate] || { score: null };
-                    data1.push({ name: room.name, score: todayEval.score });
+                    // Visão Diária
+                    const todayEval = roomEvals[state.currentDate] || { score: null, criteria: [] };
+                    data1.push({ 
+                        name: room.name, 
+                        score: todayEval.score,
+                        criteriaCount: todayEval.criteria ? todayEval.criteria.length : 0,
+                        avgToUse: monthlyAvg, // Desempate usa a média do mês
+                        streak: streak
+                    });
                 } else {
-                    let total = 0, count = 0;
+                    // Visão Mensal (como principal no painel Anual)
+                    let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
                         if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
-                            total += roomEvals[date].score; count++;
+                            totalSc += roomEvals[date].score; 
+                            countSc++;
+                            totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
                     });
-                    data1.push({ name: room.name, score: count > 0 ? parseFloat((total/count).toFixed(1)) : null });
+                    data1.push({ 
+                        name: room.name, 
+                        score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
+                        criteriaCount: totalCrit,
+                        avgToUse: annualAvg, // Desempate usa a média do ano
+                        streak: streak 
+                    });
                 }
 
+                // --- DATA 2 (Ranking Secundário: Mensal ou Anual) ---
                 if (!isAnnual) {
-                    let total = 0, count = 0;
+                    // Visão Mensal
+                    let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
                         if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
-                            total += roomEvals[date].score; count++;
+                            totalSc += roomEvals[date].score; 
+                            countSc++;
+                            totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
                     });
-                    data2.push({ name: room.name, score: count > 0 ? parseFloat((total/count).toFixed(1)) : null });
+                    data2.push({ 
+                        name: room.name, 
+                        score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
+                        criteriaCount: totalCrit,
+                        avgToUse: annualAvg, // Desempate do mês usa a média do ano
+                        streak: streak
+                    });
                 } else {
-                    let total = 0, count = 0;
+                    // Visão Anual
+                    let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
                         if (date.startsWith(currentYear) && roomEvals[date].score !== null) {
-                            total += roomEvals[date].score; count++;
+                            totalSc += roomEvals[date].score; 
+                            countSc++;
+                            totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
                     });
-                    data2.push({ name: room.name, score: count > 0 ? parseFloat((total/count).toFixed(1)) : null });
+                    data2.push({ 
+                        name: room.name, 
+                        score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
+                        criteriaCount: totalCrit,
+                        avgToUse: annualAvg,
+                        streak: streak
+                    });
                 }
             });
 
+            // A Nova Função Mágica de Desempate (Cascata)
             const sortFn = (a, b) => {
+                // Joga quem não tem nota pro final
                 if (a.score === null && b.score === null) return 0;
                 if (a.score === null) return 1;
                 if (b.score === null) return -1;
-                return b.score - a.score; 
+                
+                // Critério 0: Maior Nota (Score principal)
+                if (b.score !== a.score) return b.score - a.score;
+
+                // Critério 1: Menos Pontos de Atenção (Infrações)
+                if (a.criteriaCount !== b.criteriaCount) return a.criteriaCount - b.criteriaCount;
+
+                // Critério 2: Maior Média Histórica (Constância)
+                if (b.avgToUse !== a.avgToUse) return b.avgToUse - a.avgToUse;
+
+                // Critério 3: Maior Sequência de Notas 10 (Streak)
+                if (b.streak !== a.streak) return b.streak - a.streak;
+
+                // Critério Extra: Ordem Alfabética (Para ser 100% justo no empate técnico absoluto)
+                return a.name.localeCompare(b.name); 
             };
 
             data1.sort(sortFn);
             data2.sort(sortFn);
+            // --- FIM DA NOVA LÓGICA DE RANKING ---
 
             const renderList = (elementId, data) => {
                 const listEl = document.getElementById(elementId);
