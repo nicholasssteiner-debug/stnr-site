@@ -481,6 +481,19 @@
         // FIREBASE
         const saveState = async () => {
             if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
+            
+            // Proteção contra perda de dados do textarea durante sincronização
+            const obsEl = document.getElementById('obs-textarea');
+            if (obsEl && document.activeElement === obsEl && state.view === 'evaluation') {
+                const rId = obsEl.dataset.roomId || state.selectedRoomId;
+                const dStr = state.currentDate;
+                if (rId && dStr) {
+                    if (!state.evaluations[rId]) state.evaluations[rId] = {};
+                    if (!state.evaluations[rId][dStr]) state.evaluations[rId][dStr] = { score: null, criteria: [], obs: "" };
+                    state.evaluations[rId][dStr].obs = obsEl.value;
+                }
+            }
+
             try {
                 const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
                 await setDoc(docRef, { evaluations: state.evaluations });
@@ -656,7 +669,7 @@
             return streak;
         };
 
-        // Função universal de desempate
+        // Função universal de desempate em cascata para TUDO (Listas, Pódio e Corridas)
         const universalSortFn = (a, b) => {
             // Joga quem não tem nota pro final
             if (a.score === null && b.score === null) return 0;
@@ -675,7 +688,7 @@
             // Critério 3: Maior Sequência de Notas 10 (Streak)
             if (b.streak !== a.streak) return b.streak - a.streak;
 
-            // Critério Extra: Ordem Alfabética
+            // Critério Extra: Ordem Alfabética (Para ser 100% justo no empate técnico absoluto)
             return a.name.localeCompare(b.name); 
         };
         // --- FIM DAS FUNÇÕES AUXILIARES DE RANKING ---
@@ -846,17 +859,14 @@
             });
 
             const obsEl = document.getElementById('obs-textarea');
-            // FIX DATA LOSS: Só atualiza o texto se o campo NÃO estiver em foco (ou seja, se o admin não estiver digitando)
-            if (document.activeElement !== obsEl) {
+            
+            // Só atualiza o texto se o admin não estiver com foco no campo 
+            // OU se ele tiver trocado para outro quarto na sidebar.
+            if (document.activeElement !== obsEl || obsEl.dataset.roomId !== state.selectedRoomId) {
                 obsEl.value = currentEval.obs || "";
+                obsEl.dataset.roomId = state.selectedRoomId; // Anota no DOM o quarto atual para não misturar
             }
             obsEl.disabled = !isAdmin;
-            // FIX DATA LOSS: Salva apenas no onblur (quando clica fora), reduzindo a quantidade de re-renders desnecessários
-            obsEl.onblur = (e) => {
-                if (isAdmin && (currentEval.obs || "") !== e.target.value) {
-                    setRoomEval(state.selectedRoomId, state.currentDate, { obs: e.target.value });
-                }
-            };
 
             const advanceContainer = document.getElementById('advance-room-container');
             if (isAdmin) {
@@ -944,9 +954,8 @@
         };
 
         const renderRaces = (isAnnual, currentMonthPrefix, currentYear) => {
-            // FIX CASCATA NA CORRIDA: Aplicando os mesmos critérios do Universal Sort
             
-            // 1. Corrida das Alas
+            // 1. Corrida das Alas (AGORA USANDO O SISTEMA EM CASCATA)
             const wingsData = [];
             WINGS.forEach(wing => {
                 let wTotalSc = 0, wCountSc = 0;
@@ -1015,7 +1024,7 @@
                 `;
             });
 
-            // 2. Corrida dos Quartos da Ala
+            // 2. Corrida dos Quartos da Ala (AGORA USANDO O SISTEMA EM CASCATA)
             const raceWingSelect = document.getElementById('race-wing-select');
             if (raceWingSelect.options.length === 0) {
                 WINGS.forEach(w => {
@@ -1057,7 +1066,7 @@
                     }
                     roomsData.push({
                         name: `Q.${rNum}`,
-                        score: rCountSc > 0 ? rTotalSc : null, // como é só 1 dia, rTotal é a nota
+                        score: rCountSc > 0 ? rTotalSc : null, 
                         criteriaCount: rTotalCrit,
                         avgToUse: monthlyAvg,
                         streak: streak
@@ -1245,10 +1254,10 @@
                         } else if (i === 2) { 
                             medalColorClass = 'text-amber-500'; bgClass = 'bg-amber-600/10 border-amber-600/30'; posText = '🥉'; 
                         } else if (d.score === 10) {
-                            // FIX DESTAQUE PERFEITO 10 FORA DO PÓDIO
-                            bgClass = 'bg-yellow-400/5 border-yellow-400/20';
-                            medalColorClass = 'text-yellow-400/70';
-                            extraBadge = '<i data-lucide="star" class="w-3 h-3 text-yellow-400/70 ml-1 fill-yellow-400/10 inline-block mb-0.5"></i>';
+                            // FIX: Destaque perfeito nota 10 (mesmo fora do Top 3)
+                            bgClass = 'bg-yellow-400/5 border-yellow-400/20 shadow-[0_0_8px_rgba(250,204,21,0.05)]';
+                            medalColorClass = 'text-yellow-400/70 font-black';
+                            extraBadge = '<i data-lucide="star" class="w-3.5 h-3.5 text-yellow-400/80 fill-yellow-400/20 inline-block ml-1"></i>';
                         }
                     }
 
@@ -1435,6 +1444,30 @@
                     updateUI();
                 }
             });
+
+            // FIX DATA LOSS: Event Listener de Input para as observações que salva enquanto digita
+            const obsEl = document.getElementById('obs-textarea');
+            let typingTimeout;
+            if (obsEl) {
+                obsEl.addEventListener('input', (e) => {
+                    if (!activeUser || activeUser.role !== 'admin') return;
+                    
+                    // Garante a sala usando o dataset injetado
+                    const roomId = obsEl.dataset.roomId || state.selectedRoomId;
+                    const date = state.currentDate;
+                    
+                    if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
+                    if (!state.evaluations[roomId][date]) state.evaluations[roomId][date] = { score: null, criteria: [], obs: "" };
+                    
+                    state.evaluations[roomId][date].obs = e.target.value;
+
+                    // Salva no banco discretamente 1 segundo após você parar de digitar
+                    clearTimeout(typingTimeout);
+                    typingTimeout = setTimeout(() => {
+                        saveState();
+                    }, 1000); 
+                });
+            }
         };
 
         setupEventListeners();
