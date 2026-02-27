@@ -220,6 +220,7 @@
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <i data-lucide="message-square" class="w-4 h-4 text-purple-400"></i> Observações e Melhorias
                         </h3>
+                        <!-- Textarea modificado para evitar perda de dados durante a digitação -->
                         <textarea id="obs-textarea" rows="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all resize-none" placeholder="Descreva o estado do quarto, problemas encontrados ou orientações..."></textarea>
                     </div>
 
@@ -654,6 +655,29 @@
             }
             return streak;
         };
+
+        // Função universal de desempate
+        const universalSortFn = (a, b) => {
+            // Joga quem não tem nota pro final
+            if (a.score === null && b.score === null) return 0;
+            if (a.score === null) return 1;
+            if (b.score === null) return -1;
+            
+            // Critério 0: Maior Nota (Score principal)
+            if (b.score !== a.score) return b.score - a.score;
+
+            // Critério 1: Menos Pontos de Atenção (Infrações)
+            if (a.criteriaCount !== b.criteriaCount) return a.criteriaCount - b.criteriaCount;
+
+            // Critério 2: Maior Média Histórica (Constância)
+            if (b.avgToUse !== a.avgToUse) return b.avgToUse - a.avgToUse;
+
+            // Critério 3: Maior Sequência de Notas 10 (Streak)
+            if (b.streak !== a.streak) return b.streak - a.streak;
+
+            // Critério Extra: Ordem Alfabética
+            return a.name.localeCompare(b.name); 
+        };
         // --- FIM DAS FUNÇÕES AUXILIARES DE RANKING ---
 
         // RENDERIZAÇÃO
@@ -822,10 +846,16 @@
             });
 
             const obsEl = document.getElementById('obs-textarea');
-            obsEl.value = currentEval.obs || "";
+            // FIX DATA LOSS: Só atualiza o texto se o campo NÃO estiver em foco (ou seja, se o admin não estiver digitando)
+            if (document.activeElement !== obsEl) {
+                obsEl.value = currentEval.obs || "";
+            }
             obsEl.disabled = !isAdmin;
-            obsEl.onchange = (e) => {
-                if (isAdmin) setRoomEval(state.selectedRoomId, state.currentDate, { obs: e.target.value });
+            // FIX DATA LOSS: Salva apenas no onblur (quando clica fora), reduzindo a quantidade de re-renders desnecessários
+            obsEl.onblur = (e) => {
+                if (isAdmin && (currentEval.obs || "") !== e.target.value) {
+                    setRoomEval(state.selectedRoomId, state.currentDate, { obs: e.target.value });
+                }
             };
 
             const advanceContainer = document.getElementById('advance-room-container');
@@ -914,36 +944,61 @@
         };
 
         const renderRaces = (isAnnual, currentMonthPrefix, currentYear) => {
-            const wingsData = [];
+            // FIX CASCATA NA CORRIDA: Aplicando os mesmos critérios do Universal Sort
             
-            // 1. Calcular médias para as Alas
+            // 1. Corrida das Alas
+            const wingsData = [];
             WINGS.forEach(wing => {
-                let wTotal = 0, wCount = 0;
+                let wTotalSc = 0, wCountSc = 0;
+                let wTotalCrit = 0, wTotalStreak = 0;
+                let wTotalHist = 0, wCountHist = 0;
+
                 wing.rooms.forEach(roomId => {
-                    const evals = state.evaluations[roomId] || {};
-                    Object.keys(evals).forEach(date => {
-                        const checkPrefix = isAnnual ? currentYear : currentMonthPrefix;
-                        if (date.startsWith(checkPrefix) && evals[date].score !== null) {
-                            wTotal += evals[date].score;
-                            wCount++;
+                    const roomEvals = state.evaluations[roomId] || {};
+                    wTotalStreak += getStreak(roomId, state.currentDate);
+                    
+                    const histPrefix = isAnnual ? currentYear : currentMonthPrefix;
+                    Object.keys(roomEvals).forEach(date => {
+                        if (date.startsWith(histPrefix) && roomEvals[date].score !== null) {
+                            wTotalHist += roomEvals[date].score;
+                            wCountHist++;
                         }
                     });
+
+                    if (!isAnnual) {
+                        const todayEval = roomEvals[state.currentDate];
+                        if (todayEval && todayEval.score !== null) {
+                            wTotalSc += todayEval.score; wCountSc++;
+                            wTotalCrit += todayEval.criteria ? todayEval.criteria.length : 0;
+                        }
+                    } else {
+                        Object.keys(roomEvals).forEach(date => {
+                            if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
+                                wTotalSc += roomEvals[date].score; wCountSc++;
+                                wTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
+                            }
+                        });
+                    }
                 });
+
                 wingsData.push({
                     name: wing.name,
                     icon: wing.icon,
                     color: wing.color,
-                    score: wCount > 0 ? (wTotal/wCount) : 0 
+                    score: wCountSc > 0 ? parseFloat((wTotalSc/wCountSc).toFixed(1)) : null,
+                    criteriaCount: wTotalCrit,
+                    avgToUse: wCountHist > 0 ? (wTotalHist/wCountHist) : 0,
+                    streak: wTotalStreak
                 });
             });
 
-            wingsData.sort((a,b) => b.score - a.score);
+            wingsData.sort(universalSortFn);
 
             const containerWings = document.getElementById('race-wings');
             containerWings.innerHTML = '';
             
             wingsData.forEach((w, i) => {
-                const widthPercent = w.score > 0 ? (w.score / 10) * 100 : 0;
+                const widthPercent = (w.score !== null && w.score > 0) ? (w.score / 10) * 100 : 0;
                 const positionIcon = i === 0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : ''));
                 
                 containerWings.innerHTML += `
@@ -955,12 +1010,12 @@
                                 <i data-lucide="${w.icon}" class="w-5 h-5 ${w.color}"></i>
                             </div>
                         </div>
-                        <div class="w-8 text-right font-bold text-xs ${getScoreColor(w.score).split(' ')[0]}">${w.score > 0 ? w.score.toFixed(1) : '-'}</div>
+                        <div class="w-8 text-right font-bold text-xs ${getScoreColor(w.score).split(' ')[0]}">${w.score !== null ? w.score.toFixed(1) : '-'}</div>
                     </div>
                 `;
             });
 
-            // 2. Calcular corrida Interna da Ala selecionada via Dropdown
+            // 2. Corrida dos Quartos da Ala
             const raceWingSelect = document.getElementById('race-wing-select');
             if (raceWingSelect.options.length === 0) {
                 WINGS.forEach(w => {
@@ -987,22 +1042,44 @@
             const roomsData = [];
             currentWing.rooms.forEach(roomId => {
                 const rNum = roomId.split('-')[1];
-                const evals = state.evaluations[roomId] || {};
-                let rTotal = 0, rCount = 0;
-                Object.keys(evals).forEach(date => {
-                    const checkPrefix = isAnnual ? currentYear : currentMonthPrefix;
-                    if (date.startsWith(checkPrefix) && evals[date].score !== null) {
-                        rTotal += evals[date].score;
-                        rCount++;
+                const roomEvals = state.evaluations[roomId] || {};
+                const streak = getStreak(roomId, state.currentDate);
+                const monthlyAvg = getAverage(roomId, currentMonthPrefix);
+                const annualAvg = getAverage(roomId, currentYear);
+
+                let rTotalSc = 0, rCountSc = 0, rTotalCrit = 0;
+
+                if (!isAnnual) {
+                    const todayEval = roomEvals[state.currentDate];
+                    if (todayEval && todayEval.score !== null) {
+                        rTotalSc += todayEval.score; rCountSc++;
+                        rTotalCrit += todayEval.criteria ? todayEval.criteria.length : 0;
                     }
-                });
-                roomsData.push({
-                    name: `Q.${rNum}`,
-                    score: rCount > 0 ? (rTotal/rCount) : 0
-                });
+                    roomsData.push({
+                        name: `Q.${rNum}`,
+                        score: rCountSc > 0 ? rTotalSc : null, // como é só 1 dia, rTotal é a nota
+                        criteriaCount: rTotalCrit,
+                        avgToUse: monthlyAvg,
+                        streak: streak
+                    });
+                } else {
+                    Object.keys(roomEvals).forEach(date => {
+                        if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
+                            rTotalSc += roomEvals[date].score; rCountSc++;
+                            rTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
+                        }
+                    });
+                    roomsData.push({
+                        name: `Q.${rNum}`,
+                        score: rCountSc > 0 ? parseFloat((rTotalSc/rCountSc).toFixed(1)) : null,
+                        criteriaCount: rTotalCrit,
+                        avgToUse: annualAvg,
+                        streak: streak
+                    });
+                }
             });
 
-            roomsData.sort((a,b) => b.score - a.score);
+            roomsData.sort(universalSortFn);
 
             const containerRooms = document.getElementById('race-rooms');
             containerRooms.innerHTML = '';
@@ -1010,7 +1087,7 @@
             const carIconHTML = `<i data-lucide="${currentWing.icon}" class="w-4 h-4 ${currentWing.color}"></i>`;
 
             roomsData.forEach((r, i) => {
-                const widthPercent = r.score > 0 ? (r.score / 10) * 100 : 0;
+                const widthPercent = (r.score !== null && r.score > 0) ? (r.score / 10) * 100 : 0;
                 const isSelectedRoom = r.name === `Q.${state.dashSelectedRoomId.split('-')[1]}`;
                 const positionIcon = i === 0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : ''));
 
@@ -1021,7 +1098,7 @@
                             <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent ${isSelectedRoom ? 'to-purple-500/30' : 'to-slate-500/30'}" style="width: ${widthPercent}%"></div>
                             <div class="absolute top-1/2 -translate-y-1/2 drop-shadow-md transition-all duration-1000 z-10" style="left: calc(${widthPercent}% - 18px)">${carIconHTML}</div>
                         </div>
-                        <div class="w-8 text-right font-bold text-xs ${getScoreColor(r.score).split(' ')[0]}">${r.score > 0 ? r.score.toFixed(1) : '-'}</div>
+                        <div class="w-8 text-right font-bold text-xs ${getScoreColor(r.score).split(' ')[0]}">${r.score !== null ? r.score.toFixed(1) : '-'}</div>
                     </div>
                 `;
             });
@@ -1071,7 +1148,7 @@
                 renderRaces(isAnnual, currentMonthPrefix, currentYear); 
             });
 
-            // --- AQUI COMEÇA A NOVA LÓGICA DE RANKING INTEGRADA ---
+            // Preparando Dados das Listas de Ranking
             let data1 = []; 
             let data2 = []; 
 
@@ -1081,19 +1158,17 @@
                 const monthlyAvg = getAverage(room.id, currentMonthPrefix);
                 const annualAvg = getAverage(room.id, currentYear);
 
-                // --- DATA 1 (Ranking Principal: Hoje ou Mensal) ---
+                // --- DATA 1 (Ranking Principal) ---
                 if (!isAnnual) {
-                    // Visão Diária
                     const todayEval = roomEvals[state.currentDate] || { score: null, criteria: [] };
                     data1.push({ 
                         name: room.name, 
                         score: todayEval.score,
                         criteriaCount: todayEval.criteria ? todayEval.criteria.length : 0,
-                        avgToUse: monthlyAvg, // Desempate usa a média do mês
+                        avgToUse: monthlyAvg, 
                         streak: streak
                     });
                 } else {
-                    // Visão Mensal (como principal no painel Anual)
                     let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
                         if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
@@ -1106,14 +1181,13 @@
                         name: room.name, 
                         score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
                         criteriaCount: totalCrit,
-                        avgToUse: annualAvg, // Desempate usa a média do ano
+                        avgToUse: annualAvg, 
                         streak: streak 
                     });
                 }
 
-                // --- DATA 2 (Ranking Secundário: Mensal ou Anual) ---
+                // --- DATA 2 (Ranking Secundário) ---
                 if (!isAnnual) {
-                    // Visão Mensal
                     let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
                         if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
@@ -1126,11 +1200,10 @@
                         name: room.name, 
                         score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
                         criteriaCount: totalCrit,
-                        avgToUse: annualAvg, // Desempate do mês usa a média do ano
+                        avgToUse: annualAvg, 
                         streak: streak
                     });
                 } else {
-                    // Visão Anual
                     let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
                         if (date.startsWith(currentYear) && roomEvals[date].score !== null) {
@@ -1149,32 +1222,9 @@
                 }
             });
 
-            // A Nova Função Mágica de Desempate (Cascata)
-            const sortFn = (a, b) => {
-                // Joga quem não tem nota pro final
-                if (a.score === null && b.score === null) return 0;
-                if (a.score === null) return 1;
-                if (b.score === null) return -1;
-                
-                // Critério 0: Maior Nota (Score principal)
-                if (b.score !== a.score) return b.score - a.score;
-
-                // Critério 1: Menos Pontos de Atenção (Infrações)
-                if (a.criteriaCount !== b.criteriaCount) return a.criteriaCount - b.criteriaCount;
-
-                // Critério 2: Maior Média Histórica (Constância)
-                if (b.avgToUse !== a.avgToUse) return b.avgToUse - a.avgToUse;
-
-                // Critério 3: Maior Sequência de Notas 10 (Streak)
-                if (b.streak !== a.streak) return b.streak - a.streak;
-
-                // Critério Extra: Ordem Alfabética (Para ser 100% justo no empate técnico absoluto)
-                return a.name.localeCompare(b.name); 
-            };
-
-            data1.sort(sortFn);
-            data2.sort(sortFn);
-            // --- FIM DA NOVA LÓGICA DE RANKING ---
+            // Aplica Função Universal de Desempate
+            data1.sort(universalSortFn);
+            data2.sort(universalSortFn);
 
             const renderList = (elementId, data) => {
                 const listEl = document.getElementById(elementId);
@@ -1185,17 +1235,27 @@
                     let medalColorClass = 'text-slate-500';
                     let bgClass = 'bg-slate-950 border-slate-800';
                     let posText = `${i+1}º`;
+                    let extraBadge = '';
 
                     if (d.score !== null) {
-                        if (i === 0) { medalColorClass = 'text-yellow-400'; bgClass = 'bg-yellow-400/10 border-yellow-400/30 shadow-[0_0_10px_rgba(250,204,21,0.1)]'; posText = '🥇'; }
-                        else if (i === 1) { medalColorClass = 'text-slate-300'; bgClass = 'bg-slate-300/10 border-slate-300/30'; posText = '🥈'; }
-                        else if (i === 2) { medalColorClass = 'text-amber-500'; bgClass = 'bg-amber-600/10 border-amber-600/30'; posText = '🥉'; }
+                        if (i === 0) { 
+                            medalColorClass = 'text-yellow-400'; bgClass = 'bg-yellow-400/10 border-yellow-400/30 shadow-[0_0_10px_rgba(250,204,21,0.1)]'; posText = '🥇'; 
+                        } else if (i === 1) { 
+                            medalColorClass = 'text-slate-300'; bgClass = 'bg-slate-300/10 border-slate-300/30'; posText = '🥈'; 
+                        } else if (i === 2) { 
+                            medalColorClass = 'text-amber-500'; bgClass = 'bg-amber-600/10 border-amber-600/30'; posText = '🥉'; 
+                        } else if (d.score === 10) {
+                            // FIX DESTAQUE PERFEITO 10 FORA DO PÓDIO
+                            bgClass = 'bg-yellow-400/5 border-yellow-400/20';
+                            medalColorClass = 'text-yellow-400/70';
+                            extraBadge = '<i data-lucide="star" class="w-3 h-3 text-yellow-400/70 ml-1 fill-yellow-400/10 inline-block mb-0.5"></i>';
+                        }
                     }
 
                     listEl.innerHTML += `
-                        <div class="flex items-center justify-between p-2 rounded-lg border mb-2 ${bgClass}">
+                        <div class="flex items-center justify-between p-2 rounded-lg border mb-2 transition-all ${bgClass}">
                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold w-6 text-center ${medalColorClass}">${posText}</span>
+                                <span class="text-xs font-bold w-10 text-center flex items-center justify-center ${medalColorClass}">${posText}${extraBadge}</span>
                                 <span class="text-sm text-slate-200 font-medium">${d.name}</span>
                             </div>
                             <span class="px-2 py-0.5 rounded font-black text-xs ${getScoreColor(d.score)}">${scDisp}</span>
