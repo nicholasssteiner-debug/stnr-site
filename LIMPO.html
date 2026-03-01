@@ -955,7 +955,7 @@
 
         const renderRaces = (isAnnual, currentMonthPrefix, currentYear) => {
             
-            // 1. Corrida das Alas (AGORA USANDO O SISTEMA EM CASCATA)
+            // 1. Corrida das Alas (AGORA USANDO O SISTEMA EM CASCATA E PERÍODO CORRETO)
             const wingsData = [];
             WINGS.forEach(wing => {
                 let wTotalSc = 0, wCountSc = 0;
@@ -966,28 +966,21 @@
                     const roomEvals = state.evaluations[roomId] || {};
                     wTotalStreak += getStreak(roomId, state.currentDate);
                     
-                    const histPrefix = isAnnual ? currentYear : currentMonthPrefix;
+                    const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
+                    
                     Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(histPrefix) && roomEvals[date].score !== null) {
+                        // Histórico anual para desempate
+                        if (date.startsWith(currentYear) && roomEvals[date].score !== null) {
                             wTotalHist += roomEvals[date].score;
                             wCountHist++;
                         }
-                    });
-
-                    if (!isAnnual) {
-                        const todayEval = roomEvals[state.currentDate];
-                        if (todayEval && todayEval.score !== null) {
-                            wTotalSc += todayEval.score; wCountSc++;
-                            wTotalCrit += todayEval.criteria ? todayEval.criteria.length : 0;
+                        
+                        // Soma os dados do período correto (Mensal ou Anual)
+                        if (date.startsWith(periodPrefix) && roomEvals[date].score !== null) {
+                            wTotalSc += roomEvals[date].score; wCountSc++;
+                            wTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
-                    } else {
-                        Object.keys(roomEvals).forEach(date => {
-                            if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
-                                wTotalSc += roomEvals[date].score; wCountSc++;
-                                wTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                            }
-                        });
-                    }
+                    });
                 });
 
                 wingsData.push({
@@ -1053,39 +1046,25 @@
                 const rNum = roomId.split('-')[1];
                 const roomEvals = state.evaluations[roomId] || {};
                 const streak = getStreak(roomId, state.currentDate);
-                const monthlyAvg = getAverage(roomId, currentMonthPrefix);
                 const annualAvg = getAverage(roomId, currentYear);
 
                 let rTotalSc = 0, rCountSc = 0, rTotalCrit = 0;
+                const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
 
-                if (!isAnnual) {
-                    const todayEval = roomEvals[state.currentDate];
-                    if (todayEval && todayEval.score !== null) {
-                        rTotalSc += todayEval.score; rCountSc++;
-                        rTotalCrit += todayEval.criteria ? todayEval.criteria.length : 0;
+                Object.keys(roomEvals).forEach(date => {
+                    if (date.startsWith(periodPrefix) && roomEvals[date].score !== null) {
+                        rTotalSc += roomEvals[date].score; rCountSc++;
+                        rTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                     }
-                    roomsData.push({
-                        name: `Q.${rNum}`,
-                        score: rCountSc > 0 ? rTotalSc : null, 
-                        criteriaCount: rTotalCrit,
-                        avgToUse: monthlyAvg,
-                        streak: streak
-                    });
-                } else {
-                    Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
-                            rTotalSc += roomEvals[date].score; rCountSc++;
-                            rTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                        }
-                    });
-                    roomsData.push({
-                        name: `Q.${rNum}`,
-                        score: rCountSc > 0 ? parseFloat((rTotalSc/rCountSc).toFixed(1)) : null,
-                        criteriaCount: rTotalCrit,
-                        avgToUse: annualAvg,
-                        streak: streak
-                    });
-                }
+                });
+                
+                roomsData.push({
+                    name: `Q.${rNum}`,
+                    score: rCountSc > 0 ? parseFloat((rTotalSc/rCountSc).toFixed(1)) : null,
+                    criteriaCount: rTotalCrit,
+                    avgToUse: annualAvg,
+                    streak: streak
+                });
             });
 
             roomsData.sort(universalSortFn);
