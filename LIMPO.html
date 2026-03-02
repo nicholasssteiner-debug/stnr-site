@@ -479,26 +479,36 @@
         state.dashSelectedRoomId = state.rooms[0].id;
 
         // FIREBASE
-        const saveState = async () => {
+        const saveSpecificEval = async (roomId, date) => {
+            if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
+
+            const evalData = state.evaluations[roomId]?.[date];
+            if (!evalData) return;
+
+            try {
+                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                // O { merge: true } garante que APENAS este quarto e esta data sejam atualizados no banco,
+                // sem apagar as edições que outras pessoas estão fazendo em outros quartos ao mesmo tempo.
+                await setDoc(docRef, {
+                    evaluations: {
+                        [roomId]: {
+                            [date]: evalData
+                        }
+                    }
+                }, { merge: true });
+            } catch (error) {
+                console.error("Erro ao salvar avaliação específica:", error);
+            }
+        };
+
+        const saveFullState = async () => {
             if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
             
-            // Proteção contra perda de dados do textarea durante sincronização
-            const obsEl = document.getElementById('obs-textarea');
-            if (obsEl && document.activeElement === obsEl && state.view === 'evaluation') {
-                const rId = obsEl.dataset.roomId || state.selectedRoomId;
-                const dStr = state.currentDate;
-                if (rId && dStr) {
-                    if (!state.evaluations[rId]) state.evaluations[rId] = {};
-                    if (!state.evaluations[rId][dStr]) state.evaluations[rId][dStr] = { score: null, criteria: [], obs: "" };
-                    state.evaluations[rId][dStr].obs = obsEl.value;
-                }
-            }
-
             try {
                 const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
                 await setDoc(docRef, { evaluations: state.evaluations });
             } catch (error) {
-                console.error("Erro ao salvar:", error);
+                console.error("Erro ao salvar estado completo:", error);
             }
         };
 
@@ -510,9 +520,31 @@
             
             unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    state.evaluations = docSnap.data().evaluations || {};
+                    const incomingData = docSnap.data().evaluations || {};
+
+                    // Proteção de digitação: preserva o que o usuário local está escrevendo AGORA
+                    // para evitar que a atualização de outra pessoa apague o texto dele na tela
+                    const obsEl = document.getElementById('obs-textarea');
+                    let localObs = null;
+                    let activeRoom = null;
+                    let activeDate = state.currentDate;
+
+                    if (obsEl && document.activeElement === obsEl && state.view === 'evaluation') {
+                        activeRoom = obsEl.dataset.roomId || state.selectedRoomId;
+                        localObs = obsEl.value;
+                    }
+
+                    state.evaluations = incomingData;
+
+                    // Restaura a observação local no estado se ele estava digitando
+                    if (activeRoom && localObs !== null) {
+                        if (!state.evaluations[activeRoom]) state.evaluations[activeRoom] = {};
+                        if (!state.evaluations[activeRoom][activeDate]) state.evaluations[activeRoom][activeDate] = { score: null, criteria: [], obs: "" };
+                        state.evaluations[activeRoom][activeDate].obs = localObs;
+                    }
+
                 } else if (activeUser && activeUser.role === 'admin') {
-                    saveState(); 
+                    saveFullState(); 
                 }
                 updateUI();
             });
@@ -629,7 +661,7 @@
         const setRoomEval = (roomId, date, dataObj) => {
             if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
             state.evaluations[roomId][date] = { ...getRoomEval(roomId, date), ...dataObj };
-            saveState();
+            saveSpecificEval(roomId, date);
         };
 
         const getScoreColor = (score, isBorder = false) => {
@@ -1443,7 +1475,7 @@
                     // Salva no banco discretamente 1 segundo após você parar de digitar
                     clearTimeout(typingTimeout);
                     typingTimeout = setTimeout(() => {
-                        saveState();
+                        saveSpecificEval(roomId, date);
                     }, 1000); 
                 });
             }
@@ -1502,7 +1534,7 @@
                 });
                 
                 if (modificationsMade) {
-                    saveState();
+                    saveFullState();
                     updateUI();
                 }
                 
