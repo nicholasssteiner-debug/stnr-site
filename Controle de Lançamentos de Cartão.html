@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Lançamentos de Compras em Cartão Corporativo</title>
+    
+    <!-- Tailwind CSS para os Estilos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configuração de Tema do Tailwind -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Babel para compilar o React no navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Mapeamento de Módulos (Import Map) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.292.0?deps=react@18.2.0",
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js",
+          "firebase/analytics": "https://www.gstatic.com/firebasejs/10.6.0/firebase-analytics.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js"
+        }
+      }
+    </script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Estilos base para inputs corporativos */
+        input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], select, textarea {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* Personalização da Scrollbar interna */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
+    
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useMemo, useRef, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+          LayoutDashboard, FilePlus, Table as TableIcon, CreditCard, DollarSign, Ban, RotateCcw,
+          CheckCircle2, Settings, Trash2, Upload, Plus, Search, Filter, Clock, Activity, PieChart,
+          User, Users, Lock, LogOut, Shield, Loader2, Bell, X, AlertTriangle, Building, ChevronRight, FileText, Pencil
+        } from 'lucide-react';
+
+        // --- FIREBASE CONFIGURAÇÃO ---
+        import { initializeApp } from "firebase/app";
+        import { getAnalytics } from "firebase/analytics";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyB7ov_J4nPV2XKmKaRhozTFdMB_3-sI6bY",
+          authDomain: "mapa-de-analise-por-conta.firebaseapp.com",
+          projectId: "mapa-de-analise-por-conta",
+          storageBucket: "mapa-de-analise-por-conta.firebasestorage.app",
+          messagingSenderId: "181460577763",
+          appId: "1:181460577763:web:5f7821f5a597dcfd44c4d6",
+          measurementId: "G-HL4MBDKSFZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const appId = 'mapa-de-analise-local-v1';
+        const getCollectionPath = (collectionName) => collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+        const getDocRef = (collectionName, documentId) => doc(db, 'artifacts', appId, 'public', 'data', collectionName, documentId);
+
+        // --- ESTADO INICIAL ---
+        const initialFormState = {
+          status: 'Compra', cartao: '', dataCompra: '', valor: '', parcelas: '0',
+          possuiNf: 'Sim', numNota: '', fornecedor: '', setor: '', observacao: ''
+        };
+
+        // Sem dados de exemplo. O utilizador Admin é o único obrigatório para não perder acesso.
+        const seedDepartamentos = [];
+        const seedCartoes = [];
+        const seedUsers = [
+          { id: 'u1', nome: 'Nicholas Ganhadeiro', email: 'nicholas.ganhadeiro@adventistas.org', senha: 'Fap1624', role: 'admin' }
+        ];
+
+        function App() {
+          const [activeTab, setActiveTab] = useState('dashboard');
+          const [showSuccess, setShowSuccess] = useState(false);
+          
+          const [entries, setEntries] = useState([]);
+          const [departamentos, setDepartamentos] = useState([]);
+          const [cartoes, setCartoes] = useState([]);
+          const [users, setUsers] = useState([]);
+          const [authRequests, setAuthRequests] = useState([]); 
+          
+          const [firebaseUser, setFirebaseUser] = useState(null);
+          const [loadingData, setLoadingData] = useState(true);
+
+          const [formData, setFormData] = useState(initialFormState);
+          const [editingEntryId, setEditingEntryId] = useState(null);
+
+          // Estados de Edição em Gerência
+          const [newDeptCodigo, setNewDeptCodigo] = useState('');
+          const [newDeptNome, setNewDeptNome] = useState('');
+          const [editingDeptId, setEditingDeptId] = useState(null);
+          
+          const fileInputRef = useRef(null);
+          const [csvEncoding, setCsvEncoding] = useState('UTF-8');
+          
+          const [newCartaoNome, setNewCartaoNome] = useState('');
+          const [editingCartaoId, setEditingCartaoId] = useState(null);
+
+          const [newUserName, setNewUserName] = useState('');
+          const [newUserEmail, setNewUserEmail] = useState('');
+          const [newUserSenha, setNewUserSenha] = useState('');
+          const [newUserRole, setNewUserRole] = useState('registrador');
+          const [editingUserId, setEditingUserId] = useState(null);
+
+          // Filtros Avançados
+          const [filterStatus, setFilterStatus] = useState('');
+          const [filterCartao, setFilterCartao] = useState('');
+          const [filterSetor, setFilterSetor] = useState('');
+          const [filterPossuiNf, setFilterPossuiNf] = useState('');
+          const [filterData, setFilterData] = useState('');
+          const [filterValor, setFilterValor] = useState('');
+          const [filterParcelas, setFilterParcelas] = useState('');
+          const [filterFornecedor, setFilterFornecedor] = useState('');
+          const [filterNumNota, setFilterNumNota] = useState('');
+          const [filterObservacao, setFilterObservacao] = useState('');
+
+          const [currentUser, setCurrentUser] = useState(null);
+          const [loginEmail, setLoginEmail] = useState('');
+          const [loginSenha, setLoginSenha] = useState('');
+          const [loginError, setLoginError] = useState('');
+
+          const [showNotifications, setShowNotifications] = useState(false);
+          
+          // Modal de Autorização (Corrigir e Excluir)
+          const [authModalOpen, setAuthModalOpen] = useState(false);
+          const [targetEntry, setTargetEntry] = useState(null);
+          const [authAction, setAuthAction] = useState(''); // 'edit' ou 'delete'
+          const [authCode, setAuthCode] = useState('');
+
+          useEffect(() => {
+            const initAuth = async () => {
+              try { await signInAnonymously(auth); } catch (error) { console.error("Erro auth anônima:", error); }
+            };
+            initAuth();
+            const unsubscribe = onAuthStateChanged(auth, (user) => { setFirebaseUser(user); });
+            return () => unsubscribe();
+          }, []);
+
+          useEffect(() => {
+            if (!firebaseUser) return;
+            let loadedCollections = 0;
+            const checkAllLoaded = () => { loadedCollections++; if (loadedCollections === 5) setLoadingData(false); };
+
+            const unsubUsers = onSnapshot(getCollectionPath('users'), (snapshot) => {
+              const docs = snapshot.docs.map(d => d.data());
+              if (docs.length === 0) setDoc(getDocRef('users', seedUsers[0].id), seedUsers[0]);
+              else {
+                setUsers(docs);
+                if (currentUser) {
+                  const updatedSelf = docs.find(u => u.id === currentUser.id);
+                  if (updatedSelf) setCurrentUser(updatedSelf); else setCurrentUser(null);
+                }
+              }
+              checkAllLoaded();
+            }, console.error);
+
+            const unsubEntries = onSnapshot(getCollectionPath('entries'), (snapshot) => {
+              const docs = snapshot.docs.map(d => d.data());
+              setEntries(docs.sort((a, b) => b.id - a.id));
+              checkAllLoaded();
+            }, console.error);
+
+            const unsubCartoes = onSnapshot(getCollectionPath('cartoes'), (snapshot) => {
+              const docs = snapshot.docs.map(d => d.data());
+              if (docs.length === 0 && seedCartoes.length > 0) seedCartoes.forEach(c => setDoc(getDocRef('cartoes', c.id), c));
+              else setCartoes(docs);
+              checkAllLoaded();
+            }, console.error);
+
+            const unsubDept = onSnapshot(getCollectionPath('departamentos'), (snapshot) => {
+              const docs = snapshot.docs.map(d => d.data());
+              if (docs.length === 0 && seedDepartamentos.length > 0) seedDepartamentos.forEach(d => setDoc(getDocRef('departamentos', d.id), d));
+              else setDepartamentos(docs);
+              checkAllLoaded();
+            }, console.error);
+
+            const unsubRequests = onSnapshot(getCollectionPath('auth_requests'), (snapshot) => {
+              const docs = snapshot.docs.map(d => d.data());
+              setAuthRequests(docs);
+              checkAllLoaded();
+            }, console.error);
+
+            return () => { unsubUsers(); unsubEntries(); unsubCartoes(); unsubDept(); unsubRequests(); };
+          }, [firebaseUser]); 
+
+          const handleInputChange = (e) => {
+            const { name, value } = e.target;
+            setFormData(prev => ({ ...prev, [name]: value }));
+          };
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            const entryId = editingEntryId ? editingEntryId : Date.now();
+            
+            const newEntry = {
+              ...formData, 
+              id: entryId, 
+              valor: parseFloat(formData.valor) || 0,
+              parcelas: parseInt(formData.parcelas) || 0, 
+              cadastradoPor: currentUser ? currentUser.nome : 'Desconhecido'
+            };
+
+            try {
+              await setDoc(getDocRef('entries', entryId.toString()), newEntry);
+              setFormData(initialFormState);
+              setEditingEntryId(null);
+              setShowSuccess(true);
+              setTimeout(() => { setShowSuccess(false); setActiveTab('table'); }, 2000);
+            } catch (error) { alert("Erro ao salvar: " + error.message); }
+          };
+
+          // --- LÓGICA DE AÇÕES SEGURAS (CORRIGIR E EXCLUIR) ---
+          const handleInitiateAction = async (entry, action) => {
+            if (currentUser.role === 'admin') {
+              if (action === 'delete') {
+                if (window.confirm(`Confirma a exclusão do registo de R$ ${entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}?`)) {
+                  await deleteDoc(getDocRef('entries', entry.id.toString()));
+                  await deleteDoc(getDocRef('auth_requests', entry.id.toString()));
+                }
+              } else if (action === 'edit') {
+                loadIntoForm(entry);
+              }
+            } else {
+              setTargetEntry(entry);
+              setAuthAction(action);
+              setAuthCode('');
+              setAuthModalOpen(true);
+            }
+          };
+
+          const loadIntoForm = (entry) => {
+            setFormData({
+              status: entry.status || 'Compra',
+              cartao: entry.cartao || '',
+              dataCompra: entry.dataCompra || '',
+              valor: entry.valor || '',
+              parcelas: entry.parcelas || '0',
+              possuiNf: entry.possuiNf || 'Sim',
+              numNota: entry.numNota || '',
+              fornecedor: entry.fornecedor || '',
+              setor: entry.setor || '',
+              observacao: entry.observacao || ''
+            });
+            setEditingEntryId(entry.id);
+            setActiveTab('form');
+          };
+
+          const cancelEdit = () => {
+            setFormData(initialFormState);
+            setEditingEntryId(null);
+          };
+
+          const handleRequestAuthCode = async () => {
+            if (!targetEntry) return;
+            const code = Math.floor(100000 + Math.random() * 900000).toString(); 
+            const actionText = authAction === 'delete' ? 'Excluir' : 'Corrigir';
+            
+            const request = {
+              id: targetEntry.id.toString(), 
+              entryId: targetEntry.id,
+              action: authAction,
+              entryDesc: `${actionText}: ${targetEntry.status} de R$ ${targetEntry.valor} (${targetEntry.fornecedor || 'S/ Fornecedor'})`,
+              requestedBy: currentUser.nome, 
+              code: code, 
+              timestamp: Date.now()
+            };
+            await setDoc(getDocRef('auth_requests', request.id), request);
+          };
+
+          const handleConfirmAuthCode = async () => {
+            if (!targetEntry) return;
+            const request = authRequests.find(r => r.id === targetEntry.id.toString());
+            
+            if (request && request.code === authCode) {
+              await deleteDoc(getDocRef('auth_requests', request.id));
+              setAuthModalOpen(false);
+              
+              if (authAction === 'delete') {
+                await deleteDoc(getDocRef('entries', targetEntry.id.toString()));
+                alert('Código válido! Registo excluído com sucesso.');
+              } else if (authAction === 'edit') {
+                loadIntoForm(targetEntry);
+                alert('Código válido! O lançamento foi carregado para correção.');
+              }
+              
+              setTargetEntry(null);
+              setAuthCode('');
+              setAuthAction('');
+            } else { 
+              alert('Código incorreto, inválido ou a solicitação foi apagada pelo Administrador.'); 
+            }
+          };
+
+          const handleDismissNotification = async (reqId) => {
+            await deleteDoc(getDocRef('auth_requests', reqId));
+            if (authRequests.length === 1) setShowNotifications(false);
+          };
+
+          const closeAuthModal = () => { 
+            setAuthModalOpen(false); 
+            setTargetEntry(null); 
+            setAuthCode(''); 
+            setAuthAction('');
+          };
+
+          // --- ADMIN: DEPARTAMENTOS ---
+          const handleAddDept = async (e) => {
+            e.preventDefault();
+            if (!newDeptCodigo || !newDeptNome) return;
+            
+            const deptData = { codigo: newDeptCodigo, nome: newDeptNome };
+            
+            if (editingDeptId) {
+               deptData.id = editingDeptId;
+               await setDoc(getDocRef('departamentos', editingDeptId), deptData);
+               setEditingDeptId(null);
+            } else {
+               const novoDept = { id: Date.now().toString(), ...deptData };
+               await setDoc(getDocRef('departamentos', novoDept.id), novoDept);
+            }
+            
+            setNewDeptCodigo(''); setNewDeptNome('');
+          };
+
+          const handleEditDept = (dept) => {
+             setNewDeptCodigo(dept.codigo);
+             setNewDeptNome(dept.nome);
+             setEditingDeptId(dept.id);
+          };
+
+          const cancelEditDept = () => {
+             setNewDeptCodigo('');
+             setNewDeptNome('');
+             setEditingDeptId(null);
+          };
+
+          const handleRemoveDept = async (id) => { await deleteDoc(getDocRef('departamentos', id)); };
+
+          const handleCsvUpload = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+              const text = event.target.result.replace(/^\uFEFF/, '').replace(/\r/g, '');
+              const lines = text.split('\n');
+              const newDepts = [];
+              const firstLine = lines.length > 0 ? lines[0] : '';
+              const separator = firstLine.includes(';') ? ';' : ',';
+
+              lines.forEach((line) => {
+                const cleanLine = line.trim();
+                if (!cleanLine) return; 
+                const lowLine = cleanLine.toLowerCase();
+                if (lowLine.includes('código') || lowLine.includes('codigo')) return;
+                const parts = cleanLine.split(separator);
+                if (parts.length >= 2) {
+                  const codigo = parts[0].trim().replace(/^"|"$/g, '');
+                  let nome = parts.slice(1).join(separator).trim();
+                  if (nome.startsWith('"') && nome.endsWith('"')) nome = nome.substring(1, nome.length - 1).trim();
+                  if (codigo !== '') newDepts.push({ id: codigo + '-' + Math.random().toString(36).substring(2, 9), codigo, nome });
+                }
+              });
+
+              if (newDepts.length > 0) {
+                try {
+                  const codigosVistos = new Set(departamentos.map(d => d.codigo));
+                  const envios = [];
+                  for (const dept of newDepts) {
+                     if (!codigosVistos.has(dept.codigo)) { codigosVistos.add(dept.codigo); envios.push(setDoc(getDocRef('departamentos', dept.id), dept)); }
+                  }
+                  await Promise.all(envios);
+                  alert(`${envios.length} departamentos importados! (Duplicados ignorados)`);
+                } catch(e) { alert('Erro CSV: ' + e.message); }
+              } else { alert('Nenhum departamento válido no ficheiro.'); }
+            };
+            reader.readAsText(file, csvEncoding);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          };
+
+          // --- ADMIN: CARTÕES ---
+          const handleAddCartao = async (e) => {
+            e.preventDefault();
+            if (!newCartaoNome) return;
+
+            if (editingCartaoId) {
+               await setDoc(getDocRef('cartoes', editingCartaoId), { id: editingCartaoId, nome: newCartaoNome });
+               setEditingCartaoId(null);
+            } else {
+               const novoCartao = { id: Date.now().toString(), nome: newCartaoNome };
+               await setDoc(getDocRef('cartoes', novoCartao.id), novoCartao);
+            }
+            
+            setNewCartaoNome('');
+          };
+
+          const handleEditCartao = (cartao) => {
+             setNewCartaoNome(cartao.nome);
+             setEditingCartaoId(cartao.id);
+          };
+
+          const cancelEditCartao = () => {
+             setNewCartaoNome('');
+             setEditingCartaoId(null);
+          };
+
+          const handleRemoveCartao = async (id) => { await deleteDoc(getDocRef('cartoes', id)); };
+
+          // --- ADMIN: UTILIZADORES ---
+          const handleAddUser = async (e) => {
+            e.preventDefault();
+            if (!newUserName || !newUserEmail || !newUserSenha) return;
+            
+            const existingUser = users.find(u => u.email === newUserEmail);
+            if (existingUser && existingUser.id !== editingUserId) { 
+              alert('E-mail já registado no sistema para outro utilizador.'); 
+              return; 
+            }
+            
+            const userData = { nome: newUserName, email: newUserEmail, senha: newUserSenha, role: newUserRole };
+            
+            if (editingUserId) {
+               userData.id = editingUserId;
+               await setDoc(getDocRef('users', editingUserId), userData);
+               setEditingUserId(null);
+            } else {
+               const newUser = { id: Date.now().toString(), ...userData };
+               await setDoc(getDocRef('users', newUser.id), newUser);
+            }
+            
+            setNewUserName(''); setNewUserEmail(''); setNewUserSenha(''); setNewUserRole('registrador');
+          };
+
+          const handleEditUser = (user) => {
+             setNewUserName(user.nome);
+             setNewUserEmail(user.email);
+             setNewUserSenha(user.senha);
+             setNewUserRole(user.role);
+             setEditingUserId(user.id);
+          };
+
+          const cancelEditUser = () => {
+             setNewUserName('');
+             setNewUserEmail('');
+             setNewUserSenha('');
+             setNewUserRole('registrador');
+             setEditingUserId(null);
+          };
+
+          const handleRemoveUser = async (id) => {
+            if (id === currentUser.id) { alert('Ação negada: Não é possível remover a própria conta em uso.'); return; }
+            await deleteDoc(getDocRef('users', id));
+          };
+
+          const handleLogin = (e) => {
+            e.preventDefault();
+            const user = users.find(u => u.email === loginEmail && u.senha === loginSenha);
+            if (user) {
+              setCurrentUser(user); setLoginError(''); setLoginEmail(''); setLoginSenha(''); setActiveTab('dashboard'); 
+            } else { setLoginError('Credenciais inválidas. Verifique o seu e-mail e senha.'); }
+          };
+
+          const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setShowNotifications(false); };
+
+          // Filtro Inteligente
+          const filteredEntries = useMemo(() => {
+            return entries.filter(entry => {
+              const matchStatus = filterStatus ? entry.status === filterStatus : true;
+              const matchCartao = filterCartao ? entry.cartao === filterCartao : true;
+              const matchSetor = filterSetor ? entry.setor === filterSetor : true;
+              const matchPossuiNf = filterPossuiNf ? entry.possuiNf === filterPossuiNf : true;
+              const matchData = filterData ? entry.dataCompra === filterData : true;
+              const matchValor = filterValor ? entry.valor.toString().includes(filterValor) : true;
+              const matchParcelas = filterParcelas ? entry.parcelas.toString() === filterParcelas : true;
+              const matchFornecedor = filterFornecedor ? (entry.fornecedor || '').toLowerCase().includes(filterFornecedor.toLowerCase()) : true;
+              const matchNumNota = filterNumNota ? (entry.numNota || '').toLowerCase().includes(filterNumNota.toLowerCase()) : true;
+              const matchObservacao = filterObservacao ? (entry.observacao || '').toLowerCase().includes(filterObservacao.toLowerCase()) : true;
+              return matchStatus && matchCartao && matchSetor && matchPossuiNf && matchData && matchValor && matchParcelas && matchFornecedor && matchNumNota && matchObservacao;
+            });
+          }, [entries, filterStatus, filterCartao, filterSetor, filterPossuiNf, filterData, filterValor, filterParcelas, filterFornecedor, filterNumNota, filterObservacao]);
+
+          // Lógica do Dashboard
+          const dashboardStats = useMemo(() => {
+            let totalCompras = 0, valorTotalCompras = 0, cancelamentos = 0, valorCancelamentos = 0, devolucoes = 0, valorDevolucoes = 0;
+            const gastosPorSetor = {}, gastosPorCartao = {};
+
+            entries.forEach(entry => {
+              if (entry.status === 'Compra') {
+                totalCompras++; valorTotalCompras += entry.valor;
+                const setor = entry.setor || 'Não Informado';
+                gastosPorSetor[setor] = (gastosPorSetor[setor] || 0) + entry.valor;
+                const cartao = entry.cartao || 'Não Informado';
+                gastosPorCartao[cartao] = (gastosPorCartao[cartao] || 0) + entry.valor;
+              } else if (entry.status === 'Cancelamento') { cancelamentos++; valorCancelamentos += entry.valor;
+              } else if (entry.status === 'Devolução') { devolucoes++; valorDevolucoes += entry.valor; }
+            });
+
+            const topSetores = Object.entries(gastosPorSetor).map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor);
+            const topCartoes = Object.entries(gastosPorCartao).map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor);
+            const ultimasTransacoes = entries.slice(0, 5); 
+
+            return { totalCompras, valorTotalCompras, cancelamentos, valorCancelamentos, devolucoes, valorDevolucoes, topSetores, topCartoes, ultimasTransacoes };
+          }, [entries]);
+
+          // --- UI COMPONENTS ---
+          
+          const CardInfo = ({ title, value, icon: Icon, colorClass, subtext }) => (
+            <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-start space-x-4">
+              <div className={`p-3 rounded-md ${colorClass} bg-opacity-10`}>
+                <Icon size={22} className={colorClass.replace('bg-', 'text-')} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+                <p className="text-2xl font-bold text-slate-800 tracking-tight">{value}</p>
+                {subtext && <p className="text-xs font-medium text-slate-400 mt-1">{subtext}</p>}
+              </div>
+            </div>
+          );
+
+          const renderDashboard = () => (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Visão Geral</h2>
+                  <p className="text-slate-500 text-sm mt-1">Métricas financeiras e controlo de movimentos em tempo real.</p>
+                </div>
+                <div className="mt-4 md:mt-0 flex items-center text-sm font-medium text-slate-500 bg-white px-3 py-1.5 rounded-md border border-slate-200 shadow-sm">
+                  <Activity size={16} className="mr-2 text-blue-600" /> Sistema Ativo
+                </div>
+              </div>
+
+              {/* Top Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <CardInfo title="Total de Compras" value={`R$ ${dashboardStats.valorTotalCompras.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} icon={DollarSign} colorClass="bg-emerald-600 text-emerald-600" subtext={`${dashboardStats.totalCompras} transações registadas`} />
+                <CardInfo title="Ticket Médio" value={`R$ ${dashboardStats.totalCompras > 0 ? (dashboardStats.valorTotalCompras / dashboardStats.totalCompras).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`} icon={PieChart} colorClass="bg-blue-600 text-blue-600" subtext="Por compra efetuada" />
+                <CardInfo title="Cancelamentos" value={`R$ ${dashboardStats.valorCancelamentos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} icon={Ban} colorClass="bg-rose-600 text-rose-600" subtext={`${dashboardStats.cancelamentos} itens anulados`} />
+                <CardInfo title="Devoluções" value={`R$ ${dashboardStats.valorDevolucoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} icon={RotateCcw} colorClass="bg-amber-500 text-amber-500" subtext={`${dashboardStats.devolucoes} itens devolvidos`} />
+              </div>
+
+              {/* Gráficos de Barras */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex flex-col h-[350px]">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 flex items-center">
+                    <Building size={16} className="mr-2 text-slate-400"/> Gastos por Departamento
+                  </h3>
+                  {dashboardStats.topSetores.length > 0 ? (
+                    <div className="space-y-5 flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                      {dashboardStats.topSetores.map((setor, index) => {
+                        const maxValor = dashboardStats.topSetores[0].valor; const percentagem = (setor.valor / maxValor) * 100;
+                        return (
+                          <div key={index} className="group">
+                            <div className="flex justify-between text-sm mb-1.5">
+                              <span className="font-medium text-slate-700 truncate mr-4">{setor.nome}</span>
+                              <span className="text-slate-900 font-semibold whitespace-nowrap">R$ {setor.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                              <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${percentagem}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (<div className="flex-1 flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-lg">Dados insuficientes.</div>)}
+                </div>
+
+                <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex flex-col h-[350px]">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 flex items-center">
+                    <CreditCard size={16} className="mr-2 text-slate-400"/> Gasto por Cartão
+                  </h3>
+                  {dashboardStats.topCartoes.length > 0 ? (
+                    <div className="space-y-5 flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                      {dashboardStats.topCartoes.map((cartao, index) => {
+                        const maxValor = dashboardStats.topCartoes[0].valor; const percentagem = (cartao.valor / maxValor) * 100;
+                        return (
+                          <div key={index}>
+                            <div className="flex justify-between text-sm mb-1.5">
+                              <span className="font-medium text-slate-700 truncate mr-4">{cartao.nome}</span>
+                              <span className="text-slate-900 font-semibold whitespace-nowrap">R$ {cartao.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                              <div className="bg-slate-800 h-1.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${percentagem}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (<div className="flex-1 flex items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-lg">Dados insuficientes.</div>)}
+                </div>
+              </div>
+
+              {/* Atividade Recente */}
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                    <Clock size={16} className="mr-2 text-slate-400"/> Últimos Lançamentos
+                  </h3>
+                  <button onClick={() => setActiveTab('table')} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Ver Todos &rarr;</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left divide-y divide-slate-200">
+                    <thead className="bg-white"><tr className="text-xs text-slate-500 uppercase"><th className="px-6 py-3">Data</th><th className="px-6 py-3">Natureza</th><th className="px-6 py-3">Departamento / Favorecido</th><th className="px-6 py-3 text-right">Valor</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {dashboardStats.ultimasTransacoes.length === 0 ? (
+                        <tr><td colSpan="4" className="px-6 py-8 text-center text-slate-400">Nenhuma atividade recente.</td></tr>
+                      ) : (
+                        dashboardStats.ultimasTransacoes.map(entry => (
+                          <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-3 font-medium text-slate-900">{entry.dataCompra ? new Date(entry.dataCompra).toLocaleDateString('pt-BR', {timeZone:'UTC'}) : '-'}</td>
+                            <td className="px-6 py-3"><span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${entry.status==='Compra'?'bg-emerald-100 text-emerald-700':entry.status==='Cancelamento'?'bg-rose-100 text-rose-700':'bg-amber-100 text-amber-700'}`}>{entry.status}</span></td>
+                            <td className="px-6 py-3"><span className="block text-slate-800 font-medium truncate max-w-[200px]" title={entry.fornecedor}>{entry.fornecedor || 'N/A'}</span><span className="block text-xs text-slate-500 truncate max-w-[200px]" title={entry.setor}>{entry.setor}</span></td>
+                            <td className="px-6 py-3 text-right font-bold text-slate-900">R$ {entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+
+          const renderForm = () => (
+            <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+               <div className="mb-6 border-b border-slate-200 pb-4">
+                  <h2 className="text-2xl font-bold text-slate-900">{editingEntryId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
+                  <p className="text-slate-500 text-sm mt-1">{editingEntryId ? 'Corrija os dados da transação autorizada.' : 'Registe uma nova compra, cancelamento ou devolução.'}</p>
+              </div>
+
+              {showSuccess && (
+                <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-md shadow-sm flex items-center">
+                  <CheckCircle2 size={20} className="mr-3 text-emerald-600" />
+                  <span className="font-medium">O registo foi {editingEntryId ? 'atualizado' : 'sincronizado'} com sucesso na base de dados.</span>
+                </div>
+              )}
+
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                  
+                  {/* Secção 1 */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Detalhes da Transação</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Natureza do Registo *</label>
+                        <select name="status" value={formData.status} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                          <option value="Compra">Compra</option><option value="Cancelamento">Cancelamento</option><option value="Devolução">Devolução</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Cartão Corporativo *</label>
+                        <select name="cartao" value={formData.cartao} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                          <option value="" disabled>Selecione um meio de pagamento...</option>
+                          {cartoes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secção 2 */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Valores e Datas</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Data *</label>
+                        <input type="date" name="dataCompra" value={formData.dataCompra} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Valor (R$) *</label>
+                        <input type="number" step="0.01" name="valor" placeholder="0.00" value={formData.valor} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm font-medium bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Parcelamento *</label>
+                        <input type="number" name="parcelas" placeholder="Qtd. (0 à vista)" value={formData.parcelas} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secção 3 */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Documentação e Destino</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nota Fiscal *</label>
+                        <select name="possuiNf" value={formData.possuiNf} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                          <option value="Sim">Sim, possui</option><option value="É adiantamento ( NF com entrega posterior )">Adiantamento (Entrega Posterior)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Número da NF/Fatura</label>
+                        <input type="text" name="numNota" placeholder="Ex: 0012345" value={formData.numNota} onChange={handleInputChange} className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Fornecedor</label>
+                        <input type="text" name="fornecedor" placeholder="Nome da empresa" value={formData.fornecedor} onChange={handleInputChange} className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Departamento Favorecido</label>
+                        <input type="text" name="setor" placeholder="Procurar departamento..." value={formData.setor} onChange={handleInputChange} list="depts" className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                        <datalist id="depts">{departamentos.map(d => <option key={d.id} value={d.nome}>{d.codigo} - {d.nome}</option>)}</datalist>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Observações Adicionais</label>
+                      <textarea name="observacao" placeholder="Informação complementar relevante..." value={formData.observacao} onChange={handleInputChange} rows="3" className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100 flex justify-end">
+                    {editingEntryId ? (
+                      <button type="button" onClick={cancelEdit} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 mr-4 transition-colors">Cancelar Edição</button>
+                    ) : (
+                      <button type="button" onClick={() => setFormData(initialFormState)} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 mr-4 transition-colors">Limpar Campos</button>
+                    )}
+                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 px-6 rounded-md shadow-sm transition-colors flex items-center">
+                      <Plus size={16} className="mr-2" /> {editingEntryId ? 'Atualizar Lançamento' : 'Gravar Lançamento'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          );
+
+          const renderTable = () => (
+            <div className="space-y-6 animate-in fade-in duration-500">
+               <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Registo Central</h2>
+                    <p className="text-slate-500 text-sm mt-1">Gestão, filtro e pesquisa de todos os lançamentos registados.</p>
+                  </div>
+                  <div className="mt-4 md:mt-0 flex items-center text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200">
+                    <TableIcon size={16} className="mr-2 text-slate-400" /> {filteredEntries.length} Resultados
+                  </div>
+              </div>
+
+              {/* BARRA DE FILTROS AVANÇADOS - AGORA COMPLETA (10 Filtros) */}
+              <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
+                <div className="flex items-center mb-4 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <Filter size={14} className="mr-2 text-slate-400" /> Filtros Avançados
+                </div>
+                
+                {/* Linha 1: Filtros de Seleção e Data */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Data exata</label><input type="date" value={filterData} onChange={e=>setFilterData(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Natureza</label><select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option><option value="Compra">Compra</option><option value="Cancelamento">Cancelamento</option><option value="Devolução">Devolução</option></select></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Cartão Usado</label><select value={filterCartao} onChange={e=>setFilterCartao(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option>{cartoes.map(c=><option key={c.id} value={c.nome}>{c.nome}</option>)}</select></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Departamento</label><select value={filterSetor} onChange={e=>setFilterSetor(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option>{departamentos.map(d=><option key={d.id} value={d.nome}>{d.nome}</option>)}</select></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Situação NF</label><select value={filterPossuiNf} onChange={e=>setFilterPossuiNf(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todas</option><option value="Sim">Sim</option><option value="É adiantamento ( NF com entrega posterior )">Adiantamento</option></select></div>
+                </div>
+
+                {/* Linha 2: Filtros de Digitação */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-4 border-t border-slate-100">
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Valor Contém</label><input type="number" placeholder="Ex: 150" value={filterValor} onChange={e=>setFilterValor(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Nº Parcelas</label><input type="number" placeholder="Ex: 3" value={filterParcelas} onChange={e=>setFilterParcelas(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Pesquisar NF</label><input type="text" placeholder="Nº da fatura" value={filterNumNota} onChange={e=>setFilterNumNota(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Fornecedor</label><input type="text" placeholder="Nome empresa..." value={filterFornecedor} onChange={e=>setFilterFornecedor(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Observações</label><input type="text" placeholder="Termo na obs..." value={filterObservacao} onChange={e=>setFilterObservacao(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
+                </div>
+              </div>
+
+              {/* TABELA CORPORATIVA */}
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Natureza</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cartão</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Parcelas</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor & Info</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-100">
+                      {filteredEntries.length === 0 ? (
+                        <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-400 text-sm">Sem registos correspondentes com os filtros atuais.</td></tr>
+                      ) : (
+                        filteredEntries.map(entry => (
+                          <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                              {entry.dataCompra ? new Date(entry.dataCompra).toLocaleDateString('pt-BR', {timeZone:'UTC'}) : '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border
+                                ${entry.status === 'Compra' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                                  entry.status === 'Cancelamento' ? 'bg-rose-50 text-rose-700 border-rose-200' : 
+                                  'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                {entry.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-500">{entry.cartao}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                              R$ {entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-500">{entry.parcelas}x</td>
+                            <td className="px-6 py-4 text-sm text-slate-500 max-w-[250px]">
+                              <span className="font-semibold text-slate-800 block truncate" title={entry.fornecedor}>{entry.fornecedor || 'Sem fornecedor'}</span>
+                              <span className="text-xs text-slate-400 block truncate" title={entry.setor}>{entry.setor || 'N/A'}</span>
+                              {entry.numNota && <span className="text-[10px] font-mono bg-slate-100 px-1 rounded text-slate-500 mt-1 inline-block">NF: {entry.numNota}</span>}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end space-x-2">
+                              <button onClick={() => handleInitiateAction(entry, 'edit')} className="text-slate-400 hover:text-blue-600 transition-colors bg-white p-1.5 rounded-md border border-slate-200 hover:border-blue-200 shadow-sm" title="Corrigir Lançamento">
+                                <Pencil size={16}/>
+                              </button>
+                              <button onClick={() => handleInitiateAction(entry, 'delete')} className="text-slate-400 hover:text-rose-600 transition-colors bg-white p-1.5 rounded-md border border-slate-200 hover:border-rose-200 shadow-sm" title="Excluir Transação">
+                                <Trash2 size={16}/>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+
+          const renderGerencia = () => (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="border-b border-slate-200 pb-4">
+                  <h2 className="text-2xl font-bold text-slate-900">Painel de Administração</h2>
+                  <p className="text-slate-500 text-sm mt-1">Configuração de estruturas e gestão de acessos do sistema.</p>
+              </div>
+
+              {/* ESTRUTURAS */}
+              <section className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                    <Building size={16} className="mr-2 text-slate-400"/> Departamentos e Cartões
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+                  
+                  {/* Deptos (CSV e Manual) */}
+                  <div className="p-6">
+                    
+                    {/* Área de CSV */}
+                    <div className="mb-8">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-semibold text-slate-800 text-sm">Importação via CSV</h4>
+                        <select value={csvEncoding} onChange={e=>setCsvEncoding(e.target.value)} className="p-1 border border-slate-200 rounded text-xs text-slate-500 bg-slate-50 focus:ring-1 focus:ring-blue-500"><option value="UTF-8">UTF-8</option><option value="ISO-8859-1">ISO-Excel</option></select>
+                      </div>
+                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-slate-200 border-dashed rounded-md cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors mb-2">
+                          <div className="flex items-center space-x-2 text-slate-500">
+                              <Upload size={18} />
+                              <span className="text-sm font-medium">Selecionar Ficheiro .CSV</span>
+                          </div>
+                          <input type="file" onChange={handleCsvUpload} ref={fileInputRef} className="hidden" accept=".csv" />
+                      </label>
+                      <p className="text-[10px] text-slate-400 leading-tight">O ficheiro deve conter as colunas "Código" e "Nome Depto".</p>
+                    </div>
+
+                    {/* Área Adicionar/Editar Manualmente */}
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-slate-800 text-sm mb-3">{editingDeptId ? 'Editar Departamento' : 'Adicionar Manualmente'}</h4>
+                      <form onSubmit={handleAddDept} className="space-y-3 bg-slate-50 p-4 rounded-md border border-slate-100">
+                        <input type="text" placeholder="Código (ex: 11015)" value={newDeptCodigo} onChange={e=>setNewDeptCodigo(e.target.value)} required className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500" />
+                        <input type="text" placeholder="Nome do Departamento" value={newDeptNome} onChange={e=>setNewDeptNome(e.target.value)} required className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500" />
+                        <div className="flex gap-2">
+                          {editingDeptId && <button type="button" onClick={cancelEditDept} className="flex-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-medium py-2 rounded-md text-sm transition-colors">Cancelar</button>}
+                          <button type="submit" className="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 rounded-md text-sm transition-colors">{editingDeptId ? 'Atualizar' : 'Gravar'}</button>
+                        </div>
+                      </form>
+                    </div>
+
+                    {/* Lista Deptos */}
+                    <h4 className="font-semibold text-slate-800 text-sm mb-2">Departamentos Ativos ({departamentos.length})</h4>
+                    <div className="h-40 overflow-y-auto border border-slate-100 rounded-md bg-white custom-scrollbar">
+                      <table className="w-full text-xs text-left divide-y divide-slate-100">
+                        <thead className="bg-slate-50 sticky top-0"><tr className="text-slate-500"><th className="px-3 py-2">Cód.</th><th className="px-3 py-2">Departamento</th><th className="px-3 py-2"></th></tr></thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {departamentos.length === 0 && <tr><td colSpan="3" className="px-3 py-4 text-center text-slate-400">Nenhum departamento</td></tr>}
+                          {departamentos.map(d=>(
+                            <tr key={d.id} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 text-slate-400">{d.codigo}</td>
+                              <td className="px-3 py-2 font-medium text-slate-700 truncate max-w-[120px]" title={d.nome}>{d.nome}</td>
+                              <td className="px-3 py-2 text-right flex justify-end space-x-1">
+                                <button onClick={()=>handleEditDept(d)} className="text-slate-400 hover:text-blue-500 p-1"><Pencil size={14}/></button>
+                                <button onClick={()=>handleRemoveDept(d.id)} className="text-slate-400 hover:text-rose-500 p-1"><Trash2 size={14}/></button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Cartões */}
+                  <div className="p-6">
+                    <h4 className="font-semibold text-slate-800 text-sm mb-4">{editingCartaoId ? 'Editar Cartão' : 'Cartões de Pagamento'}</h4>
+                    <form onSubmit={handleAddCartao} className="flex gap-2 mb-6">
+                      <input type="text" required placeholder="Nome do Novo Cartão..." value={newCartaoNome} onChange={e=>setNewCartaoNome(e.target.value)} className="flex-1 border border-slate-200 p-2 rounded-md text-sm focus:ring-1 focus:ring-blue-500"/>
+                      {editingCartaoId && <button type="button" onClick={cancelEditCartao} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Cancelar</button>}
+                      <button className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">{editingCartaoId ? 'Atualizar' : 'Adicionar'}</button>
+                    </form>
+                    
+                    <h4 className="font-semibold text-slate-800 text-sm mb-2">Cartões Ativos ({cartoes.length})</h4>
+                    <div className="h-[26rem] overflow-y-auto border border-slate-100 rounded-md bg-white divide-y divide-slate-50 custom-scrollbar">
+                      {cartoes.length === 0 && <div className="p-4 text-center text-xs text-slate-400">Sem cartões.</div>}
+                      {cartoes.map(c=>(
+                        <div key={c.id} className="flex justify-between items-center px-4 py-3 hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center text-sm font-medium text-slate-700">
+                            <CreditCard size={14} className="mr-2 text-slate-400"/> {c.nome}
+                          </div>
+                          <div className="flex space-x-1">
+                            <button onClick={()=>handleEditCartao(c)} className="text-slate-400 hover:text-blue-500 p-1.5 bg-white border border-slate-100 rounded shadow-sm hover:border-blue-200"><Pencil size={12}/></button>
+                            <button onClick={()=>handleRemoveCartao(c.id)} className="text-slate-400 hover:text-rose-500 p-1.5 bg-white border border-slate-100 rounded shadow-sm hover:border-rose-200"><Trash2 size={12}/></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* UTILIZADORES */}
+              <section className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                    <Users size={16} className="mr-2 text-slate-400"/> Gestão de Acessos
+                  </h3>
+                  <span className="text-xs font-medium bg-slate-200 text-slate-600 px-2 py-1 rounded-full">{users.length} Contas</span>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+                  
+                  <div className="p-6">
+                    <h4 className="font-semibold text-slate-800 text-sm mb-4">{editingUserId ? 'Editar Utilizador' : 'Nova Conta'}</h4>
+                    <form onSubmit={handleAddUser} className="space-y-4">
+                      <div><label className="block text-xs font-semibold text-slate-500 mb-1">Nome de Utilizador</label><input type="text" required value={newUserName} onChange={e=>setNewUserName(e.target.value)} className="w-full text-sm p-2 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500"/></div>
+                      <div><label className="block text-xs font-semibold text-slate-500 mb-1">E-mail Corporativo</label><input type="email" required value={newUserEmail} onChange={e=>setNewUserEmail(e.target.value)} className="w-full text-sm p-2 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500"/></div>
+                      <div><label className="block text-xs font-semibold text-slate-500 mb-1">Palavra-passe</label><input type="text" required value={newUserSenha} onChange={e=>setNewUserSenha(e.target.value)} className="w-full text-sm p-2 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500"/></div>
+                      <div><label className="block text-xs font-semibold text-slate-500 mb-1">Perfil de Acesso</label><select value={newUserRole} onChange={e=>setNewUserRole(e.target.value)} className="w-full text-sm p-2 border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500"><option value="registrador">Registrador</option><option value="admin">Administrador</option></select></div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        {editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium py-2 rounded-md text-sm transition-colors">Cancelar</button>}
+                        <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-md text-sm transition-colors">{editingUserId ? 'Atualizar Conta' : 'Criar Conta'}</button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="p-0 lg:col-span-2 overflow-x-auto">
+                    <table className="min-w-full text-sm text-left divide-y divide-slate-200">
+                      <thead className="bg-slate-50"><tr className="text-xs text-slate-500 uppercase"><th className="px-6 py-3 font-semibold">Conta</th><th className="px-6 py-3 font-semibold">Segurança</th><th className="px-6 py-3 font-semibold text-right">Ação</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {users.map(u=>(
+                          <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="font-medium text-slate-900">{u.nome}</div>
+                              <div className="text-xs text-slate-400">{u.email}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center space-x-2 mb-1">
+                                {u.role === 'admin' ? <Shield size={14} className="text-blue-600"/> : <User size={14} className="text-slate-400"/>}
+                                <span className={`text-xs font-bold uppercase tracking-wider ${u.role==='admin'?'text-blue-700':'text-slate-600'}`}>{u.role === 'admin' ? 'Administrador' : 'Registrador'}</span>
+                              </div>
+                              <div className="text-xs font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded w-fit" title="Senha">***{u.senha.slice(-3)}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right flex items-center justify-end space-x-2 mt-2">
+                              <button onClick={()=>handleEditUser(u)} className="p-1.5 rounded-md border shadow-sm transition-colors bg-white border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200"><Pencil size={16}/></button>
+                              <button onClick={()=>handleRemoveUser(u.id)} disabled={u.id===currentUser.id} className={`p-1.5 rounded-md border shadow-sm transition-colors ${u.id===currentUser.id ? 'opacity-30 border-slate-200' : 'bg-white border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200'}`}><Trash2 size={16}/></button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            </div>
+          );
+
+          if (!currentUser) return (
+            <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 px-6 sm:px-8 lg:px-10 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+              
+              <div className="relative z-10 w-full max-w-md mx-auto">
+                <div className="bg-white p-8 rounded-2xl shadow-2xl border border-slate-100">
+                  <div className="flex justify-center mb-6">
+                    <div className="bg-slate-50 p-3 rounded-xl border-2 border-slate-100 shadow-inner w-20 h-20 flex items-center justify-center">
+                      <img src="https://cdn-icons-png.flaticon.com/512/71/71227.png" alt="Logo" className="w-full h-full object-contain" onError={e=>{e.target.onerror=null;e.target.src='https://cdn-icons-png.flaticon.com/512/4341/4341764.png';}} />
+                    </div>
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 text-center mb-2 tracking-tight">Controle de Lançamentos de Compras em Cartão Corporativo</h2>
+                  <p className="text-sm text-slate-500 text-center mb-8">Acesso restrito a colaboradores autorizados.</p>
+                  
+                  {loadingData ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-3" />
+                      <p className="text-slate-400 text-sm font-medium">A sincronizar com a nuvem...</p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleLogin} className="space-y-5">
+                      {loginError && <div className="bg-rose-50 text-rose-600 text-sm p-3 rounded-lg flex items-center font-medium border border-rose-100"><AlertTriangle size={16} className="mr-2"/>{loginError}</div>}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Endereço de E-mail</label>
+                        <input type="email" placeholder="nome@dominio.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required className="w-full p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 focus:bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">Palavra-passe</label>
+                        <input type="password" placeholder="••••••••" value={loginSenha} onChange={e=>setLoginSenha(e.target.value)} required className="w-full p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 focus:bg-white" />
+                      </div>
+                      <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors shadow-md mt-2 flex justify-center items-center">
+                        Aceder ao Sistema <ChevronRight size={16} className="ml-1"/>
+                      </button>
+                    </form>
+                  )}
+                </div>
+                <div className="text-center mt-6 text-slate-400 text-xs">
+                  &copy; {new Date().getFullYear()} FinDashboard Corp. Sistema Interno.
+                </div>
+              </div>
+            </div>
+          );
+
+          return (
+            <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
+              
+              {/* MODAL DE SEGURANÇA */}
+              {authModalOpen && targetEntry && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                  <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center text-blue-600 mb-4"><Shield size={24} className="mr-2"/><h3 className="text-xl font-bold tracking-tight">Autorização Obrigatória</h3></div>
+                    <p className="text-slate-600 text-sm mb-6 leading-relaxed">Foi solicitada a <strong className="text-slate-900">{authAction === 'delete' ? 'exclusão' : 'correção'}</strong> do registo avaliado em <strong className="text-slate-900">R$ {targetEntry.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>. Esta ação requer validação superior.</p>
+                    
+                    {authRequests.find(r=>r.id===targetEntry.id.toString()) ? (
+                      <div className="space-y-4">
+                        <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-500 text-center font-medium">Aguardando código do Administrador...</div>
+                        <input type="text" maxLength="6" placeholder="000000" value={authCode} onChange={e=>setAuthCode(e.target.value)} className="w-full text-center text-3xl tracking-[0.5em] p-4 border border-slate-300 rounded-lg font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        <div className="flex gap-2">
+                           <button onClick={closeAuthModal} className="w-1/3 bg-slate-100 text-slate-600 font-bold py-3 rounded-lg hover:bg-slate-200">Sair</button>
+                           <button onClick={handleConfirmAuthCode} className="w-2/3 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-sm">Validar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button onClick={closeAuthModal} className="flex-1 bg-white border border-slate-200 text-slate-600 font-medium py-2.5 rounded-lg hover:bg-slate-50">Cancelar</button>
+                        <button onClick={handleRequestAuthCode} className="flex-1 bg-slate-900 text-white font-medium py-2.5 rounded-lg hover:bg-slate-800 shadow-sm">Pedir Código</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* HEADER Sólido/Escuro - Estilo SaaS */}
+              <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 lg:px-8 h-16 flex justify-between items-center">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-white p-1 rounded w-8 h-8 flex items-center justify-center">
+                      <img src="https://cdn-icons-png.flaticon.com/512/71/71227.png" alt="Logo" className="w-full h-full object-contain" onError={e=>{e.target.onerror=null;e.target.src='https://cdn-icons-png.flaticon.com/512/4341/4341764.png';}} />
+                    </div>
+                    <span className="font-semibold tracking-wide text-[13px] hidden sm:block border-l border-slate-700 pl-3 ml-1">Controle de Lançamentos de Compras em Cartão Corporativo</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-1 sm:space-x-2 h-full">
+                    {/* Navegação principal ligada ao Header */}
+                    <nav className="flex h-full mr-2">
+                      <button onClick={()=>setActiveTab('dashboard')} className={`px-3 sm:px-4 h-full flex items-center text-sm font-medium border-b-2 transition-colors ${activeTab === 'dashboard' ? 'border-blue-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800/30'}`}>Painel</button>
+                      <button onClick={()=>setActiveTab('form')} className={`px-3 sm:px-4 h-full flex items-center text-sm font-medium border-b-2 transition-colors ${activeTab === 'form' ? 'border-blue-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800/30'}`}>Lançar</button>
+                      <button onClick={()=>setActiveTab('table')} className={`px-3 sm:px-4 h-full flex items-center text-sm font-medium border-b-2 transition-colors ${activeTab === 'table' ? 'border-blue-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800/30'}`}>Consultas</button>
+                      {currentUser.role === 'admin' && <button onClick={()=>setActiveTab('gerencia')} className={`px-3 sm:px-4 h-full flex items-center text-sm font-medium border-b-2 transition-colors ${activeTab === 'gerencia' ? 'border-blue-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800/30'}`}>Admin</button>}
+                    </nav>
+
+                    {/* Ferramentas do Utilizador */}
+                    <div className="flex items-center space-x-3 border-l border-slate-700 pl-3 sm:pl-4">
+                      {currentUser.role === 'admin' && (
+                        <div className="relative">
+                          <button onClick={()=>setShowNotifications(!showNotifications)} className={`p-2 rounded-md transition-colors ${showNotifications||authRequests.length>0 ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                            <Bell size={18}/>
+                            {authRequests.length>0&&<span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse border border-slate-900"></span>}
+                          </button>
+                          
+                          {/* Menu de Notificações Pop-up */}
+                          {showNotifications && (
+                            <div className="absolute right-0 mt-3 w-80 bg-white rounded-lg shadow-xl border border-slate-200 text-slate-800 animate-in slide-in-from-top-2">
+                              <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Solicitações de Autorização</span>
+                                {authRequests.length>0 && <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">{authRequests.length}</span>}
+                              </div>
+                              <div className="max-h-72 overflow-y-auto">
+                                {authRequests.length === 0 ? <p className="px-4 py-8 text-center text-sm text-slate-400">Sistema sem pendências.</p> : 
+                                  authRequests.map(req=>(
+                                    <div key={req.id} className="p-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 relative group">
+                                      <button onClick={()=>handleDismissNotification(req.id)} className="absolute top-3 right-3 text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100"><X size={14}/></button>
+                                      <p className="text-xs font-semibold text-blue-600 mb-0.5">{req.requestedBy} solicitou:</p>
+                                      <p className="text-sm font-medium text-slate-800 leading-tight mb-3 pr-4">{req.entryDesc}</p>
+                                      <div className="bg-slate-100 border border-slate-200 rounded p-2 text-center">
+                                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-0.5">Autorização gerada</span>
+                                        <span className="font-mono text-lg tracking-[0.2em] font-bold text-slate-900">{req.code}</span>
+                                      </div>
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="hidden lg:block text-right pr-2">
+                        <div className="text-sm font-medium leading-none text-slate-200">{currentUser.nome.split(' ')[0]}</div>
+                        <div className="text-[10px] font-bold tracking-wider uppercase text-slate-500 mt-1">{currentUser.role === 'admin' ? 'Admin' : 'Membro'}</div>
+                      </div>
+                      
+                      <button onClick={handleLogout} className="text-slate-400 hover:text-rose-400 hover:bg-slate-800 p-2 rounded-md transition-colors" title="Encerrar Sessão">
+                        <LogOut size={18}/>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+                {activeTab === 'dashboard' && renderDashboard()}
+                {activeTab === 'form' && renderForm()}
+                {activeTab === 'table' && renderTable()}
+                {activeTab === 'gerencia' && currentUser.role === 'admin' && renderGerencia()}
+              </main>
+              
+            </div>
+          );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
