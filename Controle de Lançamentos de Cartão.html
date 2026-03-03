@@ -95,7 +95,7 @@
 
         // --- ESTADO INICIAL ---
         const initialFormState = {
-          status: 'Compra', cartao: '', dataCompra: '', valor: '', parcelas: '0',
+          status: 'Compra', cartao: '', dataCompra: '', valor: '', parcelas: '1',
           possuiNf: 'Sim', numNota: '', fornecedor: '', setor: '', observacao: ''
         };
 
@@ -271,7 +271,7 @@
               cartao: entry.cartao || '',
               dataCompra: entry.dataCompra || '',
               valor: entry.valor || '',
-              parcelas: entry.parcelas || '0',
+              parcelas: entry.parcelas || '1',
               possuiNf: entry.possuiNf || 'Sim',
               numNota: entry.numNota || '',
               fornecedor: entry.fornecedor || '',
@@ -706,7 +706,7 @@
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Parcelamento *</label>
-                        <input type="number" name="parcelas" placeholder="Qtd. (0 à vista)" value={formData.parcelas} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                        <input type="number" name="parcelas" min="1" placeholder="Ex: 1 (À vista)" value={formData.parcelas} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
                       </div>
                     </div>
                   </div>
@@ -831,7 +831,9 @@
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
                               R$ {entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-500">{entry.parcelas}x</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-500 font-medium">
+                              {entry.parcelas === 1 ? '1X (À vista)' : `${entry.parcelas}X`}
+                            </td>
                             <td className="px-6 py-4 text-sm text-slate-500 max-w-[250px]">
                               <span className="font-semibold text-slate-800 block truncate" title={entry.fornecedor}>{entry.fornecedor || 'Sem fornecedor'}</span>
                               <span className="text-xs text-slate-400 block truncate" title={entry.setor}>{entry.setor || 'N/A'}</span>
