@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Privé - Private P2P</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // Configuração do Firebase fornecida
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA",
+            authDomain: "level-up-c3f9b.firebaseapp.com",
+            projectId: "level-up-c3f9b",
+            storageBucket: "level-up-c3f9b.firebasestorage.app",
+            messagingSenderId: "162788989046",
+            appId: "1:162788989046:web:8ab0d9ae8c3197a1352757",
+            measurementId: "G-FYNXYRLGBD"
+        };
+
+        // Inicializar Firebase e Firestore
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getFirestore(firebaseApp);
+
+        // Tornar o DB acessível globalmente para a aplicação usar
+        window.firebaseDB = db;
+        // Referências Firestore necessárias globalmente
+        window.firebaseAPI = { doc, setDoc, getDoc, onSnapshot };
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-[#050505] text-zinc-300 selection:bg-[#D4AF37] selection:text-black overflow-hidden h-screen flex flex-col">
+
+    <!-- ECRÃ DE LOGIN -->
+    <div id="login-screen" class="flex h-screen w-full items-center justify-center bg-[#050505] z-50 absolute inset-0 transition-opacity duration-500">
+        <div class="w-full max-w-md p-8 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl shadow-2xl animate-[translate-y_0.5s_ease-out]">
+            <div class="flex justify-center mb-8">
+                <div class="w-10 h-10 border-2 border-[#D4AF37] flex items-center justify-center rotate-45">
+                    <div class="w-3 h-3 bg-[#D4AF37]"></div>
+                </div>
+            </div>
+            <h1 class="text-2xl tracking-widest text-white uppercase font-light text-center mb-2">Aura <span class="font-bold text-[#D4AF37]">Privé</span></h1>
+            <p class="text-xs text-zinc-500 text-center mb-8 tracking-widest uppercase">Acesso Restrito</p>
+
+            <form id="login-form" class="space-y-5">
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2">Identificação (CPF / ID)</label>
+                    <input type="text" id="login-user" class="w-full bg-[#111] border border-[#222] rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors" placeholder="Insira a sua identificação" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2">Senha de Acesso</label>
+                    <input type="password" id="login-pass" class="w-full bg-[#111] border border-[#222] rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors" placeholder="••••••••" required>
+                </div>
+                <p id="login-error" class="text-red-500 text-xs text-center hidden">Credenciais inválidas. Tente novamente.</p>
+                <button type="submit" id="btn-login" class="w-full py-3 mt-4 bg-[#D4AF37] text-black font-semibold uppercase tracking-wider text-xs rounded hover:bg-[#f0cc5e] transition-colors flex justify-center items-center">
+                    Acessar <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODO SIMULAÇÃO BANNER -->
+    <div id="sim-banner" class="hidden w-full bg-amber-500/10 border-b border-amber-500 text-amber-500 text-xs text-center py-2.5 font-bold tracking-widest uppercase items-center justify-center z-40 relative shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+        <i data-lucide="flask-conical" class="w-4 h-4 mr-2"></i> Sandbox de Rendimentos: Os dados reais estão preservados.
+        <div class="ml-6 space-x-4 border-l border-amber-500/30 pl-6 flex items-center">
+            <button onclick="app.advanceTime(15)" class="hover:text-white transition-colors bg-amber-500/20 px-3 py-1 rounded cursor-pointer pointer-events-auto">Avançar 15 Dias</button>
+            <button onclick="app.advanceTime(30)" class="hover:text-white transition-colors bg-amber-500/20 px-3 py-1 rounded cursor-pointer pointer-events-auto">Avançar 30 Dias</button>
+            <button onclick="app.toggleSimulation()" class="hover:text-red-400 text-red-500 transition-colors ml-4 cursor-pointer pointer-events-auto">Sair da Simulação</button>
+        </div>
+    </div>
+
+    <!-- APLICAÇÃO PRINCIPAL (Escondida inicialmente) -->
+    <div id="app-container" class="hidden w-full h-full flex flex-1 overflow-hidden">
+        
+        <!-- MENU LATERAL -->
+        <aside class="w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] hidden md:flex flex-col justify-between shrink-0">
+            <div>
+                <div class="h-24 flex items-center px-8 border-b border-[#1a1a1a]">
+                    <div class="w-6 h-6 border-2 border-[#D4AF37] flex items-center justify-center mr-3 rotate-45">
+                        <div class="w-2 h-2 bg-[#D4AF37]"></div>
+                    </div>
+                    <span class="text-lg tracking-widest text-white uppercase font-light">Aura <span class="font-bold text-[#D4AF37]">Privé</span></span>
+                </div>
+                
+                <nav id="sidebar-nav" class="p-4 space-y-1 mt-4">
+                    <!-- Gerado via JS -->
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-[#1a1a1a]">
+                <button onclick="app.logout()" class="w-full flex items-center justify-center px-4 py-3 text-xs text-red-500 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20">
+                    <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Encerrar Sessão
+                </button>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <!-- CABEÇALHO -->
+            <header class="h-24 px-8 md:px-12 flex justify-between items-center border-b border-[#1a1a1a] shrink-0">
+                <div>
+                    <h1 id="header-title" class="text-xl font-light text-white">Principal</h1>
+                    <div class="flex items-center mt-1 space-x-3">
+                        <span id="header-date" class="text-xs text-zinc-400 font-mono bg-[#1a1a1a] px-2 py-0.5 rounded border border-[#222]"></span>
+                        <div id="header-subtitle" class="flex items-center space-x-3 hidden">
+                            <span class="text-[10px] uppercase tracking-widest px-2 py-0.5 bg-[#D4AF37] text-black font-bold rounded-sm">Private Elite</span>
+                            <span id="header-welcome-name" class="text-xs text-zinc-500 border-l border-[#333] pl-3">Bem-vindo.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button id="btn-sim-toggle" onclick="app.toggleSimulation()" class="flex items-center text-[10px] font-bold uppercase tracking-widest text-zinc-400 border border-[#333] bg-[#111] px-4 py-2 rounded-lg hover:bg-zinc-800 hover:text-white transition-colors">
+                        <i data-lucide="test-tubes" class="w-3.5 h-3.5 mr-2"></i> Modo Simulação
+                    </button>
+
+                    <div id="header-trust-index" class="flex items-center text-right border border-[#333] bg-gradient-to-r from-[#1a160c] to-[#0a0a0a] shadow-inner rounded-lg px-4 py-2 hidden">
+                        <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#D4AF37] mr-3 shadow-[0_0_10px_rgba(212,175,55,0.2)]">
+                            <span class="text-[#D4AF37] text-[10px] font-bold">AAA</span>
+                        </div>
+                        <div class="text-left mr-2">
+                            <p class="text-[10px] uppercase tracking-widest text-zinc-500 mb-0.5">Trust Index</p>
+                            <div class="flex items-end justify-start space-x-2">
+                                <span class="text-xl text-[#D4AF37] font-light leading-none">892</span>
+                                <span class="text-xs text-emerald-500 font-bold mb-0.5">↑</span>
+                            </div>
+                        </div>
+                        <svg width="60" height="20" class="ml-3 opacity-70">
+                            <path d="M0,15 L10,12 L20,16 L30,8 L40,10 L50,2 L60,5" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTEÚDO ROLÁVEL -->
+            <div id="main-content" class="flex-1 overflow-y-auto p-8 md:p-12 scrollbar-hide">
+                <div id="content-area" class="max-w-6xl mx-auto space-y-6">
+                    <!-- Gerado via JS -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAIS -->
+    <!-- Modal Depósito -->
+    <div id="modal-deposit" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 items-center justify-center hidden">
+        <div class="bg-[#101010] border border-[#333] rounded-xl p-8 max-w-md w-full shadow-2xl relative">
+            <button onclick="app.closeModal('deposit')" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h3 class="text-[#D4AF37] text-xs uppercase tracking-widest font-semibold mb-2">Novo Aporte</h3>
+            <h2 class="text-2xl font-light text-white mb-6">Transferência de Fundos</h2>
+            <form id="deposit-form" class="space-y-6">
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Valor do Aporte (BRL)</label>
+                    <input type="text" id="deposit-amount" placeholder="R$ 0,00" class="w-full bg-[#1a1a1a] border border-[#333] rounded p-3 text-white text-lg focus:outline-none focus:border-[#D4AF37] transition-colors" required>
+                </div>
+                <button type="submit" class="w-full py-3 bg-[#D4AF37] text-black font-semibold uppercase tracking-wider text-sm rounded hover:bg-[#f0cc5e] transition-colors">
+                    Confirmar Depósito (Imediato)
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Saque (Levantamento) -->
+    <div id="modal-withdraw" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 items-center justify-center hidden">
+        <div class="bg-[#101010] border border-[#333] rounded-xl p-8 max-w-md w-full shadow-2xl relative">
+            <button onclick="app.closeModal('withdraw')" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h3 class="text-white text-xs uppercase tracking-widest font-semibold mb-2">Levantamento</h3>
+            <h2 class="text-2xl font-light text-white mb-6">Retirar Fundos (Saque)</h2>
+            <p class="text-xs text-zinc-400 mb-4">Saldo disponível para saque: <span id="withdraw-available-lbl" class="text-emerald-500 font-bold"></span></p>
+            <form id="withdraw-form" class="space-y-6">
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Valor do Saque (BRL)</label>
+                    <input type="text" id="withdraw-amount" placeholder="R$ 0,00" class="w-full bg-[#1a1a1a] border border-[#333] rounded p-3 text-white text-lg focus:outline-none focus:border-white transition-colors" required>
+                </div>
+                <p id="withdraw-error" class="text-red-500 text-xs hidden">Saldo insuficiente para este levantamento.</p>
+                <div class="p-3 bg-white/5 border border-white/10 rounded">
+                    <p class="text-[10px] text-zinc-400">Nota: O valor será deduzido imediatamente e enviado para aprovação do Gestor da Conta por questões de segurança e Compliance.</p>
+                </div>
+                <button type="submit" class="w-full py-3 bg-white text-black font-semibold uppercase tracking-wider text-sm rounded hover:bg-zinc-200 transition-colors">
+                    Solicitar Saque
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Investir -->
+    <div id="modal-invest" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 items-center justify-center hidden">
+        <div class="bg-[#101010] border border-[#333] rounded-xl p-8 max-w-md w-full shadow-2xl relative">
+            <button onclick="app.closeModal('invest')" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <h3 class="text-[#D4AF37] text-xs uppercase tracking-widest font-semibold mb-2">Estruturação de Aporte</h3>
+            <h2 id="invest-title" class="text-2xl font-light text-white mb-6">Setor</h2>
+            
+            <div class="space-y-4 mb-8">
+                <div class="flex justify-between border-b border-[#222] pb-2">
+                    <span class="text-zinc-500 text-sm">Taxa Alvo Anual</span>
+                    <span id="invest-rate" class="text-white font-medium"></span>
+                </div>
+                <div class="flex justify-between border-b border-[#222] pb-2">
+                    <span class="text-zinc-500 text-sm">Garantia Principal</span>
+                    <span id="invest-guarantee" class="text-white font-medium text-right w-48 truncate"></span>
+                </div>
+                
+                <!-- Ticket Fixo (Exclusivo) -->
+                <div id="invest-fixed-block" class="flex justify-between border-b border-[#222] pb-2">
+                    <span class="text-zinc-500 text-sm">Valor do Ticket (Exclusivo)</span>
+                    <span id="invest-ticket" class="text-white font-medium"></span>
+                </div>
+
+                <!-- Ticket Variável -->
+                <div id="invest-variable-block" class="hidden border-b border-[#222] pb-4">
+                    <label class="block text-zinc-500 text-sm mb-2">Definir Valor a Investir (Min: <span id="invest-min-ticket" class="text-white"></span>)</label>
+                    <input type="text" id="invest-custom-amount" placeholder="R$ 0,00" class="w-full bg-[#1a1a1a] border border-[#D4AF37] rounded p-2 text-white text-sm focus:outline-none">
+                </div>
+
+                <!-- Taxa Administrativa -->
+                <div class="flex justify-between border-b border-[#222] pb-2 bg-[#D4AF37]/5 p-2 rounded">
+                    <div>
+                        <span class="text-[#D4AF37] text-sm block">Taxa de Administração (Upfront)</span>
+                        <span class="text-[10px] text-zinc-500">3% sobre o lucro estimado.</span>
+                    </div>
+                    <span id="invest-admin-fee" class="text-[#D4AF37] font-medium text-right"></span>
+                </div>
+
+                <div class="flex justify-between pt-2">
+                    <span class="text-zinc-500 text-sm">O seu Saldo Disponível</span>
+                    <span id="invest-balance" class="font-medium text-emerald-500"></span>
+                </div>
+            </div>
+
+            <p id="invest-error" class="text-red-500 text-xs mb-4 text-center hidden">Saldo insuficiente para o Custo Total (Aporte + Taxa) ou valor mínimo não atingido.</p>
+
+            <div class="mb-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded">
+                <p class="text-[10px] text-amber-500/80 leading-relaxed">
+                    <i data-lucide="info" class="w-3 h-3 inline"></i> 
+                    A operação passará por análise do Comitê. O rendimento quinzenal inicia-se apenas <b>após a aprovação</b> do gestor.
+                </p>
+            </div>
+
+            <button id="btn-confirm-invest" class="w-full py-3 bg-[#D4AF37] text-black font-semibold uppercase tracking-wider text-sm rounded hover:bg-[#f0cc5e] transition-colors">
+                Solicitar Aporte (<span id="invest-total-cost"></span>)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- UTILITÁRIOS ---
+        const fmtCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        const fmtDate = (date) => {
+            if (!date) return '';
+            const d = new Date(date);
+            return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+        };
+        
+        const handleMoneyInput = (e) => {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            if (!value) { e.target.value = ''; return; }
+            value = (parseInt(value, 10) / 100).toFixed(2);
+            let parts = value.split('.');
+            let res = "";
+            let count = 0;
+            for(let i = parts[0].length - 1; i >= 0; i--) {
+                count++;
+                res = parts[0][i] + res;
+                if(count % 3 === 0 && i !== 0) res = "." + res;
+            }
+            e.target.value = 'R$ ' + res + ',' + parts[1];
+        };
+
+        const getMoneyValue = (str) => {
+            if(!str) return 0;
+            return parseFloat(str.replace(/[^0-9]/g, '')) / 100;
+        };
+        
+        // --- ESTADO DA APLICAÇÃO ---
+        const state = {
+            auth: { loggedIn: false, role: null, id: null, name: null },
+            activeTab: 'principal',
+            currentDate: new Date(), 
+            
+            // Cofres independentes para os clientes
+            balances: {
+                '20053214781': { availableCash: 0, investedAmount: 0 },
+                '12062005': { availableCash: 0, investedAmount: 0 }
+            },
+            
+            portfolio: [], // Histórico agora inclui "userId" e "userName"
+            history: [], // Histórico agora inclui "userId"
+            pendingTransactions: [], // Pendências com "userId"
+            marketOps: [
+                { id: 1, type: 'exclusive', setor: 'Agro / Expansão', valor: 5000000, ticket: 250000, taxa: '19.5', score: 'AA+', garantias: 'Alienação Fiduciária (Terra)', risco: 'Baixo' },
+                { id: 3, type: 'variable', setor: 'Fundo Imobiliário Tech', valor: 8000000, minTicket: 50000, taxa: '16.5', score: 'A-', garantias: 'Cotas do Fundo Integralizadas', risco: 'Médio' }
+            ],
+            pendingOps: [
+                { id: 2, type: 'exclusive', setor: 'Infra / Energia', valor: 12500000, ticket: 500000, taxa: '21.0', score: 'A', garantias: 'Cessão de Recebíveis', risco: 'Médio-Baixo' },
+                { id: 5, type: 'exclusive', setor: 'Clínica de Imagem AAA', valor: 2000000, ticket: 100000, taxa: '24.5', score: 'BB+', garantias: 'Aval dos Sócios + Quotas', risco: 'Médio' }
+            ],
+            selectedOp: null,
+            charts: {},
+            
+            isSimulation: false,
+            realDataSnapshot: null,
+            docId: 'aura_prive_session_default' 
+        };
+
+        function cloneData(src) {
+            let cloned = JSON.parse(JSON.stringify(src));
+            cloned.currentDate = new Date(cloned.currentDate);
+            if(cloned.history) cloned.history.forEach(h => h.date = new Date(h.date));
+            if(cloned.portfolio) cloned.portfolio.forEach(p => p.proximoPgtoRaw = p.proximoPgtoRaw ? new Date(p.proximoPgtoRaw) : null);
+            return cloned;
+        }
+        
+        function serializeStateForFirebase() {
+            return {
+                balances: state.balances,
+                currentDate: state.currentDate.getTime(),
+                history: state.history.map(h => ({ ...h, date: h.date.getTime() })),
+                portfolio: state.portfolio.map(p => ({ ...p, proximoPgtoRaw: p.proximoPgtoRaw ? p.proximoPgtoRaw.getTime() : null })),
+                pendingTransactions: state.pendingTransactions,
+                marketOps: state.marketOps,
+                pendingOps: state.pendingOps
+            };
+        }
+
+        function deserializeStateFromFirebase(data) {
+            state.balances = data.balances || {
+                '20053214781': { availableCash: 0, investedAmount: 0 },
+                '12062005': { availableCash: 0, investedAmount: 0 }
+            };
+            state.currentDate = data.currentDate ? new Date(data.currentDate) : new Date();
+            state.history = (data.history || []).map(h => ({ ...h, date: new Date(h.date) }));
+            state.portfolio = (data.portfolio || []).map(p => ({ ...p, proximoPgtoRaw: p.proximoPgtoRaw ? new Date(p.proximoPgtoRaw) : null }));
+            state.pendingTransactions = data.pendingTransactions || [];
+            state.marketOps = data.marketOps || [];
+            state.pendingOps = data.pendingOps || [];
+        }
+
+        // --- LÓGICA PRINCIPAL (APP) ---
+        const app = {
+            init() {
+                this.bindEvents();
+                lucide.createIcons();
+                document.getElementById('header-date').innerText = fmtDate(state.currentDate);
+                this.startOpportunityGenerator(); 
+            },
+
+            async saveStateToFirebase() {
+                if (!window.firebaseDB || state.isSimulation) return;
+                try {
+                    const docRef = window.firebaseAPI.doc(window.firebaseDB, 'aura_prive_sessions', state.docId);
+                    await window.firebaseAPI.setDoc(docRef, serializeStateForFirebase());
+                } catch (e) {
+                    console.error("Erro ao salvar no Firebase:", e);
+                }
+            },
+
+            async loadStateFromFirebase() {
+                if (!window.firebaseDB) return false;
+                try {
+                    const docRef = window.firebaseAPI.doc(window.firebaseDB, 'aura_prive_sessions', state.docId);
+                    const docSnap = await window.firebaseAPI.getDoc(docRef);
+                    if (docSnap.exists()) {
+                        deserializeStateFromFirebase(docSnap.data());
+                        return true;
+                    }
+                    return false;
+                } catch (e) {
+                    console.error("Erro ao carregar do Firebase:", e);
+                    return false;
+                }
+            },
+
+            startOpportunityGenerator() {
+                setInterval(() => {
+                    if(state.isSimulation) return;
+
+                    const rand = Math.random();
+                    let type = 'exclusive';
+                    let dest = 'market'; 
+
+                    if (rand < 0.4) { type = 'exclusive'; dest = 'market'; } 
+                    else if (rand < 0.7) { type = 'variable'; dest = 'market'; } 
+                    else { type = 'exclusive'; dest = 'pending'; }
+
+                    const setoresBase = ['Agronegócio Exportação', 'Tech B2B SaaS', 'Energia Solar', 'Imobiliário Premium', 'Logística Avançada', 'FIDC Infraestrutura', 'CRI Saneamento', 'Data Center Tier III', 'Fintech de Crédito'];
+                    const garantiasBase = ['Alienação Imobiliária', 'Cessão Fiduciária de Recebíveis', 'Aval Pessoal dos Sócios', 'Fundo Garantidor CVM', 'Penhor de Quotas', 'Receitas de Aluguéis'];
+                    const scoresBase = ['AAA+', 'AAA', 'AA+', 'AA', 'A+', 'A', 'A-', 'BBB+', 'BBB', 'BB+'];
+                    const riscosBase = ['Muito Baixo', 'Baixo', 'Médio-Baixo', 'Médio', 'Médio-Alto'];
+
+                    const newOp = {
+                        id: Date.now() + Math.floor(Math.random()*10000),
+                        type: type,
+                        setor: setoresBase[Math.floor(Math.random()*setoresBase.length)] + ' - Lote ' + Math.floor(Math.random()*900 + 100),
+                        valor: Math.floor(Math.random() * 50 + 5) * 1000000,
+                        ticket: type === 'exclusive' ? Math.floor(Math.random() * 10 + 1) * 50000 : 0,
+                        minTicket: type === 'variable' ? Math.floor(Math.random() * 5 + 1) * 10000 : 0,
+                        taxa: (Math.random() * 14 + 11).toFixed(1),
+                        score: scoresBase[Math.floor(Math.random()*scoresBase.length)],
+                        garantias: garantiasBase[Math.floor(Math.random()*garantiasBase.length)],
+                        risco: riscosBase[Math.floor(Math.random()*riscosBase.length)]
+                    };
+
+                    if (dest === 'market') {
+                        state.marketOps.unshift(newOp);
+                        if(state.marketOps.length > 15) state.marketOps.pop(); 
+                    } else {
+                        state.pendingOps.unshift(newOp);
+                        if(state.pendingOps.length > 15) state.pendingOps.pop();
+                    }
+                    
+                    this.saveStateToFirebase();
+                    if (state.auth.loggedIn && (state.activeTab === 'market' || state.activeTab === 'principal' || state.auth.role === 'manager')) {
+                        this.renderContentOnly();
+                    }
+                }, 15000); 
+            },
+
+            toggleSimulation() {
+                const banner = document.getElementById('sim-banner');
+                const btnToggle = document.getElementById('btn-sim-toggle');
+
+                if (!state.isSimulation) {
+                    state.realDataSnapshot = cloneData(state);
+                    state.isSimulation = true;
+                    banner.classList.remove('hidden');
+                    banner.classList.add('flex');
+                    btnToggle.classList.add('hidden');
+                } else {
+                    const snap = cloneData(state.realDataSnapshot);
+                    Object.assign(state, snap);
+                    state.isSimulation = false;
+                    banner.classList.add('hidden');
+                    banner.classList.remove('flex');
+                    btnToggle.classList.remove('hidden');
+                }
+                
+                document.getElementById('header-date').innerText = fmtDate(state.currentDate);
+                this.render();
+            },
+
+            advanceTime(daysToAdvance) {
+                if (!state.isSimulation) return; 
+
+                state.currentDate.setDate(state.currentDate.getDate() + daysToAdvance);
+                document.getElementById('header-date').innerText = fmtDate(state.currentDate);
+
+                this.updateDelinquencyStatus();
+                this.render();
+            },
+
+            updateDelinquencyStatus() {
+                state.portfolio.forEach(p => {
+                    if (p.proximoPgtoRaw && p.parcelasRestantes > 0) {
+                        if (state.currentDate > p.proximoPgtoRaw) {
+                            p.status = 'Em Atraso';
+                        }
+                    }
+                });
+            },
+
+            calculateBadDebtPercentage(userId = null) {
+                let ops = userId ? state.portfolio.filter(p => p.userId === userId) : state.portfolio;
+                if (ops.length === 0) return 0;
+                let totalInvestidoAtivo = 0;
+                let totalEmAtraso = 0;
+                
+                ops.forEach(p => {
+                    if (p.status !== 'Aguardando Gerente') {
+                        totalInvestidoAtivo += p.ticketAtual;
+                        if (p.status === 'Em Atraso') {
+                            totalEmAtraso += p.ticketAtual;
+                        }
+                    }
+                });
+
+                if (totalInvestidoAtivo === 0) return 0;
+                return (totalEmAtraso / totalInvestidoAtivo) * 100;
+            },
+
+            bindEvents() {
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const user = document.getElementById('login-user').value;
+                    const pass = document.getElementById('login-pass').value;
+                    const btn = document.getElementById('btn-login');
+                    const errorMsg = document.getElementById('login-error');
+
+                    if (user === '20053214781' && pass === '30042022') {
+                        state.auth = { loggedIn: true, role: 'investor', id: '20053214781', name: 'Nicholas' };
+                    } else if (user === '12062005' && pass === '30042022') {
+                        state.auth = { loggedIn: true, role: 'investor', id: '12062005', name: 'Bárbara Colleman' };
+                    } else if (user === 'Gerente' && pass === '30042022') {
+                        state.auth = { loggedIn: true, role: 'manager', id: 'gerente', name: 'Gerente' };
+                    } else {
+                        errorMsg.classList.remove('hidden');
+                        return;
+                    }
+
+                    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Carregando...`;
+                    lucide.createIcons();
+                    await this.loadStateFromFirebase();
+                    this.login();
+                });
+
+                document.getElementById('deposit-amount').addEventListener('input', handleMoneyInput);
+                document.getElementById('withdraw-amount').addEventListener('input', handleMoneyInput);
+                
+                const customInvestInput = document.getElementById('invest-custom-amount');
+                customInvestInput.addEventListener('input', (e) => {
+                    handleMoneyInput(e);
+                    this.updateInvestModalMath();
+                });
+
+                document.getElementById('deposit-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    let amount = getMoneyValue(document.getElementById('deposit-amount').value);
+                    if (amount > 0) this.handleDeposit(amount);
+                });
+
+                document.getElementById('withdraw-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    let amount = getMoneyValue(document.getElementById('withdraw-amount').value);
+                    const errLabel = document.getElementById('withdraw-error');
+                    
+                    if (amount > state.balances[state.auth.id].availableCash) {
+                        errLabel.classList.remove('hidden');
+                    } else if (amount > 0) {
+                        errLabel.classList.add('hidden');
+                        this.handleWithdraw(amount);
+                    }
+                });
+
+                document.getElementById('btn-confirm-invest').addEventListener('click', () => {
+                    const op = state.selectedOp;
+                    const errLabel = document.getElementById('invest-error');
+                    let amountToInvest = op.ticket;
+
+                    if (op.type === 'variable') {
+                        amountToInvest = getMoneyValue(customInvestInput.value);
+                    }
+
+                    if (amountToInvest < (op.minTicket || op.ticket)) {
+                        errLabel.classList.remove('hidden');
+                        return;
+                    }
+
+                    const taxaAnual = parseFloat(op.taxa);
+                    const lucroAnual = amountToInvest * (taxaAnual / 100);
+                    const taxaAdmin = lucroAnual * 0.03;
+                    const custoTotal = amountToInvest + taxaAdmin;
+
+                    if (custoTotal > state.balances[state.auth.id].availableCash) {
+                        errLabel.classList.remove('hidden');
+                        return;
+                    }
+
+                    errLabel.classList.add('hidden');
+                    this.handleInvest(op, amountToInvest, taxaAdmin);
+                });
+            },
+
+            login() {
+                document.getElementById('login-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('app-container').classList.remove('hidden');
+                    state.activeTab = state.auth.role === 'manager' ? 'manager_ops' : 'principal';
+                    
+                    if (window.firebaseDB && !state.isSimulation) {
+                        const docRef = window.firebaseAPI.doc(window.firebaseDB, 'aura_prive_sessions', state.docId);
+                        window.firebaseAPI.onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists() && !state.isSimulation) {
+                                deserializeStateFromFirebase(docSnap.data());
+                                this.renderContentOnly();
+                            }
+                        });
+                    }
+
+                    this.render();
+                }, 500);
+            },
+
+            logout() {
+                state.auth = { loggedIn: false, role: null, id: null, name: null };
+                if (state.isSimulation) this.toggleSimulation(); 
+                
+                document.getElementById('login-user').value = '';
+                document.getElementById('login-pass').value = '';
+                document.getElementById('login-error').classList.add('hidden');
+                
+                const btn = document.getElementById('btn-login');
+                btn.innerHTML = `Acessar <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>`;
+                lucide.createIcons();
+
+                document.getElementById('app-container').classList.add('hidden');
+                const loginScreen = document.getElementById('login-screen');
+                loginScreen.classList.remove('hidden');
+                setTimeout(() => { loginScreen.style.opacity = '1'; }, 50);
+            },
+
+            switchTab(tab) {
+                state.activeTab = tab;
+                this.render();
+            },
+
+            render() {
+                this.renderSidebar();
+                this.renderHeader();
+                this.renderContentOnly();
+            },
+
+            renderContentOnly() {
+                this.updateDelinquencyStatus(); 
+
+                const contentArea = document.getElementById('content-area');
+                contentArea.innerHTML = ''; 
+
+                if (state.charts.pie) state.charts.pie.destroy();
+                if (state.charts.line) state.charts.line.destroy();
+                if (state.charts.bar) state.charts.bar.destroy();
+
+                if (state.auth.role === 'investor') {
+                    if (state.activeTab === 'principal') contentArea.innerHTML = this.views.principal();
+                    else if (state.activeTab === 'market') contentArea.innerHTML = this.views.market();
+                    else if (state.activeTab === 'active_ops') contentArea.innerHTML = this.views.activeOps();
+                    else if (state.activeTab === 'history') contentArea.innerHTML = this.views.history();
+                    else if (state.activeTab === 'analytics') {
+                        contentArea.innerHTML = this.views.analytics();
+                        this.initCharts();
+                    }
+                    else if (state.activeTab === 'reports') contentArea.innerHTML = this.views.reports();
+                } else if (state.auth.role === 'manager') {
+                    if (state.activeTab === 'manager_ops') contentArea.innerHTML = this.views.managerOps();
+                    else if (state.activeTab === 'manager_clients') contentArea.innerHTML = this.views.managerClients();
+                }
+                lucide.createIcons();
+            },
+
+            renderSidebar() {
+                const nav = document.getElementById('sidebar-nav');
+                if (state.auth.role === 'investor') {
+                    const items = [
+                        { id: 'principal', icon: 'layout-dashboard', label: 'Principal' },
+                        { id: 'market', icon: 'search', label: 'Explorar Oportunidades' },
+                        { id: 'active_ops', icon: 'folder-open', label: 'Operações Ativas' },
+                        { id: 'history', icon: 'history', label: 'Histórico' },
+                        { id: 'analytics', icon: 'bar-chart-3', label: 'Análises Avançadas' },
+                        { id: 'reports', icon: 'file-text', label: 'Relatórios' },
+                    ];
+                    
+                    nav.innerHTML = items.map(item => `
+                        <button onclick="app.switchTab('${item.id}')" class="w-full flex items-center px-4 py-3 text-sm rounded-lg transition-all ${state.activeTab === item.id ? 'bg-[#D4AF37]/10 text-[#D4AF37] font-medium' : 'text-zinc-500 hover:text-zinc-200'}">
+                            <i data-lucide="${item.icon}" class="w-4 h-4 mr-3"></i> ${item.label}
+                        </button>
+                    `).join('');
+                } else {
+                    const items = [
+                        { id: 'manager_ops', icon: 'building', label: 'Originação e Mercado' },
+                        { id: 'manager_clients', icon: 'users', label: 'Gestão de Clientes' }
+                    ];
+                    nav.innerHTML = items.map(item => `
+                        <button onclick="app.switchTab('${item.id}')" class="w-full flex items-center px-4 py-3 text-sm rounded-lg transition-all ${state.activeTab === item.id ? 'bg-[#D4AF37]/10 text-[#D4AF37] font-medium' : 'text-zinc-500 hover:text-zinc-200'}">
+                            <i data-lucide="${item.icon}" class="w-4 h-4 mr-3"></i> ${item.label}
+                        </button>
+                    `).join('');
+                }
+            },
+
+            renderHeader() {
+                const titles = {
+                    'principal': 'Principal',
+                    'market': 'Pesquisa de Oportunidades',
+                    'active_ops': 'Suas Operações',
+                    'history': 'Histórico Financeiro',
+                    'analytics': 'Análise de Risco e Retorno',
+                    'reports': 'Central de Relatórios',
+                    'manager_ops': 'Comitê de Crédito',
+                    'manager_clients': 'Painel de Clientes (Backoffice)'
+                };
+                
+                document.getElementById('header-title').innerText = titles[state.activeTab];
+                
+                const subtitle = document.getElementById('header-subtitle');
+                const welcomeName = document.getElementById('header-welcome-name');
+                const trustBox = document.getElementById('header-trust-index');
+                const btnToggle = document.getElementById('btn-sim-toggle');
+                
+                if (state.auth.role === 'investor') {
+                    welcomeName.innerText = `Bem-vindo, ${state.auth.name}.`;
+                    subtitle.classList.remove('hidden');
+                    trustBox.classList.remove('hidden');
+                    if(!state.isSimulation) btnToggle.classList.remove('hidden');
+                } else {
+                    subtitle.classList.add('hidden');
+                    trustBox.classList.add('hidden');
+                    btnToggle.classList.add('hidden');
+                }
+            },
+
+            updateInvestModalMath() {
+                const op = state.selectedOp;
+                if(!op) return;
+
+                let amountToInvest = op.ticket;
+                if (op.type === 'variable') {
+                    amountToInvest = getMoneyValue(document.getElementById('invest-custom-amount').value);
+                }
+
+                const taxaAnual = parseFloat(op.taxa);
+                const lucroAnual = amountToInvest * (taxaAnual / 100);
+                const taxaAdmin = lucroAnual * 0.03;
+                const totalCusto = amountToInvest + taxaAdmin;
+
+                document.getElementById('invest-admin-fee').innerText = fmtCurrency(taxaAdmin);
+                document.getElementById('invest-total-cost').innerText = fmtCurrency(totalCusto);
+            },
+
+            openModal(type, opId = null) {
+                const userBal = state.balances[state.auth.id];
+
+                if (type === 'deposit') {
+                    document.getElementById('deposit-amount').value = '';
+                    document.getElementById('modal-deposit').classList.remove('hidden');
+                    document.getElementById('modal-deposit').classList.add('flex');
+                } else if (type === 'withdraw') {
+                    document.getElementById('withdraw-amount').value = '';
+                    document.getElementById('withdraw-error').classList.add('hidden');
+                    document.getElementById('withdraw-available-lbl').innerText = fmtCurrency(userBal.availableCash);
+                    document.getElementById('modal-withdraw').classList.remove('hidden');
+                    document.getElementById('modal-withdraw').classList.add('flex');
+                } else if (type === 'invest') {
+                    const op = state.marketOps.find(o => o.id === opId);
+                    if (!op) return;
+                    state.selectedOp = op;
+                    
+                    document.getElementById('invest-title').innerText = op.setor;
+                    document.getElementById('invest-rate').innerText = op.taxa + '% a.a.';
+                    document.getElementById('invest-guarantee').innerText = op.garantias;
+                    document.getElementById('invest-balance').innerText = fmtCurrency(userBal.availableCash);
+                    document.getElementById('invest-error').classList.add('hidden');
+
+                    const blockFixed = document.getElementById('invest-fixed-block');
+                    const blockVar = document.getElementById('invest-variable-block');
+                    const customInput = document.getElementById('invest-custom-amount');
+                    
+                    if (op.type === 'exclusive') {
+                        blockFixed.classList.remove('hidden');
+                        blockFixed.classList.add('flex');
+                        blockVar.classList.add('hidden');
+                        document.getElementById('invest-ticket').innerText = fmtCurrency(op.ticket);
+                    } else {
+                        blockFixed.classList.add('hidden');
+                        blockFixed.classList.remove('flex');
+                        blockVar.classList.remove('hidden');
+                        document.getElementById('invest-min-ticket').innerText = fmtCurrency(op.minTicket);
+                        customInput.value = '';
+                    }
+
+                    this.updateInvestModalMath();
+                    document.getElementById('modal-invest').classList.remove('hidden');
+                    document.getElementById('modal-invest').classList.add('flex');
+                }
+            },
+
+            closeModal(type) {
+                document.getElementById(`modal-${type}`).classList.add('hidden');
+                document.getElementById(`modal-${type}`).classList.remove('flex');
+            },
+
+            handleDeposit(amount) {
+                state.balances[state.auth.id].availableCash += amount; 
+                state.history.unshift({
+                    id: Date.now(),
+                    userId: state.auth.id,
+                    date: new Date(state.currentDate),
+                    type: 'Depósito',
+                    desc: 'Aporte na Plataforma via PIX/TED',
+                    amount: amount,
+                    isPositive: true
+                });
+                this.saveStateToFirebase();
+                this.closeModal('deposit');
+                this.render();
+            },
+
+            handleWithdraw(amount) {
+                state.balances[state.auth.id].availableCash -= amount;
+                const txId = Date.now();
+                
+                state.history.unshift({
+                    id: txId,
+                    userId: state.auth.id,
+                    date: new Date(state.currentDate),
+                    type: 'Levantamento',
+                    desc: 'Saque Solicitado (Em Análise)',
+                    amount: amount,
+                    isPositive: false
+                });
+
+                state.pendingTransactions.unshift({
+                    id: txId,
+                    userId: state.auth.id,
+                    type: 'withdraw',
+                    desc: 'Solicitação de Saque',
+                    amount: amount,
+                    client: `${state.auth.name} (${state.auth.id})`
+                });
+
+                this.saveStateToFirebase();
+                this.closeModal('withdraw');
+                this.render();
+            },
+
+            handleInvest(op, amount, taxaAdmin) {
+                state.balances[state.auth.id].availableCash -= (amount + taxaAdmin);
+                
+                const taxaAnual = parseFloat(op.taxa);
+                const taxaQuinzenalDecimal = (taxaAnual / 100) / 12 / 2;
+                
+                const portfId = Date.now();
+
+                state.portfolio.unshift({
+                    id: portfId,
+                    userId: state.auth.id,
+                    userName: state.auth.name,
+                    setor: op.setor,
+                    ticketOriginal: amount,
+                    ticketAtual: amount, 
+                    taxaQuinzenalDecimal: taxaQuinzenalDecimal,
+                    taxaExibicao: `${(taxaQuinzenalDecimal * 100).toFixed(2)}% a.q.`,
+                    status: 'Aguardando Gerente',
+                    proximoPgtoRaw: null,
+                    proximoPgto: 'Pendente',
+                    parcelasRestantes: 24,
+                    taxaAdmin: taxaAdmin 
+                });
+
+                const txId = Date.now() + 1;
+                
+                if (taxaAdmin > 0) {
+                    state.history.unshift({
+                        id: txId + 1,
+                        userId: state.auth.id,
+                        date: new Date(state.currentDate),
+                        type: 'Taxa Adm.',
+                        desc: `Custo Operacional de Investimento em ${op.setor}`,
+                        amount: taxaAdmin,
+                        isPositive: false
+                    });
+                }
+
+                state.history.unshift({
+                    id: txId,
+                    userId: state.auth.id,
+                    date: new Date(state.currentDate),
+                    type: 'Aporte',
+                    desc: `Investimento Solicitado (Em Análise) - ${op.setor}`,
+                    amount: amount,
+                    isPositive: false
+                });
+
+                state.pendingTransactions.unshift({
+                    id: txId,
+                    userId: state.auth.id,
+                    type: 'invest',
+                    portfolioId: portfId,
+                    desc: `Investimento: ${op.setor}`,
+                    amount: amount,
+                    taxaAdmin: taxaAdmin,
+                    client: `${state.auth.name} (${state.auth.id})`
+                });
+
+                state.marketOps = state.marketOps.filter(item => item.id !== op.id);
+                
+                this.saveStateToFirebase();
+                this.closeModal('invest');
+                state.activeTab = 'active_ops';
+                this.render();
+            },
+
+            // --- AÇÕES DO GERENTE ---
+            handleMarketApproval(opId) {
+                const opIndex = state.pendingOps.findIndex(o => o.id === opId);
+                if (opIndex > -1) {
+                    const op = state.pendingOps[opIndex];
+                    state.pendingOps.splice(opIndex, 1);
+                    state.marketOps.push(op);
+                    
+                    this.saveStateToFirebase();
+                    this.renderContentOnly();
+                }
+            },
+
+            handleClientTransaction(txId, isApproved) {
+                const txIndex = state.pendingTransactions.findIndex(t => t.id === txId);
+                if (txIndex === -1) return;
+                
+                const tx = state.pendingTransactions[txIndex];
+                state.pendingTransactions.splice(txIndex, 1); 
+
+                if (tx.type === 'invest') {
+                    const portItem = state.portfolio.find(p => p.id === tx.portfolioId);
+                    
+                    if (isApproved) {
+                        portItem.status = 'Ativo';
+                        state.balances[tx.userId].investedAmount += tx.amount; 
+                        
+                        const dataPagamento = new Date(state.currentDate);
+                        dataPagamento.setDate(dataPagamento.getDate() + 15);
+                        portItem.proximoPgtoRaw = dataPagamento;
+                        portItem.proximoPgto = fmtDate(dataPagamento);
+
+                        const hItem = state.history.find(h => h.id === tx.id);
+                        if(hItem) hItem.desc = `Investimento Confirmado: ${portItem.setor}`;
+
+                    } else {
+                        state.portfolio = state.portfolio.filter(p => p.id !== tx.portfolioId);
+                        state.balances[tx.userId].availableCash += (tx.amount + tx.taxaAdmin);
+                        
+                        if (tx.taxaAdmin > 0) {
+                            state.history.unshift({
+                                id: Date.now() + 1,
+                                userId: tx.userId,
+                                date: new Date(state.currentDate),
+                                type: 'Estorno',
+                                desc: `Estorno Taxa Admin. (${portItem.setor})`,
+                                amount: tx.taxaAdmin,
+                                isPositive: true
+                            });
+                        }
+
+                        state.history.unshift({
+                            id: Date.now(),
+                            userId: tx.userId,
+                            date: new Date(state.currentDate),
+                            type: 'Estorno',
+                            desc: `Investimento Rejeitado (${portItem.setor})`,
+                            amount: tx.amount,
+                            isPositive: true
+                        });
+                    }
+                } 
+                else if (tx.type === 'withdraw') {
+                    if (isApproved) {
+                        const hItem = state.history.find(h => h.id === tx.id);
+                        if(hItem) hItem.desc = `Saque Processado com Sucesso`;
+                    } else {
+                        state.balances[tx.userId].availableCash += tx.amount;
+                        state.history.unshift({
+                            id: Date.now(),
+                            userId: tx.userId,
+                            date: new Date(state.currentDate),
+                            type: 'Estorno',
+                            desc: `Saque Rejeitado pelo Backoffice`,
+                            amount: tx.amount,
+                            isPositive: true
+                        });
+                    }
+                }
+
+                this.saveStateToFirebase();
+                this.renderContentOnly();
+            },
+
+            handleManagerManualPayment(portId) {
+                const p = state.portfolio.find(item => item.id === portId);
+                if (!p || p.parcelasRestantes <= 0) return;
+
+                const devolucaoPrincipal = p.ticketOriginal / 24; 
+                const jurosIntegrais = p.ticketOriginal * p.taxaQuinzenalDecimal;
+                
+                const inicioCiclo = new Date(p.proximoPgtoRaw.getTime() - 15 * 86400000);
+                let diasDecorridos = Math.round((state.currentDate - inicioCiclo) / 86400000);
+                if (diasDecorridos < 1) diasDecorridos = 1; 
+
+                const pagamentoJuros = jurosIntegrais * (diasDecorridos / 15);
+                const pagamentoTotal = devolucaoPrincipal + pagamentoJuros;
+
+                state.balances[p.userId].availableCash += pagamentoTotal;
+                p.ticketAtual -= devolucaoPrincipal;
+                state.balances[p.userId].investedAmount -= devolucaoPrincipal; 
+                p.parcelasRestantes -= 1;
+                
+                p.status = 'Ativo'; 
+
+                let notaTempo = '';
+                if (diasDecorridos < 15) {
+                    notaTempo = ` (Antecipado ${15 - diasDecorridos}d - Desconto Aplicado)`;
+                } else if (diasDecorridos > 15) {
+                    notaTempo = ` (Atrasado ${diasDecorridos - 15}d - Mora Adicionada)`;
+                }
+
+                state.history.unshift({
+                    id: Date.now() + Math.random(),
+                    userId: p.userId,
+                    date: new Date(state.currentDate),
+                    type: 'Recebimento (Manual)',
+                    desc: `Processado pelo Gestor - ${p.setor}${notaTempo}`,
+                    amount: pagamentoTotal,
+                    isPositive: true
+                });
+
+                const nextDate = new Date(state.currentDate);
+                nextDate.setDate(nextDate.getDate() + 15);
+                p.proximoPgtoRaw = nextDate;
+                p.proximoPgto = fmtDate(nextDate);
+
+                state.portfolio = state.portfolio.filter(pt => pt.parcelasRestantes > 0);
+                
+                this.saveStateToFirebase();
+                this.renderContentOnly();
+            },
+
+            downloadReport(type) {
+                const uId = state.auth.id;
+                const bal = state.balances[uId];
+                const myPortfolio = state.portfolio.filter(p => p.userId === uId);
+                const myHistory = state.history.filter(h => h.userId === uId);
+
+                const htmlContent = `
+                    <html>
+                    <head>
+                        <title>Aura Privé - Relatório Oficial</title>
+                        <style>
+                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
+                            .header { text-align: center; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 30px; }
+                            .logo { color: #000; font-size: 24px; font-weight: 300; letter-spacing: 2px; }
+                            .logo span { color: #D4AF37; font-weight: bold; }
+                            h2 { font-weight: 300; color: #555; font-size: 18px; margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px;}
+                            .row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;}
+                            .val { font-weight: bold; }
+                            .footer { margin-top: 50px; font-size: 10px; color: #999; text-align: center; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+                            th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+                            th { color: #888; text-transform: uppercase; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <div class="logo">Aura <span>Privé</span></div>
+                            <p style="font-size: 12px; color: #777; margin-top: 10px;">Private Wealth Management - Relatório Consolidado</p>
+                            <p style="font-size: 12px; font-weight: bold;">Data de Emissão: ${fmtDate(state.currentDate)}</p>
+                            ${state.isSimulation ? '<p style="color:red;font-weight:bold;margin-top:10px;">[ ATENÇÃO: DADOS GERADOS EM MODO DE SIMULAÇÃO ]</p>' : ''}
+                        </div>
+
+                        <h2>Perfil do Investidor</h2>
+                        <div class="row"><span>Cliente:</span> <span class="val">${state.auth.name}</span></div>
+                        <div class="row"><span>Identificação:</span> <span class="val">${state.auth.id}</span></div>
+                        <div class="row"><span>Classificação Interna:</span> <span class="val">Private Elite | Prime AAA</span></div>
+
+                        <h2>Resumo Patrimonial</h2>
+                        <div class="row"><span>Caixa Disponível para Uso:</span> <span class="val">${fmtCurrency(bal.availableCash)}</span></div>
+                        <div class="row"><span>Capital Investido Alocado:</span> <span class="val">${fmtCurrency(bal.investedAmount)}</span></div>
+                        <div class="row" style="font-size: 16px; margin-top: 15px;"><span>Património Total:</span> <span class="val" style="color: #D4AF37;">${fmtCurrency(bal.availableCash + bal.investedAmount)}</span></div>
+
+                        <h2>Carteira Ativa</h2>
+                        <table>
+                            <tr><th>Operação</th><th>Ticket Restante</th><th>Taxa (a.q.)</th><th>Próx. Venc.</th></tr>
+                            ${myPortfolio.map(p => `<tr><td>${p.setor}</td><td>${fmtCurrency(p.ticketAtual)}</td><td>${p.taxaExibicao}</td><td>${p.proximoPgto}</td></tr>`).join('') || `<tr><td colspan="4">Nenhuma operação ativa.</td></tr>`}
+                        </table>
+
+                        <h2>Histórico de Movimentações</h2>
+                        <table>
+                            <tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr>
+                            ${myHistory.slice(0, 15).map(h => `<tr><td>${fmtDate(h.date)}</td><td>${h.type}</td><td>${h.desc}</td><td style="color:${h.isPositive?'green':'red'}">${h.isPositive?'+':'-'}${fmtCurrency(h.amount)}</td></tr>`).join('') || `<tr><td colspan="4">Sem movimentações recentes.</td></tr>`}
+                        </table>
+
+                        <div class="footer">Este documento é gerado automaticamente pelo sistema Aura Privé e não serve como promessa de rentabilidade futura.</div>
+                        <script>window.print();<\/script>
+                    </body>
+                    </html>
+                `;
+
+                const win = window.open('', '_blank');
+                win.document.write(htmlContent);
+                win.document.close();
+            },
+
+            initCharts() {
+                const uId = state.auth.id;
+                const bal = state.balances[uId];
+                const myPortfolio = state.portfolio.filter(p => p.userId === uId);
+
+                const pieCtx = document.getElementById('portfolioPieChart');
+                if(pieCtx && myPortfolio.length > 0) {
+                    const data = myPortfolio.map(p => p.ticketAtual);
+                    const labels = myPortfolio.map(p => p.setor);
+                    const colors = ['#D4AF37', '#8B7322', '#524414', '#2A230A', '#1a160c'];
+                    
+                    state.charts.pie = new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false, cutout: '70%',
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1,
+                                    callbacks: { label: (ctx) => fmtCurrency(ctx.raw) }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                const lineCtx = document.getElementById('flowLineChart');
+                if(lineCtx) {
+                    let jurosMensais = 0;
+                    myPortfolio.forEach(p => {
+                        const taxaMensalDecimal = p.taxaQuinzenalDecimal * 2;
+                        jurosMensais += (p.ticketOriginal * taxaMensalDecimal);
+                    });
+
+                    const baseMonth = state.currentDate.getMonth() + 1; 
+                    const getMonthName = (m) => {
+                        const names = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                        return names[m % 12];
+                    };
+
+                    const monthNames = [getMonthName(baseMonth), getMonthName(baseMonth + 1), getMonthName(baseMonth + 2), getMonthName(baseMonth + 3)];
+                    
+                    const flowData = jurosMensais > 0 
+                        ? [jurosMensais, jurosMensais * 1.05, jurosMensais * 1.1, jurosMensais * 1.15] 
+                        : [0, 0, 0, 0];
+
+                    state.charts.line = new Chart(lineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: monthNames,
+                            datasets: [{
+                                data: flowData,
+                                borderColor: '#D4AF37',
+                                backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4, 
+                                pointBackgroundColor: '#000',
+                                pointBorderColor: '#D4AF37',
+                                pointRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1,
+                                    callbacks: { label: (ctx) => 'Projeção: ' + fmtCurrency(ctx.raw) }
+                                }
+                            },
+                            scales: {
+                                x: { grid: { display: false, drawBorder: false }, ticks: { color: '#71717a' } },
+                                y: { display: false }
+                            }
+                        }
+                    });
+                }
+
+                const barCtx = document.getElementById('wealthBarChart');
+                if(barCtx) {
+                    state.charts.bar = new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Hoje'],
+                            datasets: [
+                                {
+                                    label: 'Caixa',
+                                    data: [bal.availableCash],
+                                    backgroundColor: '#D4AF37',
+                                    borderRadius: 4
+                                },
+                                {
+                                    label: 'Investido',
+                                    data: [bal.investedAmount],
+                                    backgroundColor: '#1a160c',
+                                    borderColor: '#D4AF37',
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            indexAxis: 'y', 
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { 
+                                legend: { position: 'bottom', labels: {color: '#71717a', boxWidth: 12} },
+                                tooltip: {
+                                    backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1,
+                                    callbacks: { label: (ctx) => ctx.dataset.label + ': ' + fmtCurrency(ctx.raw) }
+                                }
+                            },
+                            scales: {
+                                x: { stacked: true, display: false },
+                                y: { stacked: true, display: false }
+                            }
+                        }
+                    });
+                }
+            },
+
+            // --- TEMPLATES HTML ---
+            views: {
+                principal() {
+                    const uId = state.auth.id;
+                    const bal = state.balances[uId];
+                    const totalWealth = bal.availableCash + bal.investedAmount;
+                    const exclusiveOps = state.marketOps.filter(o => o.type === 'exclusive');
+                    const badDebt = app.calculateBadDebtPercentage(uId);
+                    const myPortfolio = state.portfolio.filter(p => p.userId === uId);
+                    
+                    return `
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl lg:col-span-2">
+                                <div class="flex justify-between items-start mb-8">
+                                    <div>
+                                        <h2 class="text-xs uppercase tracking-widest text-zinc-500 font-semibold mb-2">Património Total na Plataforma</h2>
+                                        <div class="text-5xl font-light tracking-tight text-white">${fmtCurrency(totalWealth)}</div>
+                                    </div>
+                                    <div class="text-right flex flex-col items-end gap-2">
+                                        <div class="flex space-x-2 mt-2">
+                                            <button onclick="app.openModal('withdraw')" class="flex items-center px-4 py-2 bg-transparent border border-white text-white hover:bg-white hover:text-black text-xs font-bold uppercase tracking-wider rounded transition-colors">
+                                                <i data-lucide="arrow-down" class="w-4 h-4 mr-2"></i> Saque
+                                            </button>
+                                            <button onclick="app.openModal('deposit')" class="flex items-center px-4 py-2 bg-[#D4AF37] hover:bg-[#f0cc5e] text-black text-xs font-bold uppercase tracking-wider rounded transition-colors">
+                                                <i data-lucide="wallet" class="w-4 h-4 mr-2"></i> Aporte
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 pt-6 border-t border-[#222]">
+                                    <div>
+                                        <p class="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-semibold">Capital Investido (Ativo)</p>
+                                        <p class="text-xl font-light text-zinc-200">${fmtCurrency(bal.investedAmount)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-semibold">Disponível (Uso Imediato)</p>
+                                        <p class="text-xl font-light text-[#D4AF37]">${fmtCurrency(bal.availableCash)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl flex flex-col justify-between">
+                                <div>
+                                    <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6 flex items-center">
+                                        <i data-lucide="activity" class="w-4 h-4 mr-2"></i> Status do Portfólio
+                                    </h3>
+                                    <div class="space-y-6">
+                                        <div class="flex justify-between items-end border-b border-[#222] pb-4">
+                                            <span class="text-zinc-400 text-sm">Operações Ativas</span>
+                                            <span class="text-xl text-white font-light">${myPortfolio.filter(p => p.status === 'Ativo' || p.status === 'Em Atraso').length}</span>
+                                        </div>
+                                        <div class="flex justify-between items-end pt-2">
+                                            <span class="${badDebt > 0 ? 'text-red-500' : 'text-[#D4AF37]'} text-sm font-medium">Inadimplência Real</span>
+                                            <span class="text-2xl ${badDebt > 0 ? 'text-red-500' : 'text-[#D4AF37]'} font-light">${badDebt.toFixed(1).replace('.',',')}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-end mb-6">
+                                <div>
+                                    <h3 class="text-lg font-light text-white">Deal Flow Exclusivo (Tempo Real)</h3>
+                                    <p class="text-xs text-zinc-500 mt-1">Oportunidades com tickets fechados (Aprovadas pela Gestão).</p>
+                                </div>
+                            </div>
+                            ${exclusiveOps.length === 0 ? 
+                                `<div class="text-center py-12 border border-[#222] border-dashed rounded-xl"><p class="text-zinc-500 animate-pulse">A pesquisar operações exclusivas no mercado...</p></div>` :
+                                `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${exclusiveOps.map(op => `
+                                        <div class="bg-gradient-to-b from-[#141414] to-[#0a0a0a] border border-[#D4AF37]/30 hover:border-[#D4AF37] transition-all rounded-xl p-6 group flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex justify-between items-start mb-4">
+                                                    <span class="text-xs uppercase tracking-wider text-[#D4AF37] font-semibold"><i data-lucide="star" class="w-3 h-3 inline mr-1"></i> ${op.setor}</span>
+                                                    <span class="bg-[#1a1a1a] text-zinc-300 text-[10px] px-2 py-1 rounded border border-[#333]">Score: ${op.score}</span>
+                                                </div>
+                                                <h4 class="text-3xl font-light text-white mb-1">${op.taxa}% <span class="text-sm text-zinc-500">a.a.</span></h4>
+                                                
+                                                <div class="space-y-3 mt-6 mb-6">
+                                                    <div class="flex justify-between text-xs border-b border-[#222] pb-2">
+                                                        <span class="text-zinc-500">Ticket Único Exclusivo</span>
+                                                        <span class="text-[#D4AF37] font-bold text-sm">${fmtCurrency(op.ticket)}</span>
+                                                    </div>
+                                                    <div class="flex justify-between text-xs border-b border-[#222] pb-2">
+                                                        <span class="text-zinc-500">Garantia</span>
+                                                        <span class="text-zinc-300 text-right w-32 truncate" title="${op.garantias}">${op.garantias}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button onclick="app.openModal('invest', ${op.id})" class="w-full py-3 mt-auto bg-[#D4AF37] text-black hover:bg-[#f0cc5e] text-xs uppercase tracking-wider font-bold transition-colors rounded">
+                                                Estruturar Operação
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>`
+                            }
+                        </div>
+                    `;
+                },
+
+                market() {
+                    const variableOps = state.marketOps.filter(o => o.type === 'variable');
+                    return `
+                        <div>
+                            <div class="flex justify-between items-end mb-6 border-b border-[#1a1a1a] pb-4">
+                                <div>
+                                    <h3 class="text-2xl font-light text-white">Mercado Aberto (Tempo Real)</h3>
+                                    <p class="text-sm text-zinc-500 mt-1">Defina o montante que deseja alocar (a partir do ticket mínimo).</p>
+                                </div>
+                            </div>
+                            
+                            ${variableOps.length === 0 ? 
+                                `<div class="text-center py-12 border border-[#222] border-dashed rounded-xl"><p class="text-zinc-500 animate-pulse">A gerar novas ofertas de mercado...</p></div>` :
+                                `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    ${variableOps.map(op => `
+                                        <div class="bg-[#101010] hover:bg-[#141414] border border-[#222] hover:border-[#444] transition-all rounded-xl p-5 flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex justify-between items-start mb-4">
+                                                    <span class="text-xs uppercase tracking-wider text-zinc-300 font-semibold">${op.setor}</span>
+                                                    <span class="bg-[#1a1a1a] text-zinc-300 text-[10px] px-2 py-1 rounded border border-[#333]">Risco: ${op.risco}</span>
+                                                </div>
+                                                <h4 class="text-2xl font-light text-white mb-1">${op.taxa}% <span class="text-sm text-zinc-500">a.a.</span></h4>
+                                                
+                                                <div class="space-y-3 mt-6 mb-6">
+                                                    <div class="flex justify-between text-xs border-b border-[#222] pb-2">
+                                                        <span class="text-zinc-500">Ticket Mínimo</span>
+                                                        <span class="text-white font-medium">${fmtCurrency(op.minTicket)}</span>
+                                                    </div>
+                                                    <div class="flex justify-between text-xs border-b border-[#222] pb-2">
+                                                        <span class="text-zinc-500">Garantia</span>
+                                                        <span class="text-zinc-300 text-right w-32 truncate" title="${op.garantias}">${op.garantias}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button onclick="app.openModal('invest', ${op.id})" class="w-full py-2 mt-auto bg-transparent border border-zinc-500 text-zinc-300 hover:bg-white hover:text-black hover:border-white text-xs uppercase tracking-wider transition-colors rounded">
+                                                Definir Aporte
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>`
+                            }
+                        </div>
+                    `;
+                },
+
+                activeOps() {
+                    const uId = state.auth.id;
+                    const myPortfolio = state.portfolio.filter(p => p.userId === uId);
+
+                    let rows = '';
+                    if (myPortfolio.length === 0) {
+                        rows = `<tr><td colspan="5" class="py-8 text-center text-zinc-500">Nenhuma operação.</td></tr>`;
+                    } else {
+                        rows = myPortfolio.map(item => {
+                            let statusClass = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+                            let statusText = item.status;
+
+                            if (item.status === 'Aguardando Gerente') {
+                                statusClass = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+                            } else if (item.status === 'Em Atraso') {
+                                statusClass = 'bg-red-500/10 text-red-500 border-red-500/20';
+                            }
+
+                            return `
+                                <tr class="border-b border-[#1a1a1a] hover:bg-[#141414] transition-colors">
+                                    <td class="py-4 font-medium text-white">${item.setor}</td>
+                                    <td class="py-4 text-[#D4AF37]">
+                                        ${fmtCurrency(item.ticketAtual)}
+                                        <div class="text-[10px] text-zinc-500">Original: ${fmtCurrency(item.ticketOriginal)}</div>
+                                    </td>
+                                    <td class="py-4">${item.taxaExibicao}</td>
+                                    <td class="py-4 text-zinc-400">
+                                        ${item.proximoPgto} 
+                                        ${item.proximoPgtoRaw ? `<span class="text-[10px] block">Restam: ${item.parcelasRestantes} pagamentos</span>` : ''}
+                                    </td>
+                                    <td class="py-4 text-right">
+                                        <span class="text-xs px-2 py-1 rounded border ${statusClass}">
+                                            ${statusText}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+
+                    return `
+                        <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold">A Sua Carteira Ativa</h3>
+                                <span class="text-xs text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">A receber Amortização + Juros Quinzenalmente</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-[#222] text-xs uppercase tracking-wider text-zinc-500">
+                                            <th class="pb-3 font-medium">Operação</th>
+                                            <th class="pb-3 font-medium">Ticket Restante</th>
+                                            <th class="pb-3 font-medium">Retorno Líquido</th>
+                                            <th class="pb-3 font-medium">Próximo Vencimento</th>
+                                            <th class="pb-3 font-medium text-right">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-sm text-zinc-300">
+                                        ${rows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                },
+
+                history() {
+                    const uId = state.auth.id;
+                    const myHistory = state.history.filter(h => h.userId === uId);
+
+                    let rows = '';
+                    if (myHistory.length === 0) {
+                        rows = `<p class="text-zinc-500 text-sm py-4">Sem histórico de movimentações.</p>`;
+                    } else {
+                        rows = myHistory.map(tx => `
+                            <div class="flex items-center justify-between p-4 bg-[#141414] border border-[#222] rounded-lg">
+                                <div class="flex items-center space-x-4">
+                                    <div class="p-2 rounded-full ${tx.isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-400'}">
+                                        <i data-lucide="${tx.isPositive ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-white">${tx.type}</p>
+                                        <p class="text-xs text-zinc-500">${tx.desc} • ${fmtDate(tx.date)}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right font-medium ${tx.isPositive ? 'text-emerald-500' : 'text-white'}">
+                                    ${tx.isPositive ? '+' : '-'}${fmtCurrency(tx.amount)}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    return `
+                        <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
+                            <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Extrato de Movimentações</h3>
+                            <div class="space-y-4">
+                                ${rows}
+                            </div>
+                        </div>
+                    `;
+                },
+
+                analytics() {
+                    const uId = state.auth.id;
+                    const myPortfolio = state.portfolio.filter(p => p.userId === uId);
+                    const bal = state.balances[uId];
+
+                    let barContent = myPortfolio.length === 0 && bal.availableCash === 0
+                        ? `<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">Sem saldo</div>` 
+                        : `<canvas id="wealthBarChart"></canvas>`;
+
+                    let lineContent = myPortfolio.length === 0 
+                        ? `<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">Invista para ver projeções Curvadas</div>` 
+                        : `<canvas id="flowLineChart"></canvas>`;
+
+                    return `
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
+                                <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Evolução do Património Global</h3>
+                                <div class="h-64 w-full relative">
+                                    ${barContent}
+                                </div>
+                            </div>
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
+                                <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Curva de Projeção de Juros (Curto Prazo)</h3>
+                                <div class="h-64 w-full relative">
+                                    ${lineContent}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                },
+
+                reports() {
+                    const reps = [
+                        { id: 'irpf', title: 'Informe de Rendimentos 2025', desc: 'Gerar folha oficial para Imposto de Renda.' },
+                        { id: 'gerencial', title: 'Relatório Gerencial da Carteira', desc: 'Análise de Juros, Taxas Pagas e Retorno.' },
+                        { id: 'extrato', title: 'Extrato Consolidado', desc: 'Folha de auditoria completa de aportes.' }
+                    ];
+
+                    return `
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            ${reps.map(rep => `
+                                <div onclick="app.downloadReport('${rep.id}')" class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl hover:border-[#D4AF37] transition-colors cursor-pointer group">
+                                    <i data-lucide="printer" class="w-8 h-8 text-[#D4AF37] mb-4 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                                    <h4 class="text-white font-medium mb-1">${rep.title}</h4>
+                                    <p class="text-xs text-zinc-500 mb-6">${rep.desc}</p>
+                                    <button class="text-xs uppercase tracking-wider text-[#D4AF37] group-hover:text-[#f0cc5e] flex items-center">
+                                        <i data-lucide="external-link" class="w-3 h-3 mr-2"></i> Abrir & Imprimir PDF
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                },
+
+                managerOps() {
+                    let opsRows = '';
+                    if (state.pendingOps.length === 0) {
+                        opsRows = `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Originação livre de pendências.</p></div>`;
+                    } else {
+                        opsRows = state.pendingOps.map(op => `
+                            <div class="flex justify-between items-center p-4 bg-[#161616] border border-[#222] rounded-lg">
+                                <div>
+                                    <div class="flex items-center space-x-3 mb-1">
+                                        <h4 class="text-white font-medium">${op.setor}</h4>
+                                        <span class="text-[10px] uppercase tracking-wider bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">Risco em Análise</span>
+                                    </div>
+                                    <p class="text-xs text-zinc-400">Tipo: ${op.type === 'exclusive' ? 'Ticket Fixo Exclusivo' : 'Aberto'} • Taxa Alvo: ${op.taxa}% • Garantia: ${op.garantias}</p>
+                                </div>
+                                <div class="flex space-x-3">
+                                    <button class="px-3 py-1.5 border border-[#333] text-zinc-400 hover:text-white text-xs rounded transition-colors">Rejeitar</button>
+                                    <button onclick="app.handleMarketApproval(${op.id})" class="px-3 py-1.5 bg-[#D4AF37] text-black font-semibold text-xs rounded hover:bg-[#f0cc5e] flex items-center transition-colors">
+                                        <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i> Publicar
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    let txRows = '';
+                    if (state.pendingTransactions.length === 0) {
+                        txRows = `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Sem movimentações aguardando aprovação.</p></div>`;
+                    } else {
+                        txRows = state.pendingTransactions.map(tx => `
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-r from-[#1a160c] to-[#101010] border border-[#D4AF37]/20 rounded-lg">
+                                <div>
+                                    <div class="flex items-center space-x-3 mb-1">
+                                        <h4 class="text-white font-medium">${tx.client}</h4>
+                                        <span class="text-[10px] uppercase tracking-wider bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded">${tx.type === 'invest' ? 'Alocação de Capital' : 'Pedido de Saque'}</span>
+                                    </div>
+                                    <p class="text-xs text-zinc-400">${tx.desc} • Valor: <span class="text-white font-bold">${fmtCurrency(tx.amount)}</span></p>
+                                </div>
+                                <div class="flex space-x-3">
+                                    <button onclick="app.handleClientTransaction(${tx.id}, false)" class="px-3 py-1.5 border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs rounded transition-colors">Negar</button>
+                                    <button onclick="app.handleClientTransaction(${tx.id}, true)" class="px-3 py-1.5 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors">
+                                        <i data-lucide="check" class="w-3 h-3 mr-1"></i> Aprovar
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    return `
+                        <div class="bg-[#101010] border border-[#D4AF37]/50 shadow-[0_0_15px_rgba(212,175,55,0.05)] rounded-xl p-6 mb-8">
+                            <h3 class="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-6 flex items-center">
+                                <i data-lucide="users" class="w-4 h-4 mr-2"></i> Aprovações de Movimentações (Clientes)
+                            </h3>
+                            <div class="space-y-4">
+                                ${txRows}
+                            </div>
+                        </div>
+
+                        <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl mb-6">
+                            <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6 flex items-center">
+                                <i data-lucide="building" class="w-4 h-4 mr-2"></i> Mesa de Originação (Mercado)
+                            </h3>
+                            <div class="space-y-4">
+                                ${opsRows}
+                            </div>
+                        </div>
+                    `;
+                },
+
+                managerClients() {
+                    const clients = [
+                        { id: '20053214781', name: 'Nicholas' },
+                        { id: '12062005', name: 'Bárbara Colleman' }
+                    ];
+
+                    let html = '';
+                    clients.forEach(client => {
+                        const activeClientOps = state.portfolio.filter(p => p.status !== 'Aguardando Gerente' && p.userId === client.id);
+                        const bal = state.balances[client.id] || { availableCash: 0, investedAmount: 0 };
+                        
+                        let rows = '';
+                        if (activeClientOps.length === 0) {
+                            rows = `<div class="text-center py-6"><p class="text-zinc-500 text-sm">O cliente não possui parcelas ativas.</p></div>`;
+                        } else {
+                            rows = activeClientOps.map(op => {
+                                const devolucaoPrincipal = op.ticketOriginal / 24;
+                                const jurosIntegrais = op.ticketOriginal * op.taxaQuinzenalDecimal;
+                                
+                                const inicioCiclo = new Date(op.proximoPgtoRaw.getTime() - 15 * 86400000);
+                                let diasDecorridos = Math.round((state.currentDate - inicioCiclo) / 86400000);
+                                if (diasDecorridos < 1) diasDecorridos = 1;
+                                
+                                const jurosProporcionais = jurosIntegrais * (diasDecorridos / 15);
+                                const parcelaHoje = devolucaoPrincipal + jurosProporcionais;
+                                
+                                const isLate = state.currentDate > op.proximoPgtoRaw;
+                                const isEarly = diasDecorridos < 15;
+                                
+                                let labelJuros = '';
+                                if (isEarly) {
+                                    labelJuros = `<span class="text-emerald-500 text-[10px] ml-2">(-${fmtCurrency(jurosIntegrais - jurosProporcionais)} desconto antecipação)</span>`;
+                                } else if (isLate) {
+                                    labelJuros = `<span class="text-red-500 text-[10px] ml-2">(+${fmtCurrency(jurosProporcionais - jurosIntegrais)} mora diária)</span>`;
+                                }
+                                
+                                return `
+                                <div class="flex justify-between items-center p-4 bg-[#161616] border border-[${isLate ? '#ef4444' : '#333'}] rounded-lg">
+                                    <div>
+                                        <div class="flex items-center space-x-3 mb-1">
+                                            <h4 class="text-white font-medium">${op.setor}</h4>
+                                            <span class="text-[10px] uppercase tracking-wider ${isLate ? 'bg-red-500/20 text-red-500' : 'bg-zinc-800 text-zinc-400'} px-2 py-0.5 rounded">${isLate ? 'Vencido / Em Atraso' : op.status}</span>
+                                        </div>
+                                        <p class="text-xs text-zinc-400">Data Base Vencimento: <span class="text-[${isLate ? '#ef4444' : 'white'}] font-bold">${op.proximoPgto}</span></p>
+                                        <p class="text-xs text-zinc-400 mt-1">Valor se processado HOJE: <span class="text-[#D4AF37] font-bold text-sm">${fmtCurrency(parcelaHoje)}</span>${labelJuros}</p>
+                                    </div>
+                                    <div class="flex space-x-3">
+                                        <button onclick="app.handleManagerManualPayment(${op.id})" class="px-4 py-2 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors shadow-lg" title="Pagar e Atualizar Vencimento">
+                                            <i data-lucide="check-circle-2" class="w-4 h-4 mr-2"></i> Processar Pagamento
+                                        </button>
+                                    </div>
+                                </div>
+                            `}).join('');
+                        }
+
+                        html += `
+                            <div class="mb-6 flex items-center bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                <div class="w-12 h-12 rounded-full bg-[#D4AF37]/20 flex items-center justify-center mr-4 border border-[#D4AF37]">
+                                    <i data-lucide="user" class="w-6 h-6 text-[#D4AF37]"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-light text-white">Cliente: ${client.name}</h3>
+                                    <p class="text-xs text-zinc-500">ID: ${client.id} | Património Atual: ${fmtCurrency(bal.availableCash + bal.investedAmount)}</p>
+                                </div>
+                            </div>
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl mb-8">
+                                <h3 class="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-6 flex items-center">
+                                    <i data-lucide="calendar-clock" class="w-4 h-4 mr-2"></i> Gestão de Recebíveis do Cliente
+                                </h3>
+                                <div class="space-y-4">
+                                    ${rows}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    return html;
+                }
+            }
+        };
+
+        // Iniciar aplicação
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
