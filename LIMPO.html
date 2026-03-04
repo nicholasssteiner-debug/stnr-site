@@ -365,7 +365,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // NOVO: Adicionado updateDoc e deleteField para correções atômicas de segurança
+        import { getFirestore, doc, setDoc, updateDoc, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Mapeamento e Configuração de Alas e Quartos (Com Ícones Minimalistas de Carros Lucide)
         const WINGS = [
@@ -478,37 +479,15 @@
         state.selectedRoomId = state.rooms[0].id;
         state.dashSelectedRoomId = state.rooms[0].id;
 
-        // FIREBASE
-        const saveSpecificEval = async (roomId, date) => {
+        // FIREBASE 
+        // Esta função "genérica" agora é usada de forma segura com merge
+        const saveState = async () => {
             if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
-
-            const evalData = state.evaluations[roomId]?.[date];
-            if (!evalData) return;
-
             try {
                 const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
-                // O { merge: true } garante que APENAS este quarto e esta data sejam atualizados no banco,
-                // sem apagar as edições que outras pessoas estão fazendo em outros quartos ao mesmo tempo.
-                await setDoc(docRef, {
-                    evaluations: {
-                        [roomId]: {
-                            [date]: evalData
-                        }
-                    }
-                }, { merge: true });
+                await setDoc(docRef, { evaluations: state.evaluations }, { merge: true });
             } catch (error) {
-                console.error("Erro ao salvar avaliação específica:", error);
-            }
-        };
-
-        const saveFullState = async () => {
-            if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
-            
-            try {
-                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
-                await setDoc(docRef, { evaluations: state.evaluations });
-            } catch (error) {
-                console.error("Erro ao salvar estado completo:", error);
+                console.error("Erro ao salvar:", error);
             }
         };
 
@@ -520,31 +499,9 @@
             
             unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    const incomingData = docSnap.data().evaluations || {};
-
-                    // Proteção de digitação: preserva o que o usuário local está escrevendo AGORA
-                    // para evitar que a atualização de outra pessoa apague o texto dele na tela
-                    const obsEl = document.getElementById('obs-textarea');
-                    let localObs = null;
-                    let activeRoom = null;
-                    let activeDate = state.currentDate;
-
-                    if (obsEl && document.activeElement === obsEl && state.view === 'evaluation') {
-                        activeRoom = obsEl.dataset.roomId || state.selectedRoomId;
-                        localObs = obsEl.value;
-                    }
-
-                    state.evaluations = incomingData;
-
-                    // Restaura a observação local no estado se ele estava digitando
-                    if (activeRoom && localObs !== null) {
-                        if (!state.evaluations[activeRoom]) state.evaluations[activeRoom] = {};
-                        if (!state.evaluations[activeRoom][activeDate]) state.evaluations[activeRoom][activeDate] = { score: null, criteria: [], obs: "" };
-                        state.evaluations[activeRoom][activeDate].obs = localObs;
-                    }
-
+                    state.evaluations = docSnap.data().evaluations || {};
                 } else if (activeUser && activeUser.role === 'admin') {
-                    saveFullState(); 
+                    saveState(); 
                 }
                 updateUI();
             });
@@ -658,10 +615,28 @@
             return state.evaluations[roomId][date] || { score: null, criteria: [], obs: "" };
         };
 
-        const setRoomEval = (roomId, date, dataObj) => {
+        // FIX PROTEÇÃO DE DADOS: O uso de atualização atômica e deep merge garante 
+        // que salvar o "Quarto X Hoje" NUNCA apague o "Quarto X Amanhã" de outro colega.
+        const setRoomEval = async (roomId, date, dataObj) => {
             if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
             state.evaluations[roomId][date] = { ...getRoomEval(roomId, date), ...dataObj };
-            saveSpecificEval(roomId, date);
+            
+            if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
+            try {
+                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                
+                // Manda para o Firebase a ordem estrita para atualizar APENAS a ramificação deste quarto neste dia.
+                await setDoc(docRef, { 
+                    evaluations: { 
+                        [roomId]: { 
+                            [date]: state.evaluations[roomId][date] 
+                        } 
+                    } 
+                }, { merge: true });
+
+            } catch (error) {
+                console.error("Erro ao salvar avaliação:", error);
+            }
         };
 
         const getScoreColor = (score, isBorder = false) => {
@@ -987,7 +962,7 @@
 
         const renderRaces = (isAnnual, currentMonthPrefix, currentYear) => {
             
-            // 1. Corrida das Alas (AGORA USANDO O SISTEMA EM CASCATA E PERÍODO CORRETO)
+            // 1. Corrida das Alas
             const wingsData = [];
             WINGS.forEach(wing => {
                 let wTotalSc = 0, wCountSc = 0;
@@ -1049,7 +1024,7 @@
                 `;
             });
 
-            // 2. Corrida dos Quartos da Ala (AGORA USANDO O SISTEMA EM CASCATA)
+            // 2. Corrida dos Quartos da Ala
             const raceWingSelect = document.getElementById('race-wing-select');
             if (raceWingSelect.options.length === 0) {
                 WINGS.forEach(w => {
@@ -1456,26 +1431,34 @@
                 }
             });
 
-            // FIX DATA LOSS: Event Listener de Input para as observações que salva enquanto digita
+            // FIX DATA LOSS: Event Listener atômico para o campo de texto
             const obsEl = document.getElementById('obs-textarea');
             let typingTimeout;
             if (obsEl) {
                 obsEl.addEventListener('input', (e) => {
                     if (!activeUser || activeUser.role !== 'admin') return;
                     
-                    // Garante a sala usando o dataset injetado
                     const roomId = obsEl.dataset.roomId || state.selectedRoomId;
                     const date = state.currentDate;
                     
+                    // Atualiza o state local IMEDIATAMENTE para não ser sobreescrito
                     if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
                     if (!state.evaluations[roomId][date]) state.evaluations[roomId][date] = { score: null, criteria: [], obs: "" };
-                    
                     state.evaluations[roomId][date].obs = e.target.value;
 
-                    // Salva no banco discretamente 1 segundo após você parar de digitar
+                    // Salva usando lógica atômica em segundo plano, 1 segundo após terminar de digitar
                     clearTimeout(typingTimeout);
-                    typingTimeout = setTimeout(() => {
-                        saveSpecificEval(roomId, date);
+                    typingTimeout = setTimeout(async () => {
+                        try {
+                            const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                            await setDoc(docRef, { 
+                                evaluations: { 
+                                    [roomId]: { 
+                                        [date]: state.evaluations[roomId][date] 
+                                    } 
+                                } 
+                            }, { merge: true });
+                        } catch(err) { console.error(err); }
                     }, 1000); 
                 });
             }
@@ -1522,19 +1505,30 @@
             modalClearDay.classList.add('hidden');
         });
 
-        document.getElementById('btn-confirm-clear').addEventListener('click', () => {
+        // FIX PROTEÇÃO DE DADOS: O botão de apagar também passa a usar deleteField do Firebase
+        document.getElementById('btn-confirm-clear').addEventListener('click', async () => {
             const passInput = document.getElementById('clear-password').value;
             if (passInput === activeUser.pass) {
                 let modificationsMade = false;
+                const updates = {};
+                
                 Object.keys(state.evaluations).forEach(roomId => {
                     if (state.evaluations[roomId][state.currentDate]) {
+                        // Deleta do estado local
                         delete state.evaluations[roomId][state.currentDate];
+                        // Agenda para deletar do Firebase de forma atômica
+                        updates[`evaluations.${roomId}.${state.currentDate}`] = deleteField();
                         modificationsMade = true;
                     }
                 });
                 
                 if (modificationsMade) {
-                    saveFullState();
+                    try {
+                        const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                        await updateDoc(docRef, updates);
+                    } catch(e) {
+                        console.error("Erro ao limpar:", e);
+                    }
                     updateUI();
                 }
                 
