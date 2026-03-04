@@ -30,11 +30,11 @@
             <form id="login-form" class="space-y-5">
                 <div>
                     <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2">Identificação (CPF / ID)</label>
-                    <input type="text" id="login-user" class="w-full bg-[#111] border border-[#222] rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors" placeholder="Ex: 20053214781 ou Gerente" required>
+                    <input type="text" id="login-user" class="w-full bg-[#111] border border-[#222] rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors" required>
                 </div>
                 <div>
                     <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2">Senha de Acesso</label>
-                    <input type="password" id="login-pass" class="w-full bg-[#111] border border-[#222] rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors" placeholder="••••••••" required>
+                    <input type="password" id="login-pass" class="w-full bg-[#111] border border-[#222] rounded px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors" required>
                 </div>
                 <p id="login-error" class="text-red-500 text-xs text-center hidden">Credenciais inválidas. Tente novamente.</p>
                 <button type="submit" id="btn-login" class="w-full py-3 mt-4 bg-[#D4AF37] text-black font-semibold uppercase tracking-wider text-xs rounded hover:bg-[#f0cc5e] transition-colors flex justify-center items-center">
@@ -1523,6 +1523,7 @@
                                         </div>
                                         <p class="text-xs text-zinc-400">Data Base Vencimento: <span class="text-[${isLate ? '#ef4444' : 'white'}] font-bold">${op.proximoPgto}</span></p>
                                         <p class="text-xs text-zinc-400 mt-1">Valor se processado HOJE: <span class="text-[#D4AF37] font-bold text-sm">${fmtCurrency(parcelaHoje)}</span>${labelJuros}</p>
+                                        <p class="text-xs text-zinc-400 mt-1">Parcelas Restantes: <span class="text-white font-bold">${op.parcelasRestantes}</span></p>
                                     </div>
                                     <div class="flex space-x-3">
                                         <button onclick="app.handleManagerManualPayment(${op.id})" class="px-4 py-2 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors shadow-lg" title="Pagar e Atualizar Vencimento">
