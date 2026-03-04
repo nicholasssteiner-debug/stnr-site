@@ -220,7 +220,6 @@
                         <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <i data-lucide="message-square" class="w-4 h-4 text-purple-400"></i> Observações e Melhorias
                         </h3>
-                        <!-- Textarea modificado para evitar perda de dados durante a digitação -->
                         <textarea id="obs-textarea" rows="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all resize-none" placeholder="Descreva o estado do quarto, problemas encontrados ou orientações..."></textarea>
                     </div>
 
@@ -365,10 +364,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // NOVO: Adicionado updateDoc e deleteField para correções atômicas de segurança
         import { getFirestore, doc, setDoc, updateDoc, deleteField, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Mapeamento e Configuração de Alas e Quartos (Com Ícones Minimalistas de Carros Lucide)
+        // Mapeamento e Configuração de Alas e Quartos
         const WINGS = [
             { id: 'w1', name: 'Lamborghini', icon: 'car', color: 'text-yellow-400', rooms: ['room-101', 'room-102', 'room-103', 'room-104', 'room-105', 'room-106', 'room-107', 'room-108'] },
             { id: 'w2', name: 'MC Laren', icon: 'car', color: 'text-orange-400', rooms: ['room-201', 'room-202', 'room-203', 'room-204', 'room-205', 'room-206', 'room-207', 'room-208'] },
@@ -383,7 +381,7 @@
         let state = {
             view: 'evaluation', 
             dashPeriod: 'monthly',
-            rooms: [], // Popula dinamicamente
+            rooms: [], 
             expandedWings: {}, 
             selectedRoomId: null,
             dashSelectedRoomId: null,
@@ -392,7 +390,6 @@
             evaluations: {} 
         };
 
-        // Popula os Quartos em uma lista plana para facilitar consultas
         WINGS.forEach(wing => {
             wing.rooms.forEach(roomId => {
                 const roomNum = roomId.split('-')[1];
@@ -400,14 +397,12 @@
             });
         });
 
-        // Configuração Dinâmica de Usuários
         const USERS = {
             'steiner': { pass: '626233', role: 'admin', display: 'Steiner' },
             'preceptoria': { pass: 'Iap@iasd', role: 'admin', display: 'Preceptoria' },
             'monitor': { pass: 'rmasc@iasd', role: 'admin', display: 'Monitor' }
         };
 
-        // Cria usuários pros alunos: Login = Número Quarto | Senha = Nome da ala (minúsculo e sem espaços)
         WINGS.forEach(wing => {
             const passwordStr = wing.name.toLowerCase().replace(/\s+/g, '');
             wing.rooms.forEach(roomId => {
@@ -479,18 +474,6 @@
         state.selectedRoomId = state.rooms[0].id;
         state.dashSelectedRoomId = state.rooms[0].id;
 
-        // FIREBASE 
-        // Esta função "genérica" agora é usada de forma segura com merge
-        const saveState = async () => {
-            if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
-            try {
-                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
-                await setDoc(docRef, { evaluations: state.evaluations }, { merge: true });
-            } catch (error) {
-                console.error("Erro ao salvar:", error);
-            }
-        };
-
         const loadStateFromFirebase = () => {
             if (!auth.currentUser) return;
             if (unsubscribeSnapshot) unsubscribeSnapshot();
@@ -499,9 +482,25 @@
             
             unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    state.evaluations = docSnap.data().evaluations || {};
+                    const serverData = docSnap.data().evaluations || {};
+
+                    // PRESERVAÇÃO DE DIGITAÇÃO: Protege o texto local enquanto o Firestore sincroniza
+                    const obsEl = document.activeElement;
+                    if (obsEl && obsEl.id === 'obs-textarea' && state.view === 'evaluation') {
+                        const rId = obsEl.dataset.roomId || state.selectedRoomId;
+                        const dStr = obsEl.dataset.date || state.currentDate;
+                        if (serverData[rId] && serverData[rId][dStr]) {
+                            serverData[rId][dStr].obs = obsEl.value; 
+                        } else if (!serverData[rId]) {
+                            serverData[rId] = { [dStr]: { score: null, criteria: [], obs: obsEl.value } };
+                        } else {
+                            serverData[rId][dStr] = { score: null, criteria: [], obs: obsEl.value };
+                        }
+                    }
+
+                    state.evaluations = serverData;
                 } else if (activeUser && activeUser.role === 'admin') {
-                    saveState(); 
+                    setDoc(docRef, { evaluations: {} }); 
                 }
                 updateUI();
             });
@@ -551,7 +550,7 @@
                     document.getElementById('btn-open-sidebar').classList.add('hidden');
                 }
 
-                document.getElementById('btn-toggle-view').classList.remove('hidden'); // Liberado para todos navegarem pros relatórios
+                document.getElementById('btn-toggle-view').classList.remove('hidden');
                 syncToggleButton();
 
                 try {
@@ -615,9 +614,11 @@
             return state.evaluations[roomId][date] || { score: null, criteria: [], obs: "" };
         };
 
-        // FIX PROTEÇÃO DE DADOS: O uso de atualização atômica e deep merge garante 
-        // que salvar o "Quarto X Hoje" NUNCA apague o "Quarto X Amanhã" de outro colega.
+        // FIX PROTEÇÃO DE DADOS 100% ATÔMICA: Usa updateDoc com dot-notation PROFUNDA.
+        // O Firebase vai alterar APENAS os campos exatos que foram passados. Ex: se mexeu na 'nota', ele altera só a 'nota'
+        // e deixa 'obs' e dias futuros/passados completamente intocados.
         const setRoomEval = async (roomId, date, dataObj) => {
+            // Atualiza localmente
             if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
             state.evaluations[roomId][date] = { ...getRoomEval(roomId, date), ...dataObj };
             
@@ -625,17 +626,22 @@
             try {
                 const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
                 
-                // Manda para o Firebase a ordem estrita para atualizar APENAS a ramificação deste quarto neste dia.
-                await setDoc(docRef, { 
-                    evaluations: { 
-                        [roomId]: { 
-                            [date]: state.evaluations[roomId][date] 
-                        } 
-                    } 
-                }, { merge: true });
+                // Cria atualizações apenas para as chaves específicas que vieram no dataObj
+                const updates = {};
+                Object.keys(dataObj).forEach(key => {
+                    updates[`evaluations.${roomId}.${date}.${key}`] = dataObj[key];
+                });
+                
+                await updateDoc(docRef, updates);
 
             } catch (error) {
-                console.error("Erro ao salvar avaliação:", error);
+                // Se der erro porque o documento ou o array central não existe, cria-se mesclando.
+                if (error.code === 'not-found') {
+                    const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                    await setDoc(docRef, { evaluations: { [roomId]: { [date]: state.evaluations[roomId][date] } } }, { merge: true });
+                } else {
+                    console.error("Erro ao salvar avaliação:", error);
+                }
             }
         };
 
@@ -676,26 +682,15 @@
             return streak;
         };
 
-        // Função universal de desempate em cascata para TUDO (Listas, Pódio e Corridas)
         const universalSortFn = (a, b) => {
-            // Joga quem não tem nota pro final
             if (a.score === null && b.score === null) return 0;
             if (a.score === null) return 1;
             if (b.score === null) return -1;
             
-            // Critério 0: Maior Nota (Score principal)
             if (b.score !== a.score) return b.score - a.score;
-
-            // Critério 1: Menos Pontos de Atenção (Infrações)
             if (a.criteriaCount !== b.criteriaCount) return a.criteriaCount - b.criteriaCount;
-
-            // Critério 2: Maior Média Histórica (Constância)
             if (b.avgToUse !== a.avgToUse) return b.avgToUse - a.avgToUse;
-
-            // Critério 3: Maior Sequência de Notas 10 (Streak)
             if (b.streak !== a.streak) return b.streak - a.streak;
-
-            // Critério Extra: Ordem Alfabética (Para ser 100% justo no empate técnico absoluto)
             return a.name.localeCompare(b.name); 
         };
         // --- FIM DAS FUNÇÕES AUXILIARES DE RANKING ---
@@ -783,7 +778,6 @@
             document.getElementById('summary-room-name').textContent = room.name;
             document.getElementById('summary-date').textContent = `Avaliação referente ao dia ${displayDate(state.currentDate)}`;
 
-            // Info de Ala pro Aluno (Mostra a qual ele pertence)
             const badgeEl = document.getElementById('student-wing-badge');
             if (activeUser && activeUser.role === 'student') {
                 const rWing = WINGS.find(w => w.id === room.wingId);
@@ -807,6 +801,7 @@
                 if (!isAdmin) btn.disabled = true;
                 if (isAdmin) {
                     btn.addEventListener('click', () => {
+                        // Salva APENAS o score
                         setRoomEval(state.selectedRoomId, state.currentDate, { score: i });
                         updateUI();
                     });
@@ -846,36 +841,37 @@
                         </div>
                     </div>
                     <div class="shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                        isActive ? 'border-cyan-400 bg-cyan-400 text-slate-900 shadow-[0_0_10px_rgba(34,211,238,0.4)]' : 'border-slate-700 text-transparent group-hover:border-slate-500'
-                    }">
-                        <i data-lucide="check" class="w-4 h-4"></i>
-                    </div>
-                `;
-                
-                if (!isAdmin) btn.disabled = true;
-                if (isAdmin) {
-                    btn.addEventListener('click', () => {
-                        let newCriteria = [...activeCriteria];
-                        if (isActive) newCriteria = newCriteria.filter(id => id !== crit.id);
-                        else newCriteria.push(crit.id);
-                        setRoomEval(state.selectedRoomId, state.currentDate, { criteria: newCriteria });
-                        updateUI();
-                    });
-                }
-                criteriaContainer.appendChild(btn);
-            });
-
-            const obsEl = document.getElementById('obs-textarea');
+                    isActive ? 'border-cyan-400 bg-cyan-400 text-slate-900 shadow-[0_0_10px_rgba(34,211,238,0.4)]' : 'border-slate-700 text-transparent group-hover:border-slate-500'
+                }">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                </div>
+            `;
             
-            // Só atualiza o texto se o admin não estiver com foco no campo 
-            // OU se ele tiver trocado para outro quarto na sidebar.
-            if (document.activeElement !== obsEl || obsEl.dataset.roomId !== state.selectedRoomId) {
-                obsEl.value = currentEval.obs || "";
-                obsEl.dataset.roomId = state.selectedRoomId; // Anota no DOM o quarto atual para não misturar
+            if (!isAdmin) btn.disabled = true;
+            if (isAdmin) {
+                btn.addEventListener('click', () => {
+                    let newCriteria = [...activeCriteria];
+                    if (isActive) newCriteria = newCriteria.filter(id => id !== crit.id);
+                    else newCriteria.push(crit.id);
+                    // Salva APENAS os criteria
+                    setRoomEval(state.selectedRoomId, state.currentDate, { criteria: newCriteria });
+                    updateUI();
+                });
             }
-            obsEl.disabled = !isAdmin;
+            criteriaContainer.appendChild(btn);
+        });
 
-            const advanceContainer = document.getElementById('advance-room-container');
+        const obsEl = document.getElementById('obs-textarea');
+        
+        // Só atualiza o texto do textarea se o admin não estiver ativamente digitando nele
+        if (document.activeElement !== obsEl || obsEl.dataset.roomId !== state.selectedRoomId || obsEl.dataset.date !== state.currentDate) {
+            obsEl.value = currentEval.obs || "";
+            obsEl.dataset.roomId = state.selectedRoomId; 
+            obsEl.dataset.date = state.currentDate;
+        }
+        obsEl.disabled = !isAdmin;
+
+        const advanceContainer = document.getElementById('advance-room-container');
             if (isAdmin) {
                 advanceContainer.classList.remove('hidden');
                 
@@ -976,13 +972,10 @@
                     const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
                     
                     Object.keys(roomEvals).forEach(date => {
-                        // Histórico anual para desempate
                         if (date.startsWith(currentYear) && roomEvals[date].score !== null) {
                             wTotalHist += roomEvals[date].score;
                             wCountHist++;
                         }
-                        
-                        // Soma os dados do período correto (Mensal ou Anual)
                         if (date.startsWith(periodPrefix) && roomEvals[date].score !== null) {
                             wTotalSc += roomEvals[date].score; wCountSc++;
                             wTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
@@ -1217,7 +1210,6 @@
                 }
             });
 
-            // Aplica Função Universal de Desempate
             data1.sort(universalSortFn);
             data2.sort(universalSortFn);
 
@@ -1240,7 +1232,6 @@
                         } else if (i === 2) { 
                             medalColorClass = 'text-amber-500'; bgClass = 'bg-amber-600/10 border-amber-600/30'; posText = '🥉'; 
                         } else if (d.score === 10) {
-                            // FIX: Destaque perfeito nota 10 (mesmo fora do Top 3)
                             bgClass = 'bg-yellow-400/5 border-yellow-400/20 shadow-[0_0_8px_rgba(250,204,21,0.05)]';
                             medalColorClass = 'text-yellow-400/70 font-black';
                             extraBadge = '<i data-lucide="star" class="w-3.5 h-3.5 text-yellow-400/80 fill-yellow-400/20 inline-block ml-1"></i>';
@@ -1431,7 +1422,7 @@
                 }
             });
 
-            // FIX DATA LOSS: Event Listener atômico para o campo de texto
+            // FIX DATA LOSS TEXTAREA: Salvamento usando caminho profundo do Firebase
             const obsEl = document.getElementById('obs-textarea');
             let typingTimeout;
             if (obsEl) {
@@ -1439,26 +1430,17 @@
                     if (!activeUser || activeUser.role !== 'admin') return;
                     
                     const roomId = obsEl.dataset.roomId || state.selectedRoomId;
-                    const date = state.currentDate;
+                    const date = obsEl.dataset.date || state.currentDate;
                     
-                    // Atualiza o state local IMEDIATAMENTE para não ser sobreescrito
+                    // Atualizamos o estado local imediatamente
                     if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
                     if (!state.evaluations[roomId][date]) state.evaluations[roomId][date] = { score: null, criteria: [], obs: "" };
                     state.evaluations[roomId][date].obs = e.target.value;
 
-                    // Salva usando lógica atômica em segundo plano, 1 segundo após terminar de digitar
+                    // Salvamento atômico agendado para atualizar SÓ a 'obs' no banco de dados.
                     clearTimeout(typingTimeout);
-                    typingTimeout = setTimeout(async () => {
-                        try {
-                            const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
-                            await setDoc(docRef, { 
-                                evaluations: { 
-                                    [roomId]: { 
-                                        [date]: state.evaluations[roomId][date] 
-                                    } 
-                                } 
-                            }, { merge: true });
-                        } catch(err) { console.error(err); }
+                    typingTimeout = setTimeout(() => {
+                        setRoomEval(roomId, date, { obs: e.target.value });
                     }, 1000); 
                 });
             }
@@ -1505,7 +1487,7 @@
             modalClearDay.classList.add('hidden');
         });
 
-        // FIX PROTEÇÃO DE DADOS: O botão de apagar também passa a usar deleteField do Firebase
+        // O botão de apagar também usa caminhos profundos atômicos com deleteField
         document.getElementById('btn-confirm-clear').addEventListener('click', async () => {
             const passInput = document.getElementById('clear-password').value;
             if (passInput === activeUser.pass) {
@@ -1514,9 +1496,7 @@
                 
                 Object.keys(state.evaluations).forEach(roomId => {
                     if (state.evaluations[roomId][state.currentDate]) {
-                        // Deleta do estado local
                         delete state.evaluations[roomId][state.currentDate];
-                        // Agenda para deletar do Firebase de forma atômica
                         updates[`evaluations.${roomId}.${state.currentDate}`] = deleteField();
                         modificationsMade = true;
                     }
