@@ -185,32 +185,34 @@
     <!-- LÓGICA FIREBASE E APLICAÇÃO -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Integração Dinâmica da Configuração do Firebase usando as variáveis do ambiente Canvas
-        let fbConfig = null;
-        try {
-            if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
-                fbConfig = JSON.parse(__firebase_config);
-            }
-        } catch(e) { 
-            console.warn("Configuração do Firebase não encontrada ou inválida.");
-        }
-            
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'aura_prive_demo';
+        // A SUA CONFIGURAÇÃO DO FIREBASE (level-up-c3f9b)
+        const fbConfig = {
+            apiKey: "AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA",
+            authDomain: "level-up-c3f9b.firebaseapp.com",
+            projectId: "level-up-c3f9b",
+            storageBucket: "level-up-c3f9b.firebasestorage.app",
+            messagingSenderId: "162788989046",
+            appId: "1:162788989046:web:8ab0d9ae8c3197a1352757",
+            measurementId: "G-FYNXYRLGBD"
+        };
         
         let db = null;
         let auth = null;
         let stateDocRef = null;
+        let analytics = null;
 
         if (fbConfig) {
             const firebaseApp = initializeApp(fbConfig);
+            analytics = getAnalytics(firebaseApp);
             db = getFirestore(firebaseApp);
             auth = getAuth(firebaseApp);
             
-            // Referência corrigida: doc() deve ter um número par de argumentos (Coleção -> Documento -> Coleção -> Documento)
-            stateDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'global_state', 'bank_state'); 
+            // Usando um caminho mais simples no SEU banco de dados
+            stateDocRef = doc(db, 'aura_prive_app', 'estado_global'); 
             
             // Expor globalmente para a aplicação usar
             window.firebaseDB = db;
@@ -309,12 +311,9 @@
                 // Inicialização Segura Firebase
                 if (auth && db) {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                        console.log("Firebase Auth Sucesso");
+                        // Conecta anonimamente no seu projeto
+                        await signInAnonymously(auth);
+                        console.log("Firebase Auth Sucesso (Seu Projeto)");
 
                         // Tenta puxar dados da nuvem. Se não houver, injeta os iniciais.
                         const docSnap = await getDoc(stateDocRef);
