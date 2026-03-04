@@ -482,6 +482,7 @@
             
             unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
+                    // BLINDAGEM: Usamos o fallback || {} exigido para evitar erros 
                     const serverData = docSnap.data().evaluations || {};
 
                     // PRESERVAÇÃO DE DIGITAÇÃO: Protege o texto local enquanto o Firestore sincroniza
@@ -489,18 +490,18 @@
                     if (obsEl && obsEl.id === 'obs-textarea' && state.view === 'evaluation') {
                         const rId = obsEl.dataset.roomId || state.selectedRoomId;
                         const dStr = obsEl.dataset.date || state.currentDate;
-                        if (serverData[rId] && serverData[rId][dStr]) {
-                            serverData[rId][dStr].obs = obsEl.value; 
-                        } else if (!serverData[rId]) {
-                            serverData[rId] = { [dStr]: { score: null, criteria: [], obs: obsEl.value } };
-                        } else {
-                            serverData[rId][dStr] = { score: null, criteria: [], obs: obsEl.value };
-                        }
+                        if (!serverData[rId]) serverData[rId] = {};
+                        if (!serverData[rId][dStr]) serverData[rId][dStr] = { score: null, criteria: [], obs: "" };
+                        serverData[rId][dStr].obs = obsEl.value; 
                     }
 
                     state.evaluations = serverData;
-                } else if (activeUser && activeUser.role === 'admin') {
-                    setDoc(docRef, { evaluations: {} }); 
+                } else {
+                    if (activeUser && activeUser.role === 'admin') {
+                        // Criação inicial do banco, se não existir
+                        setDoc(docRef, { evaluations: {} }); 
+                    }
+                    state.evaluations = {};
                 }
                 updateUI();
             });
@@ -614,19 +615,22 @@
             return state.evaluations[roomId][date] || { score: null, criteria: [], obs: "" };
         };
 
-        // FIX PROTEÇÃO DE DADOS 100% ATÔMICA: Usa updateDoc com dot-notation PROFUNDA.
-        // O Firebase vai alterar APENAS os campos exatos que foram passados. Ex: se mexeu na 'nota', ele altera só a 'nota'
-        // e deixa 'obs' e dias futuros/passados completamente intocados.
+        // BLINDAGEM MÁXIMA DE UPDATE PROFUNDO (Dot-Notation)
+        // Ao invés de mandar o objeto de dias inteiro, manda apenas a chave específica alterada.
         const setRoomEval = async (roomId, date, dataObj) => {
-            // Atualiza localmente
+            
+            // Atualiza memória local imediatamente para UI não travar
             if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
-            state.evaluations[roomId][date] = { ...getRoomEval(roomId, date), ...dataObj };
+            if (!state.evaluations[roomId][date]) state.evaluations[roomId][date] = { score: null, criteria: [], obs: "" };
+            state.evaluations[roomId][date] = { ...state.evaluations[roomId][date], ...dataObj };
             
             if (!auth.currentUser || !activeUser || activeUser.role !== 'admin') return; 
+            
             try {
                 const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
                 
-                // Cria atualizações apenas para as chaves específicas que vieram no dataObj
+                // Mágica do Dot-Notation. O firebase vai atualizar SÓ E UNICAMENTE essas chaves 
+                // e não vai tocar no resto dos quartos ou nos outros dias.
                 const updates = {};
                 Object.keys(dataObj).forEach(key => {
                     updates[`evaluations.${roomId}.${date}.${key}`] = dataObj[key];
@@ -635,7 +639,7 @@
                 await updateDoc(docRef, updates);
 
             } catch (error) {
-                // Se der erro porque o documento ou o array central não existe, cria-se mesclando.
+                // Trata o caso do documento pai não existir na nuvem
                 if (error.code === 'not-found') {
                     const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
                     await setDoc(docRef, { evaluations: { [roomId]: { [date]: state.evaluations[roomId][date] } } }, { merge: true });
@@ -801,7 +805,7 @@
                 if (!isAdmin) btn.disabled = true;
                 if (isAdmin) {
                     btn.addEventListener('click', () => {
-                        // Salva APENAS o score
+                        // Envia SÓ a nota
                         setRoomEval(state.selectedRoomId, state.currentDate, { score: i });
                         updateUI();
                     });
@@ -853,7 +857,7 @@
                     let newCriteria = [...activeCriteria];
                     if (isActive) newCriteria = newCriteria.filter(id => id !== crit.id);
                     else newCriteria.push(crit.id);
-                    // Salva APENAS os criteria
+                    // Envia SÓ os critérios
                     setRoomEval(state.selectedRoomId, state.currentDate, { criteria: newCriteria });
                     updateUI();
                 });
@@ -863,7 +867,6 @@
 
         const obsEl = document.getElementById('obs-textarea');
         
-        // Só atualiza o texto do textarea se o admin não estiver ativamente digitando nele
         if (document.activeElement !== obsEl || obsEl.dataset.roomId !== state.selectedRoomId || obsEl.dataset.date !== state.currentDate) {
             obsEl.value = currentEval.obs || "";
             obsEl.dataset.roomId = state.selectedRoomId; 
@@ -1422,7 +1425,7 @@
                 }
             });
 
-            // FIX DATA LOSS TEXTAREA: Salvamento usando caminho profundo do Firebase
+            // FIX DATA LOSS TEXTAREA: Envia SOMENTE a observação de forma atômica
             const obsEl = document.getElementById('obs-textarea');
             let typingTimeout;
             if (obsEl) {
@@ -1432,14 +1435,13 @@
                     const roomId = obsEl.dataset.roomId || state.selectedRoomId;
                     const date = obsEl.dataset.date || state.currentDate;
                     
-                    // Atualizamos o estado local imediatamente
                     if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
                     if (!state.evaluations[roomId][date]) state.evaluations[roomId][date] = { score: null, criteria: [], obs: "" };
                     state.evaluations[roomId][date].obs = e.target.value;
 
-                    // Salvamento atômico agendado para atualizar SÓ a 'obs' no banco de dados.
                     clearTimeout(typingTimeout);
                     typingTimeout = setTimeout(() => {
+                        // Envia SÓ a observação usando dot-notation
                         setRoomEval(roomId, date, { obs: e.target.value });
                     }, 1000); 
                 });
@@ -1487,7 +1489,7 @@
             modalClearDay.classList.add('hidden');
         });
 
-        // O botão de apagar também usa caminhos profundos atômicos com deleteField
+        // Apagar diário usa caminhos profundos atômicos com deleteField
         document.getElementById('btn-confirm-clear').addEventListener('click', async () => {
             const passInput = document.getElementById('clear-password').value;
             if (passInput === activeUser.pass) {
