@@ -321,10 +321,10 @@
                             deserializeState(docSnap.data());
                         } else {
                             this.injectInitialMarketOps();
-                            // Aguardamos autenticação para salvar, mas só se tivermos o usuário
-                             if(auth.currentUser){
+                            // Só salva o inicial se for o gerente criando a base pela primeira vez
+                            if(state.auth.loggedIn && state.auth.role === 'manager'){
                                  await this.saveState();
-                             }
+                            }
                         }
 
                         // Sincronização Dinâmica: Fica a ouvir a nuvem
@@ -359,8 +359,10 @@
             },
 
             async saveState() {
-                // Durante simulação, não perturbamos a cloud dos outros clientes
-                if (state.isSimulation || !window.firebaseDB || !auth.currentUser) return;
+                // Se for simulação, não houver DB, ou O USUÁRIO NÃO ESTIVER LOGADO, aborta o salvamento!
+                // Isso impede que telas de login vazias apaguem o banco de dados.
+                if (state.isSimulation || !window.firebaseDB || !state.auth.loggedIn) return;
+                
                 try {
                     await setDoc(stateDocRef, serializeState());
                 } catch (e) {
@@ -406,7 +408,9 @@
                         if(state.pendingOps.length > 15) state.pendingOps.pop();
                     }
                     
-                    if(auth && auth.currentUser){
+                    // IMPORTANTE: Só o GERENTE salva na nuvem as novas ofertas automáticas.
+                    // Isso impede que vários clientes sobrescrevam a base simultaneamente.
+                    if(state.auth.loggedIn && state.auth.role === 'manager'){
                          this.saveState();
                     }
                    
@@ -566,6 +570,9 @@
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('app-container').classList.remove('hidden');
                     state.activeTab = state.auth.role === 'manager' ? 'manager_ops' : 'principal';
+                    
+                    // Ao logar, forçamos um salvamento inicial do estado do utilizador (se necessário)
+                    this.saveState();
                     this.render();
                 }, 500);
             },
