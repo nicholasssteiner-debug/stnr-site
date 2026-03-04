@@ -93,13 +93,13 @@
         const getCollectionPath = (collectionName) => collection(db, 'artifacts', appId, 'public', 'data', collectionName);
         const getDocRef = (collectionName, documentId) => doc(db, 'artifacts', appId, 'public', 'data', collectionName, documentId);
 
-        // --- ESTADO INICIAL ---
+        // --- ESTADO INICIAL DO FORMULÁRIO COM RATEIO ---
         const initialFormState = {
           status: 'Compra', cartao: '', dataCompra: '', valor: '', parcelas: '1',
-          possuiNf: 'Sim', numNota: '', fornecedor: '', setor: '', observacao: ''
+          possuiNf: 'Sim', numNota: '', fornecedor: '', observacao: '',
+          rateio: [{ setor: '', valor: '' }]
         };
 
-        // Sem dados de exemplo. O utilizador Admin é o único obrigatório para não perder acesso.
         const seedDepartamentos = [];
         const seedCartoes = [];
         const seedUsers = [
@@ -158,10 +158,9 @@
 
           const [showNotifications, setShowNotifications] = useState(false);
           
-          // Modal de Autorização (Corrigir e Excluir)
+          // Modal de Autorização de Exclusão
           const [authModalOpen, setAuthModalOpen] = useState(false);
           const [targetEntry, setTargetEntry] = useState(null);
-          const [authAction, setAuthAction] = useState(''); // 'edit' ou 'delete'
           const [authCode, setAuthCode] = useState('');
 
           useEffect(() => {
@@ -222,18 +221,118 @@
 
           const handleInputChange = (e) => {
             const { name, value } = e.target;
-            setFormData(prev => ({ ...prev, [name]: value }));
+            setFormData(prev => {
+                const newData = { ...prev, [name]: value };
+                if (name === 'possuiNf' && value !== 'Sim') {
+                    newData.numNota = '';
+                }
+                return newData;
+            });
+          };
+
+          // --- GESTÃO DE RATEIO E AUTOCOMPLETAR INTELIGENTE ---
+          const handleRateioChange = (index, field, value) => {
+             const newRateio = [...formData.rateio];
+             newRateio[index][field] = value;
+             setFormData(prev => ({ ...prev, rateio: newRateio }));
+          };
+
+          // Lógica acionada quando o utilizador pressiona "Enter" na caixa do Departamento
+          const handleSetorKeyDown = (e, index) => {
+              if (e.key === 'Enter') {
+                  e.preventDefault(); // Impede o form de submeter ou fazer a ação padrão
+                  e.stopPropagation();
+
+                  const currentValue = formData.rateio[index].setor.toLowerCase().trim();
+                  if (!currentValue) return;
+
+                  // Tenta encontrar uma correspondência no banco de dados
+                  const match = departamentos.find(d => 
+                      `${d.codigo} - ${d.nome}`.toLowerCase().includes(currentValue) || 
+                      d.nome.toLowerCase().includes(currentValue) ||
+                      d.codigo.includes(currentValue)
+                  );
+
+                  if (match) {
+                      // Se encontrou, preenche com a formatação oficial
+                      const fullString = `${match.codigo} - ${match.nome}`;
+                      handleRateioChange(index, 'setor', fullString);
+                  }
+
+                  // Após autocompletar (ou não), salta para o campo "Valor" dessa linha
+                  const row = e.currentTarget.closest('.rateio-row');
+                  if (row) {
+                      const valorInput = row.querySelector('.rateio-valor-input');
+                      if (valorInput) valorInput.focus();
+                  }
+              }
+          };
+
+          const addRateio = () => {
+             setFormData(prev => ({ ...prev, rateio: [...prev.rateio, { setor: '', valor: '' }] }));
+          };
+
+          const removeRateio = (index) => {
+             if (formData.rateio.length === 1) return;
+             const newRateio = formData.rateio.filter((_, i) => i !== index);
+             setFormData(prev => ({ ...prev, rateio: newRateio }));
+          };
+
+          // --- EVENTO DE ENTER GLOBAL NO FORMULÁRIO (Navegar em vez de enviar) ---
+          const handleFormKeyDown = (e) => {
+              if (e.key === 'Enter') {
+                  const isButton = e.target.tagName === 'BUTTON';
+                  const isTextarea = e.target.tagName === 'TEXTAREA';
+                  
+                  // Se não for botão nem caixa de texto longa, salta para o próximo campo
+                  if (!isButton && !isTextarea) {
+                      e.preventDefault();
+                      const form = e.currentTarget;
+                      const elements = Array.from(form.elements).filter(el => 
+                          !el.disabled && !el.readOnly && el.tabIndex !== -1 && el.type !== 'hidden'
+                      );
+                      const index = elements.indexOf(e.target);
+                      if (index > -1 && index < elements.length - 1) {
+                          elements[index + 1].focus();
+                      }
+                  }
+              }
           };
 
           const handleSubmit = async (e) => {
             e.preventDefault();
+            
+            // 1. Validação de Preenchimento do Rateio
+            if (formData.rateio.some(r => !r.setor)) {
+                alert('Atenção: Indique o departamento para todos os itens do rateio.');
+                return;
+            }
+
+            // 2. Validação Rígida de Integridade (Apenas Departamentos do Sistema)
+            const stringsDepto = departamentos.map(d => `${d.codigo} - ${d.nome}`);
+            const setorInvalido = formData.rateio.find(r => !stringsDepto.includes(r.setor));
+            if (setorInvalido) {
+                alert(`Atenção: A opção "${setorInvalido.setor}" não existe no sistema.\n\nPor favor, digite e selecione uma das opções válidas da lista.`);
+                return;
+            }
+
+            // 3. Validação Matemática do Rateio
+            const totalValor = parseFloat(formData.valor) || 0;
+            const sumRateio = formData.rateio.reduce((acc, curr) => acc + (parseFloat(curr.valor) || 0), 0);
+
+            // Permite margem minúscula de javascript, mas bloqueia erros humanos
+            if (Math.abs(totalValor - sumRateio) > 0.01) {
+                alert(`ERRO DE RATEIO:\n\nO valor total da compra é: R$ ${totalValor.toLocaleString('pt-BR',{minimumFractionDigits:2})}\nA soma do rateio é: R$ ${sumRateio.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n\nPor favor, verifique para que a distribuição bata exatamente com o valor total.`);
+                return;
+            }
+
             const entryId = editingEntryId ? editingEntryId : Date.now();
             
             const newEntry = {
               ...formData, 
               id: entryId, 
-              valor: parseFloat(formData.valor) || 0,
-              parcelas: parseInt(formData.parcelas) || 0, 
+              valor: totalValor,
+              parcelas: parseInt(formData.parcelas) || 1, 
               cadastradoPor: currentUser ? currentUser.nome : 'Desconhecido'
             };
 
@@ -246,26 +345,42 @@
             } catch (error) { alert("Erro ao salvar: " + error.message); }
           };
 
-          // --- LÓGICA DE AÇÕES SEGURAS (CORRIGIR E EXCLUIR) ---
+          // --- LÓGICA DE AÇÕES (CORRIGIR E EXCLUIR) ---
           const handleInitiateAction = async (entry, action) => {
+            if (action === 'edit') {
+                // Ação de Edição: Totalmente liberada para todos. Não precisa de código.
+                loadIntoForm(entry);
+                return;
+            }
+
+            // Ação de Exclusão: Liberada direto para Admin. Registradores precisam pedir código.
             if (currentUser.role === 'admin') {
-              if (action === 'delete') {
                 if (window.confirm(`Confirma a exclusão do registo de R$ ${entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}?`)) {
                   await deleteDoc(getDocRef('entries', entry.id.toString()));
                   await deleteDoc(getDocRef('auth_requests', entry.id.toString()));
                 }
-              } else if (action === 'edit') {
-                loadIntoForm(entry);
-              }
             } else {
               setTargetEntry(entry);
-              setAuthAction(action);
               setAuthCode('');
               setAuthModalOpen(true);
             }
           };
 
           const loadIntoForm = (entry) => {
+            // Adaptação caso o registo seja muito antigo e ainda não use o novo formato de rateio
+            const rateioAdaptado = entry.rateio && entry.rateio.length > 0 
+                ? entry.rateio 
+                : [{ setor: entry.setor || '', valor: entry.valor || '' }];
+            
+            // Tenta forçar a formatação de Código - Nome caso um registo antigo só tenha o Nome
+            const formattedRateio = rateioAdaptado.map(r => {
+                if (r.setor && !r.setor.includes(' - ')) {
+                    const found = departamentos.find(d => d.nome === r.setor);
+                    if (found) return { ...r, setor: `${found.codigo} - ${found.nome}` };
+                }
+                return r;
+            });
+
             setFormData({
               status: entry.status || 'Compra',
               cartao: entry.cartao || '',
@@ -275,8 +390,8 @@
               possuiNf: entry.possuiNf || 'Sim',
               numNota: entry.numNota || '',
               fornecedor: entry.fornecedor || '',
-              setor: entry.setor || '',
-              observacao: entry.observacao || ''
+              observacao: entry.observacao || '',
+              rateio: formattedRateio
             });
             setEditingEntryId(entry.id);
             setActiveTab('form');
@@ -290,13 +405,12 @@
           const handleRequestAuthCode = async () => {
             if (!targetEntry) return;
             const code = Math.floor(100000 + Math.random() * 900000).toString(); 
-            const actionText = authAction === 'delete' ? 'Excluir' : 'Corrigir';
             
             const request = {
               id: targetEntry.id.toString(), 
               entryId: targetEntry.id,
-              action: authAction,
-              entryDesc: `${actionText}: ${targetEntry.status} de R$ ${targetEntry.valor} (${targetEntry.fornecedor || 'S/ Fornecedor'})`,
+              action: 'delete',
+              entryDesc: `Excluir: ${targetEntry.status} de R$ ${targetEntry.valor} (${targetEntry.fornecedor || 'S/ Fornecedor'})`,
               requestedBy: currentUser.nome, 
               code: code, 
               timestamp: Date.now()
@@ -311,18 +425,11 @@
             if (request && request.code === authCode) {
               await deleteDoc(getDocRef('auth_requests', request.id));
               setAuthModalOpen(false);
-              
-              if (authAction === 'delete') {
-                await deleteDoc(getDocRef('entries', targetEntry.id.toString()));
-                alert('Código válido! Registo excluído com sucesso.');
-              } else if (authAction === 'edit') {
-                loadIntoForm(targetEntry);
-                alert('Código válido! O lançamento foi carregado para correção.');
-              }
+              await deleteDoc(getDocRef('entries', targetEntry.id.toString()));
+              alert('Código válido! Registo excluído com sucesso.');
               
               setTargetEntry(null);
               setAuthCode('');
-              setAuthAction('');
             } else { 
               alert('Código incorreto, inválido ou a solicitação foi apagada pelo Administrador.'); 
             }
@@ -337,7 +444,6 @@
             setAuthModalOpen(false); 
             setTargetEntry(null); 
             setAuthCode(''); 
-            setAuthAction('');
           };
 
           // --- ADMIN: DEPARTAMENTOS ---
@@ -498,12 +604,17 @@
 
           const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setShowNotifications(false); };
 
-          // Filtro Inteligente
+          // Filtro Inteligente (Considerando o array de rateios)
           const filteredEntries = useMemo(() => {
             return entries.filter(entry => {
               const matchStatus = filterStatus ? entry.status === filterStatus : true;
               const matchCartao = filterCartao ? entry.cartao === filterCartao : true;
-              const matchSetor = filterSetor ? entry.setor === filterSetor : true;
+              
+              const matchSetor = filterSetor ? (
+                  (entry.rateio && entry.rateio.some(r => r.setor === filterSetor)) || 
+                  (!entry.rateio && entry.setor === filterSetor)
+              ) : true;
+              
               const matchPossuiNf = filterPossuiNf ? entry.possuiNf === filterPossuiNf : true;
               const matchData = filterData ? entry.dataCompra === filterData : true;
               const matchValor = filterValor ? entry.valor.toString().includes(filterValor) : true;
@@ -515,7 +626,7 @@
             });
           }, [entries, filterStatus, filterCartao, filterSetor, filterPossuiNf, filterData, filterValor, filterParcelas, filterFornecedor, filterNumNota, filterObservacao]);
 
-          // Lógica do Dashboard
+          // Lógica do Dashboard - Distribui os gastos por Setor de acordo com o RATEIO Exato
           const dashboardStats = useMemo(() => {
             let totalCompras = 0, valorTotalCompras = 0, cancelamentos = 0, valorCancelamentos = 0, devolucoes = 0, valorDevolucoes = 0;
             const gastosPorSetor = {}, gastosPorCartao = {};
@@ -523,10 +634,20 @@
             entries.forEach(entry => {
               if (entry.status === 'Compra') {
                 totalCompras++; valorTotalCompras += entry.valor;
-                const setor = entry.setor || 'Não Informado';
-                gastosPorSetor[setor] = (gastosPorSetor[setor] || 0) + entry.valor;
+                
                 const cartao = entry.cartao || 'Não Informado';
                 gastosPorCartao[cartao] = (gastosPorCartao[cartao] || 0) + entry.valor;
+
+                if (entry.rateio && entry.rateio.length > 0) {
+                    entry.rateio.forEach(r => {
+                        const setor = r.setor || 'Não Informado';
+                        gastosPorSetor[setor] = (gastosPorSetor[setor] || 0) + (parseFloat(r.valor) || 0);
+                    });
+                } else {
+                    const setor = entry.setor || 'Não Informado';
+                    gastosPorSetor[setor] = (gastosPorSetor[setor] || 0) + entry.valor;
+                }
+
               } else if (entry.status === 'Cancelamento') { cancelamentos++; valorCancelamentos += entry.valor;
               } else if (entry.status === 'Devolução') { devolucoes++; valorDevolucoes += entry.valor; }
             });
@@ -634,17 +755,24 @@
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left divide-y divide-slate-200">
-                    <thead className="bg-white"><tr className="text-xs text-slate-500 uppercase"><th className="px-6 py-3">Data</th><th className="px-6 py-3">Natureza</th><th className="px-6 py-3">Departamento / Favorecido</th><th className="px-6 py-3 text-right">Valor</th></tr></thead>
+                    <thead className="bg-white"><tr className="text-xs text-slate-500 uppercase"><th className="px-6 py-3">Data</th><th className="px-6 py-3">Natureza</th><th className="px-6 py-3">Favorecido & Rateio</th><th className="px-6 py-3 text-right">Valor Total</th></tr></thead>
                     <tbody className="divide-y divide-slate-100">
                       {dashboardStats.ultimasTransacoes.length === 0 ? (
                         <tr><td colSpan="4" className="px-6 py-8 text-center text-slate-400">Nenhuma atividade recente.</td></tr>
                       ) : (
                         dashboardStats.ultimasTransacoes.map(entry => (
                           <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-3 font-medium text-slate-900">{entry.dataCompra ? new Date(entry.dataCompra).toLocaleDateString('pt-BR', {timeZone:'UTC'}) : '-'}</td>
-                            <td className="px-6 py-3"><span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${entry.status==='Compra'?'bg-emerald-100 text-emerald-700':entry.status==='Cancelamento'?'bg-rose-100 text-rose-700':'bg-amber-100 text-amber-700'}`}>{entry.status}</span></td>
-                            <td className="px-6 py-3"><span className="block text-slate-800 font-medium truncate max-w-[200px]" title={entry.fornecedor}>{entry.fornecedor || 'N/A'}</span><span className="block text-xs text-slate-500 truncate max-w-[200px]" title={entry.setor}>{entry.setor}</span></td>
-                            <td className="px-6 py-3 text-right font-bold text-slate-900">R$ {entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                            <td className="px-6 py-3 font-medium text-slate-900 align-top">{entry.dataCompra ? new Date(entry.dataCompra).toLocaleDateString('pt-BR', {timeZone:'UTC'}) : '-'}</td>
+                            <td className="px-6 py-3 align-top"><span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${entry.status==='Compra'?'bg-emerald-100 text-emerald-700':entry.status==='Cancelamento'?'bg-rose-100 text-rose-700':'bg-amber-100 text-amber-700'}`}>{entry.status}</span></td>
+                            <td className="px-6 py-3 align-top">
+                               <span className="block text-slate-800 font-bold truncate max-w-[250px]" title={entry.fornecedor}>{entry.fornecedor || 'N/A'}</span>
+                               {entry.rateio && entry.rateio.length > 1 ? (
+                                   <span className="block text-[11px] text-blue-600 font-medium">{entry.rateio.length} Departamentos envolvidos</span>
+                               ) : (
+                                   <span className="block text-xs text-slate-500 truncate max-w-[250px]" title={entry.rateio?.[0]?.setor || entry.setor}>{entry.rateio?.[0]?.setor || entry.setor || 'N/A'}</span>
+                               )}
+                            </td>
+                            <td className="px-6 py-3 text-right font-bold text-slate-900 align-top">R$ {entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
                           </tr>
                         ))
                       )}
@@ -659,7 +787,7 @@
             <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
                <div className="mb-6 border-b border-slate-200 pb-4">
                   <h2 className="text-2xl font-bold text-slate-900">{editingEntryId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
-                  <p className="text-slate-500 text-sm mt-1">{editingEntryId ? 'Corrija os dados da transação autorizada.' : 'Registe uma nova compra, cancelamento ou devolução.'}</p>
+                  <p className="text-slate-500 text-sm mt-1">{editingEntryId ? 'Corrija os dados da transação previamente registada.' : 'Registe uma nova compra, cancelamento ou devolução.'}</p>
               </div>
 
               {showSuccess && (
@@ -670,7 +798,7 @@
               )}
 
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="p-8 space-y-8">
                   
                   {/* Secção 1 */}
                   <div>
@@ -701,7 +829,7 @@
                         <input type="date" name="dataCompra" value={formData.dataCompra} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Valor (R$) *</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Valor Total (R$) *</label>
                         <input type="number" step="0.01" name="valor" placeholder="0.00" value={formData.valor} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm font-medium bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
                       </div>
                       <div>
@@ -713,7 +841,7 @@
 
                   {/* Secção 3 */}
                   <div>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Documentação e Destino</h3>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Documentação e Rateio</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Nota Fiscal *</label>
@@ -722,24 +850,85 @@
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Número da NF/Fatura</label>
-                        <input type="text" name="numNota" placeholder="Ex: 0012345" value={formData.numNota} onChange={handleInputChange} className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Número da NF/Fatura {formData.possuiNf === 'Sim' ? '*' : ''}</label>
+                        <input type="text" name="numNota" placeholder="Ex: 0012345" value={formData.numNota} onChange={handleInputChange} required={formData.possuiNf === 'Sim'} disabled={formData.possuiNf !== 'Sim'} className={`w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formData.possuiNf !== 'Sim' ? 'opacity-50 cursor-not-allowed' : ''}`}/>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    
+                    <div className="grid grid-cols-1 gap-6 mb-6">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Fornecedor</label>
-                        <input type="text" name="fornecedor" placeholder="Nome da empresa" value={formData.fornecedor} onChange={handleInputChange} className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Fornecedor *</label>
+                        <input type="text" name="fornecedor" placeholder="Nome da empresa" value={formData.fornecedor} onChange={handleInputChange} required className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Departamento Favorecido</label>
-                        <input type="text" name="setor" placeholder="Procurar departamento..." value={formData.setor} onChange={handleInputChange} list="depts" className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
-                        <datalist id="depts">{departamentos.map(d => <option key={d.id} value={d.nome}>{d.codigo} - {d.nome}</option>)}</datalist>
+
+                      {/* AREA DE RATEIO DE DEPARTAMENTOS */}
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <label className="block text-sm font-bold text-slate-800 mb-3">Rateio por Departamento <span className="text-blue-600 font-normal">(A soma deve bater com o Valor Total)</span> *</label>
+                        <datalist id="rateio-depts">
+                            {departamentos.map(d => <option key={d.id} value={`${d.codigo} - ${d.nome}`} />)}
+                        </datalist>
+                        
+                        <div className="space-y-3">
+                            {formData.rateio.map((item, index) => {
+                                // Verifica se o item digitado confere com o padrão exato para ativar a estilização "Itálica"
+                                const isValidDept = departamentos.some(d => `${d.codigo} - ${d.nome}` === item.setor);
+
+                                return (
+                                <div key={index} className="flex flex-col sm:flex-row items-center gap-2 relative group rateio-row">
+                                    <span className="bg-slate-200 text-slate-500 font-mono text-xs px-2 py-1 rounded hidden sm:block">{index+1}</span>
+                                    
+                                    <div className="flex-1 w-full relative">
+                                        <input
+                                            type="text"
+                                            list="rateio-depts"
+                                            placeholder="Pesquise o departamento... (Aperte Enter para confirmar)"
+                                            value={item.setor}
+                                            onChange={e => handleRateioChange(index, 'setor', e.target.value)}
+                                            onKeyDown={e => handleSetorKeyDown(e, index)}
+                                            required
+                                            className={`w-full px-3 py-2 text-sm border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                                                isValidDept ? 'italic font-semibold text-blue-700 bg-blue-50 border-blue-200' : 'bg-white border-slate-300 text-slate-700'
+                                            }`}
+                                        />
+                                    </div>
+                                    
+                                    <div className="relative w-full sm:w-1/3 flex items-center gap-2">
+                                      <span className="absolute left-3 top-2 text-slate-400 text-sm">R$</span>
+                                      <input
+                                          type="number"
+                                          step="0.01"
+                                          placeholder="Valor..."
+                                          value={item.valor}
+                                          onChange={e => handleRateioChange(index, 'valor', e.target.value)}
+                                          required
+                                          className="rateio-valor-input w-full pl-9 pr-3 py-2 text-sm font-medium bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      />
+                                      <button
+                                          type="button"
+                                          onClick={() => removeRateio(index)}
+                                          disabled={formData.rateio.length === 1}
+                                          title="Remover departamento"
+                                          className={`p-2 rounded-md border flex-shrink-0 transition-colors ${formData.rateio.length === 1 ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-300 text-rose-500 hover:bg-rose-50 hover:border-rose-300 shadow-sm'}`}
+                                      >
+                                          <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                </div>
+                            )})}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={addRateio}
+                            className="mt-4 text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 flex items-center bg-white px-4 py-2 rounded-md transition-colors shadow-sm"
+                        >
+                            <Plus size={14} className="mr-1" /> Adicionar Setor de Rateio
+                        </button>
                       </div>
                     </div>
+                    
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Observações Adicionais</label>
-                      <textarea name="observacao" placeholder="Informação complementar relevante..." value={formData.observacao} onChange={handleInputChange} rows="3" className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Observações Adicionais *</label>
+                      <textarea name="observacao" placeholder="Informação complementar relevante sobre esta transação..." value={formData.observacao} onChange={handleInputChange} required rows="3" className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-md focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                     </div>
                   </div>
 
@@ -770,7 +959,7 @@
                   </div>
               </div>
 
-              {/* BARRA DE FILTROS AVANÇADOS - AGORA COMPLETA (10 Filtros) */}
+              {/* BARRA DE FILTROS AVANÇADOS */}
               <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
                 <div className="flex items-center mb-4 text-xs font-bold text-slate-800 uppercase tracking-wider">
                   <Filter size={14} className="mr-2 text-slate-400" /> Filtros Avançados
@@ -781,7 +970,7 @@
                   <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Data exata</label><input type="date" value={filterData} onChange={e=>setFilterData(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"/></div>
                   <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Natureza</label><select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option><option value="Compra">Compra</option><option value="Cancelamento">Cancelamento</option><option value="Devolução">Devolução</option></select></div>
                   <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Cartão Usado</label><select value={filterCartao} onChange={e=>setFilterCartao(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option>{cartoes.map(c=><option key={c.id} value={c.nome}>{c.nome}</option>)}</select></div>
-                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Departamento</label><select value={filterSetor} onChange={e=>setFilterSetor(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option>{departamentos.map(d=><option key={d.id} value={d.nome}>{d.nome}</option>)}</select></div>
+                  <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Departamento</label><select value={filterSetor} onChange={e=>setFilterSetor(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todos</option>{departamentos.map(d=><option key={d.id} value={`${d.codigo} - ${d.nome}`}>{d.nome}</option>)}</select></div>
                   <div><label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Situação NF</label><select value={filterPossuiNf} onChange={e=>setFilterPossuiNf(e.target.value)} className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-md text-slate-700 focus:bg-white"><option value="">Todas</option><option value="Sim">Sim</option><option value="É adiantamento ( NF com entrega posterior )">Adiantamento</option></select></div>
                 </div>
 
@@ -804,9 +993,9 @@
                         <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Natureza</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cartão</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Parcelas</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor & Info</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Parcelas</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor & Rateio</th>
                         <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
                       </tr>
                     </thead>
@@ -816,10 +1005,10 @@
                       ) : (
                         filteredEntries.map(entry => (
                           <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 align-top">
                               {entry.dataCompra ? new Date(entry.dataCompra).toLocaleDateString('pt-BR', {timeZone:'UTC'}) : '-'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4 whitespace-nowrap align-top">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border
                                 ${entry.status === 'Compra' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
                                   entry.status === 'Cancelamento' ? 'bg-rose-50 text-rose-700 border-rose-200' : 
@@ -827,25 +1016,41 @@
                                 {entry.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-500">{entry.cartao}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-500 align-top">{entry.cartao}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right align-top">
                               R$ {entry.valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-500 font-medium">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-500 font-medium align-top">
                               {entry.parcelas === 1 ? '1X (À vista)' : `${entry.parcelas}X`}
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-500 max-w-[250px]">
+                            <td className="px-6 py-4 text-sm text-slate-500 max-w-[250px] align-top">
                               <span className="font-semibold text-slate-800 block truncate" title={entry.fornecedor}>{entry.fornecedor || 'Sem fornecedor'}</span>
-                              <span className="text-xs text-slate-400 block truncate" title={entry.setor}>{entry.setor || 'N/A'}</span>
-                              {entry.numNota && <span className="text-[10px] font-mono bg-slate-100 px-1 rounded text-slate-500 mt-1 inline-block">NF: {entry.numNota}</span>}
+                              
+                              {/* Display Rateio Complexo */}
+                              {entry.rateio && entry.rateio.length > 0 ? (
+                                  <div className="mt-1.5 space-y-1">
+                                      {entry.rateio.map((r, i) => (
+                                          <div key={i} className="flex justify-between items-center text-[10px] leading-tight text-slate-500 border-b border-slate-100 pb-1 last:border-0 last:pb-0">
+                                              <span className="truncate mr-2 max-w-[140px]" title={r.setor}>• {r.setor}</span>
+                                              <span className="font-semibold text-slate-600 whitespace-nowrap">R$ {parseFloat(r.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                                          </div>
+                                      ))}
+                                  </div>
+                              ) : (
+                                  <span className="text-[11px] text-slate-400 block truncate mt-1" title={entry.setor}>{entry.setor || 'N/A'}</span>
+                              )}
+                              
+                              {entry.numNota && <span className="text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 mt-2 inline-block shadow-sm">NF: {entry.numNota}</span>}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end space-x-2">
-                              <button onClick={() => handleInitiateAction(entry, 'edit')} className="text-slate-400 hover:text-blue-600 transition-colors bg-white p-1.5 rounded-md border border-slate-200 hover:border-blue-200 shadow-sm" title="Corrigir Lançamento">
-                                <Pencil size={16}/>
-                              </button>
-                              <button onClick={() => handleInitiateAction(entry, 'delete')} className="text-slate-400 hover:text-rose-600 transition-colors bg-white p-1.5 rounded-md border border-slate-200 hover:border-rose-200 shadow-sm" title="Excluir Transação">
-                                <Trash2 size={16}/>
-                              </button>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium align-top">
+                              <div className="flex items-center justify-end space-x-2">
+                                <button onClick={() => handleInitiateAction(entry, 'edit')} className="text-slate-400 hover:text-blue-600 transition-colors bg-white p-1.5 rounded-md border border-slate-200 hover:border-blue-200 shadow-sm" title="Corrigir Lançamento (Não exige código)">
+                                  <Pencil size={16}/>
+                                </button>
+                                <button onClick={() => handleInitiateAction(entry, 'delete')} className="text-slate-400 hover:text-rose-600 transition-colors bg-white p-1.5 rounded-md border border-slate-200 hover:border-rose-200 shadow-sm" title="Excluir Transação">
+                                  <Trash2 size={16}/>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1057,20 +1262,20 @@
           return (
             <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
               
-              {/* MODAL DE SEGURANÇA */}
+              {/* MODAL DE SEGURANÇA PARA EXCLUSÃO */}
               {authModalOpen && targetEntry && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                   <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
-                    <div className="flex items-center text-blue-600 mb-4"><Shield size={24} className="mr-2"/><h3 className="text-xl font-bold tracking-tight">Autorização Obrigatória</h3></div>
-                    <p className="text-slate-600 text-sm mb-6 leading-relaxed">Foi solicitada a <strong className="text-slate-900">{authAction === 'delete' ? 'exclusão' : 'correção'}</strong> do registo avaliado em <strong className="text-slate-900">R$ {targetEntry.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>. Esta ação requer validação superior.</p>
+                    <div className="flex items-center text-rose-600 mb-4"><Shield size={24} className="mr-2"/><h3 className="text-xl font-bold tracking-tight">Autorização Obrigatória</h3></div>
+                    <p className="text-slate-600 text-sm mb-6 leading-relaxed">Foi solicitada a <strong className="text-slate-900">exclusão</strong> do registo avaliado em <strong className="text-slate-900">R$ {targetEntry.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>. Esta ação requer validação superior.</p>
                     
                     {authRequests.find(r=>r.id===targetEntry.id.toString()) ? (
                       <div className="space-y-4">
                         <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-500 text-center font-medium">Aguardando código do Administrador...</div>
-                        <input type="text" maxLength="6" placeholder="000000" value={authCode} onChange={e=>setAuthCode(e.target.value)} className="w-full text-center text-3xl tracking-[0.5em] p-4 border border-slate-300 rounded-lg font-mono text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        <input type="text" maxLength="6" placeholder="000000" value={authCode} onChange={e=>setAuthCode(e.target.value)} className="w-full text-center text-3xl tracking-[0.5em] p-4 border border-slate-300 rounded-lg font-mono text-slate-800 focus:ring-2 focus:ring-rose-500 outline-none"/>
                         <div className="flex gap-2">
                            <button onClick={closeAuthModal} className="w-1/3 bg-slate-100 text-slate-600 font-bold py-3 rounded-lg hover:bg-slate-200">Sair</button>
-                           <button onClick={handleConfirmAuthCode} className="w-2/3 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-sm">Validar</button>
+                           <button onClick={handleConfirmAuthCode} className="w-2/3 bg-rose-600 text-white font-bold py-3 rounded-lg hover:bg-rose-700 shadow-sm">Validar</button>
                         </div>
                       </div>
                     ) : (
@@ -1108,22 +1313,22 @@
                         <div className="relative">
                           <button onClick={()=>setShowNotifications(!showNotifications)} className={`p-2 rounded-md transition-colors ${showNotifications||authRequests.length>0 ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                             <Bell size={18}/>
-                            {authRequests.length>0&&<span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse border border-slate-900"></span>}
+                            {authRequests.length>0&&<span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse border border-slate-900"></span>}
                           </button>
                           
                           {/* Menu de Notificações Pop-up */}
                           {showNotifications && (
                             <div className="absolute right-0 mt-3 w-80 bg-white rounded-lg shadow-xl border border-slate-200 text-slate-800 animate-in slide-in-from-top-2">
                               <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-lg">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Solicitações de Autorização</span>
-                                {authRequests.length>0 && <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">{authRequests.length}</span>}
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Solicitações de Exclusão</span>
+                                {authRequests.length>0 && <span className="bg-rose-100 text-rose-700 text-[10px] px-2 py-0.5 rounded-full font-bold">{authRequests.length}</span>}
                               </div>
                               <div className="max-h-72 overflow-y-auto">
                                 {authRequests.length === 0 ? <p className="px-4 py-8 text-center text-sm text-slate-400">Sistema sem pendências.</p> : 
                                   authRequests.map(req=>(
                                     <div key={req.id} className="p-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 relative group">
                                       <button onClick={()=>handleDismissNotification(req.id)} className="absolute top-3 right-3 text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100"><X size={14}/></button>
-                                      <p className="text-xs font-semibold text-blue-600 mb-0.5">{req.requestedBy} solicitou:</p>
+                                      <p className="text-xs font-semibold text-rose-600 mb-0.5">{req.requestedBy} solicitou:</p>
                                       <p className="text-sm font-medium text-slate-800 leading-tight mb-3 pr-4">{req.entryDesc}</p>
                                       <div className="bg-slate-100 border border-slate-200 rounded p-2 text-center">
                                         <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block mb-0.5">Autorização gerada</span>
