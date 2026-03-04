@@ -4,153 +4,218 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>STNR • Dashboards</title>
+  
+  <!-- Tailwind CSS para estilização moderna e responsiva -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons para os ícones modernos -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Configuração das cores originais da sua marca no Tailwind -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            stnr: {
+              bg: '#0f0f17',
+              card: '#1a1a27',
+              border: '#2d2d3a',
+              accent: '#6c63ff',
+              accentHover: '#8b85ff',
+              textMain: '#ffffff',
+              textMuted: 'rgba(255, 255, 255, 0.7)'
+            }
+          },
+          fontFamily: {
+            sans: ['Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     body {
-      margin: 0;
-      padding: 0;
-      background: #0f0f17;
-      font-family: Arial, sans-serif;
-      color: #ffffff;
+      background-color: #0f0f17; /* Fallback */
     }
-    .container {
-      max-width: 900px;
-      margin: 50px auto;
-      padding: 20px;
+    
+    /* Suaviza a barra de rolagem */
+    ::-webkit-scrollbar {
+      width: 8px;
     }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 32px;
+    ::-webkit-scrollbar-track {
+      background: #0f0f17; 
     }
-    .search-container {
-      text-align: center;
-      margin-bottom: 40px;
+    ::-webkit-scrollbar-thumb {
+      background: #2d2d3a; 
+      border-radius: 4px;
     }
-    .search-input {
-      width: 100%;
-      max-width: 400px;
-      padding: 12px 20px;
-      border-radius: 25px;
-      border: 1px solid #2d2d3a;
-      background: #1a1a27;
-      color: #ffffff;
-      font-size: 16px;
-      outline: none;
-      transition: 0.3s;
-    }
-    .search-input:focus {
-      border-color: #6c63ff;
-      box-shadow: 0 0 10px rgba(108, 99, 255, 0.2);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: #1a1a27;
-      padding: 20px;
-      border-radius: 12px;
-      text-decoration: none;
-      color: #ffffff;
-      border: 1px solid #2d2d3a;
-      transition: 0.2s;
-    }
-    .card:hover {
-      transform: translateY(-3px);
-      border-color: #6c63ff;
-      box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
-    }
-    .card-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-    .card-desc {
-      font-size: 14px;
-      opacity: 0.8;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6c63ff; 
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>STNR • Dashboards e Sistemas</h1>
+<body class="bg-stnr-bg text-stnr-textMain min-h-screen relative font-sans selection:bg-stnr-accent selection:text-white pb-12">
 
-    <div class="search-container">
-      <input type="text" id="searchInput" class="search-input" onkeyup="filtrarSistemas()" placeholder="Pesquisar sistema...">
+  <!-- Logo no Canto -->
+  <img src="https://i.postimg.cc/gJzbzDf4/Gemini-Generated-Image-c4gn84c4gn84c4gn-removebg-preview.png" 
+       alt="Logo STNR" 
+       class="absolute top-6 right-6 md:top-8 md:right-10 w-20 md:w-28 h-auto transition-transform duration-300 hover:scale-110 drop-shadow-[0_0_10px_rgba(108,99,255,0.2)] z-10">
+
+  <main class="max-w-6xl mx-auto px-6 pt-24 md:pt-20">
+    
+    <!-- Cabeçalho -->
+    <header class="text-center mb-10 md:mb-14 relative z-0">
+      <h1 class="text-3xl md:text-5xl font-bold tracking-wide mb-3">STNR • Dashboards</h1>
+      <p class="text-stnr-textMuted text-base md:text-lg">Acesse e gerencie todos os sistemas</p>
+    </header>
+
+    <!-- Barra de Pesquisa -->
+    <div class="flex justify-center mb-12 relative z-20">
+      <div class="relative w-full max-w-lg group">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-stnr-accent transition-colors">
+          <i data-lucide="search" class="w-5 h-5"></i>
+        </div>
+        <input 
+          type="text" 
+          id="searchInput" 
+          onkeyup="filtrarSistemas()" 
+          placeholder="Pesquisar sistema..."
+          class="w-full pl-12 pr-6 py-4 rounded-full border-2 border-stnr-border bg-stnr-card text-stnr-textMain text-base md:text-lg outline-none transition-all duration-300 focus:border-stnr-accent focus:shadow-[0_0_20px_rgba(108,99,255,0.25)] focus:-translate-y-0.5 placeholder:text-gray-500 shadow-lg"
+        >
+      </div>
     </div>
 
-    <div class="grid" id="cardGrid">
-      <a class="card" href="Controle de Lançamentos de Cartão.html">
-        <div class="card-title">Controle de Lançamentos de Cartão</div>
-        <div class="card-desc">Gestão e controle de transações e lançamentos de cartão.</div>
+    <!-- Grid de Cartões -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="cardGrid">
+      
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Controle de Lançamentos de Cartão.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="credit-card" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Controle de Lançamentos</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Gestão e controle de transações e lançamentos de cartão.</p>
       </a>
 
-      <a class="card" href="LIMPO.html">
-        <div class="card-title">LIMPO</div>
-        <div class="card-desc">Levantamento Interno de Manutenção e Padrão Organizacional (Análise de Quartos).</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="LIMPO.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="sparkles" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">LIMPO</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Levantamento Interno de Manutenção e Padrão Organizacional (Análise de Quartos).</p>
       </a>
 
-      <a class="card" href="Quadro de Consultas.html">
-        <div class="card-title">Quadro de Consultas</div>
-        <div class="card-desc">Controle, pesquisa e filtragem de departamentos e verbas.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Quadro de Consultas.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="file-search" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Quadro de Consultas</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Controle, pesquisa e filtragem de departamentos e verbas.</p>
       </a>
 
-      <a class="card" href="Controle Formatura.html">
-        <div class="card-title">Controle de Formatura</div>
-        <div class="card-desc">Gerenciamento financeiro, lançamentos e alunos.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Controle Formatura.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Controle de Formatura</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Gerenciamento financeiro, lançamentos e alunos.</p>
       </a>
 
-      <a class="card" href="Comercial - Atualização Automática.html">
-        <div class="card-title">Dashboard Comercial</div>
-        <div class="card-desc">Análises do setor comercial com atualização dinâmica.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Comercial - Atualização Automática.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="trending-up" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Dashboard Comercial</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Análises do setor comercial com atualização dinâmica.</p>
       </a>
 
-      <a class="card" href="Mapa de Análise Por Conta.html">
-        <div class="card-title">Mapa de Análise por Conta</div>
-        <div class="card-desc">Dashboard contábil detalhado.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Mapa de Análise Por Conta.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="pie-chart" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Mapa de Análise por Conta</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Dashboard contábil detalhado.</p>
       </a>
 
-      <a class="card" href="Relatório de Manutenção do Poço.html">
-        <div class="card-title">Relatório de Manutenção do Poço</div>
-        <div class="card-desc">Registro das manutenções e ocorrências do poço.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Relatório de Manutenção do Poço.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="wrench" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Manutenção do Poço</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Registro das manutenções e ocorrências do poço.</p>
       </a>
 
-      <a class="card" href="VAZA.html">
-        <div class="card-title">VAZA - Zona Acadêmica</div>
-        <div class="card-desc">Verificação e Autorização de Saída (App).</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="VAZA.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="door-open" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">VAZA - Zona Acadêmica</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Verificação e Autorização de Saída (App).</p>
       </a>
 
-      <a class="card" href="Controle de Atendimento TIM.html">
-        <div class="card-title">Controle de Atendimento TIM</div>
-        <div class="card-desc">Gestão e controle de atendimentos da TIM.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Controle de Atendimento TIM.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="headphones" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Atendimento TIM</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Gestão e controle de atendimentos da TIM.</p>
       </a>
 
-      <a class="card" href="Conferência de Estoque.html">
-        <div class="card-title">Conferência de Estoque</div>
-        <div class="card-desc">Controle e verificação de inventário.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Conferência de Estoque.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="package" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Conferência de Estoque</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Controle e verificação de inventário.</p>
       </a>
 
-      <a class="card" href="Recibos de Devolução - FAP.html">
-        <div class="card-title">Recibos de Devolução - FAP</div>
-        <div class="card-desc">Controle e emissão de recibos de devolução da FAP.</div>
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Recibos de Devolução - FAP.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="receipt" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Recibos de Devolução FAP</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Controle e emissão de recibos de devolução da FAP.</p>
       </a>
+
     </div>
-  </div>
+    
+    <!-- Mensagem de "Nenhum resultado" oculta por padrão -->
+    <div id="noResults" class="hidden text-center py-10">
+      <i data-lucide="search-x" class="w-16 h-16 mx-auto text-stnr-border mb-4"></i>
+      <p class="text-xl text-stnr-textMuted">Nenhum sistema encontrado.</p>
+    </div>
+
+  </main>
 
   <script>
+    // Inicializa os ícones do Lucide
+    lucide.createIcons();
+
     function filtrarSistemas() {
-      let input = document.getElementById('searchInput');
-      let filter = input.value.toLowerCase();
-      let nodes = document.getElementsByClassName('card');
+      const input = document.getElementById('searchInput');
+      const filter = input.value.toLowerCase();
+      const nodes = document.getElementsByClassName('dashboard-card');
+      const noResults = document.getElementById('noResults');
+      let encontrouAlgum = false;
 
       for (let i = 0; i < nodes.length; i++) {
-        let title = nodes[i].querySelector('.card-title').innerText.toLowerCase();
-        if (title.includes(filter)) {
-          nodes[i].style.display = "block";
+        const title = nodes[i].querySelector('.card-title').innerText.toLowerCase();
+        const desc = nodes[i].querySelector('.card-desc').innerText.toLowerCase();
+        
+        if (title.includes(filter) || desc.includes(filter)) {
+          nodes[i].style.display = "flex"; // Usa flex para manter o layout do Tailwind
+          encontrouAlgum = true;
         } else {
           nodes[i].style.display = "none";
         }
+      }
+
+      // Mostra mensagem se nada for encontrado
+      if (!encontrouAlgum && filter !== "") {
+        noResults.classList.remove('hidden');
+      } else {
+        noResults.classList.add('hidden');
       }
     }
   </script>
