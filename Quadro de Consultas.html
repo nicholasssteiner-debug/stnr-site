@@ -119,7 +119,7 @@
                     </div>
 
                     <!-- Controles de Importação -->
-                    <div class="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full lg:w-auto">
+                    <div id="controlesImportacaoVerbas" class="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full lg:w-auto">
                         <div class="flex items-center gap-2 w-full sm:w-auto">
                             <i data-lucide="file-spreadsheet" class="text-slate-400 w-5 h-5 hidden sm:block"></i>
                             <input type="file" id="fileInput" accept=".csv" class="text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer w-full">
@@ -215,7 +215,7 @@
                         <p class="text-sm text-slate-500 mt-1">Pesquise em qualquer coluna e visualize a linha inteira dos dados.</p>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full lg:w-auto">
+                    <div id="controlesImportacaoDeptos" class="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full lg:w-auto">
                         <div class="flex items-center gap-2 w-full sm:w-auto">
                             <i data-lucide="file-spreadsheet" class="text-slate-400 w-5 h-5 hidden sm:block"></i>
                             <input type="file" id="fileDeptosInput" accept=".csv" class="text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer w-full">
@@ -281,21 +281,42 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
                         <i data-lucide="user-plus" class="text-blue-600 w-5 h-5"></i>
-                        Adicionar Novo Usuário
+                        Adicionar / Editar Usuário
                     </h2>
                     
-                    <form id="formNovoUsuario" class="flex flex-col md:flex-row gap-4 items-end">
-                        <div class="w-full md:w-2/5">
+                    <form id="formNovoUsuario" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                        <input type="hidden" id="editUserId" value="">
+                        
+                        <div class="col-span-1 md:col-span-3">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Nome</label>
+                            <input type="text" id="novoUserNome" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Ex: João Silva">
+                        </div>
+
+                        <div class="col-span-1 md:col-span-3">
                             <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">E-mail</label>
                             <input type="email" id="novoUserEmail" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="email@adventistas.org">
                         </div>
-                        <div class="w-full md:w-2/5">
+
+                        <div class="col-span-1 md:col-span-2">
                             <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Senha</label>
-                            <input type="text" id="novoUserSenha" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Senha do usuário">
+                            <input type="text" id="novoUserSenha" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Senha forte">
                         </div>
-                        <div class="w-full md:w-1/5">
-                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 h-[42px]">
-                                <i data-lucide="plus" class="w-4 h-4"></i> Salvar
+
+                        <div class="col-span-1 md:col-span-2">
+                            <label class="block text-xs font-medium text-slate-500 mb-1 ml-1">Permissão</label>
+                            <select id="novoUserTipo" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                                <option value="Consultor">Consultor</option>
+                                <option value="Administrador">Administrador</option>
+                            </select>
+                        </div>
+
+                        <div class="col-span-1 md:col-span-2 flex gap-2">
+                            <button type="button" id="btnCancelarEdicao" class="hidden flex-none bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors items-center justify-center h-[38px] mt-auto">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                            <button type="submit" id="btnSalvarUsuario" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 h-[38px] mt-auto">
+                                <i data-lucide="save" id="iconSalvarUsuario" class="w-4 h-4"></i> 
+                                <span id="textSalvarUsuario">Salvar</span>
                             </button>
                         </div>
                     </form>
@@ -310,9 +331,11 @@
                         <table class="w-full text-left text-sm whitespace-nowrap min-w-full">
                             <thead class="bg-slate-100 text-slate-600 font-medium">
                                 <tr>
+                                    <th class="px-6 py-3 border-b border-slate-200">Nome</th>
                                     <th class="px-6 py-3 border-b border-slate-200">E-mail</th>
                                     <th class="px-6 py-3 border-b border-slate-200">Senha</th>
-                                    <th class="px-6 py-3 border-b border-slate-200 text-right">Ação</th>
+                                    <th class="px-6 py-3 border-b border-slate-200">Tipo</th>
+                                    <th class="px-6 py-3 border-b border-slate-200 text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelaUsuarios" class="divide-y divide-slate-100">
@@ -329,7 +352,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, writeBatch, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Configuração segura e com Fallback
         let firebaseConfig;
@@ -360,6 +383,7 @@
         // Estado Global
         let dadosOriginais = [];
         let dadosDeptos = [];
+        let isUserAdmin = false; // Estado para nível de acesso
 
         // Inicializar Lucide
         lucide.createIcons();
@@ -416,9 +440,12 @@
         const fileDeptosInput = document.getElementById('fileDeptosInput');
         const encodingDeptosSelect = document.getElementById('encodingDeptosSelect');
         const mensagemVaziaDeptos = document.getElementById('mensagemVaziaDeptos');
+        const controlesImportacaoVerbas = document.getElementById('controlesImportacaoVerbas');
+        const controlesImportacaoDeptos = document.getElementById('controlesImportacaoDeptos');
 
         const formNovoUsuario = document.getElementById('formNovoUsuario');
         const tabelaUsuarios = document.getElementById('tabelaUsuarios');
+        const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
 
         // Helpers UI
         function showLoading(texto = "Processando...") {
@@ -482,19 +509,26 @@
 
                     // Acesso master (Bypass)
                     if (email === "nicholas.ganhadeiro@adventistas.org" && senha === "Fap1624") {
+                        isUserAdmin = true;
                         entrarNoSistema();
                         return;
                     }
 
                     const querySnapshot = await getDocs(pathUsuarios);
                     let encontrado = false;
+                    let userRole = 'Consultor'; // Default fallback
                     
                     querySnapshot.forEach(doc => {
                         const data = doc.data();
-                        if (data.email === email && data.senha === senha) encontrado = true;
+                        if (data.email === email && data.senha === senha) {
+                            encontrado = true;
+                            if (data.tipo) userRole = data.tipo;
+                        }
                     });
 
                     if (encontrado) {
+                        // Verifica se o usuário autenticado no banco é o administrador
+                        isUserAdmin = (email === "nicholas.ganhadeiro@adventistas.org" || userRole === 'Administrador');
                         entrarNoSistema();
                     } else {
                         hideLoading();
@@ -511,6 +545,20 @@
         function entrarNoSistema() {
             if(loginView) loginView.classList.add('hidden');
             if(mainView) mainView.classList.remove('hidden');
+
+            // Aplica restrições de interface baseadas no nível de acesso
+            if (!isUserAdmin) {
+                if(tabUsuarios) tabUsuarios.classList.add('hidden');
+                if(controlesImportacaoVerbas) controlesImportacaoVerbas.classList.add('hidden');
+                if(controlesImportacaoDeptos) controlesImportacaoDeptos.classList.add('hidden');
+            } else {
+                if(tabUsuarios) tabUsuarios.classList.remove('hidden');
+                if(controlesImportacaoVerbas) controlesImportacaoVerbas.classList.remove('hidden');
+                if(controlesImportacaoDeptos) controlesImportacaoDeptos.classList.remove('hidden');
+            }
+
+            // Garante que iniciamos na aba Verbas por padrão
+            switchTab('verbas');
             carregarDadosDoFirebase();
         }
 
@@ -770,25 +818,55 @@
                 if(tabelaUsuarios) {
                     tabelaUsuarios.innerHTML = `
                         <tr class="bg-blue-50/50">
-                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">nicholas.ganhadeiro@adventistas.org <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full ml-2">Mestre</span></td>
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">Nicholas Ganhadeiro</td>
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700">nicholas.ganhadeiro@adventistas.org</td>
                             <td class="px-6 py-3 border-b border-slate-100 text-slate-500 italic">Protegido</td>
+                            <td class="px-6 py-3 border-b border-slate-100"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Administrador</span></td>
                             <td class="px-6 py-3 border-b border-slate-100 text-right">-</td>
                         </tr>
                     `;
                     snap.forEach(d => {
                         const data = d.data();
+                        const isAdm = data.tipo === 'Administrador';
+                        const badgeClass = isAdm ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700';
+                        
                         const tr = document.createElement('tr');
                         tr.className = "hover:bg-slate-50 transition-colors";
                         tr.innerHTML = `
+                            <td class="px-6 py-3 border-b border-slate-100 text-slate-700 font-medium">${data.nome || '-'}</td>
                             <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.email || ''}</td>
                             <td class="px-6 py-3 border-b border-slate-100 text-slate-700">${data.senha || ''}</td>
+                            <td class="px-6 py-3 border-b border-slate-100">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${data.tipo || 'Consultor'}</span>
+                            </td>
                             <td class="px-6 py-3 border-b border-slate-100 text-right">
-                                <button class="text-red-500 hover:text-red-700 p-1" data-id="${d.id}">
+                                <button class="text-blue-500 hover:text-blue-700 p-1 mr-2 btn-edit" title="Editar Usuário">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </button>
+                                <button class="text-red-500 hover:text-red-700 p-1 btn-delete" title="Excluir Usuário">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </td>
                         `;
-                        tr.querySelector('button').onclick = () => excluirUsuario(d.id);
+                        
+                        tr.querySelector('.btn-delete').onclick = () => excluirUsuario(d.id);
+                        
+                        tr.querySelector('.btn-edit').onclick = () => {
+                            document.getElementById('editUserId').value = d.id;
+                            document.getElementById('novoUserNome').value = data.nome || '';
+                            document.getElementById('novoUserEmail').value = data.email || '';
+                            document.getElementById('novoUserSenha').value = data.senha || '';
+                            document.getElementById('novoUserTipo').value = data.tipo || 'Consultor';
+
+                            document.getElementById('textSalvarUsuario').textContent = 'Atualizar';
+                            document.getElementById('iconSalvarUsuario').setAttribute('data-lucide', 'refresh-cw');
+                            if(btnCancelarEdicao) btnCancelarEdicao.classList.remove('hidden');
+                            lucide.createIcons();
+                            
+                            // Rola a página suavemente até o formulário
+                            document.getElementById('formNovoUsuario').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        };
+
                         tabelaUsuarios.appendChild(tr);
                     });
                 }
@@ -803,21 +881,47 @@
         if (formNovoUsuario) {
             formNovoUsuario.onsubmit = async (e) => {
                 e.preventDefault();
+                const nome = document.getElementById('novoUserNome').value;
                 const email = document.getElementById('novoUserEmail').value;
                 const senha = document.getElementById('novoUserSenha').value;
+                const tipo = document.getElementById('novoUserTipo').value;
+                const editId = document.getElementById('editUserId').value;
+                
                 showLoading();
                 try {
                     if (!auth.currentUser) await initAuth();
-                    await addDoc(pathUsuarios, { email, senha });
-                    document.getElementById('novoUserEmail').value = '';
-                    document.getElementById('novoUserSenha').value = '';
+
+                    if (editId) {
+                        // Modo Atualizar
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', editId), {
+                            nome, email, senha, tipo
+                        });
+                    } else {
+                        // Modo Salvar Novo
+                        await addDoc(pathUsuarios, { nome, email, senha, tipo });
+                    }
+                    
+                    limparFormularioEdicao();
                     carregarUsuarios();
                 } catch (err) {
                     console.error(err);
-                    alert("Erro ao adicionar usuário.");
+                    alert("Erro ao salvar usuário.");
                     hideLoading();
                 }
             };
+        }
+
+        if (btnCancelarEdicao) {
+            btnCancelarEdicao.onclick = limparFormularioEdicao;
+        }
+
+        function limparFormularioEdicao() {
+            document.getElementById('editUserId').value = '';
+            if(formNovoUsuario) formNovoUsuario.reset();
+            document.getElementById('textSalvarUsuario').textContent = 'Salvar';
+            document.getElementById('iconSalvarUsuario').setAttribute('data-lucide', 'save');
+            if(btnCancelarEdicao) btnCancelarEdicao.classList.add('hidden');
+            lucide.createIcons();
         }
 
         async function excluirUsuario(id) {
