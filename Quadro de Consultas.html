@@ -461,6 +461,9 @@
 
         // Navegação
         function switchTab(tab) {
+            // Bloqueia completamente o acesso à lógica da aba se for consultor
+            if (tab === 'usuarios' && !isUserAdmin) return;
+
             if(secaoVerbas) secaoVerbas.classList.add('hidden');
             if(secaoUsuarios) secaoUsuarios.classList.add('hidden');
             if(secaoDeptos) secaoDeptos.classList.add('hidden');
@@ -469,7 +472,13 @@
             const classAtiva = "flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 transition-colors flex items-center justify-center gap-2 whitespace-nowrap";
 
             if(tabVerbas) tabVerbas.className = classInativa;
-            if(tabUsuarios) tabUsuarios.className = classInativa;
+            if(tabUsuarios) {
+                tabUsuarios.className = classInativa;
+                // Garante que a aba usuários continua oculta visualmente se não for admin
+                if (!isUserAdmin) {
+                    tabUsuarios.classList.add('hidden');
+                }
+            }
             if(tabDeptos) tabDeptos.className = classInativa;
 
             if (tab === 'verbas' && secaoVerbas) {
