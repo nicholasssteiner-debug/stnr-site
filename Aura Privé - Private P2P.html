@@ -44,16 +44,6 @@
         </div>
     </div>
 
-    <!-- MODO SIMULAÇÃO BANNER -->
-    <div id="sim-banner" class="hidden w-full bg-amber-500/10 border-b border-amber-500 text-amber-500 text-xs text-center py-2.5 font-bold tracking-widest uppercase items-center justify-center z-40 relative shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-        <i data-lucide="flask-conical" class="w-4 h-4 mr-2"></i> Sandbox de Rendimentos (Sincronização Nuvem Pausada)
-        <div class="ml-6 space-x-4 border-l border-amber-500/30 pl-6 flex items-center">
-            <button onclick="app.advanceTime(15)" class="hover:text-white transition-colors bg-amber-500/20 px-3 py-1 rounded cursor-pointer pointer-events-auto">Avançar 15 Dias</button>
-            <button onclick="app.advanceTime(30)" class="hover:text-white transition-colors bg-amber-500/20 px-3 py-1 rounded cursor-pointer pointer-events-auto">Avançar 30 Dias</button>
-            <button onclick="app.toggleSimulation()" class="hover:text-red-400 text-red-500 transition-colors ml-4 cursor-pointer pointer-events-auto">Sair da Simulação</button>
-        </div>
-    </div>
-
     <!-- APLICAÇÃO PRINCIPAL -->
     <div id="app-container" class="hidden w-full h-full flex flex-1 overflow-hidden">
         
@@ -96,10 +86,6 @@
                 </div>
 
                 <div class="flex items-center space-x-4">
-                    <button id="btn-sim-toggle" onclick="app.toggleSimulation()" class="flex items-center text-[10px] font-bold uppercase tracking-widest text-zinc-400 border border-[#333] bg-[#111] px-4 py-2 rounded-lg hover:bg-zinc-800 hover:text-white transition-colors">
-                        <i data-lucide="test-tubes" class="w-3.5 h-3.5 mr-2"></i> Modo Simulação
-                    </button>
-
                     <div id="header-trust-index" class="flex items-center text-right border border-[#333] bg-gradient-to-r from-[#1a160c] to-[#0a0a0a] shadow-inner rounded-lg px-4 py-2 hidden">
                         <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#D4AF37] mr-3 shadow-[0_0_10px_rgba(212,175,55,0.2)]">
                             <span class="text-[#D4AF37] text-[10px] font-bold">AAA</span>
@@ -420,39 +406,6 @@
                 }, 15000); 
             },
 
-            toggleSimulation() {
-                const banner = document.getElementById('sim-banner');
-                const btnToggle = document.getElementById('btn-sim-toggle');
-
-                if (!state.isSimulation) {
-                    state.realDataSnapshot = cloneData(state);
-                    state.isSimulation = true;
-                    banner.classList.remove('hidden');
-                    banner.classList.add('flex');
-                    btnToggle.classList.add('hidden');
-                } else {
-                    const snap = cloneData(state.realDataSnapshot);
-                    Object.assign(state, snap);
-                    state.isSimulation = false;
-                    banner.classList.add('hidden');
-                    banner.classList.remove('flex');
-                    btnToggle.classList.remove('hidden');
-                }
-                
-                document.getElementById('header-date').innerText = fmtDate(state.currentDate);
-                this.render();
-            },
-
-            advanceTime(daysToAdvance) {
-                if (!state.isSimulation) return; 
-
-                state.currentDate.setDate(state.currentDate.getDate() + daysToAdvance);
-                document.getElementById('header-date').innerText = fmtDate(state.currentDate);
-
-                this.updateDelinquencyStatus();
-                this.render();
-            },
-
             updateDelinquencyStatus() {
                 state.portfolio.forEach(p => {
                     if (p.proximoPgtoRaw && p.parcelasRestantes > 0) {
@@ -579,7 +532,6 @@
 
             logout() {
                 state.auth = { loggedIn: false, role: null, id: null, name: null };
-                if (state.isSimulation) this.toggleSimulation(); 
                 
                 document.getElementById('login-user').value = '';
                 document.getElementById('login-pass').value = '';
@@ -670,17 +622,14 @@
                 const subtitle = document.getElementById('header-subtitle');
                 const welcomeName = document.getElementById('header-welcome-name');
                 const trustBox = document.getElementById('header-trust-index');
-                const btnToggle = document.getElementById('btn-sim-toggle');
                 
                 if (state.auth.role === 'investor') {
                     welcomeName.innerText = `Bem-vindo, ${state.auth.name}.`;
                     subtitle.classList.remove('hidden');
                     trustBox.classList.remove('hidden');
-                    if(!state.isSimulation) btnToggle.classList.remove('hidden');
                 } else {
                     subtitle.classList.add('hidden');
                     trustBox.classList.add('hidden');
-                    btnToggle.classList.add('hidden');
                 }
             },
 
