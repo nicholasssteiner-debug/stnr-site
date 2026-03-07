@@ -125,6 +125,10 @@
                     <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Valor do Aporte (BRL)</label>
                     <input type="text" id="deposit-amount" placeholder="R$ 0,00" class="w-full bg-[#1a1a1a] border border-[#333] rounded p-3 text-white text-lg focus:outline-none focus:border-[#D4AF37] transition-colors" required>
                 </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Data Retroativa (Opcional - Gestão)</label>
+                    <input type="date" id="deposit-date" class="w-full bg-[#1a1a1a] border border-[#333] rounded p-3 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors [color-scheme:dark]">
+                </div>
                 <button type="submit" class="w-full py-3 bg-[#D4AF37] text-black font-semibold uppercase tracking-wider text-sm rounded hover:bg-[#f0cc5e] transition-colors">Confirmar Depósito (Imediato)</button>
             </form>
         </div>
@@ -140,6 +144,10 @@
                 <div>
                     <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Valor do Saque (BRL)</label>
                     <input type="text" id="withdraw-amount" placeholder="R$ 0,00" class="w-full bg-[#1a1a1a] border border-[#333] rounded p-3 text-white text-lg focus:outline-none focus:border-white transition-colors" required>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">Data Retroativa (Opcional - Gestão)</label>
+                    <input type="date" id="withdraw-date" class="w-full bg-[#1a1a1a] border border-[#333] rounded p-3 text-white text-sm focus:outline-none focus:border-white transition-colors [color-scheme:dark]">
                 </div>
                 <p id="withdraw-error" class="text-red-500 text-xs hidden">Saldo insuficiente para este levantamento.</p>
                 <div class="p-3 bg-white/5 border border-white/10 rounded">
@@ -160,6 +168,7 @@
                 <div class="flex justify-between border-b border-[#222] pb-2"><span class="text-zinc-500 text-sm">Garantia Principal</span><span id="invest-guarantee" class="text-white font-medium text-right w-48 truncate"></span></div>
                 <div id="invest-fixed-block" class="flex justify-between border-b border-[#222] pb-2"><span class="text-zinc-500 text-sm">Valor do Ticket (Exclusivo)</span><span id="invest-ticket" class="text-white font-medium"></span></div>
                 <div id="invest-variable-block" class="hidden border-b border-[#222] pb-4"><label class="block text-zinc-500 text-sm mb-2">Definir Valor a Investir (Min: <span id="invest-min-ticket" class="text-white"></span>)</label><input type="text" id="invest-custom-amount" placeholder="R$ 0,00" class="w-full bg-[#1a1a1a] border border-[#D4AF37] rounded p-2 text-white text-sm focus:outline-none"></div>
+                <div class="border-b border-[#222] pb-4"><label class="block text-zinc-500 text-sm mb-2">Data Retroativa (Opcional - Gestão)</label><input type="date" id="invest-date" class="w-full bg-[#1a1a1a] border border-[#D4AF37] rounded p-2 text-white text-sm focus:outline-none [color-scheme:dark]"></div>
                 <div class="flex justify-between border-b border-[#222] pb-2 bg-[#D4AF37]/5 p-2 rounded"><div><span class="text-[#D4AF37] text-sm block">Taxa de Administração (Upfront)</span><span class="text-[10px] text-zinc-500">3% sobre o lucro estimado.</span></div><span id="invest-admin-fee" class="text-[#D4AF37] font-medium text-right"></span></div>
                 <div class="flex justify-between pt-2"><span class="text-zinc-500 text-sm">O seu Saldo Disponível</span><span id="invest-balance" class="font-medium text-emerald-500"></span></div>
             </div>
@@ -442,26 +451,28 @@
                 document.getElementById('deposit-form').addEventListener('submit', (e) => {
                     e.preventDefault();
                     let amount = getMoneyValue(document.getElementById('deposit-amount').value);
-                    if (amount > 0) this.handleDeposit(amount);
+                    let customDate = document.getElementById('deposit-date').value;
+                    if (amount > 0) this.handleDeposit(amount, customDate);
                 });
 
                 document.getElementById('withdraw-form').addEventListener('submit', (e) => {
                     e.preventDefault();
                     let amount = getMoneyValue(document.getElementById('withdraw-amount').value);
+                    let customDate = document.getElementById('withdraw-date').value;
                     const errLabel = document.getElementById('withdraw-error');
                     
                     if (amount > (state.balances[state.auth.id]?.availableCash || 0)) {
                         errLabel.classList.remove('hidden');
                     } else if (amount > 0) {
                         errLabel.classList.add('hidden');
-                        this.handleWithdraw(amount);
+                        this.handleWithdraw(amount, customDate);
                     }
                 });
 
                 document.getElementById('btn-confirm-invest').addEventListener('click', () => {
                     const op = state.selectedOp;
                     const errLabel = document.getElementById('invest-error');
-                    let amountToInvest = op.type === 'variable' ? getMoneyValue(customInvestInput.value) : op.ticket;
+                    let amountToInvest = op.type === 'variable' ? getMoneyValue(document.getElementById('invest-custom-amount').value) : op.ticket;
 
                     if (amountToInvest < (op.minTicket || op.ticket)) {
                         errLabel.classList.remove('hidden'); return;
@@ -475,7 +486,8 @@
                     }
 
                     errLabel.classList.add('hidden');
-                    this.handleInvest(op, amountToInvest, taxaAdmin);
+                    let customDate = document.getElementById('invest-date').value;
+                    this.handleInvest(op, amountToInvest, taxaAdmin, customDate);
                 });
             },
 
@@ -588,9 +600,11 @@
                 const userBal = state.balances[state.auth.id] || { availableCash: 0 };
                 if (type === 'deposit') {
                     document.getElementById('deposit-amount').value = '';
+                    document.getElementById('deposit-date').value = '';
                     document.getElementById('modal-deposit').classList.remove('hidden'); document.getElementById('modal-deposit').classList.add('flex');
                 } else if (type === 'withdraw') {
                     document.getElementById('withdraw-amount').value = '';
+                    document.getElementById('withdraw-date').value = '';
                     document.getElementById('withdraw-error').classList.add('hidden');
                     document.getElementById('withdraw-available-lbl').innerText = fmtCurrency(userBal.availableCash);
                     document.getElementById('modal-withdraw').classList.remove('hidden'); document.getElementById('modal-withdraw').classList.add('flex');
@@ -603,6 +617,7 @@
                     document.getElementById('invest-guarantee').innerText = op.garantias;
                     document.getElementById('invest-balance').innerText = fmtCurrency(userBal.availableCash);
                     document.getElementById('invest-error').classList.add('hidden');
+                    document.getElementById('invest-date').value = '';
 
                     const blockFixed = document.getElementById('invest-fixed-block'), blockVar = document.getElementById('invest-variable-block'), customInput = document.getElementById('invest-custom-amount');
                     if (op.type === 'exclusive') {
@@ -624,48 +639,56 @@
             },
 
             // --- AÇÕES GRANULARES (Gravação Segura no Firebase) ---
-            async handleDeposit(amount) {
+            async handleDeposit(amount, customDateStr) {
                 const uid = state.auth.id;
                 const bal = state.balances[uid];
                 await updateDoc(getRef('balances', uid), { availableCash: bal.availableCash + amount });
                 
-                const txId = Date.now();
-                await setDoc(getRef('history', txId), { id: txId, userId: uid, date: txId, type: 'Depósito', desc: 'Aporte na Plataforma via PIX/TED', amount: amount, isPositive: true });
+                const txTime = customDateStr ? new Date(customDateStr + 'T12:00:00').getTime() : Date.now();
+                const docId = Date.now();
+                await setDoc(getRef('history', docId), { id: docId, userId: uid, date: txTime, type: 'Depósito', desc: 'Aporte na Plataforma via PIX/TED', amount: amount, isPositive: true });
                 
                 this.closeModal('deposit');
             },
 
-            async handleWithdraw(amount) {
+            async handleWithdraw(amount, customDateStr) {
                 const uid = state.auth.id;
                 const bal = state.balances[uid];
                 await updateDoc(getRef('balances', uid), { availableCash: bal.availableCash - amount });
                 
-                const txId = Date.now();
-                await setDoc(getRef('history', txId), { id: txId, userId: uid, date: txId, type: 'Levantamento', desc: 'Saque Solicitado (Em Análise)', amount: amount, isPositive: false });
-                await setDoc(getRef('pendingTransactions', txId), { id: txId, userId: uid, type: 'withdraw', desc: 'Solicitação de Saque', amount: amount, client: `${state.auth.name} (${uid})`, timestamp: txId });
+                const txTime = customDateStr ? new Date(customDateStr + 'T12:00:00').getTime() : Date.now();
+                const docId = Date.now();
+                await setDoc(getRef('history', docId), { id: docId, userId: uid, date: txTime, type: 'Levantamento', desc: 'Saque Solicitado (Em Análise)', amount: amount, isPositive: false });
+                await setDoc(getRef('pendingTransactions', docId), { id: docId, userId: uid, type: 'withdraw', desc: 'Solicitação de Saque', amount: amount, client: `${state.auth.name} (${uid})`, timestamp: txTime, customTimestamp: txTime });
                 
                 this.closeModal('withdraw');
             },
 
-            async handleInvest(op, amount, taxaAdmin) {
+            async handleInvest(op, amount, taxaAdmin, customDateStr) {
                 const uid = state.auth.id;
                 const bal = state.balances[uid];
                 await updateDoc(getRef('balances', uid), { availableCash: bal.availableCash - (amount + taxaAdmin) });
                 
                 const taxaQuinzenalDecimal = (parseFloat(op.taxa) / 100) / 12 / 2;
-                const portfId = Date.now();
+                
+                const txTime = customDateStr ? new Date(customDateStr + 'T12:00:00').getTime() : Date.now();
+                const docId = Date.now();
+                const portfId = docId;
                 
                 const newPortfolio = {
                     id: portfId, userId: uid, userName: state.auth.name, setor: op.setor, ticketOriginal: amount, ticketAtual: amount, 
                     taxaQuinzenalDecimal: taxaQuinzenalDecimal, taxaExibicao: `${(taxaQuinzenalDecimal * 100).toFixed(2)}% a.q.`,
-                    status: 'Aguardando Gerente', proximoPgtoRaw: null, proximoPgto: 'Pendente', parcelasRestantes: 24, taxaAdmin: taxaAdmin, timestamp: portfId
+                    status: 'Aguardando Gerente', proximoPgtoRaw: null, proximoPgto: 'Pendente', parcelasRestantes: 24, taxaAdmin: taxaAdmin, timestamp: txTime
                 };
                 await setDoc(getRef('portfolio', portfId), newPortfolio);
 
-                const txId = Date.now() + 1;
-                if (taxaAdmin > 0) await setDoc(getRef('history', txId+1), { id: txId+1, userId: uid, date: txId+1, type: 'Taxa Adm.', desc: `Custo Operacional de Investimento em ${op.setor}`, amount: taxaAdmin, isPositive: false });
-                await setDoc(getRef('history', txId), { id: txId, userId: uid, date: txId, type: 'Aporte', desc: `Investimento Solicitado (Em Análise) - ${op.setor}`, amount: amount, isPositive: false });
-                await setDoc(getRef('pendingTransactions', txId), { id: txId, userId: uid, type: 'invest', portfolioId: portfId, desc: `Investimento: ${op.setor}`, amount: amount, taxaAdmin: taxaAdmin, client: `${state.auth.name} (${uid})`, timestamp: txId });
+                if (taxaAdmin > 0) {
+                    const taxDocId = Date.now() + 1;
+                    await setDoc(getRef('history', taxDocId), { id: taxDocId, userId: uid, date: txTime, type: 'Taxa Adm.', desc: `Custo Operacional de Investimento em ${op.setor}`, amount: taxaAdmin, isPositive: false });
+                }
+                
+                await setDoc(getRef('history', docId), { id: docId, userId: uid, date: txTime, type: 'Aporte', desc: `Investimento Solicitado (Em Análise) - ${op.setor}`, amount: amount, isPositive: false });
+                await setDoc(getRef('pendingTransactions', docId), { id: docId, userId: uid, type: 'invest', portfolioId: portfId, desc: `Investimento: ${op.setor}`, amount: amount, taxaAdmin: taxaAdmin, client: `${state.auth.name} (${uid})`, timestamp: txTime, customTimestamp: txTime });
                 await deleteDoc(getRef('marketOps', op.id));
                 
                 this.closeModal('invest');
@@ -685,6 +708,7 @@
                 if (!tx) return;
                 
                 await deleteDoc(getRef('pendingTransactions', txId)); 
+                const txTime = tx.customTimestamp || Date.now();
 
                 if (tx.type === 'invest') {
                     const portItem = state.portfolio.find(p => p.id === tx.portfolioId);
@@ -692,39 +716,40 @@
                         const bal = state.balances[tx.userId];
                         await updateDoc(getRef('balances', tx.userId), { investedAmount: bal.investedAmount + tx.amount });
                         
-                        const dataPgto = Date.now() + (15 * 86400000);
+                        const dataPgto = txTime + (15 * 86400000);
                         await updateDoc(getRef('portfolio', tx.portfolioId), { status: 'Ativo', proximoPgtoRaw: dataPgto, proximoPgto: fmtDate(dataPgto) });
-                        await updateDoc(getRef('history', tx.id), { desc: `Investimento Confirmado: ${portItem.setor}` });
+                        await updateDoc(getRef('history', tx.id), { desc: `Investimento Confirmado: ${portItem.setor}`, date: txTime });
                     } else if (portItem) {
                         await deleteDoc(getRef('portfolio', tx.portfolioId));
                         const bal = state.balances[tx.userId];
                         await updateDoc(getRef('balances', tx.userId), { availableCash: bal.availableCash + tx.amount + tx.taxaAdmin });
                         
                         const now = Date.now();
-                        if (tx.taxaAdmin > 0) await setDoc(getRef('history', now+1), { id: now+1, userId: tx.userId, date: now+1, type: 'Estorno', desc: `Estorno Taxa Admin. (${portItem.setor})`, amount: tx.taxaAdmin, isPositive: true });
-                        await setDoc(getRef('history', now), { id: now, userId: tx.userId, date: now, type: 'Estorno', desc: `Investimento Rejeitado (${portItem.setor})`, amount: tx.amount, isPositive: true });
+                        if (tx.taxaAdmin > 0) await setDoc(getRef('history', now+1), { id: now+1, userId: tx.userId, date: txTime, type: 'Estorno', desc: `Estorno Taxa Admin. (${portItem.setor})`, amount: tx.taxaAdmin, isPositive: true });
+                        await setDoc(getRef('history', now), { id: now, userId: tx.userId, date: txTime, type: 'Estorno', desc: `Investimento Rejeitado (${portItem.setor})`, amount: tx.amount, isPositive: true });
                     }
                 } 
                 else if (tx.type === 'withdraw') {
                     if (isApproved) {
-                        await updateDoc(getRef('history', tx.id), { desc: `Saque Processado com Sucesso` });
+                        await updateDoc(getRef('history', tx.id), { desc: `Saque Processado com Sucesso`, date: txTime });
                     } else {
                         const bal = state.balances[tx.userId];
                         await updateDoc(getRef('balances', tx.userId), { availableCash: bal.availableCash + tx.amount });
-                        await setDoc(getRef('history', Date.now()), { id: Date.now(), userId: tx.userId, date: Date.now(), type: 'Estorno', desc: `Saque Rejeitado pelo Backoffice`, amount: tx.amount, isPositive: true });
+                        await setDoc(getRef('history', Date.now()), { id: Date.now(), userId: tx.userId, date: txTime, type: 'Estorno', desc: `Saque Rejeitado pelo Backoffice`, amount: tx.amount, isPositive: true });
                     }
                 }
             },
 
-            async handleManagerManualPayment(portId) {
+            async handleManagerManualPayment(portId, customDateStr) {
                 const p = state.portfolio.find(item => item.id === portId);
                 if (!p || p.parcelasRestantes <= 0) return;
 
+                const txTime = customDateStr ? new Date(customDateStr + 'T12:00:00').getTime() : Date.now();
                 const devolucaoPrincipal = p.ticketOriginal / 24; 
                 const jurosIntegrais = p.ticketOriginal * p.taxaQuinzenalDecimal;
                 
                 const inicioCiclo = p.proximoPgtoRaw - (15 * 86400000);
-                let diasDecorridos = Math.round((Date.now() - inicioCiclo) / 86400000);
+                let diasDecorridos = Math.round((txTime - inicioCiclo) / 86400000);
                 if (diasDecorridos < 1) diasDecorridos = 1; 
 
                 const pagamentoTotal = devolucaoPrincipal + (jurosIntegrais * (diasDecorridos / 15));
@@ -740,11 +765,10 @@
                 }
 
                 const notaTempo = diasDecorridos < 15 ? ` (Antecipado ${15 - diasDecorridos}d)` : diasDecorridos > 15 ? ` (Atrasado ${diasDecorridos - 15}d)` : '';
-                const txId = Date.now();
-                await setDoc(getRef('history', txId), { id: txId, userId: p.userId, date: txId, type: 'Recebimento (Manual)', desc: `Processado pelo Gestor - ${p.setor}${notaTempo}`, amount: pagamentoTotal, isPositive: true });
+                const docId = Date.now();
+                await setDoc(getRef('history', docId), { id: docId, userId: p.userId, date: txTime, type: 'Recebimento (Manual)', desc: `Processado pelo Gestor - ${p.setor}${notaTempo}`, amount: pagamentoTotal, isPositive: true });
             },
 
-            // --- RENDERIZAÇÃO DE RELATÓRIO PDF ---
             downloadReport(type) {
                 const uId = state.auth.id;
                 const bal = state.balances[uId];
@@ -1069,7 +1093,7 @@
                         <div class="flex justify-between items-center p-4 bg-gradient-to-r from-[#1a160c] to-[#101010] border border-[#D4AF37]/20 rounded-lg">
                             <div>
                                 <h4 class="text-white font-medium">${tx.client} <span class="text-[10px] uppercase bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded ml-2">${tx.type === 'invest' ? 'Alocação' : 'Saque'}</span></h4>
-                                <p class="text-xs text-zinc-400 mt-1">${tx.desc} • <span class="text-white font-bold">${fmtCurrency(tx.amount)}</span></p>
+                                <p class="text-xs text-zinc-400 mt-1">${tx.desc} • <span class="text-white font-bold">${fmtCurrency(tx.amount)}</span>${tx.customTimestamp ? ` (Data Req: ${fmtDate(tx.customTimestamp)})` : ''}</p>
                             </div>
                             <div class="flex space-x-3">
                                 <button onclick="app.handleClientTransaction(${tx.id}, false)" class="px-3 py-1.5 border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs rounded transition-colors">Negar</button>
@@ -1109,7 +1133,10 @@
                                     <p class="text-xs text-zinc-400 mt-1">Valor HOJE: <span class="text-[#D4AF37] font-bold text-sm">${fmtCurrency(parcelaHoje)}</span></p>
                                     <p class="text-xs text-zinc-400 mt-1">Parcelas: <span class="text-white font-bold">${op.parcelasRestantes}</span></p>
                                 </div>
-                                <button onclick="app.handleManagerManualPayment(${op.id})" class="px-4 py-2 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2"></i> Pagar</button>
+                                <div class="flex flex-col items-end space-y-2">
+                                    <input type="date" id="pay-date-${op.id}" class="bg-[#1a1a1a] text-zinc-400 text-[10px] px-2 py-1 rounded border border-[#333] focus:border-[#D4AF37] outline-none [color-scheme:dark]" title="Data retroativa (opcional)">
+                                    <button onclick="app.handleManagerManualPayment(${op.id}, document.getElementById('pay-date-${op.id}').value)" class="px-4 py-2 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2"></i> Pagar</button>
+                                </div>
                             </div>
                             `}).join('');
 
