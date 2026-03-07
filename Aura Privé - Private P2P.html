@@ -183,11 +183,20 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CONFIGURAÇÃO SEGURA (Injetada pelo ambiente, ou fallback)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // Caso rode fora do ambiente de simulação, insira aqui o seu firebase config
+        // --- ⚠️ ATENÇÃO: CONFIGURAÇÃO DO SEU FIREBASE AQUI ⚠️ ---
+        // Se for rodar no seu próprio site, substitua os valores abaixo com as chaves do seu painel do Firebase.
+        const fallbackConfig = {
+            apiKey: "AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA",
+            authDomain: "level-up-c3f9b.firebaseapp.com",
+            projectId: "level-up-c3f9b",
+            storageBucket: "level-up-c3f9b.firebasestorage.app",
+            messagingSenderId: "162788989046",
+            appId: "1:162788989046:web:8ab0d9ae8c3197a1352757",
+            measurementId: "G-FYNXYRLGBD"
         };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'aura-prive-local';
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : fallbackConfig;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'aura-prive-producao';
 
         let db, auth;
         try {
@@ -703,12 +712,14 @@
                 }
             },
 
-            async handleClientTransaction(txId, isApproved) {
+            async handleClientTransaction(txId, isApproved, managerCustomDateStr) {
                 const tx = state.pendingTransactions.find(t => t.id === txId);
                 if (!tx) return;
                 
                 await deleteDoc(getRef('pendingTransactions', txId)); 
-                const txTime = tx.customTimestamp || Date.now();
+                
+                // Se o gerente enviou uma data pelo input de aprovação, nós a usamos. Senão, usamos a data original.
+                const txTime = managerCustomDateStr ? new Date(managerCustomDateStr + 'T12:00:00').getTime() : (tx.customTimestamp || Date.now());
 
                 if (tx.type === 'invest') {
                     const portItem = state.portfolio.find(p => p.id === tx.portfolioId);
@@ -716,8 +727,11 @@
                         const bal = state.balances[tx.userId];
                         await updateDoc(getRef('balances', tx.userId), { investedAmount: bal.investedAmount + tx.amount });
                         
+                        // Atualiza a data da próxima parcela baseada na data forçada pelo gerente
                         const dataPgto = txTime + (15 * 86400000);
-                        await updateDoc(getRef('portfolio', tx.portfolioId), { status: 'Ativo', proximoPgtoRaw: dataPgto, proximoPgto: fmtDate(dataPgto) });
+                        await updateDoc(getRef('portfolio', tx.portfolioId), { status: 'Ativo', proximoPgtoRaw: dataPgto, proximoPgto: fmtDate(dataPgto), timestamp: txTime });
+                        
+                        // O histórico registra o investimento na data definida
                         await updateDoc(getRef('history', tx.id), { desc: `Investimento Confirmado: ${portItem.setor}`, date: txTime });
                     } else if (portItem) {
                         await deleteDoc(getRef('portfolio', tx.portfolioId));
@@ -1095,9 +1109,12 @@
                                 <h4 class="text-white font-medium">${tx.client} <span class="text-[10px] uppercase bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded ml-2">${tx.type === 'invest' ? 'Alocação' : 'Saque'}</span></h4>
                                 <p class="text-xs text-zinc-400 mt-1">${tx.desc} • <span class="text-white font-bold">${fmtCurrency(tx.amount)}</span>${tx.customTimestamp ? ` (Data Req: ${fmtDate(tx.customTimestamp)})` : ''}</p>
                             </div>
-                            <div class="flex space-x-3">
-                                <button onclick="app.handleClientTransaction(${tx.id}, false)" class="px-3 py-1.5 border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs rounded transition-colors">Negar</button>
-                                <button onclick="app.handleClientTransaction(${tx.id}, true)" class="px-3 py-1.5 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors"><i data-lucide="check" class="w-3 h-3 mr-1"></i> Aprovar</button>
+                            <div class="flex flex-col items-end space-y-2">
+                                <input type="date" id="approve-date-${tx.id}" class="bg-[#1a1a1a] text-zinc-400 text-[10px] px-2 py-1 rounded border border-[#333] focus:border-[#D4AF37] outline-none [color-scheme:dark]" title="Alterar Data Retroativa">
+                                <div class="flex space-x-3">
+                                    <button onclick="app.handleClientTransaction(${tx.id}, false, document.getElementById('approve-date-${tx.id}').value)" class="px-3 py-1.5 border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs rounded transition-colors">Negar</button>
+                                    <button onclick="app.handleClientTransaction(${tx.id}, true, document.getElementById('approve-date-${tx.id}').value)" class="px-3 py-1.5 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors"><i data-lucide="check" class="w-3 h-3 mr-1"></i> Aprovar</button>
+                                </div>
                             </div>
                         </div>
                     `).join('');
