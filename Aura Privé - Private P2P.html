@@ -328,7 +328,8 @@
 
             startOpportunityGenerator() {
                 setInterval(async () => {
-                    if(!state.auth.loggedIn || state.auth.role !== 'manager') return; // Apenas o gerente gera novas ofertas no DB
+                    // Se não estiver logado, não faz nada
+                    if (!state.auth.loggedIn) return;
 
                     const rand = Math.random();
                     let type = 'exclusive';
@@ -338,9 +339,30 @@
                     else if (rand < 0.7) { type = 'variable'; dest = 'marketOps'; } 
                     else { type = 'exclusive'; dest = 'pendingOps'; }
 
+                    // Limites Separados: 12 para Exclusivas (Deal Flow) e 12 para Variáveis (Explorar)
+                    const exclusiveCount = state.marketOps.filter(o => o.type === 'exclusive').length;
+                    const variableCount = state.marketOps.filter(o => o.type === 'variable').length;
+
+                    if (dest === 'marketOps' && type === 'exclusive' && exclusiveCount >= 12) return;
+                    if (dest === 'marketOps' && type === 'variable' && variableCount >= 12) return;
+                    if (dest === 'pendingOps' && state.pendingOps.length >= 8) return;
+
                     const setoresBase = ['Agronegócio Exportação', 'Tech B2B SaaS', 'Energia Solar', 'Imobiliário Premium', 'Logística Avançada', 'FIDC Infraestrutura', 'CRI Saneamento', 'Data Center Tier III'];
                     const garantiasBase = ['Alienação Imobiliária', 'Cessão Fiduciária', 'Aval Pessoal', 'Fundo Garantidor', 'Penhor de Quotas'];
                     const id = Date.now();
+
+                    // Lógica de Valores Acessíveis para o Mercado Aberto
+                    let minTicket = 0;
+                    if (type === 'variable') {
+                        if (Math.random() < 0.5) {
+                            // 50% de chance de ser um valor super acessível
+                            const acessiveis = [500, 1000, 2000, 5000];
+                            minTicket = acessiveis[Math.floor(Math.random() * acessiveis.length)];
+                        } else {
+                            // 50% de chance de ser um valor maior (10k a 50k)
+                            minTicket = Math.floor(Math.random() * 5 + 1) * 10000;
+                        }
+                    }
 
                     const newOp = {
                         id: id,
@@ -348,7 +370,7 @@
                         setor: setoresBase[Math.floor(Math.random()*setoresBase.length)] + ' - Lote ' + Math.floor(Math.random()*900 + 100),
                         valor: Math.floor(Math.random() * 50 + 5) * 1000000,
                         ticket: type === 'exclusive' ? Math.floor(Math.random() * 10 + 1) * 50000 : 0,
-                        minTicket: type === 'variable' ? Math.floor(Math.random() * 5 + 1) * 10000 : 0,
+                        minTicket: minTicket,
                         taxa: (Math.random() * 14 + 11).toFixed(1),
                         score: ['AAA+', 'AAA', 'AA+', 'AA', 'A+', 'A'][Math.floor(Math.random()*6)],
                         garantias: garantiasBase[Math.floor(Math.random()*garantiasBase.length)],
@@ -356,8 +378,9 @@
                         timestamp: id
                     };
 
+                    // Grava a nova oportunidade de forma segura (setDoc num documento individual)
                     await setDoc(getRef(dest, id), newOp);
-                }, 25000); 
+                }, 15000); // Roda a cada 15 segundos
             },
 
             updateDelinquencyStatus() {
