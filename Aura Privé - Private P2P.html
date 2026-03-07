@@ -171,45 +171,32 @@
     <!-- LÓGICA FIREBASE E APLICAÇÃO -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // A SUA CONFIGURAÇÃO DO FIREBASE (level-up-c3f9b)
-        const fbConfig = {
-            apiKey: "AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA",
-            authDomain: "level-up-c3f9b.firebaseapp.com",
-            projectId: "level-up-c3f9b",
-            storageBucket: "level-up-c3f9b.firebasestorage.app",
-            messagingSenderId: "162788989046",
-            appId: "1:162788989046:web:8ab0d9ae8c3197a1352757",
-            measurementId: "G-FYNXYRLGBD"
+        // CONFIGURAÇÃO SEGURA (Injetada pelo ambiente, ou fallback)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // Caso rode fora do ambiente de simulação, insira aqui o seu firebase config
         };
-        
-        let db = null;
-        let auth = null;
-        let stateDocRef = null;
-        let analytics = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'aura-prive-local';
 
-        if (fbConfig) {
-            const firebaseApp = initializeApp(fbConfig);
-            analytics = getAnalytics(firebaseApp);
+        let db, auth;
+        try {
+            const firebaseApp = initializeApp(firebaseConfig);
             db = getFirestore(firebaseApp);
             auth = getAuth(firebaseApp);
-            
-            // Usando um caminho mais simples no SEU banco de dados
-            stateDocRef = doc(db, 'aura_prive_app', 'estado_global'); 
-            
-            // Expor globalmente para a aplicação usar
-            window.firebaseDB = db;
-            window.firebaseAPI = { doc, setDoc, getDoc, onSnapshot, collection };
-        }
+        } catch(e) { console.error("Erro Init Firebase", e); }
+
+        // --- ARQUITETURA DE COLEÇÕES (SEGURA E RELACIONAL) ---
+        // Agora, cada entidade tem sua própria gaveta no banco de dados. Nada de esmagar o documento inteiro!
+        const getColl = (name) => collection(db, 'artifacts', appId, 'public', 'data', name);
+        const getRef = (name, id) => doc(db, 'artifacts', appId, 'public', 'data', name, id.toString());
 
         // --- UTILITÁRIOS ---
-        const fmtCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-        const fmtDate = (date) => {
-            if (!date) return '';
-            return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date));
+        const fmtCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+        const fmtDate = (timestamp) => {
+            if (!timestamp) return '';
+            return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(timestamp));
         };
         
         const handleMoneyInput = (e) => {
@@ -232,13 +219,13 @@
             return parseFloat(str.replace(/[^0-9]/g, '')) / 100;
         };
 
-        // --- ESTADO DA APLICAÇÃO ---
+        // --- ESTADO DA APLICAÇÃO EM MEMÓRIA ---
         const state = {
             auth: { loggedIn: false, role: null, id: null, name: null },
             activeTab: 'principal',
-            currentDate: new Date(), 
+            currentDate: Date.now(), 
             
-            // Cofres independentes para os clientes
+            // Dados sincronizados em Tempo Real
             balances: {
                 '20053214781': { availableCash: 0, investedAmount: 0 },
                 '12062005': { availableCash: 0, investedAmount: 0 }
@@ -248,44 +235,10 @@
             pendingTransactions: [], 
             marketOps: [],
             pendingOps: [],
-            selectedOp: null,
-            charts: {},
             
-            isSimulation: false,
-            realDataSnapshot: null
+            selectedOp: null,
+            charts: {}
         };
-
-        // --- SERIALIZAÇÃO FIREBASE ---
-        function cloneData(src) {
-            let cloned = JSON.parse(JSON.stringify(src));
-            cloned.currentDate = new Date(cloned.currentDate);
-            if(cloned.history) cloned.history.forEach(h => h.date = new Date(h.date));
-            if(cloned.portfolio) cloned.portfolio.forEach(p => p.proximoPgtoRaw = p.proximoPgtoRaw ? new Date(p.proximoPgtoRaw) : null);
-            return cloned;
-        }
-
-        function serializeState() {
-            return {
-                balances: state.balances,
-                currentDate: state.currentDate.getTime(),
-                history: state.history.map(h => ({ ...h, date: h.date.getTime() })),
-                portfolio: state.portfolio.map(p => ({ ...p, proximoPgtoRaw: p.proximoPgtoRaw ? p.proximoPgtoRaw.getTime() : null })),
-                pendingTransactions: state.pendingTransactions,
-                marketOps: state.marketOps,
-                pendingOps: state.pendingOps
-            };
-        }
-
-        function deserializeState(data) {
-            if(!data) return;
-            state.balances = data.balances || state.balances;
-            state.currentDate = data.currentDate ? new Date(data.currentDate) : new Date();
-            state.history = (data.history || []).map(h => ({ ...h, date: new Date(h.date) }));
-            state.portfolio = (data.portfolio || []).map(p => ({ ...p, proximoPgtoRaw: p.proximoPgtoRaw ? new Date(p.proximoPgtoRaw) : null }));
-            state.pendingTransactions = data.pendingTransactions || [];
-            state.marketOps = data.marketOps || [];
-            state.pendingOps = data.pendingOps || [];
-        }
 
         // --- LÓGICA PRINCIPAL (APP) ---
         const app = {
@@ -294,124 +247,124 @@
                 lucide.createIcons();
                 document.getElementById('header-date').innerText = fmtDate(state.currentDate);
                 
-                // Inicialização Segura Firebase
-                if (auth && db) {
+                // 1. Autenticação Obrigatória Primeiro
+                if (auth) {
                     try {
-                        // Conecta anonimamente no seu projeto
-                        await signInAnonymously(auth);
-                        console.log("Firebase Auth Sucesso (Seu Projeto)");
-
-                        // Tenta puxar dados da nuvem. Se não houver, injeta os iniciais.
-                        const docSnap = await getDoc(stateDocRef);
-                        if (docSnap.exists()) {
-                            deserializeState(docSnap.data());
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
                         } else {
-                            this.injectInitialMarketOps();
-                            // Só salva o inicial se for o gerente criando a base pela primeira vez
-                            if(state.auth.loggedIn && state.auth.role === 'manager'){
-                                 await this.saveState();
-                            }
+                            await signInAnonymously(auth);
                         }
-
-                        // Sincronização Dinâmica: Fica a ouvir a nuvem
-                        onSnapshot(stateDocRef, (snapshot) => {
-                            if (snapshot.exists() && !state.isSimulation) {
-                                deserializeState(snapshot.data());
-                                if (state.auth.loggedIn) this.renderContentOnly();
+                        
+                        onAuthStateChanged(auth, async (user) => {
+                            if (user) {
+                                console.log("Firebase Auth OK");
+                                await this.checkAndInitDatabase();
+                                this.setupRealtimeListeners();
                             }
-                        }, (error) => {
-                            console.error("Erro ao escutar alterações:", error);
                         });
-
                     } catch (e) {
-                        console.error("Falha ao ligar ao Firebase DB:", e);
-                        this.injectInitialMarketOps(); 
+                        console.error("Falha ao ligar ao Firebase Auth:", e);
                     }
-                } else {
-                     this.injectInitialMarketOps();
                 }
 
                 this.startOpportunityGenerator(); 
             },
 
-            injectInitialMarketOps() {
-                state.marketOps = [
-                    { id: 1, type: 'exclusive', setor: 'Agro / Expansão', valor: 5000000, ticket: 250000, taxa: '19.5', score: 'AA+', garantias: 'Alienação Fiduciária (Terra)', risco: 'Baixo' },
-                    { id: 3, type: 'variable', setor: 'Fundo Imobiliário Tech', valor: 8000000, minTicket: 50000, taxa: '16.5', score: 'A-', garantias: 'Cotas do Fundo Integralizadas', risco: 'Médio' }
-                ];
-                state.pendingOps = [
-                    { id: 2, type: 'exclusive', setor: 'Infra / Energia', valor: 12500000, ticket: 500000, taxa: '21.0', score: 'A', garantias: 'Cessão de Recebíveis', risco: 'Médio-Baixo' }
-                ];
+            // Cria os documentos iniciais se a base de dados estiver vazia
+            async checkAndInitDatabase() {
+                const b1 = await getDoc(getRef('balances', '20053214781'));
+                if (!b1.exists()) await setDoc(getRef('balances', '20053214781'), { availableCash: 0, investedAmount: 0 });
+                
+                const b2 = await getDoc(getRef('balances', '12062005'));
+                if (!b2.exists()) await setDoc(getRef('balances', '12062005'), { availableCash: 0, investedAmount: 0 });
+
+                // Injetar mercado inicial se não existir
+                onSnapshot(getColl('marketOps'), (snap) => {
+                    if (snap.empty && state.marketOps.length === 0) {
+                        const initOps = [
+                            { id: Date.now()+1, type: 'exclusive', setor: 'Agro / Expansão', valor: 5000000, ticket: 250000, taxa: '19.5', score: 'AA+', garantias: 'Alienação Fiduciária (Terra)', risco: 'Baixo', timestamp: Date.now() },
+                            { id: Date.now()+2, type: 'variable', setor: 'Fundo Imobiliário Tech', valor: 8000000, minTicket: 50000, taxa: '16.5', score: 'A-', garantias: 'Cotas do Fundo Integralizadas', risco: 'Médio', timestamp: Date.now() }
+                        ];
+                        initOps.forEach(op => setDoc(getRef('marketOps', op.id), op));
+                    }
+                }, () => {});
             },
 
-            async saveState() {
-                // Se for simulação, não houver DB, ou O USUÁRIO NÃO ESTIVER LOGADO, aborta o salvamento!
-                // Isso impede que telas de login vazias apaguem o banco de dados.
-                if (state.isSimulation || !window.firebaseDB || !state.auth.loggedIn) return;
-                
-                try {
-                    await setDoc(stateDocRef, serializeState());
-                } catch (e) {
-                    console.error("Erro ao escrever no Firebase:", e);
-                }
+            // Liga os "olheiros" para cada gaveta de dados independentemente
+            setupRealtimeListeners() {
+                const updateAndRender = () => { if (state.auth.loggedIn) this.renderContentOnly(); };
+
+                onSnapshot(getColl('balances'), (snap) => {
+                    snap.docs.forEach(doc => state.balances[doc.id] = doc.data());
+                    updateAndRender();
+                }, console.error);
+
+                onSnapshot(getColl('marketOps'), (snap) => {
+                    state.marketOps = snap.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
+                    updateAndRender();
+                }, console.error);
+
+                onSnapshot(getColl('pendingOps'), (snap) => {
+                    state.pendingOps = snap.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
+                    updateAndRender();
+                }, console.error);
+
+                onSnapshot(getColl('portfolio'), (snap) => {
+                    state.portfolio = snap.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
+                    updateAndRender();
+                }, console.error);
+
+                onSnapshot(getColl('history'), (snap) => {
+                    state.history = snap.docs.map(d => d.data()).sort((a,b) => b.date - a.date);
+                    updateAndRender();
+                }, console.error);
+
+                onSnapshot(getColl('pendingTransactions'), (snap) => {
+                    state.pendingTransactions = snap.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
+                    updateAndRender();
+                }, console.error);
             },
 
             startOpportunityGenerator() {
-                setInterval(() => {
-                    if(state.isSimulation) return;
+                setInterval(async () => {
+                    if(!state.auth.loggedIn || state.auth.role !== 'manager') return; // Apenas o gerente gera novas ofertas no DB
 
                     const rand = Math.random();
                     let type = 'exclusive';
-                    let dest = 'market'; 
+                    let dest = 'marketOps'; 
 
-                    if (rand < 0.4) { type = 'exclusive'; dest = 'market'; } 
-                    else if (rand < 0.7) { type = 'variable'; dest = 'market'; } 
-                    else { type = 'exclusive'; dest = 'pending'; }
+                    if (rand < 0.4) { type = 'exclusive'; dest = 'marketOps'; } 
+                    else if (rand < 0.7) { type = 'variable'; dest = 'marketOps'; } 
+                    else { type = 'exclusive'; dest = 'pendingOps'; }
 
-                    const setoresBase = ['Agronegócio Exportação', 'Tech B2B SaaS', 'Energia Solar', 'Imobiliário Premium', 'Logística Avançada', 'FIDC Infraestrutura', 'CRI Saneamento', 'Data Center Tier III', 'Fintech de Crédito'];
-                    const garantiasBase = ['Alienação Imobiliária', 'Cessão Fiduciária de Recebíveis', 'Aval Pessoal dos Sócios', 'Fundo Garantidor CVM', 'Penhor de Quotas', 'Receitas de Aluguéis'];
-                    const scoresBase = ['AAA+', 'AAA', 'AA+', 'AA', 'A+', 'A', 'A-', 'BBB+', 'BBB', 'BB+'];
-                    const riscosBase = ['Muito Baixo', 'Baixo', 'Médio-Baixo', 'Médio', 'Médio-Alto'];
+                    const setoresBase = ['Agronegócio Exportação', 'Tech B2B SaaS', 'Energia Solar', 'Imobiliário Premium', 'Logística Avançada', 'FIDC Infraestrutura', 'CRI Saneamento', 'Data Center Tier III'];
+                    const garantiasBase = ['Alienação Imobiliária', 'Cessão Fiduciária', 'Aval Pessoal', 'Fundo Garantidor', 'Penhor de Quotas'];
+                    const id = Date.now();
 
                     const newOp = {
-                        id: Date.now() + Math.floor(Math.random()*10000),
+                        id: id,
                         type: type,
                         setor: setoresBase[Math.floor(Math.random()*setoresBase.length)] + ' - Lote ' + Math.floor(Math.random()*900 + 100),
                         valor: Math.floor(Math.random() * 50 + 5) * 1000000,
                         ticket: type === 'exclusive' ? Math.floor(Math.random() * 10 + 1) * 50000 : 0,
                         minTicket: type === 'variable' ? Math.floor(Math.random() * 5 + 1) * 10000 : 0,
                         taxa: (Math.random() * 14 + 11).toFixed(1),
-                        score: scoresBase[Math.floor(Math.random()*scoresBase.length)],
+                        score: ['AAA+', 'AAA', 'AA+', 'AA', 'A+', 'A'][Math.floor(Math.random()*6)],
                         garantias: garantiasBase[Math.floor(Math.random()*garantiasBase.length)],
-                        risco: riscosBase[Math.floor(Math.random()*riscosBase.length)]
+                        risco: ['Muito Baixo', 'Baixo', 'Médio-Baixo', 'Médio'][Math.floor(Math.random()*4)],
+                        timestamp: id
                     };
 
-                    if (dest === 'market') {
-                        state.marketOps.unshift(newOp);
-                        if(state.marketOps.length > 15) state.marketOps.pop(); 
-                    } else {
-                        state.pendingOps.unshift(newOp);
-                        if(state.pendingOps.length > 15) state.pendingOps.pop();
-                    }
-                    
-                    // IMPORTANTE: Só o GERENTE salva na nuvem as novas ofertas automáticas.
-                    // Isso impede que vários clientes sobrescrevam a base simultaneamente.
-                    if(state.auth.loggedIn && state.auth.role === 'manager'){
-                         this.saveState();
-                    }
-                   
-                    if (state.auth.loggedIn && (state.activeTab === 'market' || state.activeTab === 'principal' || state.auth.role === 'manager')) {
-                        this.renderContentOnly();
-                    }
-                }, 15000); 
+                    await setDoc(getRef(dest, id), newOp);
+                }, 25000); 
             },
 
             updateDelinquencyStatus() {
+                const now = Date.now();
                 state.portfolio.forEach(p => {
                     if (p.proximoPgtoRaw && p.parcelasRestantes > 0) {
-                        if (state.currentDate > p.proximoPgtoRaw) {
-                            p.status = 'Em Atraso';
-                        }
+                        if (now > p.proximoPgtoRaw) p.status = 'Em Atraso';
                     }
                 });
             },
@@ -419,20 +372,15 @@
             calculateBadDebtPercentage(userId = null) {
                 let ops = userId ? state.portfolio.filter(p => p.userId === userId) : state.portfolio;
                 if (ops.length === 0) return 0;
-                let totalInvestidoAtivo = 0;
-                let totalEmAtraso = 0;
+                let totalInvestidoAtivo = 0, totalEmAtraso = 0;
                 
                 ops.forEach(p => {
                     if (p.status !== 'Aguardando Gerente') {
                         totalInvestidoAtivo += p.ticketAtual;
-                        if (p.status === 'Em Atraso') {
-                            totalEmAtraso += p.ticketAtual;
-                        }
+                        if (p.status === 'Em Atraso') totalEmAtraso += p.ticketAtual;
                     }
                 });
-
-                if (totalInvestidoAtivo === 0) return 0;
-                return (totalEmAtraso / totalInvestidoAtivo) * 100;
+                return totalInvestidoAtivo === 0 ? 0 : (totalEmAtraso / totalInvestidoAtivo) * 100;
             },
 
             bindEvents() {
@@ -454,9 +402,8 @@
                         return;
                     }
 
-                    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Processando Nuvem...`;
+                    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Processando...`;
                     lucide.createIcons();
-                    
                     setTimeout(() => { this.login(); }, 800);
                 });
 
@@ -480,7 +427,7 @@
                     let amount = getMoneyValue(document.getElementById('withdraw-amount').value);
                     const errLabel = document.getElementById('withdraw-error');
                     
-                    if (amount > state.balances[state.auth.id].availableCash) {
+                    if (amount > (state.balances[state.auth.id]?.availableCash || 0)) {
                         errLabel.classList.remove('hidden');
                     } else if (amount > 0) {
                         errLabel.classList.add('hidden');
@@ -491,25 +438,17 @@
                 document.getElementById('btn-confirm-invest').addEventListener('click', () => {
                     const op = state.selectedOp;
                     const errLabel = document.getElementById('invest-error');
-                    let amountToInvest = op.ticket;
-
-                    if (op.type === 'variable') {
-                        amountToInvest = getMoneyValue(customInvestInput.value);
-                    }
+                    let amountToInvest = op.type === 'variable' ? getMoneyValue(customInvestInput.value) : op.ticket;
 
                     if (amountToInvest < (op.minTicket || op.ticket)) {
-                        errLabel.classList.remove('hidden');
-                        return;
+                        errLabel.classList.remove('hidden'); return;
                     }
 
-                    const taxaAnual = parseFloat(op.taxa);
-                    const lucroAnual = amountToInvest * (taxaAnual / 100);
-                    const taxaAdmin = lucroAnual * 0.03;
+                    const taxaAdmin = (amountToInvest * (parseFloat(op.taxa) / 100)) * 0.03;
                     const custoTotal = amountToInvest + taxaAdmin;
 
-                    if (custoTotal > state.balances[state.auth.id].availableCash) {
-                        errLabel.classList.remove('hidden');
-                        return;
+                    if (custoTotal > (state.balances[state.auth.id]?.availableCash || 0)) {
+                        errLabel.classList.remove('hidden'); return;
                     }
 
                     errLabel.classList.add('hidden');
@@ -524,15 +463,13 @@
                     document.getElementById('app-container').classList.remove('hidden');
                     state.activeTab = state.auth.role === 'manager' ? 'manager_ops' : 'principal';
                     
-                    // Ao logar, forçamos um salvamento inicial do estado do utilizador (se necessário)
-                    this.saveState();
+                    // IMPORTANTE: Removido o saveState(). O Login agora é 100% passivo e seguro!
                     this.render();
                 }, 500);
             },
 
             logout() {
                 state.auth = { loggedIn: false, role: null, id: null, name: null };
-                
                 document.getElementById('login-user').value = '';
                 document.getElementById('login-pass').value = '';
                 document.getElementById('login-error').classList.add('hidden');
@@ -560,8 +497,8 @@
 
             renderContentOnly() {
                 this.updateDelinquencyStatus(); 
-
                 const contentArea = document.getElementById('content-area');
+                if(!contentArea) return;
                 contentArea.innerHTML = ''; 
 
                 if (state.charts.pie) state.charts.pie.destroy();
@@ -573,10 +510,7 @@
                     else if (state.activeTab === 'market') contentArea.innerHTML = this.views.market();
                     else if (state.activeTab === 'active_ops') contentArea.innerHTML = this.views.activeOps();
                     else if (state.activeTab === 'history') contentArea.innerHTML = this.views.history();
-                    else if (state.activeTab === 'analytics') {
-                        contentArea.innerHTML = this.views.analytics();
-                        this.initCharts();
-                    }
+                    else if (state.activeTab === 'analytics') { contentArea.innerHTML = this.views.analytics(); this.initCharts(); }
                     else if (state.activeTab === 'reports') contentArea.innerHTML = this.views.reports();
                 } else if (state.auth.role === 'manager') {
                     if (state.activeTab === 'manager_ops') contentArea.innerHTML = this.views.managerOps();
@@ -587,37 +521,22 @@
 
             renderSidebar() {
                 const nav = document.getElementById('sidebar-nav');
-                if (state.auth.role === 'investor') {
-                    const items = [
-                        { id: 'principal', icon: 'layout-dashboard', label: 'Principal' },
-                        { id: 'market', icon: 'search', label: 'Explorar Oportunidades' },
-                        { id: 'active_ops', icon: 'folder-open', label: 'Operações Ativas' },
-                        { id: 'history', icon: 'history', label: 'Histórico' },
-                        { id: 'analytics', icon: 'bar-chart-3', label: 'Análises Avançadas' },
-                        { id: 'reports', icon: 'file-text', label: 'Relatórios' },
-                    ];
-                    nav.innerHTML = items.map(item => `<button onclick="app.switchTab('${item.id}')" class="w-full flex items-center px-4 py-3 text-sm rounded-lg transition-all ${state.activeTab === item.id ? 'bg-[#D4AF37]/10 text-[#D4AF37] font-medium' : 'text-zinc-500 hover:text-zinc-200'}"><i data-lucide="${item.icon}" class="w-4 h-4 mr-3"></i> ${item.label}</button>`).join('');
-                } else {
-                    const items = [
-                        { id: 'manager_ops', icon: 'building', label: 'Originação e Mercado' },
-                        { id: 'manager_clients', icon: 'users', label: 'Gestão de Clientes' }
-                    ];
-                    nav.innerHTML = items.map(item => `<button onclick="app.switchTab('${item.id}')" class="w-full flex items-center px-4 py-3 text-sm rounded-lg transition-all ${state.activeTab === item.id ? 'bg-[#D4AF37]/10 text-[#D4AF37] font-medium' : 'text-zinc-500 hover:text-zinc-200'}"><i data-lucide="${item.icon}" class="w-4 h-4 mr-3"></i> ${item.label}</button>`).join('');
-                }
+                const items = state.auth.role === 'investor' ? [
+                    { id: 'principal', icon: 'layout-dashboard', label: 'Principal' },
+                    { id: 'market', icon: 'search', label: 'Explorar Oportunidades' },
+                    { id: 'active_ops', icon: 'folder-open', label: 'Operações Ativas' },
+                    { id: 'history', icon: 'history', label: 'Histórico' },
+                    { id: 'analytics', icon: 'bar-chart-3', label: 'Análises Avançadas' },
+                    { id: 'reports', icon: 'file-text', label: 'Relatórios' }
+                ] : [
+                    { id: 'manager_ops', icon: 'building', label: 'Originação e Mercado' },
+                    { id: 'manager_clients', icon: 'users', label: 'Gestão de Clientes' }
+                ];
+                nav.innerHTML = items.map(item => `<button onclick="app.switchTab('${item.id}')" class="w-full flex items-center px-4 py-3 text-sm rounded-lg transition-all ${state.activeTab === item.id ? 'bg-[#D4AF37]/10 text-[#D4AF37] font-medium' : 'text-zinc-500 hover:text-zinc-200'}"><i data-lucide="${item.icon}" class="w-4 h-4 mr-3"></i> ${item.label}</button>`).join('');
             },
 
             renderHeader() {
-                const titles = {
-                    'principal': 'Principal',
-                    'market': 'Pesquisa de Oportunidades',
-                    'active_ops': 'Suas Operações',
-                    'history': 'Histórico Financeiro',
-                    'analytics': 'Análise de Risco e Retorno',
-                    'reports': 'Central de Relatórios',
-                    'manager_ops': 'Comitê de Crédito',
-                    'manager_clients': 'Painel de Clientes (Backoffice)'
-                };
-                
+                const titles = { 'principal': 'Principal', 'market': 'Pesquisa', 'active_ops': 'Operações', 'history': 'Histórico', 'analytics': 'Análises', 'reports': 'Relatórios', 'manager_ops': 'Comitê de Crédito', 'manager_clients': 'Painel de Clientes' };
                 document.getElementById('header-title').innerText = titles[state.activeTab];
                 const subtitle = document.getElementById('header-subtitle');
                 const welcomeName = document.getElementById('header-welcome-name');
@@ -636,62 +555,43 @@
             updateInvestModalMath() {
                 const op = state.selectedOp;
                 if(!op) return;
-                let amountToInvest = op.ticket;
-                if (op.type === 'variable') amountToInvest = getMoneyValue(document.getElementById('invest-custom-amount').value);
-
-                const taxaAnual = parseFloat(op.taxa);
-                const lucroAnual = amountToInvest * (taxaAnual / 100);
-                const taxaAdmin = lucroAnual * 0.03;
-                const totalCusto = amountToInvest + taxaAdmin;
-
+                let amountToInvest = op.type === 'variable' ? getMoneyValue(document.getElementById('invest-custom-amount').value) : op.ticket;
+                const taxaAdmin = (amountToInvest * (parseFloat(op.taxa) / 100)) * 0.03;
                 document.getElementById('invest-admin-fee').innerText = fmtCurrency(taxaAdmin);
-                document.getElementById('invest-total-cost').innerText = fmtCurrency(totalCusto);
+                document.getElementById('invest-total-cost').innerText = fmtCurrency(amountToInvest + taxaAdmin);
             },
 
             openModal(type, opId = null) {
-                const userBal = state.balances[state.auth.id];
-
+                const userBal = state.balances[state.auth.id] || { availableCash: 0 };
                 if (type === 'deposit') {
                     document.getElementById('deposit-amount').value = '';
-                    document.getElementById('modal-deposit').classList.remove('hidden');
-                    document.getElementById('modal-deposit').classList.add('flex');
+                    document.getElementById('modal-deposit').classList.remove('hidden'); document.getElementById('modal-deposit').classList.add('flex');
                 } else if (type === 'withdraw') {
                     document.getElementById('withdraw-amount').value = '';
                     document.getElementById('withdraw-error').classList.add('hidden');
                     document.getElementById('withdraw-available-lbl').innerText = fmtCurrency(userBal.availableCash);
-                    document.getElementById('modal-withdraw').classList.remove('hidden');
-                    document.getElementById('modal-withdraw').classList.add('flex');
+                    document.getElementById('modal-withdraw').classList.remove('hidden'); document.getElementById('modal-withdraw').classList.add('flex');
                 } else if (type === 'invest') {
                     const op = state.marketOps.find(o => o.id === opId);
                     if (!op) return;
                     state.selectedOp = op;
-                    
                     document.getElementById('invest-title').innerText = op.setor;
                     document.getElementById('invest-rate').innerText = op.taxa + '% a.a.';
                     document.getElementById('invest-guarantee').innerText = op.garantias;
                     document.getElementById('invest-balance').innerText = fmtCurrency(userBal.availableCash);
                     document.getElementById('invest-error').classList.add('hidden');
 
-                    const blockFixed = document.getElementById('invest-fixed-block');
-                    const blockVar = document.getElementById('invest-variable-block');
-                    const customInput = document.getElementById('invest-custom-amount');
-                    
+                    const blockFixed = document.getElementById('invest-fixed-block'), blockVar = document.getElementById('invest-variable-block'), customInput = document.getElementById('invest-custom-amount');
                     if (op.type === 'exclusive') {
-                        blockFixed.classList.remove('hidden');
-                        blockFixed.classList.add('flex');
-                        blockVar.classList.add('hidden');
+                        blockFixed.classList.remove('hidden'); blockFixed.classList.add('flex'); blockVar.classList.add('hidden');
                         document.getElementById('invest-ticket').innerText = fmtCurrency(op.ticket);
                     } else {
-                        blockFixed.classList.add('hidden');
-                        blockFixed.classList.remove('flex');
-                        blockVar.classList.remove('hidden');
-                        document.getElementById('invest-min-ticket').innerText = fmtCurrency(op.minTicket);
-                        customInput.value = '';
+                        blockFixed.classList.add('hidden'); blockFixed.classList.remove('flex'); blockVar.classList.remove('hidden');
+                        document.getElementById('invest-min-ticket').innerText = fmtCurrency(op.minTicket); customInput.value = '';
                     }
 
                     this.updateInvestModalMath();
-                    document.getElementById('modal-invest').classList.remove('hidden');
-                    document.getElementById('modal-invest').classList.add('flex');
+                    document.getElementById('modal-invest').classList.remove('hidden'); document.getElementById('modal-invest').classList.add('flex');
                 }
             },
 
@@ -700,245 +600,125 @@
                 document.getElementById(`modal-${type}`).classList.remove('flex');
             },
 
-            handleDeposit(amount) {
-                state.balances[state.auth.id].availableCash += amount; 
-                state.history.unshift({
-                    id: Date.now(),
-                    userId: state.auth.id,
-                    date: new Date(state.currentDate),
-                    type: 'Depósito',
-                    desc: 'Aporte na Plataforma via PIX/TED',
-                    amount: amount,
-                    isPositive: true
-                });
-                this.saveState();
-                this.closeModal('deposit');
-                this.render();
-            },
-
-            handleWithdraw(amount) {
-                state.balances[state.auth.id].availableCash -= amount;
-                const txId = Date.now();
+            // --- AÇÕES GRANULARES (Gravação Segura no Firebase) ---
+            async handleDeposit(amount) {
+                const uid = state.auth.id;
+                const bal = state.balances[uid];
+                await updateDoc(getRef('balances', uid), { availableCash: bal.availableCash + amount });
                 
-                state.history.unshift({
-                    id: txId,
-                    userId: state.auth.id,
-                    date: new Date(state.currentDate),
-                    type: 'Levantamento',
-                    desc: 'Saque Solicitado (Em Análise)',
-                    amount: amount,
-                    isPositive: false
-                });
-
-                state.pendingTransactions.unshift({
-                    id: txId,
-                    userId: state.auth.id,
-                    type: 'withdraw',
-                    desc: 'Solicitação de Saque',
-                    amount: amount,
-                    client: `${state.auth.name} (${state.auth.id})`
-                });
-
-                this.saveState();
-                this.closeModal('withdraw');
-                this.render();
+                const txId = Date.now();
+                await setDoc(getRef('history', txId), { id: txId, userId: uid, date: txId, type: 'Depósito', desc: 'Aporte na Plataforma via PIX/TED', amount: amount, isPositive: true });
+                
+                this.closeModal('deposit');
             },
 
-            handleInvest(op, amount, taxaAdmin) {
-                state.balances[state.auth.id].availableCash -= (amount + taxaAdmin);
-                const taxaAnual = parseFloat(op.taxa);
-                const taxaQuinzenalDecimal = (taxaAnual / 100) / 12 / 2;
-                const portfId = Date.now();
+            async handleWithdraw(amount) {
+                const uid = state.auth.id;
+                const bal = state.balances[uid];
+                await updateDoc(getRef('balances', uid), { availableCash: bal.availableCash - amount });
+                
+                const txId = Date.now();
+                await setDoc(getRef('history', txId), { id: txId, userId: uid, date: txId, type: 'Levantamento', desc: 'Saque Solicitado (Em Análise)', amount: amount, isPositive: false });
+                await setDoc(getRef('pendingTransactions', txId), { id: txId, userId: uid, type: 'withdraw', desc: 'Solicitação de Saque', amount: amount, client: `${state.auth.name} (${uid})`, timestamp: txId });
+                
+                this.closeModal('withdraw');
+            },
 
-                state.portfolio.unshift({
-                    id: portfId,
-                    userId: state.auth.id,
-                    userName: state.auth.name,
-                    setor: op.setor,
-                    ticketOriginal: amount,
-                    ticketAtual: amount, 
-                    taxaQuinzenalDecimal: taxaQuinzenalDecimal,
-                    taxaExibicao: `${(taxaQuinzenalDecimal * 100).toFixed(2)}% a.q.`,
-                    status: 'Aguardando Gerente',
-                    proximoPgtoRaw: null,
-                    proximoPgto: 'Pendente',
-                    parcelasRestantes: 24,
-                    taxaAdmin: taxaAdmin 
-                });
+            async handleInvest(op, amount, taxaAdmin) {
+                const uid = state.auth.id;
+                const bal = state.balances[uid];
+                await updateDoc(getRef('balances', uid), { availableCash: bal.availableCash - (amount + taxaAdmin) });
+                
+                const taxaQuinzenalDecimal = (parseFloat(op.taxa) / 100) / 12 / 2;
+                const portfId = Date.now();
+                
+                const newPortfolio = {
+                    id: portfId, userId: uid, userName: state.auth.name, setor: op.setor, ticketOriginal: amount, ticketAtual: amount, 
+                    taxaQuinzenalDecimal: taxaQuinzenalDecimal, taxaExibicao: `${(taxaQuinzenalDecimal * 100).toFixed(2)}% a.q.`,
+                    status: 'Aguardando Gerente', proximoPgtoRaw: null, proximoPgto: 'Pendente', parcelasRestantes: 24, taxaAdmin: taxaAdmin, timestamp: portfId
+                };
+                await setDoc(getRef('portfolio', portfId), newPortfolio);
 
                 const txId = Date.now() + 1;
+                if (taxaAdmin > 0) await setDoc(getRef('history', txId+1), { id: txId+1, userId: uid, date: txId+1, type: 'Taxa Adm.', desc: `Custo Operacional de Investimento em ${op.setor}`, amount: taxaAdmin, isPositive: false });
+                await setDoc(getRef('history', txId), { id: txId, userId: uid, date: txId, type: 'Aporte', desc: `Investimento Solicitado (Em Análise) - ${op.setor}`, amount: amount, isPositive: false });
+                await setDoc(getRef('pendingTransactions', txId), { id: txId, userId: uid, type: 'invest', portfolioId: portfId, desc: `Investimento: ${op.setor}`, amount: amount, taxaAdmin: taxaAdmin, client: `${state.auth.name} (${uid})`, timestamp: txId });
+                await deleteDoc(getRef('marketOps', op.id));
                 
-                if (taxaAdmin > 0) {
-                    state.history.unshift({
-                        id: txId + 1,
-                        userId: state.auth.id,
-                        date: new Date(state.currentDate),
-                        type: 'Taxa Adm.',
-                        desc: `Custo Operacional de Investimento em ${op.setor}`,
-                        amount: taxaAdmin,
-                        isPositive: false
-                    });
-                }
-
-                state.history.unshift({
-                    id: txId,
-                    userId: state.auth.id,
-                    date: new Date(state.currentDate),
-                    type: 'Aporte',
-                    desc: `Investimento Solicitado (Em Análise) - ${op.setor}`,
-                    amount: amount,
-                    isPositive: false
-                });
-
-                state.pendingTransactions.unshift({
-                    id: txId,
-                    userId: state.auth.id,
-                    type: 'invest',
-                    portfolioId: portfId,
-                    desc: `Investimento: ${op.setor}`,
-                    amount: amount,
-                    taxaAdmin: taxaAdmin,
-                    client: `${state.auth.name} (${state.auth.id})`
-                });
-
-                state.marketOps = state.marketOps.filter(item => item.id !== op.id);
-                
-                this.saveState();
                 this.closeModal('invest');
-                state.activeTab = 'active_ops';
-                this.render();
+                this.switchTab('active_ops');
             },
 
-            // --- AÇÕES DO GERENTE ---
-            handleMarketApproval(opId) {
-                const opIndex = state.pendingOps.findIndex(o => o.id === opId);
-                if (opIndex > -1) {
-                    const op = state.pendingOps[opIndex];
-                    state.pendingOps.splice(opIndex, 1);
-                    state.marketOps.push(op);
-                    
-                    this.saveState();
-                    this.renderContentOnly();
+            async handleMarketApproval(opId) {
+                const op = state.pendingOps.find(o => o.id === opId);
+                if (op) {
+                    await setDoc(getRef('marketOps', op.id), op);
+                    await deleteDoc(getRef('pendingOps', op.id));
                 }
             },
 
-            handleClientTransaction(txId, isApproved) {
-                const txIndex = state.pendingTransactions.findIndex(t => t.id === txId);
-                if (txIndex === -1) return;
+            async handleClientTransaction(txId, isApproved) {
+                const tx = state.pendingTransactions.find(t => t.id === txId);
+                if (!tx) return;
                 
-                const tx = state.pendingTransactions[txIndex];
-                state.pendingTransactions.splice(txIndex, 1); 
+                await deleteDoc(getRef('pendingTransactions', txId)); 
 
                 if (tx.type === 'invest') {
                     const portItem = state.portfolio.find(p => p.id === tx.portfolioId);
-                    
-                    if (isApproved) {
-                        portItem.status = 'Ativo';
-                        state.balances[tx.userId].investedAmount += tx.amount; 
+                    if (isApproved && portItem) {
+                        const bal = state.balances[tx.userId];
+                        await updateDoc(getRef('balances', tx.userId), { investedAmount: bal.investedAmount + tx.amount });
                         
-                        const dataPagamento = new Date(state.currentDate);
-                        dataPagamento.setDate(dataPagamento.getDate() + 15);
-                        portItem.proximoPgtoRaw = dataPagamento;
-                        portItem.proximoPgto = fmtDate(dataPagamento);
-
-                        const hItem = state.history.find(h => h.id === tx.id);
-                        if(hItem) hItem.desc = `Investimento Confirmado: ${portItem.setor}`;
-
-                    } else {
-                        state.portfolio = state.portfolio.filter(p => p.id !== tx.portfolioId);
-                        state.balances[tx.userId].availableCash += (tx.amount + tx.taxaAdmin);
+                        const dataPgto = Date.now() + (15 * 86400000);
+                        await updateDoc(getRef('portfolio', tx.portfolioId), { status: 'Ativo', proximoPgtoRaw: dataPgto, proximoPgto: fmtDate(dataPgto) });
+                        await updateDoc(getRef('history', tx.id), { desc: `Investimento Confirmado: ${portItem.setor}` });
+                    } else if (portItem) {
+                        await deleteDoc(getRef('portfolio', tx.portfolioId));
+                        const bal = state.balances[tx.userId];
+                        await updateDoc(getRef('balances', tx.userId), { availableCash: bal.availableCash + tx.amount + tx.taxaAdmin });
                         
-                        if (tx.taxaAdmin > 0) {
-                            state.history.unshift({
-                                id: Date.now() + 1,
-                                userId: tx.userId,
-                                date: new Date(state.currentDate),
-                                type: 'Estorno',
-                                desc: `Estorno Taxa Admin. (${portItem.setor})`,
-                                amount: tx.taxaAdmin,
-                                isPositive: true
-                            });
-                        }
-
-                        state.history.unshift({
-                            id: Date.now(),
-                            userId: tx.userId,
-                            date: new Date(state.currentDate),
-                            type: 'Estorno',
-                            desc: `Investimento Rejeitado (${portItem.setor})`,
-                            amount: tx.amount,
-                            isPositive: true
-                        });
+                        const now = Date.now();
+                        if (tx.taxaAdmin > 0) await setDoc(getRef('history', now+1), { id: now+1, userId: tx.userId, date: now+1, type: 'Estorno', desc: `Estorno Taxa Admin. (${portItem.setor})`, amount: tx.taxaAdmin, isPositive: true });
+                        await setDoc(getRef('history', now), { id: now, userId: tx.userId, date: now, type: 'Estorno', desc: `Investimento Rejeitado (${portItem.setor})`, amount: tx.amount, isPositive: true });
                     }
                 } 
                 else if (tx.type === 'withdraw') {
                     if (isApproved) {
-                        const hItem = state.history.find(h => h.id === tx.id);
-                        if(hItem) hItem.desc = `Saque Processado com Sucesso`;
+                        await updateDoc(getRef('history', tx.id), { desc: `Saque Processado com Sucesso` });
                     } else {
-                        state.balances[tx.userId].availableCash += tx.amount;
-                        state.history.unshift({
-                            id: Date.now(),
-                            userId: tx.userId,
-                            date: new Date(state.currentDate),
-                            type: 'Estorno',
-                            desc: `Saque Rejeitado pelo Backoffice`,
-                            amount: tx.amount,
-                            isPositive: true
-                        });
+                        const bal = state.balances[tx.userId];
+                        await updateDoc(getRef('balances', tx.userId), { availableCash: bal.availableCash + tx.amount });
+                        await setDoc(getRef('history', Date.now()), { id: Date.now(), userId: tx.userId, date: Date.now(), type: 'Estorno', desc: `Saque Rejeitado pelo Backoffice`, amount: tx.amount, isPositive: true });
                     }
                 }
-
-                this.saveState();
-                this.renderContentOnly();
             },
 
-            handleManagerManualPayment(portId) {
+            async handleManagerManualPayment(portId) {
                 const p = state.portfolio.find(item => item.id === portId);
                 if (!p || p.parcelasRestantes <= 0) return;
 
                 const devolucaoPrincipal = p.ticketOriginal / 24; 
                 const jurosIntegrais = p.ticketOriginal * p.taxaQuinzenalDecimal;
                 
-                const inicioCiclo = new Date(p.proximoPgtoRaw.getTime() - 15 * 86400000);
-                let diasDecorridos = Math.round((state.currentDate - inicioCiclo) / 86400000);
+                const inicioCiclo = p.proximoPgtoRaw - (15 * 86400000);
+                let diasDecorridos = Math.round((Date.now() - inicioCiclo) / 86400000);
                 if (diasDecorridos < 1) diasDecorridos = 1; 
 
-                const pagamentoJuros = jurosIntegrais * (diasDecorridos / 15);
-                const pagamentoTotal = devolucaoPrincipal + pagamentoJuros;
-
-                state.balances[p.userId].availableCash += pagamentoTotal;
-                p.ticketAtual -= devolucaoPrincipal;
-                state.balances[p.userId].investedAmount -= devolucaoPrincipal; 
-                p.parcelasRestantes -= 1;
-                p.status = 'Ativo'; 
-
-                let notaTempo = '';
-                if (diasDecorridos < 15) {
-                    notaTempo = ` (Antecipado ${15 - diasDecorridos}d - Desconto Aplicado)`;
-                } else if (diasDecorridos > 15) {
-                    notaTempo = ` (Atrasado ${diasDecorridos - 15}d - Mora Adicionada)`;
+                const pagamentoTotal = devolucaoPrincipal + (jurosIntegrais * (diasDecorridos / 15));
+                const bal = state.balances[p.userId];
+                
+                await updateDoc(getRef('balances', p.userId), { availableCash: bal.availableCash + pagamentoTotal, investedAmount: bal.investedAmount - devolucaoPrincipal });
+                
+                if (p.parcelasRestantes - 1 <= 0) {
+                    await deleteDoc(getRef('portfolio', p.id));
+                } else {
+                    const nextDate = p.proximoPgtoRaw + (15 * 86400000);
+                    await updateDoc(getRef('portfolio', p.id), { ticketAtual: p.ticketAtual - devolucaoPrincipal, parcelasRestantes: p.parcelasRestantes - 1, status: 'Ativo', proximoPgtoRaw: nextDate, proximoPgto: fmtDate(nextDate) });
                 }
 
-                state.history.unshift({
-                    id: Date.now() + Math.random(),
-                    userId: p.userId,
-                    date: new Date(state.currentDate),
-                    type: 'Recebimento (Manual)',
-                    desc: `Processado pelo Gestor - ${p.setor}${notaTempo}`,
-                    amount: pagamentoTotal,
-                    isPositive: true
-                });
-
-                const nextDate = new Date(p.proximoPgtoRaw);
-                nextDate.setDate(nextDate.getDate() + 15);
-                p.proximoPgtoRaw = nextDate;
-                p.proximoPgto = fmtDate(nextDate);
-
-                state.portfolio = state.portfolio.filter(pt => pt.parcelasRestantes > 0);
-                
-                this.saveState();
-                this.renderContentOnly();
+                const notaTempo = diasDecorridos < 15 ? ` (Antecipado ${15 - diasDecorridos}d)` : diasDecorridos > 15 ? ` (Atrasado ${diasDecorridos - 15}d)` : '';
+                const txId = Date.now();
+                await setDoc(getRef('history', txId), { id: txId, userId: p.userId, date: txId, type: 'Recebimento (Manual)', desc: `Processado pelo Gestor - ${p.setor}${notaTempo}`, amount: pagamentoTotal, isPositive: true });
             },
 
             // --- RENDERIZAÇÃO DE RELATÓRIO PDF ---
@@ -949,10 +729,7 @@
                 const myHistory = state.history.filter(h => h.userId === uId);
 
                 const htmlContent = `
-                    <html>
-                    <head>
-                        <title>Aura Privé - Relatório Oficial</title>
-                        <style>
+                    <html><head><title>Aura Privé - Relatório Oficial</title><style>
                             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
                             .header { text-align: center; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 30px; }
                             .logo { color: #000; font-size: 24px; font-weight: 300; letter-spacing: 2px; }
@@ -964,70 +741,43 @@
                             table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
                             th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
                             th { color: #888; text-transform: uppercase; }
-                        </style>
-                    </head>
-                    <body>
+                        </style></head><body>
                         <div class="header">
                             <div class="logo">Aura <span>Privé</span></div>
                             <p style="font-size: 12px; color: #777; margin-top: 10px;">Private Wealth Management - Relatório Consolidado</p>
                             <p style="font-size: 12px; font-weight: bold;">Data de Emissão: ${fmtDate(state.currentDate)}</p>
-                            ${state.isSimulation ? '<p style="color:red;font-weight:bold;margin-top:10px;">[ ATENÇÃO: DADOS GERADOS EM MODO DE SIMULAÇÃO ]</p>' : ''}
                         </div>
-
                         <h2>Perfil do Investidor</h2>
                         <div class="row"><span>Cliente:</span> <span class="val">${state.auth.name}</span></div>
                         <div class="row"><span>Identificação:</span> <span class="val">${state.auth.id}</span></div>
-                        <div class="row"><span>Classificação Interna:</span> <span class="val">Private Elite | Prime AAA</span></div>
-
                         <h2>Resumo Patrimonial</h2>
                         <div class="row"><span>Caixa Disponível para Uso:</span> <span class="val">${fmtCurrency(bal.availableCash)}</span></div>
                         <div class="row"><span>Capital Investido Alocado:</span> <span class="val">${fmtCurrency(bal.investedAmount)}</span></div>
                         <div class="row" style="font-size: 16px; margin-top: 15px;"><span>Património Total:</span> <span class="val" style="color: #D4AF37;">${fmtCurrency(bal.availableCash + bal.investedAmount)}</span></div>
-
                         <h2>Carteira Ativa</h2>
-                        <table>
-                            <tr><th>Operação</th><th>Ticket Restante</th><th>Taxa (a.q.)</th><th>Próx. Venc.</th></tr>
+                        <table><tr><th>Operação</th><th>Ticket Restante</th><th>Taxa (a.q.)</th><th>Próx. Venc.</th></tr>
                             ${myPortfolio.map(p => `<tr><td>${p.setor}</td><td>${fmtCurrency(p.ticketAtual)}</td><td>${p.taxaExibicao}</td><td>${p.proximoPgto}</td></tr>`).join('') || `<tr><td colspan="4">Nenhuma operação ativa.</td></tr>`}
                         </table>
-
                         <h2>Histórico de Movimentações</h2>
-                        <table>
-                            <tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr>
+                        <table><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr>
                             ${myHistory.slice(0, 15).map(h => `<tr><td>${fmtDate(h.date)}</td><td>${h.type}</td><td>${h.desc}</td><td style="color:${h.isPositive?'green':'red'}">${h.isPositive?'+':'-'}${fmtCurrency(h.amount)}</td></tr>`).join('') || `<tr><td colspan="4">Sem movimentações recentes.</td></tr>`}
                         </table>
-
-                        <div class="footer">Este documento é gerado automaticamente pelo sistema Aura Privé e não serve como promessa de rentabilidade futura.</div>
+                        <div class="footer">Documento gerado automaticamente pelo sistema Aura Privé.</div>
                         <script>window.print();<\/script>
-                    </body>
-                    </html>
+                    </body></html>
                 `;
-
-                try {
-                    const win = window.open('', '_blank');
-                    if (win) {
-                        win.document.write(htmlContent);
-                        win.document.close();
-                    } else {
-                        console.warn('Bloqueador de pop-ups impediu a visualização do relatório.');
-                    }
-                } catch(e) {
-                    console.error('Erro ao gerar relatório', e);
-                }
+                try { const win = window.open('', '_blank'); if (win) { win.document.write(htmlContent); win.document.close(); } } catch(e) { console.error('Erro PDF', e); }
             },
 
             initCharts() {
                 const uId = state.auth.id;
-                const bal = state.balances[uId];
+                const bal = state.balances[uId] || { availableCash: 0, investedAmount: 0 };
                 const myPortfolio = state.portfolio.filter(p => p.userId === uId);
 
                 const pieCtx = document.getElementById('portfolioPieChart');
                 if(pieCtx && myPortfolio.length > 0) {
-                    const data = myPortfolio.map(p => p.ticketAtual);
-                    const labels = myPortfolio.map(p => p.setor);
-                    const colors = ['#D4AF37', '#8B7322', '#524414', '#2A230A', '#1a160c'];
                     state.charts.pie = new Chart(pieCtx, {
-                        type: 'doughnut',
-                        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+                        type: 'doughnut', data: { labels: myPortfolio.map(p => p.setor), datasets: [{ data: myPortfolio.map(p => p.ticketAtual), backgroundColor: ['#D4AF37', '#8B7322', '#524414', '#2A230A', '#1a160c'], borderWidth: 0 }] },
                         options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1, callbacks: { label: (ctx) => fmtCurrency(ctx.raw) } } } }
                     });
                 }
@@ -1035,29 +785,21 @@
                 const lineCtx = document.getElementById('flowLineChart');
                 if(lineCtx) {
                     let jurosMensais = 0;
-                    myPortfolio.forEach(p => { jurosMensais += (p.ticketOriginal * (p.taxaQuinzenalDecimal * 2)); });
-                    const baseMonth = state.currentDate.getMonth() + 1; 
+                    myPortfolio.forEach(p => jurosMensais += (p.ticketOriginal * (p.taxaQuinzenalDecimal * 2)));
+                    const baseMonth = new Date().getMonth() + 1; 
                     const getMonthName = (m) => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m % 12];
                     const monthNames = [getMonthName(baseMonth), getMonthName(baseMonth + 1), getMonthName(baseMonth + 2), getMonthName(baseMonth + 3)];
                     const flowData = jurosMensais > 0 ? [jurosMensais, jurosMensais * 1.05, jurosMensais * 1.1, jurosMensais * 1.15] : [0, 0, 0, 0];
                     state.charts.line = new Chart(lineCtx, {
-                        type: 'line',
-                        data: { labels: monthNames, datasets: [{ data: flowData, borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#000', pointBorderColor: '#D4AF37', pointRadius: 4 }] },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1, callbacks: { label: (ctx) => 'Projeção: ' + fmtCurrency(ctx.raw) } } }, scales: { x: { grid: { display: false, drawBorder: false }, ticks: { color: '#71717a' } }, y: { display: false } } }
+                        type: 'line', data: { labels: monthNames, datasets: [{ data: flowData, borderColor: '#D4AF37', backgroundColor: 'rgba(212, 175, 55, 0.1)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#000', pointBorderColor: '#D4AF37', pointRadius: 4 }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1, callbacks: { label: (ctx) => 'Projeção: ' + fmtCurrency(ctx.raw) } } }, scales: { x: { grid: { display: false }, ticks: { color: '#71717a' } }, y: { display: false } } }
                     });
                 }
 
                 const barCtx = document.getElementById('wealthBarChart');
                 if(barCtx) {
                     state.charts.bar = new Chart(barCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: ['Hoje'],
-                            datasets: [
-                                { label: 'Caixa', data: [bal.availableCash], backgroundColor: '#D4AF37', borderRadius: 4 },
-                                { label: 'Investido', data: [bal.investedAmount], backgroundColor: '#1a160c', borderColor: '#D4AF37', borderWidth: 1, borderRadius: 4 }
-                            ]
-                        },
+                        type: 'bar', data: { labels: ['Hoje'], datasets: [ { label: 'Caixa', data: [bal.availableCash], backgroundColor: '#D4AF37', borderRadius: 4 }, { label: 'Investido', data: [bal.investedAmount], backgroundColor: '#1a160c', borderColor: '#D4AF37', borderWidth: 1, borderRadius: 4 } ] },
                         options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: {color: '#71717a', boxWidth: 12} }, tooltip: { backgroundColor: '#0a0a0a', borderColor: '#333', borderWidth: 1, callbacks: { label: (ctx) => ctx.dataset.label + ': ' + fmtCurrency(ctx.raw) } } }, scales: { x: { stacked: true, display: false }, y: { stacked: true, display: false } } }
                     });
                 }
@@ -1067,7 +809,7 @@
             views: {
                 principal() {
                     const uId = state.auth.id;
-                    const bal = state.balances[uId];
+                    const bal = state.balances[uId] || { availableCash: 0, investedAmount: 0 };
                     const totalWealth = bal.availableCash + bal.investedAmount;
                     const exclusiveOps = state.marketOps.filter(o => o.type === 'exclusive');
                     const badDebt = app.calculateBadDebtPercentage(uId);
@@ -1210,316 +952,160 @@
                 },
 
                 activeOps() {
-                    const uId = state.auth.id;
-                    const myPortfolio = state.portfolio.filter(p => p.userId === uId);
-
-                    let rows = '';
-                    if (myPortfolio.length === 0) {
-                        rows = `<tr><td colspan="5" class="py-8 text-center text-zinc-500">Nenhuma operação ativa.</td></tr>`;
-                    } else {
-                        rows = myPortfolio.map(item => {
-                            let statusClass = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-                            let statusText = item.status;
-
-                            if (item.status === 'Aguardando Gerente') {
-                                statusClass = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-                            } else if (item.status === 'Em Atraso') {
-                                statusClass = 'bg-red-500/10 text-red-500 border-red-500/20';
-                            }
-
-                            return `
-                                <tr class="border-b border-[#1a1a1a] hover:bg-[#141414] transition-colors">
-                                    <td class="py-4 font-medium text-white">${item.setor}</td>
-                                    <td class="py-4 text-[#D4AF37]">
-                                        ${fmtCurrency(item.ticketAtual)}
-                                        <div class="text-[10px] text-zinc-500">Original: ${fmtCurrency(item.ticketOriginal)}</div>
-                                    </td>
-                                    <td class="py-4">${item.taxaExibicao}</td>
-                                    <td class="py-4 text-zinc-400">
-                                        ${item.proximoPgto} 
-                                        ${item.proximoPgtoRaw ? `<span class="text-[10px] block">Restam: ${item.parcelasRestantes} pagamentos</span>` : ''}
-                                    </td>
-                                    <td class="py-4 text-right">
-                                        <span class="text-xs px-2 py-1 rounded border ${statusClass}">
-                                            ${statusText}
-                                        </span>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('');
-                    }
+                    const myPortfolio = state.portfolio.filter(p => p.userId === state.auth.id);
+                    let rows = myPortfolio.length === 0 ? `<tr><td colspan="5" class="py-8 text-center text-zinc-500">Nenhuma operação ativa.</td></tr>` : myPortfolio.map(item => {
+                        let statusClass = item.status === 'Aguardando Gerente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : item.status === 'Em Atraso' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+                        return `
+                            <tr class="border-b border-[#1a1a1a] hover:bg-[#141414] transition-colors">
+                                <td class="py-4 font-medium text-white">${item.setor}</td>
+                                <td class="py-4 text-[#D4AF37]">
+                                    ${fmtCurrency(item.ticketAtual)}
+                                    <div class="text-[10px] text-zinc-500">Original: ${fmtCurrency(item.ticketOriginal)}</div>
+                                </td>
+                                <td class="py-4">${item.taxaExibicao}</td>
+                                <td class="py-4 text-zinc-400">
+                                    ${item.proximoPgto} 
+                                    ${item.proximoPgtoRaw ? `<span class="text-[10px] block">Restam: ${item.parcelasRestantes} pagamentos</span>` : ''}
+                                </td>
+                                <td class="py-4 text-right">
+                                    <span class="text-xs px-2 py-1 rounded border ${statusClass}">${item.status}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
 
                     return `
                         <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
                             <div class="flex justify-between items-center mb-6">
                                 <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold">A Sua Carteira Ativa</h3>
-                                <span class="text-xs text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">A receber Amortização + Juros Quinzenalmente</span>
+                                <span class="text-xs text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Amortização + Juros Quinzenalmente</span>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="border-b border-[#222] text-xs uppercase tracking-wider text-zinc-500">
-                                            <th class="pb-3 font-medium">Operação</th>
-                                            <th class="pb-3 font-medium">Ticket Restante</th>
-                                            <th class="pb-3 font-medium">Retorno Líquido</th>
-                                            <th class="pb-3 font-medium">Próximo Vencimento</th>
-                                            <th class="pb-3 font-medium text-right">Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="text-sm text-zinc-300">
-                                        ${rows}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <div class="overflow-x-auto"><table class="w-full text-left border-collapse">
+                                <thead><tr class="border-b border-[#222] text-xs uppercase tracking-wider text-zinc-500"><th class="pb-3 font-medium">Operação</th><th class="pb-3 font-medium">Ticket Restante</th><th class="pb-3 font-medium">Retorno Líquido</th><th class="pb-3 font-medium">Próximo Vencimento</th><th class="pb-3 font-medium text-right">Estado</th></tr></thead>
+                                <tbody class="text-sm text-zinc-300">${rows}</tbody>
+                            </table></div>
                         </div>
                     `;
                 },
 
                 history() {
-                    const uId = state.auth.id;
-                    const myHistory = state.history.filter(h => h.userId === uId);
-
-                    let rows = '';
-                    if (myHistory.length === 0) {
-                        rows = `<p class="text-zinc-500 text-sm py-4">Sem histórico de movimentações.</p>`;
-                    } else {
-                        rows = myHistory.map(tx => `
-                            <div class="flex items-center justify-between p-4 bg-[#141414] border border-[#222] rounded-lg">
-                                <div class="flex items-center space-x-4">
-                                    <div class="p-2 rounded-full ${tx.isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-400'}">
-                                        <i data-lucide="${tx.isPositive ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-white">${tx.type}</p>
-                                        <p class="text-xs text-zinc-500">${tx.desc} • ${fmtDate(tx.date)}</p>
-                                    </div>
-                                </div>
-                                <div class="text-right font-medium ${tx.isPositive ? 'text-emerald-500' : 'text-white'}">
-                                    ${tx.isPositive ? '+' : '-'}${fmtCurrency(tx.amount)}
-                                </div>
+                    const myHistory = state.history.filter(h => h.userId === state.auth.id);
+                    let rows = myHistory.length === 0 ? `<p class="text-zinc-500 text-sm py-4">Sem histórico.</p>` : myHistory.map(tx => `
+                        <div class="flex items-center justify-between p-4 bg-[#141414] border border-[#222] rounded-lg">
+                            <div class="flex items-center space-x-4">
+                                <div class="p-2 rounded-full ${tx.isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-400'}"><i data-lucide="${tx.isPositive ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i></div>
+                                <div><p class="text-sm font-medium text-white">${tx.type}</p><p class="text-xs text-zinc-500">${tx.desc} • ${fmtDate(tx.date)}</p></div>
                             </div>
-                        `).join('');
-                    }
-
-                    return `
-                        <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
-                            <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Extrato de Movimentações</h3>
-                            <div class="space-y-4">
-                                ${rows}
-                            </div>
+                            <div class="text-right font-medium ${tx.isPositive ? 'text-emerald-500' : 'text-white'}">${tx.isPositive ? '+' : '-'}${fmtCurrency(tx.amount)}</div>
                         </div>
-                    `;
+                    `).join('');
+
+                    return `<div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl"><h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Extrato</h3><div class="space-y-4">${rows}</div></div>`;
                 },
 
                 analytics() {
                     const uId = state.auth.id;
                     const myPortfolio = state.portfolio.filter(p => p.userId === uId);
-                    const bal = state.balances[uId];
-
-                    let barContent = myPortfolio.length === 0 && bal.availableCash === 0
-                        ? `<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">Sem saldo</div>` 
-                        : `<canvas id="wealthBarChart"></canvas>`;
-
-                    let lineContent = myPortfolio.length === 0 
-                        ? `<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">Invista para ver projeções Curvadas</div>` 
-                        : `<canvas id="flowLineChart"></canvas>`;
+                    const bal = state.balances[uId] || { availableCash: 0 };
+                    let barContent = myPortfolio.length === 0 && bal.availableCash === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">Sem saldo</div>` : `<canvas id="wealthBarChart"></canvas>`;
+                    let lineContent = myPortfolio.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">Invista para ver projeções</div>` : `<canvas id="flowLineChart"></canvas>`;
 
                     return `
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
-                                <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Evolução do Património Global</h3>
-                                <div class="h-64 w-full relative">
-                                    ${barContent}
-                                </div>
-                            </div>
-                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl">
-                                <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Curva de Projeção de Juros (Curto Prazo)</h3>
-                                <div class="h-64 w-full relative">
-                                    ${lineContent}
-                                </div>
-                            </div>
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl"><h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Evolução Patrimonial</h3><div class="h-64 w-full relative">${barContent}</div></div>
+                            <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl"><h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6">Projeção Juros</h3><div class="h-64 w-full relative">${lineContent}</div></div>
                         </div>
                     `;
                 },
 
                 reports() {
                     const reps = [
-                        { id: 'irpf', title: 'Informe de Rendimentos 2025', desc: 'Gerar folha oficial para Imposto de Renda.' },
-                        { id: 'gerencial', title: 'Relatório Gerencial da Carteira', desc: 'Análise de Juros, Taxas Pagas e Retorno.' },
-                        { id: 'extrato', title: 'Extrato Consolidado', desc: 'Folha de auditoria completa de aportes.' }
+                        { id: 'irpf', title: 'Informe Rendimentos 2025', desc: 'Folha oficial IRPF.' }, { id: 'gerencial', title: 'Relatório Gerencial', desc: 'Análise Juros/Retorno.' }, { id: 'extrato', title: 'Extrato Consolidado', desc: 'Auditoria de aportes.' }
                     ];
-
-                    return `
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            ${reps.map(rep => `
-                                <div onclick="app.downloadReport('${rep.id}')" class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl hover:border-[#D4AF37] transition-colors cursor-pointer group">
-                                    <i data-lucide="printer" class="w-8 h-8 text-[#D4AF37] mb-4 opacity-70 group-hover:opacity-100 transition-opacity"></i>
-                                    <h4 class="text-white font-medium mb-1">${rep.title}</h4>
-                                    <p class="text-xs text-zinc-500 mb-6">${rep.desc}</p>
-                                    <button class="text-xs uppercase tracking-wider text-[#D4AF37] group-hover:text-[#f0cc5e] flex items-center">
-                                        <i data-lucide="external-link" class="w-3 h-3 mr-2"></i> Abrir & Imprimir PDF
-                                    </button>
-                                </div>
-                            `).join('')}
+                    return `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">${reps.map(r => `
+                        <div onclick="app.downloadReport('${r.id}')" class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl hover:border-[#D4AF37] transition-colors cursor-pointer group">
+                            <i data-lucide="printer" class="w-8 h-8 text-[#D4AF37] mb-4 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                            <h4 class="text-white font-medium mb-1">${r.title}</h4><p class="text-xs text-zinc-500 mb-6">${r.desc}</p>
+                            <button class="text-xs uppercase tracking-wider text-[#D4AF37] group-hover:text-[#f0cc5e] flex items-center"><i data-lucide="external-link" class="w-3 h-3 mr-2"></i> Abrir PDF</button>
                         </div>
-                    `;
+                    `).join('')}</div>`;
                 },
 
                 managerOps() {
-                    let opsRows = '';
-                    if (state.pendingOps.length === 0) {
-                        opsRows = `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Originação livre de pendências.</p></div>`;
-                    } else {
-                        opsRows = state.pendingOps.map(op => `
-                            <div class="flex justify-between items-center p-4 bg-[#161616] border border-[#222] rounded-lg">
-                                <div>
-                                    <div class="flex items-center space-x-3 mb-1">
-                                        <h4 class="text-white font-medium">${op.setor}</h4>
-                                        <span class="text-[10px] uppercase tracking-wider bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">Risco em Análise</span>
-                                    </div>
-                                    <p class="text-xs text-zinc-400">Tipo: ${op.type === 'exclusive' ? 'Ticket Fixo Exclusivo' : 'Aberto'} • Taxa Alvo: ${op.taxa}% • Garantia: ${op.garantias}</p>
-                                </div>
-                                <div class="flex space-x-3">
-                                    <button class="px-3 py-1.5 border border-[#333] text-zinc-400 hover:text-white text-xs rounded transition-colors">Rejeitar</button>
-                                    <button onclick="app.handleMarketApproval(${op.id})" class="px-3 py-1.5 bg-[#D4AF37] text-black font-semibold text-xs rounded hover:bg-[#f0cc5e] flex items-center transition-colors">
-                                        <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i> Publicar
-                                    </button>
-                                </div>
+                    let opsRows = state.pendingOps.length === 0 ? `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Livre de pendências.</p></div>` : state.pendingOps.map(op => `
+                        <div class="flex justify-between items-center p-4 bg-[#161616] border border-[#222] rounded-lg">
+                            <div>
+                                <h4 class="text-white font-medium">${op.setor} <span class="text-[10px] uppercase bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded ml-2">Análise</span></h4>
+                                <p class="text-xs text-zinc-400 mt-1">Taxa Alvo: ${op.taxa}% • Garantia: ${op.garantias}</p>
                             </div>
-                        `).join('');
-                    }
+                            <button onclick="app.handleMarketApproval(${op.id})" class="px-3 py-1.5 bg-[#D4AF37] text-black font-semibold text-xs rounded hover:bg-[#f0cc5e] flex items-center transition-colors"><i data-lucide="check-circle" class="w-3 h-3 mr-1"></i> Publicar</button>
+                        </div>
+                    `).join('');
 
-                    let txRows = '';
-                    if (state.pendingTransactions.length === 0) {
-                        txRows = `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Sem movimentações aguardando aprovação.</p></div>`;
-                    } else {
-                        txRows = state.pendingTransactions.map(tx => `
-                            <div class="flex justify-between items-center p-4 bg-gradient-to-r from-[#1a160c] to-[#101010] border border-[#D4AF37]/20 rounded-lg">
-                                <div>
-                                    <div class="flex items-center space-x-3 mb-1">
-                                        <h4 class="text-white font-medium">${tx.client}</h4>
-                                        <span class="text-[10px] uppercase tracking-wider bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded">${tx.type === 'invest' ? 'Alocação de Capital' : 'Pedido de Saque'}</span>
-                                    </div>
-                                    <p class="text-xs text-zinc-400">${tx.desc} • Valor: <span class="text-white font-bold">${fmtCurrency(tx.amount)}</span></p>
-                                </div>
-                                <div class="flex space-x-3">
-                                    <button onclick="app.handleClientTransaction(${tx.id}, false)" class="px-3 py-1.5 border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs rounded transition-colors">Negar</button>
-                                    <button onclick="app.handleClientTransaction(${tx.id}, true)" class="px-3 py-1.5 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors">
-                                        <i data-lucide="check" class="w-3 h-3 mr-1"></i> Aprovar
-                                    </button>
-                                </div>
+                    let txRows = state.pendingTransactions.length === 0 ? `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Sem aprovações aguardando.</p></div>` : state.pendingTransactions.map(tx => `
+                        <div class="flex justify-between items-center p-4 bg-gradient-to-r from-[#1a160c] to-[#101010] border border-[#D4AF37]/20 rounded-lg">
+                            <div>
+                                <h4 class="text-white font-medium">${tx.client} <span class="text-[10px] uppercase bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded ml-2">${tx.type === 'invest' ? 'Alocação' : 'Saque'}</span></h4>
+                                <p class="text-xs text-zinc-400 mt-1">${tx.desc} • <span class="text-white font-bold">${fmtCurrency(tx.amount)}</span></p>
                             </div>
-                        `).join('');
-                    }
-
-                    return `
-                        <div class="bg-[#101010] border border-[#D4AF37]/50 shadow-[0_0_15px_rgba(212,175,55,0.05)] rounded-xl p-6 mb-8">
-                            <h3 class="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-6 flex items-center">
-                                <i data-lucide="users" class="w-4 h-4 mr-2"></i> Aprovações de Movimentações (Clientes)
-                            </h3>
-                            <div class="space-y-4">
-                                ${txRows}
+                            <div class="flex space-x-3">
+                                <button onclick="app.handleClientTransaction(${tx.id}, false)" class="px-3 py-1.5 border border-red-500/30 text-red-500 hover:bg-red-500/10 text-xs rounded transition-colors">Negar</button>
+                                <button onclick="app.handleClientTransaction(${tx.id}, true)" class="px-3 py-1.5 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors"><i data-lucide="check" class="w-3 h-3 mr-1"></i> Aprovar</button>
                             </div>
                         </div>
+                    `).join('');
 
+                    return `
+                        <div class="bg-[#101010] border border-[#D4AF37]/50 rounded-xl p-6 mb-8">
+                            <h3 class="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-6 flex items-center"><i data-lucide="users" class="w-4 h-4 mr-2"></i> Aprovações (Clientes)</h3><div class="space-y-4">${txRows}</div>
+                        </div>
                         <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl mb-6">
-                            <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6 flex items-center">
-                                <i data-lucide="building" class="w-4 h-4 mr-2"></i> Mesa de Originação (Mercado)
-                            </h3>
-                            <div class="space-y-4">
-                                ${opsRows}
-                            </div>
+                            <h3 class="text-sm uppercase tracking-widest text-zinc-500 font-semibold mb-6 flex items-center"><i data-lucide="building" class="w-4 h-4 mr-2"></i> Mesa de Originação</h3><div class="space-y-4">${opsRows}</div>
                         </div>
                     `;
                 },
 
                 managerClients() {
-                    const clients = [
-                        { id: '20053214781', name: 'Nicholas' },
-                        { id: '12062005', name: 'Bárbara Colleman' }
-                    ];
-
-                    let html = '';
-                    clients.forEach(client => {
-                        const activeClientOps = state.portfolio.filter(p => p.status !== 'Aguardando Gerente' && p.userId === client.id);
+                    const clients = [{ id: '20053214781', name: 'Nicholas' }, { id: '12062005', name: 'Bárbara Colleman' }];
+                    return clients.map(client => {
+                        const activeOps = state.portfolio.filter(p => p.status !== 'Aguardando Gerente' && p.userId === client.id);
                         const bal = state.balances[client.id] || { availableCash: 0, investedAmount: 0 };
                         
-                        let rows = '';
-                        if (activeClientOps.length === 0) {
-                            rows = `<div class="text-center py-6"><p class="text-zinc-500 text-sm">O cliente não possui parcelas ativas.</p></div>`;
-                        } else {
-                            rows = activeClientOps.map(op => {
-                                const devolucaoPrincipal = op.ticketOriginal / 24;
-                                const jurosIntegrais = op.ticketOriginal * op.taxaQuinzenalDecimal;
-                                
-                                const inicioCiclo = new Date(op.proximoPgtoRaw.getTime() - 15 * 86400000);
-                                let diasDecorridos = Math.round((state.currentDate - inicioCiclo) / 86400000);
-                                if (diasDecorridos < 1) diasDecorridos = 1;
-                                
-                                const jurosProporcionais = jurosIntegrais * (diasDecorridos / 15);
-                                const parcelaHoje = devolucaoPrincipal + jurosProporcionais;
-                                
-                                const isLate = state.currentDate > op.proximoPgtoRaw;
-                                const isEarly = diasDecorridos < 15;
-                                
-                                let labelJuros = '';
-                                if (isEarly) {
-                                    labelJuros = `<span class="text-emerald-500 text-[10px] ml-2">(-${fmtCurrency(jurosIntegrais - jurosProporcionais)} desconto antecipação)</span>`;
-                                } else if (isLate) {
-                                    labelJuros = `<span class="text-red-500 text-[10px] ml-2">(+${fmtCurrency(jurosProporcionais - jurosIntegrais)} mora diária)</span>`;
-                                }
-                                
-                                return `
-                                <div class="flex justify-between items-center p-4 bg-[#161616] border border-[${isLate ? '#ef4444' : '#333'}] rounded-lg">
-                                    <div>
-                                        <div class="flex items-center space-x-3 mb-1">
-                                            <h4 class="text-white font-medium">${op.setor}</h4>
-                                            <span class="text-[10px] uppercase tracking-wider ${isLate ? 'bg-red-500/20 text-red-500' : 'bg-zinc-800 text-zinc-400'} px-2 py-0.5 rounded">${isLate ? 'Vencido / Em Atraso' : op.status}</span>
-                                        </div>
-                                        <p class="text-xs text-zinc-400">Data Base Vencimento: <span class="text-[${isLate ? '#ef4444' : 'white'}] font-bold">${op.proximoPgto}</span></p>
-                                        <p class="text-xs text-zinc-400 mt-1">Valor se processado HOJE: <span class="text-[#D4AF37] font-bold text-sm">${fmtCurrency(parcelaHoje)}</span>${labelJuros}</p>
-                                        <p class="text-xs text-zinc-400 mt-1">Parcelas Restantes: <span class="text-white font-bold">${op.parcelasRestantes}</span></p>
-                                    </div>
-                                    <div class="flex space-x-3">
-                                        <button onclick="app.handleManagerManualPayment(${op.id})" class="px-4 py-2 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors shadow-lg" title="Pagar e Atualizar Vencimento">
-                                            <i data-lucide="check-circle-2" class="w-4 h-4 mr-2"></i> Processar Pagamento
-                                        </button>
-                                    </div>
-                                </div>
-                                `}).join('');
-                        }
-
-                        html += `
-                            <div class="mb-6 flex items-center bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
-                                <div class="w-12 h-12 rounded-full bg-[#D4AF37]/20 flex items-center justify-center mr-4 border border-[#D4AF37]">
-                                    <i data-lucide="user" class="w-6 h-6 text-[#D4AF37]"></i>
-                                </div>
+                        let rows = activeOps.length === 0 ? `<div class="text-center py-6"><p class="text-zinc-500 text-sm">Sem parcelas ativas.</p></div>` : activeOps.map(op => {
+                            const devolucao = op.ticketOriginal / 24, juros = op.ticketOriginal * op.taxaQuinzenalDecimal;
+                            let dias = Math.round((Date.now() - (op.proximoPgtoRaw - 15*86400000)) / 86400000);
+                            if(dias < 1) dias = 1;
+                            const parcelaHoje = devolucao + (juros * (dias/15));
+                            const isLate = Date.now() > op.proximoPgtoRaw;
+                            
+                            return `
+                            <div class="flex justify-between items-center p-4 bg-[#161616] border border-[${isLate ? '#ef4444' : '#333'}] rounded-lg">
                                 <div>
-                                    <h3 class="text-lg font-light text-white">Cliente: ${client.name}</h3>
-                                    <p class="text-xs text-zinc-500">ID: ${client.id} | Património Atual: ${fmtCurrency(bal.availableCash + bal.investedAmount)}</p>
+                                    <h4 class="text-white font-medium">${op.setor} <span class="text-[10px] uppercase ${isLate ? 'bg-red-500/20 text-red-500' : 'bg-zinc-800 text-zinc-400'} px-2 py-0.5 rounded ml-2">${isLate ? 'Em Atraso' : op.status}</span></h4>
+                                    <p class="text-xs text-zinc-400 mt-1">Data Base: <span class="text-[${isLate ? '#ef4444' : 'white'}] font-bold">${op.proximoPgto}</span></p>
+                                    <p class="text-xs text-zinc-400 mt-1">Valor HOJE: <span class="text-[#D4AF37] font-bold text-sm">${fmtCurrency(parcelaHoje)}</span></p>
+                                    <p class="text-xs text-zinc-400 mt-1">Parcelas: <span class="text-white font-bold">${op.parcelasRestantes}</span></p>
                                 </div>
+                                <button onclick="app.handleManagerManualPayment(${op.id})" class="px-4 py-2 bg-emerald-600 text-white font-semibold text-xs rounded hover:bg-emerald-500 flex items-center transition-colors"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2"></i> Pagar</button>
+                            </div>
+                            `}).join('');
+
+                        return `
+                            <div class="mb-6 flex items-center bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                <div class="w-12 h-12 rounded-full bg-[#D4AF37]/20 flex items-center justify-center mr-4 border border-[#D4AF37]"><i data-lucide="user" class="w-6 h-6 text-[#D4AF37]"></i></div>
+                                <div><h3 class="text-lg font-light text-white">Cliente: ${client.name}</h3><p class="text-xs text-zinc-500">ID: ${client.id} | Património Atual: ${fmtCurrency(bal.availableCash + bal.investedAmount)}</p></div>
                             </div>
                             <div class="bg-[#101010] border border-[#222] rounded-xl p-6 shadow-2xl mb-8">
-                                <h3 class="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-6 flex items-center">
-                                    <i data-lucide="calendar-clock" class="w-4 h-4 mr-2"></i> Gestão de Recebíveis do Cliente
-                                </h3>
-                                <div class="space-y-4">
-                                    ${rows}
-                                </div>
+                                <h3 class="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold mb-6 flex items-center"><i data-lucide="calendar-clock" class="w-4 h-4 mr-2"></i> Gestão de Recebíveis</h3><div class="space-y-4">${rows}</div>
                             </div>
                         `;
-                    });
-
-                    return html;
+                    }).join('');
                 }
             }
         };
 
         window.app = app; 
-
-        document.addEventListener('DOMContentLoaded', () => {
-            app.init();
-        });
+        document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
 </html>
