@@ -101,7 +101,7 @@
             const [historicoCompras, setHistoricoCompras] = useState([]);
             const [rotasFinalizadas, setRotasFinalizadas] = useState([]);
             
-            const [formCompra, setFormCompra] = useState({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '', codigo: '' });
+            const [formCompra, setFormCompra] = useState({ fornecedor: '', solicitante: '', dataCompra: '', prioridade: 'Média', observacao: '', codigo: '' });
             const [formItem, setFormItem] = useState({ id: null, nome: '', qtd: 1, un: '', vlr: 0, desc: 0 });
             const [formSetor, setFormSetor] = useState({ depto: '', qtd: '' });
 
@@ -209,17 +209,18 @@
                     codigo: codigoAtual,
                     fornecedor: formCompra.fornecedor,
                     solicitante: formCompra.solicitante,
+                    dataCompra: formCompra.dataCompra,
                     prioridade: formCompra.prioridade,
                     observacao: formCompra.observacao,
                     itens: [...produtosDaCompra],
                     total: totalCompra,
-                    data: new Date().toLocaleDateString('pt-BR')
+                    data: formCompra.dataCompra ? new Date(formCompra.dataCompra).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : new Date().toLocaleDateString('pt-BR')
                 };
                 
                 try {
                     await setDoc(getDocRef('rotas_ativas', novaCompra.id), novaCompra);
                     setProdutosDaCompra([]);
-                    setFormCompra({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '', codigo: '' });
+                    setFormCompra({ fornecedor: '', solicitante: '', dataCompra: '', prioridade: 'Média', observacao: '', codigo: '' });
                     setEditingRotaId(null);
                     showAlert('Sucesso', editingRotaId ? 'Requisição atualizada com sucesso!' : 'Requisição registada com sucesso!', 'success');
                 } catch (error) {
@@ -233,6 +234,7 @@
                     codigo: rota.codigo,
                     fornecedor: rota.fornecedor,
                     solicitante: rota.solicitante || '',
+                    dataCompra: rota.dataCompra || '',
                     prioridade: rota.prioridade || 'Média',
                     observacao: rota.observacao || ''
                 });
@@ -242,7 +244,7 @@
             };
 
             const cancelarEdicaoRota = () => {
-                setFormCompra({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '', codigo: '' });
+                setFormCompra({ fornecedor: '', solicitante: '', dataCompra: '', prioridade: 'Média', observacao: '', codigo: '' });
                 setProdutosDaCompra([]);
                 setEditingRotaId(null);
             };
@@ -291,7 +293,7 @@
                 const printWindow = window.open('', '_blank');
                 let html = `<html><head><title>Relatório R.O.T.A</title><style>body{font-family:sans-serif;padding:20px;}.block{border:2px solid #000;margin-bottom:30px;padding:20px;page-break-inside:avoid;}.header{display:flex;justify-content:space-between;border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:15px;}.code{font-size:24px;font-weight:bold;}table{width:100%;border-collapse:collapse;margin-top:10px;}th,td{border:1px solid #eee;padding:8px;text-align:left;font-size:12px;}th{background:#f4f4f4;}.total{text-align:right;font-weight:bold;font-size:16px;margin-top:10px;}.obs{margin-top:10px;font-style:italic;font-size:11px;color:#555;}</style></head><body><h1 style="text-align:center">R.O.T.A — REQUISIÇÕES DE COMPRA</h1>`;
                 selecionados.forEach(c => {
-                    html += `<div class="block"><div class="header"><div><span class="code">${c.codigo}</span><br>Fornecedor: <b>${c.fornecedor}</b></div><div style="text-align:right">Solicitante: ${c.solicitante}</div></div><table><thead><tr><th>Produto</th><th>Qtd</th><th>Unid</th><th>Total</th><th>Rateio</th></tr></thead><tbody>${c.itens.map(it => `<tr><td>${it.nome}</td><td>${it.qtd}</td><td>${it.un}</td><td>${formatCurrency(it.total)}</td><td>${it.rateio.map(r => r.nome + '(' + r.qtd + ')').join(', ')}</td></tr>`).join('')}</tbody></table><div class="obs">Obs: ${c.observacao || 'Nenhuma'}</div><div class="total">VALOR TOTAL: ${formatCurrency(c.total)}</div></div>`;
+                    html += `<div class="block"><div class="header"><div><span class="code">${c.codigo}</span><br>Fornecedor: <b>${c.fornecedor}</b><br>Data: ${c.dataCompra ? new Date(c.dataCompra).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : c.data}</div><div style="text-align:right">Solicitante: ${c.solicitante}</div></div><table><thead><tr><th>Produto</th><th>Qtd</th><th>Unid</th><th>Total</th><th>Rateio</th></tr></thead><tbody>${c.itens.map(it => `<tr><td>${it.nome}</td><td>${it.qtd}</td><td>${it.un}</td><td>${formatCurrency(it.total)}</td><td>${it.rateio.map(r => r.nome + '(' + r.qtd + ')').join(', ')}</td></tr>`).join('')}</tbody></table><div class="obs">Obs: ${c.observacao || 'Nenhuma'}</div><div class="total">VALOR TOTAL: ${formatCurrency(c.total)}</div></div>`;
                 });
                 html += `</body></html>`;
                 printWindow.document.write(html);
@@ -354,7 +356,7 @@
                                 <span className={`w-2 h-2 rounded-full mr-2 ${editingRotaId ? 'bg-amber-500' : 'bg-blue-600'}`}></span>
                                 Informações da Requisição
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="md:col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Fornecedor</label>
                                     <input type="text" value={formCompra.fornecedor} onChange={e => setFormCompra({...formCompra, fornecedor: e.target.value})} placeholder="Pesquisar..." className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
@@ -362,6 +364,10 @@
                                 <div className="md:col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Solicitante</label>
                                     <input type="text" value={formCompra.solicitante} onChange={e => setFormCompra({...formCompra, solicitante: e.target.value})} placeholder="Nome" className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Data da Compra</label>
+                                    <input type="date" value={formCompra.dataCompra} onChange={e => setFormCompra({...formCompra, dataCompra: e.target.value})} className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                                 </div>
                                 <div className="md:col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Prioridade</label>
@@ -372,7 +378,7 @@
                                         <option value="Urgente">Urgente</option>
                                     </select>
                                 </div>
-                                <div className="md:col-span-1">
+                                <div className="md:col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Observação Geral</label>
                                     <textarea rows="1" value={formCompra.observacao} onChange={e => setFormCompra({...formCompra, observacao: e.target.value})} placeholder="Notas da compra..." className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
                                 </div>
@@ -558,6 +564,7 @@
                                                 <input type="checkbox" onChange={toggleSelectAll} checked={historicoCompras.length > 0 && Object.keys(selectedRotas).filter(k=>selectedRotas[k]).length === historicoCompras.length}/>
                                             </th>
                                             <th className="px-4 py-3">Código</th>
+                                            <th className="px-4 py-3">Data</th>
                                             <th className="px-4 py-3">Fornecedor</th>
                                             <th className="px-4 py-3 text-right">Total</th>
                                             <th className="px-4 py-3">Obs.</th>
@@ -566,7 +573,7 @@
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {historicoCompras.length === 0 ? (
-                                            <tr><td colSpan="6" className="p-8 text-center text-slate-400 italic">Nenhum registo ativo.</td></tr>
+                                            <tr><td colSpan="7" className="p-8 text-center text-slate-400 italic">Nenhum registo ativo.</td></tr>
                                         ) : (
                                             historicoCompras.map((c, i) => (
                                                 <tr key={c.id} className="hover:bg-slate-50 transition-colors">
@@ -574,6 +581,7 @@
                                                         <input type="checkbox" checked={!!selectedRotas[i]} onChange={e => setSelectedRotas({...selectedRotas, [i]: e.target.checked})} />
                                                     </td>
                                                     <td className="p-3 font-mono font-bold text-blue-600">{c.codigo}</td>
+                                                    <td className="p-3 text-slate-600">{c.dataCompra ? new Date(c.dataCompra).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : c.data}</td>
                                                     <td className="p-3">{c.fornecedor}</td>
                                                     <td className="p-3 text-right font-bold">{formatCurrency(c.total)}</td>
                                                     <td className="p-3 text-[10px] text-slate-400 max-w-[150px] truncate" title={c.observacao}>{c.observacao}</td>
@@ -1947,4 +1955,3 @@
     </script>
 </body>
 </html>
-
