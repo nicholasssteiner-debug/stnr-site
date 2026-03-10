@@ -96,23 +96,47 @@
 
         // --- COMPONENTE R.O.T.A ---
         const RotaTab = ({ departamentos }) => {
-            const [sequencial, setSequencial] = useState(1);
             const [setoresTemporarios, setSetoresTemporarios] = useState([]);
             const [produtosDaCompra, setProdutosDaCompra] = useState([]);
             const [historicoCompras, setHistoricoCompras] = useState([]);
             const [rotasFinalizadas, setRotasFinalizadas] = useState([]);
             
-            const [formCompra, setFormCompra] = useState({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '' });
+            const [formCompra, setFormCompra] = useState({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '', codigo: '' });
             const [formItem, setFormItem] = useState({ id: null, nome: '', qtd: 1, un: '', vlr: 0, desc: 0 });
             const [formSetor, setFormSetor] = useState({ depto: '', qtd: '' });
 
             const [modalFinalizadas, setModalFinalizadas] = useState(false);
             const [selectedRotas, setSelectedRotas] = useState({});
+            const [editingRotaId, setEditingRotaId] = useState(null);
             
             const [alertConfig, setAlertConfig] = useState({ show: false, title: '', msg: '', type: 'success' });
 
+            // Busca os dados do Firebase em Tempo Real
+            useEffect(() => {
+                const unsubAtivas = onSnapshot(getCollectionPath('rotas_ativas'), snapshot => {
+                    setHistoricoCompras(snapshot.docs.map(d => d.data()));
+                });
+                const unsubFinalizadas = onSnapshot(getCollectionPath('rotas_finalizadas'), snapshot => {
+                    setRotasFinalizadas(snapshot.docs.map(d => d.data()));
+                });
+                return () => { unsubAtivas(); unsubFinalizadas(); };
+            }, []);
+
             const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-            const codigoAtual = `CMPA - ${new Date().getFullYear()} - ${String(sequencial).padStart(3, '0')}`;
+            
+            // Lógica inteligente para definir o próximo sequencial da Rota
+            const todasRotas = [...historicoCompras, ...rotasFinalizadas];
+            let maxSeq = 0;
+            todasRotas.forEach(r => {
+                const parts = r.codigo?.split(' - ');
+                if (parts && parts.length === 3) {
+                    const num = parseInt(parts[2], 10);
+                    if (num > maxSeq) maxSeq = num;
+                }
+            });
+            const codigoAtual = editingRotaId && formCompra.codigo 
+                ? formCompra.codigo 
+                : `CMPA - ${new Date().getFullYear()} - ${String(maxSeq + 1).padStart(3, '0')}`;
             
             const formItemQtd = parseFloat(formItem.qtd) || 0;
             const itemTotal = (formItemQtd * (parseFloat(formItem.vlr) || 0)) - (parseFloat(formItem.desc) || 0);
@@ -149,7 +173,7 @@
             const salvarProdutoNaCompra = () => {
                 if (!formItem.nome) return showAlert('Erro', 'Informe o produto.', 'error');
                 const newItem = {
-                    id: formItem.id || Date.now(),
+                    id: formItem.id || Date.now().toString(),
                     nome: formItem.nome,
                     qtd: formItemQtd || 1,
                     un: formItem.un || 'UN',
@@ -169,29 +193,66 @@
                 setFormItem({ id: p.id, nome: p.nome, qtd: p.qtd, un: p.un, vlr: p.vlr, desc: p.desc });
                 setSetoresTemporarios([...p.rateio]);
                 setProdutosDaCompra(prev => prev.filter(x => x.id !== id));
-                showAlert('Edição', 'O produto foi carregado para o formulário.', 'success');
+                showAlert('Edição de Produto', 'O produto foi carregado para o formulário.', 'success');
             };
 
             const removerProdutoAberto = (id) => setProdutosDaCompra(prev => prev.filter(p => p.id !== id));
 
-            const finalizarRequisicao = () => {
+            // Integração Firebase: Salvar Requisição
+            const finalizarRequisicao = async () => {
                 if (!formCompra.fornecedor || produtosDaCompra.length === 0) 
                     return showAlert('Atenção', 'Informe o fornecedor e adicione produtos.', 'warning');
                 
                 const totalCompra = produtosDaCompra.reduce((acc, p) => acc + p.total, 0);
                 const novaCompra = {
+                    id: editingRotaId || Date.now().toString(),
                     codigo: codigoAtual,
-                    ...formCompra,
+                    fornecedor: formCompra.fornecedor,
+                    solicitante: formCompra.solicitante,
+                    prioridade: formCompra.prioridade,
+                    observacao: formCompra.observacao,
                     itens: [...produtosDaCompra],
                     total: totalCompra,
                     data: new Date().toLocaleDateString('pt-BR')
                 };
                 
-                setHistoricoCompras(prev => [...prev, novaCompra]);
-                setSequencial(s => s + 1);
+                try {
+                    await setDoc(getDocRef('rotas_ativas', novaCompra.id), novaCompra);
+                    setProdutosDaCompra([]);
+                    setFormCompra({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '', codigo: '' });
+                    setEditingRotaId(null);
+                    showAlert('Sucesso', editingRotaId ? 'Requisição atualizada com sucesso!' : 'Requisição registada com sucesso!', 'success');
+                } catch (error) {
+                    showAlert('Erro', 'Falha ao conectar com o banco de dados.', 'error');
+                }
+            };
+
+            // Integração Firebase: Editar Requisição Ativa
+            const editarRota = (rota) => {
+                setFormCompra({
+                    codigo: rota.codigo,
+                    fornecedor: rota.fornecedor,
+                    solicitante: rota.solicitante || '',
+                    prioridade: rota.prioridade || 'Média',
+                    observacao: rota.observacao || ''
+                });
+                setProdutosDaCompra(rota.itens || []);
+                setEditingRotaId(rota.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const cancelarEdicaoRota = () => {
+                setFormCompra({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '', codigo: '' });
                 setProdutosDaCompra([]);
-                setFormCompra({ fornecedor: '', solicitante: '', prioridade: 'Média', observacao: '' });
-                showAlert('Sucesso', 'Requisição registrada com sucesso!', 'success');
+                setEditingRotaId(null);
+            };
+
+            // Integração Firebase: Apagar Requisição Ativa
+            const excluirRota = async (id) => {
+                if (window.confirm("Atenção: Tem certeza que deseja apagar esta rota permanentemente?")) {
+                    await deleteDoc(getDocRef('rotas_ativas', id));
+                    showAlert('Excluída', 'A rota foi apagada do sistema.', 'success');
+                }
             };
 
             const toggleSelectAll = (e) => {
@@ -201,27 +262,30 @@
                 setSelectedRotas(newSelected);
             };
 
-            const finalizarRotaSelecionada = () => {
-                const indicesToFinish = Object.keys(selectedRotas).filter(k => selectedRotas[k]).map(Number).sort((a,b) => b-a);
-                if (indicesToFinish.length === 0) return showAlert('Aviso', 'Selecione compras.', 'warning');
+            // Integração Firebase: Finalizar Rota
+            const finalizarRotaSelecionada = async () => {
+                const indicesToFinish = Object.keys(selectedRotas).filter(k => selectedRotas[k]).map(Number);
+                if (indicesToFinish.length === 0) return showAlert('Aviso', 'Selecione as rotas que deseja finalizar.', 'warning');
 
-                const toMove = [];
-                const newHistorico = [...historicoCompras];
-                indicesToFinish.forEach(idx => {
-                    const item = newHistorico.splice(idx, 1)[0];
-                    item.dataFim = new Date().toLocaleDateString('pt-BR');
-                    toMove.push(item);
-                });
-
-                setHistoricoCompras(newHistorico);
-                setRotasFinalizadas(prev => [...prev, ...toMove]);
-                setSelectedRotas({});
-                showAlert('Rota Finalizada', 'Movidas para o histórico.', 'success');
+                try {
+                    for (let idx of indicesToFinish) {
+                        const item = historicoCompras[idx];
+                        if (item) {
+                            item.dataFim = new Date().toLocaleDateString('pt-BR');
+                            await setDoc(getDocRef('rotas_finalizadas', item.id), item);
+                            await deleteDoc(getDocRef('rotas_ativas', item.id));
+                        }
+                    }
+                    setSelectedRotas({});
+                    showAlert('Rota Finalizada', 'Requisições movidas para o histórico.', 'success');
+                } catch (error) {
+                    showAlert('Erro', 'Ocorreu um problema ao finalizar as rotas.', 'error');
+                }
             };
 
             const imprimirRelatorio = () => {
                 const indicesToPrint = Object.keys(selectedRotas).filter(k => selectedRotas[k]).map(Number);
-                if (indicesToPrint.length === 0) return showAlert('Aviso', 'Selecione ao menos uma compra.', 'warning');
+                if (indicesToPrint.length === 0) return showAlert('Aviso', 'Selecione ao menos uma compra para imprimir.', 'warning');
                 const selecionados = indicesToPrint.map(i => historicoCompras[i]).sort((a, b) => a.codigo.localeCompare(b.codigo));
 
                 const printWindow = window.open('', '_blank');
@@ -235,11 +299,18 @@
                 setTimeout(() => { printWindow.print(); }, 500);
             };
 
-            const reabrirRota = (index) => {
-                const newFinalizadas = [...rotasFinalizadas];
-                const item = newFinalizadas.splice(index, 1)[0];
-                setRotasFinalizadas(newFinalizadas);
-                setHistoricoCompras(prev => [...prev, item]);
+            // Integração Firebase: Reabrir Rota
+            const reabrirRota = async (id) => {
+                const item = rotasFinalizadas.find(r => r.id === id);
+                if(!item) return;
+                try {
+                    delete item.dataFim; // Remove a data de término
+                    await setDoc(getDocRef('rotas_ativas', item.id), item);
+                    await deleteDoc(getDocRef('rotas_finalizadas', item.id));
+                    showAlert('Sucesso', 'Rota reaberta com sucesso.', 'success');
+                } catch (error) {
+                    showAlert('Erro', 'Não foi possível reabrir a rota.', 'error');
+                }
             };
 
             return (
@@ -268,15 +339,19 @@
                                 </div>
                             </div>
                             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-right">
-                                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block mb-1">Protocolo de Compra</span>
-                                <div className="text-2xl font-mono font-black text-blue-700 leading-none">{codigoAtual}</div>
+                                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block mb-1">
+                                    {editingRotaId ? 'Editando Protocolo' : 'Protocolo de Compra'}
+                                </span>
+                                <div className={`text-2xl font-mono font-black leading-none ${editingRotaId ? 'text-amber-600' : 'text-blue-700'}`}>
+                                    {codigoAtual}
+                                </div>
                             </div>
                         </div>
 
                         {/* 1. Dados Gerais */}
-                        <div className="bg-white border border-slate-200 rounded-lg p-6 mb-6 shadow-sm">
+                        <div className={`bg-white border rounded-lg p-6 mb-6 shadow-sm transition-colors ${editingRotaId ? 'border-amber-300 ring-2 ring-amber-50' : 'border-slate-200'}`}>
                             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center">
-                                <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                                <span className={`w-2 h-2 rounded-full mr-2 ${editingRotaId ? 'bg-amber-500' : 'bg-blue-600'}`}></span>
                                 Informações da Requisição
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -298,7 +373,7 @@
                                     </select>
                                 </div>
                                 <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Finalidade</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Observação Geral</label>
                                     <textarea rows="1" value={formCompra.observacao} onChange={e => setFormCompra({...formCompra, observacao: e.target.value})} placeholder="Notas da compra..." className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
                                 </div>
                             </div>
@@ -449,8 +524,13 @@
                                 </table>
                             </div>
                             <div className="p-6 bg-slate-50 flex justify-end space-x-4 border-t border-slate-100">
-                                <button onClick={finalizarRequisicao} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl shadow-lg uppercase text-sm transition-colors">
-                                    Salvar e Registrar Compra
+                                {editingRotaId && (
+                                    <button onClick={cancelarEdicaoRota} className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold py-3 px-6 rounded-xl shadow-sm text-sm transition-colors">
+                                        Cancelar Edição
+                                    </button>
+                                )}
+                                <button onClick={finalizarRequisicao} className={`${editingRotaId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold py-3 px-10 rounded-xl shadow-lg uppercase text-sm transition-colors`}>
+                                    {editingRotaId ? 'Atualizar Compra' : 'Salvar e Registrar Compra'}
                                 </button>
                             </div>
                         </div>
@@ -481,14 +561,15 @@
                                             <th className="px-4 py-3">Fornecedor</th>
                                             <th className="px-4 py-3 text-right">Total</th>
                                             <th className="px-4 py-3">Obs.</th>
+                                            <th className="px-4 py-3 text-center">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {historicoCompras.length === 0 ? (
-                                            <tr><td colSpan="5" className="p-8 text-center text-slate-400 italic">Nenhum registo ativo.</td></tr>
+                                            <tr><td colSpan="6" className="p-8 text-center text-slate-400 italic">Nenhum registo ativo.</td></tr>
                                         ) : (
                                             historicoCompras.map((c, i) => (
-                                                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                                <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="p-3 text-center">
                                                         <input type="checkbox" checked={!!selectedRotas[i]} onChange={e => setSelectedRotas({...selectedRotas, [i]: e.target.checked})} />
                                                     </td>
@@ -496,6 +577,10 @@
                                                     <td className="p-3">{c.fornecedor}</td>
                                                     <td className="p-3 text-right font-bold">{formatCurrency(c.total)}</td>
                                                     <td className="p-3 text-[10px] text-slate-400 max-w-[150px] truncate" title={c.observacao}>{c.observacao}</td>
+                                                    <td className="p-3 text-center space-x-2">
+                                                        <button onClick={() => editarRota(c)} className="text-blue-500 hover:text-blue-700 p-1 bg-white border border-slate-200 rounded shadow-sm transition-colors" title="Editar"><Pencil size={14}/></button>
+                                                        <button onClick={() => excluirRota(c.id)} className="text-rose-500 hover:text-rose-700 p-1 bg-white border border-slate-200 rounded shadow-sm transition-colors" title="Apagar"><Trash2 size={14}/></button>
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}
@@ -532,13 +617,13 @@
                                                 <tr><td colSpan="5" className="p-10 text-center text-slate-400 italic">Histórico vazio.</td></tr>
                                             ) : (
                                                 rotasFinalizadas.map((c, i) => (
-                                                    <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                                    <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                                                         <td className="p-3 font-bold">{c.codigo}</td>
                                                         <td className="p-3">{c.fornecedor}</td>
                                                         <td className="p-3 text-slate-500">{c.dataFim}</td>
                                                         <td className="p-3 text-right font-bold">{formatCurrency(c.total)}</td>
                                                         <td className="p-3 text-center">
-                                                            <button onClick={() => reabrirRota(i)} className="text-blue-600 font-bold hover:underline">Reabrir</button>
+                                                            <button onClick={() => reabrirRota(c.id)} className="text-blue-600 font-bold hover:underline">Reabrir</button>
                                                         </td>
                                                     </tr>
                                                 ))
@@ -571,7 +656,6 @@
             );
         };
         // --- FIM COMPONENTE R.O.T.A ---
-
 
         // --- ESTADO INICIAL DO FORMULÁRIO COM RATEIO SIMPLIFICADO ---
         const initialFormState = {
@@ -1863,4 +1947,3 @@
     </script>
 </body>
 </html>
-
