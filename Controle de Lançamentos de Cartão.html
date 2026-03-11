@@ -133,7 +133,11 @@
             const [formSetor, setFormSetor] = useState({ depto: '', qtd: '' });
             const [setoresTemporarios, setSetoresTemporarios] = useState([]);
 
-            const allRotas = [...rotasAtivas, ...rotasFinalizadas];
+            const allRotas = useMemo(() => [...rotasAtivas, ...rotasFinalizadas], [rotasAtivas, rotasFinalizadas]);
+            
+            // Determina quais ROTAS já estão vinculadas para não aparecerem novamente
+            const rotasVinculadasIds = useMemo(() => vinculos.flatMap(v => v.rotaIds || (v.rotaId ? [v.rotaId] : [])), [vinculos]);
+            const rotasDisponiveis = useMemo(() => allRotas.filter(r => !rotasVinculadasIds.includes(r.id)), [allRotas, rotasVinculadasIds]);
 
             // Listas baseadas no menu ativo
             const pendentesCartao = useMemo(() => entries.filter(e => e.status === 'Compra' && e.possuiNf === 'Sim' && !vinculos.some(v => v.entryId === e.id.toString())), [entries, vinculos]);
@@ -242,10 +246,14 @@
                 const selectedRotasObjs = allRotas.filter(r => selectedRotaIds.includes(r.id));
                 const valRotaTotalOriginal = selectedRotasObjs.reduce((sum, r) => sum + (r.total || 0), 0);
                 const valEntry = selectedEntry.valor || 0;
-                let desconto = manualDiscount !== '' ? parseFloat(manualDiscount) : (valRotaTotalOriginal - valEntry);
+                
+                // Desconto automático para cartão é a diferença entre a Rota e o Cartão
+                let desconto = valRotaTotalOriginal - valEntry;
                 if (isNaN(desconto)) desconto = 0;
-                const finalValue = valRotaTotalOriginal - desconto;
+                
+                const finalValue = valRotaTotalOriginal - desconto; // Equals valEntry
                 const ratio = valRotaTotalOriginal > 0 ? (finalValue / valRotaTotalOriginal) : 1;
+                
                 const recalculatedRotas = selectedRotasObjs.map(rota => {
                     const recalculatedItems = rota.itens.map(item => {
                         const oldTotal = item.total; const newTotal = oldTotal * ratio;
@@ -259,7 +267,7 @@
                     return { ...rota, itensRecalculados: recalculatedItems };
                 });
                 return { descontoAplicado: desconto, finalValue, recalculatedRotas, valRotaTotalOriginal, ratio };
-            }, [activeMenu, selectedEntry, selectedRotaIds, manualDiscount, allRotas]);
+            }, [activeMenu, selectedEntry, selectedRotaIds, allRotas]);
 
             // Handler para adicionar ROTA ao Vínculo (Para Cartão)
             const handleAddRota = () => {
@@ -510,16 +518,18 @@
                                         <div><label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Data de Emissão</label><input type="date" value={dataEmissao} onChange={e => setDataEmissao(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"/></div>
                                         <div><label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Valor Total da Nota (R$)</label><input type="number" step="0.01" value={valorTotalNota} onChange={e => setValorTotalNota(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"/></div>
                                         
-                                        {/* NOVO BLOCO: DESCONTO GERAL LOGO APÓS INFORMAÇÕES FISCAIS */}
-                                        <div className="md:col-span-3 mt-2 bg-rose-50 p-4 rounded-lg border border-rose-100 flex flex-col md:flex-row items-center justify-between">
-                                            <div>
-                                                <h5 className="font-bold text-rose-700 uppercase tracking-wider text-xs mb-1">Desconto Geral Concedido na Nota (R$)</h5>
-                                                <p className="text-[10px] text-rose-600">Será aplicado de forma automática e proporcional no rateio abaixo.</p>
+                                        {/* DESCONTO GERAL - APENAS PARA ADIANTAMENTOS E BOLETOS */}
+                                        {activeMenu !== 'cartao' && (
+                                            <div className="md:col-span-3 mt-2 bg-rose-50 p-4 rounded-lg border border-rose-100 flex flex-col md:flex-row items-center justify-between">
+                                                <div>
+                                                    <h5 className="font-bold text-rose-700 uppercase tracking-wider text-xs mb-1">Desconto Geral Concedido na Nota (R$)</h5>
+                                                    <p className="text-[10px] text-rose-600">Será aplicado de forma automática e proporcional no rateio abaixo.</p>
+                                                </div>
+                                                <div className="mt-3 md:mt-0 w-full md:w-64">
+                                                    <input type="number" step="0.01" value={manualDiscount} onChange={e=>setManualDiscount(e.target.value)} placeholder="Ex: 10.00" className="w-full px-4 py-2.5 font-black text-rose-600 border border-rose-300 rounded-md focus:ring-2 focus:ring-rose-500 bg-white"/>
+                                                </div>
                                             </div>
-                                            <div className="mt-3 md:mt-0 w-full md:w-64">
-                                                <input type="number" step="0.01" value={manualDiscount} onChange={e=>setManualDiscount(e.target.value)} placeholder="Ex: 10.00" className="w-full px-4 py-2.5 font-black text-rose-600 border border-rose-300 rounded-md focus:ring-2 focus:ring-rose-500 bg-white"/>
-                                            </div>
-                                        </div>
+                                        )}
 
                                         <div className="md:col-span-3 mt-2"><label className="block text-xs font-bold text-slate-600 uppercase mb-2">Links de Anexos (Drive/Nuvem)</label>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -539,7 +549,7 @@
                                             <div className="flex gap-3 mb-4">
                                                 <select value={rotaSelectTemp} onChange={e => setRotaSelectTemp(e.target.value)} className="flex-1 px-4 py-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                                     <option value="">-- Escolha uma requisição --</option>
-                                                    {allRotas.filter(r => !selectedRotaIds.includes(r.id)).map(r => (<option key={r.id} value={r.id}>{r.codigo} | R$ {r.total.toLocaleString('pt-BR',{minimumFractionDigits:2})} | {r.fornecedor}</option>))}
+                                                    {rotasDisponiveis.filter(r => !selectedRotaIds.includes(r.id)).map(r => (<option key={r.id} value={r.id}>{r.codigo} | R$ {r.total.toLocaleString('pt-BR',{minimumFractionDigits:2})} | {r.fornecedor}</option>))}
                                                 </select>
                                                 <button type="button" onClick={handleAddRota} disabled={!rotaSelectTemp} className={`px-6 py-3 rounded-lg font-bold text-sm shadow-sm transition-colors ${rotaSelectTemp ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>Adicionar</button>
                                             </div>
@@ -693,7 +703,8 @@
             useEffect(() => { setExpandedId(null); }, [viewMode, activeMenu]);
 
             const baseList = useMemo(() => {
-                return vinculos.filter(v => (v.tipoVinculo || 'cartao') === activeMenu && v.status === viewMode)
+                const expectedStatus = viewMode === 'pendentes' ? 'pendente' : 'registrado';
+                return vinculos.filter(v => (v.tipoVinculo || 'cartao') === activeMenu && v.status === expectedStatus)
                                .sort((a,b) => viewMode === 'pendentes' ? new Date(b.dataVinculo) - new Date(a.dataVinculo) : new Date(b.dataRegistro || 0) - new Date(a.dataRegistro || 0));
             }, [vinculos, activeMenu, viewMode]);
 
