@@ -11,21 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- 
-      ✅ PASSO 1: CONFIGURAÇÃO PARA USO LOCAL (NO SEU COMPUTADOR)
-      Se você salvar este arquivo e abri-lo no seu navegador, precisará preencher a configuração abaixo.
-      
-      COMO FAZER:
-      1. Crie um projeto no Firebase: https://firebase.google.com/
-      2. No painel do seu projeto, clique no ícone de engrenagem (Configurações do Projeto).
-      3. Na aba "Geral", role para baixo até a seção "Seus apps".
-      4. Clique no ícone "</>" para "Adicionar um app da Web".
-      5. Dê um nome ao seu app e clique em "Registrar app".
-      6. O Firebase mostrará um objeto de configuração chamado `firebaseConfig`. Copie esse objeto.
-      7. Cole o objeto que você copiou abaixo, substituindo o conteúdo de `window.firebaseConfig`.
-    -->
     <script>
-        // SUAS CHAVES DO FIREBASE FORAM INSERIDAS AQUI
+        // Configuração restaurada do seu ficheiro original
         window.firebaseConfig = {
           apiKey: "AIzaSyB7ov_J4nPV2XKmKaRhozTFdMB_3-sI6bY",
           authDomain: "mapa-de-analise-por-conta.firebaseapp.com",
@@ -59,9 +46,14 @@
             border-color: #ef4444;
             box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
         }
+        .chart-btn-active {
+            border-color: #3b82f6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            background-color: #374151;
+        }
         .settled td {
             text-decoration: line-through;
-            color: #6b7280;
+            color: #6b7280 !important;
         }
         .settle-btn {
             background-color: #4b5563;
@@ -89,6 +81,10 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
+        [contenteditable="true"]:focus {
+            outline: 2px solid #3b82f6;
+            background-color: #111827;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -101,7 +97,7 @@
                 <p class="text-gray-400 mb-4">Para começar, carregue um arquivo CSV para criar uma nova sessão de análise e compartilhe o ID com sua equipe.</p>
                 <input type="file" id="csv-file" class="hidden" accept=".csv">
                 <button id="create-session-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" disabled>
-                    Autenticando...
+                    A autenticar...
                 </button>
             </div>
              <div id="join-session-view" class="mt-6 border-t border-gray-700 pt-6">
@@ -112,31 +108,31 @@
                  </div>
             </div>
             <div id="loading-state" class="hidden text-center py-4">
-                <p class="text-lg animate-pulse">Processando...</p>
+                <p class="text-lg animate-pulse">A processar...</p>
             </div>
         </div>
         
         <!-- Informação da Sessão Ativa -->
         <div id="active-session-info" class="hidden card p-4 rounded-lg mb-8 bg-gray-900">
-             <p class="text-sm text-gray-400">Você está na sessão (clique no ID para copiar): 
+             <p class="text-sm text-gray-400">Sessão: 
                 <strong id="session-id-display" class="text-lg text-yellow-400 font-mono cursor-pointer" title="Clique para copiar"></strong>
             </p>
-             <p class="text-xs text-gray-500 mt-2">Seu ID de usuário: <span id="user-id-display" class="font-mono"></span></p>
+             <p class="text-xs text-gray-500 mt-2">O seu ID: <span id="user-id-display" class="font-mono"></span></p>
         </div>
 
 
-        <!-- Conteúdo do Dashboard (inicialmente oculto) -->
+        <!-- Conteúdo do Dashboard -->
         <div id="dashboard-content" class="hidden">
-            <!-- Cabeçalho e Controles -->
+            <!-- Cabeçalho -->
             <header class="mb-8">
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div>
                         <h1 class="text-3xl font-bold text-white">Mapa de Análise por Conta</h1>
-                        <p id="account-number" class="text-lg text-gray-400">Carregando...</p>
+                        <p id="account-number" class="text-lg text-gray-400">A carregar...</p>
                     </div>
                     <div class="flex items-center gap-4">
                         <button id="export-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>
-                            Exportar CSV com Alterações
+                            Exportar CSV
                         </button>
                     </div>
                 </div>
@@ -149,49 +145,54 @@
             </header>
 
             <!-- Métricas Principais (KPIs) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Cards de KPI -->
-                <div class="card p-6 rounded-xl shadow-lg flex items-center space-x-4">
-                    <div class="bg-blue-500 bg-opacity-20 p-3 rounded-full"><svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 10v-1m0 0c-1.657 0-3-.895-3-2s1.343-2 3-2 3-.895 3-2-1.343-2-3-2m0 0c-1.11 0-2.08-.402-2.599-1M12 4v1m0 14v1m-6-7h.01M6 12a2 2 0 11-4 0 2 2 0 014 0zm12 0h.01M18 12a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
-                    <div><p class="text-sm text-gray-400">Total a acertar</p><p id="total-value" class="text-2xl font-bold text-white">R$ 0,00</p></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <div class="card p-4 rounded-xl shadow-lg flex items-center space-x-4">
+                    <div class="bg-blue-500 bg-opacity-20 p-2 rounded-full"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 10v-1m0 0c-1.657 0-3-.895-3-2s1.343-2 3-2 3-.895 3-2-1.343-2-3-2m0 0c-1.11 0-2.08-.402-2.599-1M12 4v1m0 14v1"></path></svg></div>
+                    <div><p class="text-xs text-gray-400">Total</p><p id="total-value" class="text-lg font-bold text-white">R$ 0,00</p></div>
                 </div>
-                <div class="card p-6 rounded-xl shadow-lg flex items-center space-x-4">
-                    <div class="bg-green-500 bg-opacity-20 p-3 rounded-full"><svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></div>
-                    <div><p class="text-sm text-gray-400">Total de Lançamentos</p><p id="total-entries" class="text-2xl font-bold text-white">0</p></div>
+                <div class="card p-4 rounded-xl shadow-lg flex items-center space-x-4">
+                    <div class="bg-green-500 bg-opacity-20 p-2 rounded-full"><svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path></svg></div>
+                    <div><p class="text-xs text-gray-400">Lançamentos</p><p id="total-entries" class="text-lg font-bold text-white">0</p></div>
                 </div>
-                <div class="card p-6 rounded-xl shadow-lg flex items-center space-x-4">
-                    <div class="bg-purple-500 bg-opacity-20 p-3 rounded-full"><svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 4h5m-5 4h5"></path></svg></div>
-                    <div><p class="text-sm text-gray-400">Fornecedores</p><p id="total-suppliers" class="text-2xl font-bold text-white">0</p></div>
+                <div class="card p-4 rounded-xl shadow-lg flex items-center space-x-4">
+                    <div class="bg-purple-500 bg-opacity-20 p-2 rounded-full"><svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 4h5m-5 4h5"></path></svg></div>
+                    <div><p class="text-xs text-gray-400">Fornecedores</p><p id="total-suppliers" class="text-lg font-bold text-white">0</p></div>
                 </div>
-                <div id="overdue-card" class="card card-filter p-6 rounded-xl shadow-lg flex items-center space-x-4">
-                    <div class="bg-red-500 bg-opacity-20 p-3 rounded-full"><svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                    <div><p class="text-sm text-gray-400">Lançamentos Vencidos</p><p id="overdue-entries" class="text-2xl font-bold text-white">0</p></div>
+                <div id="overdue-card" class="card card-filter p-4 rounded-xl shadow-lg flex items-center space-x-4">
+                    <div class="bg-red-500 bg-opacity-20 p-2 rounded-full"><svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                    <div><p class="text-xs text-gray-400">Vencidos</p><p id="overdue-entries" class="text-lg font-bold text-white">0</p></div>
+                </div>
+                <!-- BOTÃO DE GRÁFICO -->
+                <div id="toggle-chart-btn" class="card card-filter p-4 rounded-xl shadow-lg flex items-center space-x-4 border-dashed">
+                    <div class="bg-blue-600 bg-opacity-20 p-2 rounded-full"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg></div>
+                    <div><p class="text-sm font-bold text-blue-400">Ver Gráfico</p></div>
                 </div>
             </div>
 
             <!-- Gráficos e Tabela -->
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div class="lg:col-span-2 card p-6 rounded-xl shadow-lg">
+            <div id="main-grid" class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div id="chart-section" class="lg:col-span-2 card p-6 rounded-xl shadow-lg hidden">
                     <h2 class="text-lg font-semibold text-white mb-4">Valor por Fornecedor</h2>
                     <div class="relative h-[32rem]">
                         <canvas id="suppliersChart"></canvas>
                     </div>
                 </div>
-                <div class="lg:col-span-3 card p-6 rounded-xl shadow-lg">
+                <!-- Tabela de Detalhes -->
+                <div id="table-section" class="lg:col-span-5 card p-6 rounded-xl shadow-lg">
                     <h2 class="text-lg font-semibold text-white mb-4">Detalhes dos Lançamentos</h2>
                     <div class="overflow-auto h-[32rem]">
                         <table class="w-full text-sm text-left text-gray-300">
-                            <thead class="text-xs text-gray-400 uppercase bg-gray-800 sticky top-0">
+                            <thead class="text-xs text-gray-400 uppercase bg-gray-800 sticky top-0 z-10">
                                 <tr>
-                                    <th scope="col" class="px-4 py-3">Fornecedor</th>
-                                    <th scope="col" class="px-4 py-3">Lançamento</th>
-                                    <th scope="col" class="px-4 py-3">Vencimento</th>
-                                    <th scope="col" class="px-4 py-3">Descrição</th>
-                                    <th scope="col" class="px-4 py-3">Valor</th>
-                                    <th scope="col" class="px-4 py-3">Status</th>
-                                    <th scope="col" class="px-4 py-3">Observação Analista</th>
-                                    <th scope="col" class="px-4 py-3">Observação Responsável</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Acertar</th>
+                                    <th class="px-4 py-3 min-w-[150px]">Fornecedor</th>
+                                    <th class="px-4 py-3 min-w-[100px]">Lançamento</th>
+                                    <th class="px-4 py-3 min-w-[100px]">Vencimento</th>
+                                    <th class="px-4 py-3 min-w-[200px]">Descrição</th>
+                                    <th class="px-4 py-3">Valor</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                    <th class="px-4 py-3 min-w-[200px]">Obs. Analista</th>
+                                    <th class="px-4 py-3 min-w-[200px]">Obs. Responsável</th>
+                                    <th class="px-4 py-3 text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="entries-table"></tbody>
@@ -202,19 +203,13 @@
         </div>
     </div>
     
-    <!-- Notificação Toast -->
-    <div id="toast-notification" class="fixed bottom-5 right-5 bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-all duration-300 ease-in-out transform translate-y-16 opacity-0">
-        Mensagem aqui!
-    </div>
+    <div id="toast-notification" class="fixed bottom-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-all duration-300 transform translate-y-16 opacity-0"></div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
-        // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, writeBatch, collection, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, writeBatch, collection, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- VARIÁVEIS GLOBAIS ---
         const fileInput = document.getElementById('csv-file');
         const createSessionBtn = document.getElementById('create-session-btn');
         const joinSessionBtn = document.getElementById('join-session-btn');
@@ -224,477 +219,249 @@
         const tableBody = document.getElementById('entries-table');
         const accountNumberEl = document.getElementById('account-number');
         const overdueCard = document.getElementById('overdue-card');
+        const toggleChartBtn = document.getElementById('toggle-chart-btn');
+        const chartSection = document.getElementById('chart-section');
+        const tableSection = document.getElementById('table-section');
         const sessionContainer = document.getElementById('session-container');
         const dashboardContent = document.getElementById('dashboard-content');
         const activeSessionInfo = document.getElementById('active-session-info');
         const loadingState = document.getElementById('loading-state');
 
-        let db, auth;
-        let userId;
-        let currentDashboardId = null;
-        let unsubscribeFromEntries = null;
+        let db, auth, userId, currentDashboardId = null, unsubscribeFromEntries = null;
+        let suppliersChartInstance = null, fullDataset = [], isOverdueFilterActive = false, isChartVisible = false;
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : (window.firebaseConfig.projectId || 'default-app-id');
 
-        let suppliersChartInstance = null;
-        let fullDataset = [];
-        let isOverdueFilterActive = false;
-
-        let currentFirebaseConfig; 
-
-        // --- INICIALIZAÇÃO DO FIREBASE ---
         async function initFirebase() {
             try {
-                // Tenta usar a configuração injetada pela plataforma.
-                if (typeof __firebase_config !== 'undefined') {
-                    currentFirebaseConfig = JSON.parse(__firebase_config);
-                } 
-                // Se não estiver na plataforma, usa a configuração definida no <head>.
-                else {
-                    currentFirebaseConfig = window.firebaseConfig;
-                }
-                
-                // Valida se a configuração é válida.
-                if (!currentFirebaseConfig || !currentFirebaseConfig.apiKey || currentFirebaseConfig.apiKey.includes("COLE_SUA_API_KEY_AQUI")) {
-                    console.error("Configuração do Firebase não encontrada ou não preenchida.");
-                    showToast("Erro: Preencha 'window.firebaseConfig' no <head> do HTML.", true);
-                    return;
-                }
-
+                const currentFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : window.firebaseConfig;
+                if (!currentFirebaseConfig.apiKey) throw new Error("Chave de API não configurada.");
                 const app = initializeApp(currentFirebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // User is signed in.
                         userId = user.uid;
                         document.getElementById('user-id-display').textContent = userId;
-                        
-                        // Enable UI
-                        createSessionBtn.disabled = false;
+                        createSessionBtn.disabled = false; 
                         joinSessionBtn.disabled = false;
                         createSessionBtn.textContent = 'Criar Nova Sessão com CSV';
-                    } else {
-                        // User is signed out, UI remains disabled.
-                        console.log("Usuário não autenticado.");
                     }
                 });
-
-                // Attempt to sign in
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                token ? await signInWithCustomToken(auth, token) : await signInAnonymously(auth);
             } catch (error) {
-                console.error("Falha ao inicializar o Firebase:", error);
-                showToast("Não foi possível conectar aos serviços de colaboração.", true);
-                createSessionBtn.textContent = 'Erro na Conexão';
+                console.error("Firebase Init Error:", error);
+                showToast("Erro ao conectar ao Firebase.", true);
             }
         }
 
-        // --- UTILITIES ---
-        const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-        const formatDate = (dateString) => (!dateString || dateString.trim() === '') ? 'N/A' : dateString;
-        const getChartColors = (count) => {
-            const colors = ['rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(239, 68, 68, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(236, 72, 153, 0.7)'];
-            return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
-        };
-        const generateRandomId = (length = 8) => {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        };
+        const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+        const generateRandomId = (l = 8) => Math.random().toString(36).substr(2, l);
 
-        function showToast(message, isError = false) {
+        function showToast(msg, isErr = false) {
             const toast = document.getElementById('toast-notification');
-            if (!toast) return;
-            toast.textContent = message;
-            toast.className = `fixed bottom-5 right-5 text-white py-3 px-5 rounded-lg shadow-lg transition-all duration-300 ease-in-out transform ${isError ? 'bg-red-600' : 'bg-green-600'}`;
-            
+            toast.textContent = msg;
+            toast.className = `fixed bottom-5 right-5 text-white py-3 px-5 rounded-lg shadow-lg transition-all duration-300 transform ${isErr ? 'bg-red-600' : 'bg-green-600'}`;
             toast.classList.remove('hidden', 'opacity-0', 'translate-y-16');
-            toast.classList.add('opacity-100', 'translate-y-0');
-
-            setTimeout(() => {
-                toast.classList.remove('opacity-100', 'translate-y-0');
-                toast.classList.add('opacity-0', 'translate-y-16');
-                setTimeout(() => toast.classList.add('hidden'), 300);
-            }, 3000);
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-16'); setTimeout(() => toast.classList.add('hidden'), 300); }, 3000);
         }
 
-        // --- LÓGICA DE SESSÃO ---
-        async function createSession() {
-            if (!auth.currentUser) {
-                showToast("Aguardando autenticação...", true);
-                return;
+        function toggleChart() {
+            isChartVisible = !isChartVisible;
+            if (isChartVisible) {
+                chartSection.classList.remove('hidden');
+                tableSection.classList.replace('lg:col-span-5', 'lg:col-span-3');
+                toggleChartBtn.classList.add('chart-btn-active');
+                toggleChartBtn.querySelector('p').textContent = "Ocultar Gráfico";
+            } else {
+                chartSection.classList.add('hidden');
+                tableSection.classList.replace('lg:col-span-3', 'lg:col-span-5');
+                toggleChartBtn.classList.remove('chart-btn-active');
+                toggleChartBtn.querySelector('p').textContent = "Ver Gráfico";
             }
-            if (!fileInput.files[0]) {
-                showToast("Por favor, selecione um arquivo CSV primeiro.", true);
-                return;
-            }
-            showLoading(true);
+            if (suppliersChartInstance) setTimeout(() => suppliersChartInstance.resize(), 100);
+        }
 
+        async function createSession() {
+            if (!fileInput.files[0]) return showToast("Selecione um arquivo", true);
+            showLoading(true);
             Papa.parse(fileInput.files[0], {
-                delimiter: ";",
-                encoding: "ISO-8859-1",
+                delimiter: ";", encoding: "ISO-8859-1",
                 complete: async (results) => {
                     const { records, accountNumber } = processCsvData(results.data);
-                    if (records.length === 0) {
-                        showToast("Nenhum dado válido foi encontrado no arquivo.", true);
-                        showLoading(false);
-                        return;
-                    }
-                    
-                    const newDashboardId = generateRandomId();
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : currentFirebaseConfig.projectId || 'default-app-id';
-                    
-                    try {
-                        const batch = writeBatch(db);
-                        const dashboardDocRef = doc(db, `/artifacts/${appId}/public/data/dashboards`, newDashboardId);
-                        batch.set(dashboardDocRef, {
-                            accountNumber: accountNumber || "Não encontrado",
-                            createdAt: serverTimestamp(),
-                            ownerId: userId
-                        });
-
-                        const entriesCollectionRef = collection(db, `/artifacts/${appId}/public/data/dashboards/${newDashboardId}/entries`);
-                        records.forEach(record => {
-                            const newEntryRef = doc(entriesCollectionRef);
-                            batch.set(newEntryRef, {
-                                ...record,
-                                observation_responsible: record['Observação Responsável'] || '',
-                                is_settled: false,
-                            });
-                        });
-
-                        await batch.commit();
-                        joinSession(newDashboardId);
-
-                    } catch (error) {
-                        console.error("Erro ao criar sessão no Firestore:", error);
-                        showToast("Falha ao salvar os dados. Verifique o console.", true);
-                        showLoading(false);
-                    }
-                },
-                error: (error) => {
-                    console.error("Erro ao processar o CSV:", error);
-                    showLoading(false);
+                    const newId = generateRandomId();
+                    const batch = writeBatch(db);
+                    batch.set(doc(db, `/artifacts/${appId}/public/data/dashboards`, newId), { accountNumber: accountNumber || "Desconhecido", createdAt: serverTimestamp(), ownerId: userId });
+                    records.forEach(r => batch.set(doc(collection(db, `/artifacts/${appId}/public/data/dashboards/${newId}/entries`)), { ...r, observation_responsible: '', is_settled: false }));
+                    await batch.commit();
+                    joinSession(newId);
                 }
             });
         }
-        
-        async function joinSession(dashboardId) {
-             if (!dashboardId || dashboardId.trim() === '') {
-                showToast("Por favor, insira um ID de sessão válido.", true);
-                return;
-            }
+
+        async function joinSession(id) {
             showLoading(true);
-
-            if (unsubscribeFromEntries) unsubscribeFromEntries();
-            
-            const appId = typeof __app_id !== 'undefined' ? __app_id : currentFirebaseConfig.projectId || 'default-app-id';
-            
-            const dashboardDocRef = doc(db, `/artifacts/${appId}/public/data/dashboards`, dashboardId);
-            const docSnap = await getDoc(dashboardDocRef);
-
-            if (!docSnap.exists()) {
-                showToast("Sessão não encontrada. Verifique o ID e tente novamente.", true);
-                showLoading(false);
-                return;
-            }
-            
-            currentDashboardId = dashboardId;
-            const dashboardData = docSnap.data();
-            accountNumberEl.textContent = `Conta: ${dashboardData.accountNumber}`;
-
-            const entriesCollectionRef = collection(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`);
-
-            unsubscribeFromEntries = onSnapshot(query(entriesCollectionRef), (snapshot) => {
-                fullDataset = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                if (fullDataset.length > 0) {
-                    initializeDashboard();
-                } else {
-                    renderEmptyState();
-                }
+            const snap = await getDoc(doc(db, `/artifacts/${appId}/public/data/dashboards`, id));
+            if (!snap.exists()) return (showToast("Sessão não existe", true), showLoading(false));
+            currentDashboardId = id;
+            accountNumberEl.textContent = `Conta: ${snap.data().accountNumber}`;
+            unsubscribeFromEntries = onSnapshot(collection(db, `/artifacts/${appId}/public/data/dashboards/${id}/entries`), (s) => {
+                fullDataset = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                initializeDashboard();
                 dashboardContent.classList.remove('hidden');
                 sessionContainer.classList.add('hidden');
                 activeSessionInfo.classList.remove('hidden');
                 document.getElementById('session-id-display').textContent = currentDashboardId;
                 showLoading(false);
-            }, (error) => {
-                console.error("Erro ao escutar por atualizações:", error);
-                showToast("Não foi possível conectar à sessão.", true);
-                showLoading(false);
-            });
-        }
-
-        function showLoading(isLoading) {
-            if (isLoading) {
-                loadingState.classList.remove('hidden');
-                document.getElementById('create-session-view').classList.add('hidden');
-                document.getElementById('join-session-view').classList.add('hidden');
-            } else {
-                loadingState.classList.add('hidden');
-                document.getElementById('create-session-view').classList.remove('hidden');
-                document.getElementById('join-session-view').classList.remove('hidden');
-            }
+            }, (error) => { showToast("Erro ao carregar dados.", true); });
         }
 
         function processCsvData(data) {
-            const records = [];
-            let currentSupplierName = null, currentSupplierId = null, headers = [], accountNumber = null;
-
+            const records = []; let curSupN, curSupI, headers = [], accNum;
             data.forEach(row => {
-                if (row.length < 1 || row.every(cell => cell === null || cell.trim() === '')) return;
-                if (!accountNumber && row[0] && row[0].includes("Mapa de Análise")) {
-                    const match = row[0].match(/Mapa de Análise (\d+)/);
-                    if (match && match[1]) accountNumber = match[1];
-                }
-                const supplierMatch = row[0] && row[0].match(/(\d{14}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\s*-\s*(.*)/);
-                if (supplierMatch) {
-                    currentSupplierId = supplierMatch[1].trim();
-                    currentSupplierName = supplierMatch[2].trim();
-                    return; 
-                }
-                if (row.some(h => h && h.trim().toLowerCase().includes('valor (r$)'))) {
-                    headers = row.map(h => h ? h.trim() : '');
-                    return; 
-                }
-                if (currentSupplierId && headers.length > 0) {
-                    const record = {};
-                    headers.forEach((header, index) => {
-                       if(header) record[header] = row[index];
-                    });
-                    if (record['Lançamento'] && record['Valor (R$)']) {
-                        record.fornecedor = currentSupplierName;
-                        record.fornecedorId = currentSupplierId;
-                        const valorString = record['Valor (R$)'] || '0';
-                        record.valor = parseFloat(valorString.replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || 0;
-                        records.push(record);
+                if (row.length < 1) return;
+                if (!accNum && row[0]?.includes("Mapa de Análise")) accNum = row[0].match(/(\d+)/)?.[1];
+                
+                // MUDANÇA AQUI: Regex Genérico para capturar "CÓDIGO - NOME"
+                // Captura qualquer coisa que comece com números/pontos/barras/traços
+                // seguido de " - " e depois o restante do texto (Nome)
+                const supMatch = row[0]?.match(/^([\d\.\/\-]+)\s*-\s*(.+)/);
+                
+                if (supMatch) { curSupI = supMatch[1]; curSupN = supMatch[2]; return; }
+                if (row.some(h => h?.includes('Valor'))) { headers = row.map(h => h?.trim()); return; }
+                if (curSupI && headers.length) {
+                    const r = {}; headers.forEach((h, i) => { if(h) r[h] = row[i]; });
+                    if (r['Lançamento']) {
+                        r.fornecedor = curSupN; r.fornecedorId = curSupI;
+                        r.valor = parseFloat(r['Valor (R$)']?.replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || 0;
+                        records.push(r);
                     }
                 }
             });
-            return { records, accountNumber };
+            return { records, accountNumber: accNum };
         }
 
-        // --- LÓGICA DE EVENTOS DA UI ---
-        document.addEventListener('DOMContentLoaded', initFirebase);
-        createSessionBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', createSession);
-        joinSessionBtn.addEventListener('click', () => joinSession(sessionIdInput.value));
-        supplierFilter.addEventListener('change', applyFilters);
-        exportButton.addEventListener('click', handleExport);
-        overdueCard.addEventListener('click', toggleOverdueFilter);
-        document.getElementById('session-id-display').addEventListener('click', (e) => {
-            navigator.clipboard.writeText(e.target.textContent).then(() => {
-                showToast('ID da sessão copiado!');
-            });
-        });
-        tableBody.addEventListener('blur', async (event) => {
-            const cell = event.target;
-            if (cell.tagName === 'TD' && cell.isContentEditable) {
-                const docId = cell.dataset.docId;
-                const value = cell.textContent;
-                if (docId) {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : currentFirebaseConfig.projectId || 'default-app-id';
-                    const docRef = doc(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`, docId);
-                    try {
-                        await updateDoc(docRef, { observation_responsible: value });
-                    } catch (error) {
-                        console.error("Erro ao atualizar observação:", error);
-                        cell.textContent = fullDataset.find(item => item.id === docId).observation_responsible; // Reverte
-                    }
-                }
-            }
-        }, true);
-        tableBody.addEventListener('click', async (event) => {
-            const button = event.target.closest('.settle-btn');
-            if (button) {
-                const docId = button.dataset.docId;
-                if (docId) {
-                    const currentItem = fullDataset.find(item => item.id === docId);
-                    const newSettledState = !currentItem.is_settled;
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : currentFirebaseConfig.projectId || 'default-app-id';
-                    const docRef = doc(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`, docId);
-                    try {
-                        await updateDoc(docRef, { is_settled: newSettledState });
-                    } catch (error) {
-                        console.error("Erro ao atualizar status:", error);
-                    }
-                }
-            }
-        });
-        
-        // --- RENDERIZAÇÃO DO DASHBOARD ---
         function initializeDashboard() {
-            exportButton.disabled = fullDataset.length === 0;
-            const suppliersMap = new Map();
-            fullDataset.forEach(item => suppliersMap.set(item.fornecedorId, item.fornecedor));
-            const sortedSuppliers = [...suppliersMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-            supplierFilter.innerHTML = '<option value="all">Todos os Fornecedores</option>';
-            sortedSuppliers.forEach(([id, name]) => {
-                const option = document.createElement('option');
-                option.value = id;
-                option.textContent = name;
-                supplierFilter.appendChild(option);
-            });
+            // Guardar a seleção atual para não perder o filtro ao atualizar
+            const currentSelection = supplierFilter.value;
+
+            const map = new Map(); fullDataset.forEach(i => map.set(i.fornecedorId, i.fornecedor));
+            
+            supplierFilter.innerHTML = '<option value="all">Todos os Fornecedores</option>' + 
+                [...map.entries()].sort((a,b) => a[1].localeCompare(b[1])).map(([id, n]) => `<option value="${id}">${n}</option>`).join('');
+            
+            // Restaurar a seleção se ela ainda existir
+            if (currentSelection) {
+                supplierFilter.value = currentSelection;
+            }
+
             applyFilters();
         }
 
-        const isItemOverdue = (item) => {
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            const vencimentoStr = item['Apontamento'];
-            if(!vencimentoStr || vencimentoStr.trim() === '') return false;
-            const [day, month, year] = vencimentoStr.split('/').map(Number);
-            if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
-            return new Date(year, month - 1, day) < today;
-        }
-
-        function toggleOverdueFilter() {
-            isOverdueFilterActive = !isOverdueFilterActive;
-            overdueCard.classList.toggle('active', isOverdueFilterActive);
-            applyFilters();
+        const isItemOverdue = (i) => {
+            const date = i['Apontamento']; if(!date) return false;
+            const [d, m, y] = date.split('/').map(Number);
+            return new Date(y, m-1, d) < new Date().setHours(0,0,0,0);
         }
 
         function applyFilters() {
-            if (!fullDataset) return;
-            const selectedSupplierId = supplierFilter.value;
-            let filteredData = selectedSupplierId === 'all'
-                ? fullDataset
-                : fullDataset.filter(item => item.fornecedorId === selectedSupplierId);
-            if (isOverdueFilterActive) {
-                filteredData = filteredData.filter(isItemOverdue);
-            }
-            renderDashboard(filteredData);
+            const sup = supplierFilter.value;
+            let data = sup === 'all' ? fullDataset : fullDataset.filter(i => i.fornecedorId === sup);
+            if (isOverdueFilterActive) data = data.filter(isItemOverdue);
+            renderDashboard(data);
         }
-        
-        function renderDashboard(data) {
-            document.getElementById('total-value').textContent = formatCurrency(data.reduce((acc, item) => acc + item.valor, 0));
-            document.getElementById('total-entries').textContent = data.length;
-            document.getElementById('total-suppliers').textContent = new Set(data.map(item => item.fornecedorId)).size;
-            const supplierFilteredData = supplierFilter.value === 'all' ? fullDataset : fullDataset.filter(item => item.fornecedorId === supplierFilter.value);
-            document.getElementById('overdue-entries').textContent = supplierFilteredData.filter(isItemOverdue).length;
 
-            const valueById = data.reduce((acc, item) => {
-                const key = item.fornecedorId;
-                if (!acc[key]) acc[key] = { name: item.fornecedor, value: 0 };
-                acc[key].value += item.valor;
+        function renderDashboard(data) {
+            document.getElementById('total-value').textContent = formatCurrency(data.reduce((a, b) => a + b.valor, 0));
+            document.getElementById('total-entries').textContent = data.length;
+            document.getElementById('total-suppliers').textContent = new Set(data.map(i => i.fornecedorId)).size;
+            document.getElementById('overdue-entries').textContent = (supplierFilter.value === 'all' ? fullDataset : fullDataset.filter(i => i.fornecedorId === supplierFilter.value)).filter(isItemOverdue).length;
+
+            // Ordenação Alfabética para o Gráfico
+            const valueById = data.reduce((acc, i) => {
+                acc[i.fornecedorId] = acc[i.fornecedorId] || { name: i.fornecedor, value: 0 };
+                acc[i.fornecedorId].value += i.valor;
                 return acc;
             }, {});
-            const chartLabels = Object.values(valueById).map(s => s.name);
-            const chartValues = Object.values(valueById).map(s => s.value);
             
+            const sortedChartData = Object.values(valueById).sort((a, b) => a.name.localeCompare(b.name));
+
             if (suppliersChartInstance) suppliersChartInstance.destroy();
             suppliersChartInstance = new Chart('suppliersChart', {
                 type: 'bar',
                 data: { 
-                    labels: chartLabels, 
-                    datasets: [{ 
-                        label: 'Valor Total (R$)', data: chartValues, 
-                        backgroundColor: getChartColors(chartLabels.length),
-                        borderWidth: 1, borderRadius: 4, 
-                    }] 
+                    labels: sortedChartData.map(v => v.name), 
+                    datasets: [{ data: sortedChartData.map(v => v.value), backgroundColor: 'rgba(59, 130, 246, 0.7)' }] 
                 },
-                options: { 
-                    indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => formatCurrency(ctx.parsed.x) } } }, 
-                    scales: { 
-                        x: { ticks: { color: '#9ca3af', font: {size: 10} }, grid: { color: '#374151' } }, 
-                        y: { ticks: { color: '#9ca3af', font: {size: 10} }, grid: { color: 'transparent' } } 
-                    } 
-                }
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
 
-            tableBody.innerHTML = ''; 
-            if (data.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-gray-400">Nenhum lançamento encontrado.</td></tr>`;
-                 return;
-            }
+            // Ordenação Alfabética para a Tabela de Detalhes
+            const sortedTableData = [...data].sort((a, b) => a.fornecedor.localeCompare(b.fornecedor));
 
-            data.forEach(item => {
-                const isOverdue = isItemOverdue(item);
-                const statusClass = isOverdue ? 'bg-red-500 text-red-100' : 'bg-green-500 text-green-100';
-                const statusText = isOverdue ? 'Vencido' : 'Em dia';
-                const row = document.createElement('tr');
-                row.className = `border-b border-gray-700 hover:bg-gray-600 ${item.is_settled ? 'settled' : ''}`;
-                row.innerHTML = `
-                    <td class="px-4 py-3 font-medium text-white">${item.fornecedor}</td>
-                    <td class="px-4 py-3">${formatDate(item['Lançamento'])}</td>
-                    <td class="px-4 py-3">${formatDate(item['Apontamento'])}</td>
-                    <td class="px-4 py-3">${item['Descrição'] || 'N/A'}</td>
-                    <td class="px-4 py-3">${formatCurrency(item.valor)}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${statusText}</span></td>
-                    <td class="px-4 py-3">${item['Observações'] || ''}</td>
-                    <td class="px-4 py-3 text-white bg-gray-900/50 rounded cursor-cell" contenteditable="true" data-doc-id="${item.id}">${item.observation_responsible || ''}</td>
-                    <td class="px-4 py-3 text-center">
-                        <button class="settle-btn" data-doc-id="${item.id}">✔</button>
+            tableBody.innerHTML = sortedTableData.map(item => `
+                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors ${item.is_settled ? 'settled' : ''}">
+                    <td class="px-4 py-4 whitespace-normal break-words align-top font-medium text-blue-300">${item.fornecedor}</td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top">${item['Lançamento']}</td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top">${item['Apontamento'] || '-'}</td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top leading-relaxed text-gray-200">${item['Descrição'] || ''}</td>
+                    <td class="px-4 py-4 font-bold align-top">${formatCurrency(item.valor)}</td>
+                    <td class="px-4 py-4 text-center align-top">
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${isItemOverdue(item) ? 'bg-red-900/50 text-red-200 border border-red-700' : 'bg-green-900/50 text-green-200 border border-green-700'}">
+                            ${isItemOverdue(item) ? 'Vencido' : 'Em dia'}
+                        </span>
                     </td>
-                `;
-                tableBody.appendChild(row);
-            });
+                    <td class="px-4 py-4 whitespace-normal break-words align-top italic text-gray-400 leading-relaxed">${item['Observações'] || '-'}</td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top bg-gray-900/40 rounded-sm cursor-text focus:bg-gray-900" contenteditable="true" data-id="${item.id}">
+                        ${item.observation_responsible || ''}
+                    </td>
+                    <td class="px-4 py-4 text-center align-top">
+                        <button class="settle-btn shadow-sm hover:scale-110 transition-transform" data-id="${item.id}" title="Marcar como acertado">✔</button>
+                    </td>
+                </tr>
+            `).join('');
         }
+
+        function showLoading(l) { 
+            loadingState.classList.toggle('hidden', !l);
+            document.getElementById('create-session-view').classList.toggle('hidden', l);
+            document.getElementById('join-session-view').classList.toggle('hidden', l);
+        }
+
+        document.addEventListener('DOMContentLoaded', initFirebase);
+        createSessionBtn.onclick = () => fileInput.click();
+        fileInput.onchange = createSession;
+        joinSessionBtn.onclick = () => joinSession(sessionIdInput.value);
+        supplierFilter.onchange = applyFilters;
+        toggleChartBtn.onclick = toggleChart;
+        overdueCard.onclick = () => { isOverdueFilterActive = !isOverdueFilterActive; overdueCard.classList.toggle('active'); applyFilters(); };
         
-        function renderEmptyState() {
-            exportButton.disabled = true;
-            document.getElementById('total-value').textContent = formatCurrency(0);
-            document.getElementById('total-entries').textContent = 0;
-            document.getElementById('total-suppliers').textContent = 0;
-            document.getElementById('overdue-entries').textContent = 0;
-            if (suppliersChartInstance) suppliersChartInstance.destroy();
-            tableBody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-gray-400">Nenhum dado na sessão atual.</td></tr>`;
-        }
-        
-        function handleExport() {
-            if (fullDataset.length === 0) return;
-            const EXPORT_HEADERS = ['Lançamento', 'Vencimento', 'Apontamento', 'Tempo Após Vencimento', 'Valor (R$)', 'Descrição', 'Observações', 'Observação Responsável'];
-            const groupedData = fullDataset.reduce((acc, item) => {
-                const key = item.fornecedorId;
-                if (!acc[key]) acc[key] = [];
-                acc[key].push(item);
-                return acc;
-            }, {});
-            let csvOutput = [];
-            const accNumText = accountNumberEl.textContent.replace('Conta: ', '').trim();
-            const period = new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' });
-            csvOutput.push([`📑 Mapa de Análise ${accNumText}`, ...Array(EXPORT_HEADERS.length - 2).fill(''), `Período ${period}`]);
-            csvOutput.push([]);
-            const suppliersMap = new Map();
-            fullDataset.forEach(item => suppliersMap.set(item.fornecedorId, item.fornecedor));
-            const sortedSuppliers = [...suppliersMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+        // CORREÇÃO: Uso de 'focusout' ao invés de 'blur' ou 'onblur'
+        tableBody.addEventListener('focusout', async (e) => {
+            if (e.target.hasAttribute('data-id')) {
+                const newValue = e.target.textContent.trim();
+                const docId = e.target.dataset.id;
+                
+                try {
+                    await updateDoc(doc(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`, docId), { 
+                        observation_responsible: newValue 
+                    });
+                    // Opcional: Feedback visual de salvamento pode ser adicionado aqui
+                } catch (error) {
+                    console.error("Erro ao salvar observação:", error);
+                }
+            }
+        });
 
-            sortedSuppliers.forEach(([supplierId, supplierName]) => {
-                const items = groupedData[supplierId];
-                if (!items) return;
-                csvOutput.push([`${supplierId} - ${supplierName}`]);
-                csvOutput.push(EXPORT_HEADERS);
-                items.forEach(item => {
-                    const row = [
-                        item['Lançamento'] || '', item['Vencimento'] || '', item['Apontamento'] || '',
-                        item['Tempo Após Vencimento'] || '', formatCurrency(item.valor), item['Descrição'] || '',
-                        item['Observações'] || '', item.observation_responsible || ''
-                    ];
-                    csvOutput.push(row);
-                });
-                csvOutput.push([]);
-            });
-
-            const csv = Papa.unparse(csvOutput, { delimiter: ";", header: false });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `mapa_analise_colaborativo_${currentDashboardId}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
+        tableBody.onclick = async (e) => {
+            const btn = e.target.closest('.settle-btn');
+            if (btn) {
+                const id = btn.dataset.id;
+                const item = fullDataset.find(i => i.id === id);
+                await updateDoc(doc(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`, id), { is_settled: !item.is_settled });
+            }
+        };
     </script>
 </body>
 </html>
-
