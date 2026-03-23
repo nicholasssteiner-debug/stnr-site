@@ -39,13 +39,12 @@
 
     <div id="root"></div>
 
-    <!-- Módulo de Importação do Firebase (Evita problemas com o Babel) -->
+    <!-- Módulo de Importação do Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Expõe as bibliotecas para o React
         window.FirebaseAPI = {
             initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
             getFirestore, doc, setDoc, getDoc, collection
@@ -77,7 +76,7 @@
         const Lock = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
         const LogOut = (p) => <Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon>;
 
-        // --- CONFIGURAÇÕES INICIAIS E MOCKS PADRÃO ---
+        // --- CONFIGURAÇÕES INICIAIS ---
         const CATEGORIAS = [
           'Fixos', 
           'Totalmente Isentos', 
@@ -110,23 +109,10 @@
 
         const MOCK_EMPLOYEES = [
           { code: '4214', name: 'João Silva', category: 'Isentos por Salário' },
-          { code: '1001', name: 'Maria Souza', category: 'Fixos' },
-          { code: '2050', name: 'Carlos Santos', category: 'Totalmente Isentos' },
-          { code: '3030', name: 'Ana Oliveira', category: 'Não Isentos' },
-          { code: '5005', name: 'Roberto Lima', category: 'Outras Entidades' },
-          { code: '6022', name: 'Fernanda Costa', category: 'Rescisões' },
+          { code: '1001', name: 'Maria Souza', category: 'Fixos' }
         ];
 
         // --- FUNÇÕES UTILITÁRIAS ---
-        const cleanStringForCSV = (str) => {
-          if (!str) return '';
-          return str
-            .normalize('NFD') 
-            .replace(/[\u0300-\u036f]/g, '') 
-            .replace(/[^a-zA-Z0-9\s\-_()/]/g, '') 
-            .trim();
-        };
-
         const getMealType = (timeStr, mealTimes) => {
           if (!timeStr) return 'almoco';
           const t = timeStr.trim();
@@ -143,14 +129,12 @@
           const [day, month, year] = parts;
           const date = new Date(year, month - 1, day);
           const dayOfWeek = date.getDay();
-          
-          if (dayOfWeek === 0 || dayOfWeek === 6) return true; // 0 = Domingo, 6 = Sábado
-          if (dayOfWeek === 5 && mealType === 'janta') return true; // 5 = Sexta-feira (apenas Janta)
-          
+          if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+          if (dayOfWeek === 5 && mealType === 'janta') return true;
           return false;
         };
 
-        // --- COMPONENTES DAS ABAS ---
+        // --- COMPONENTES ---
 
         const LoginView = ({ onLogin }) => {
             const [email, setEmail] = useState('');
@@ -173,40 +157,21 @@
                             <h1 className="text-2xl font-bold text-slate-800">RateioRefeições</h1>
                             <p className="text-sm text-slate-500 mt-1">Faça login para continuar</p>
                         </div>
-
                         {error && (
                             <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-6 flex items-center">
                                 <AlertCircle className="w-4 h-4 mr-2" /> {error}
                             </div>
                         )}
-
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Login</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                                    placeholder="seu.email@exemplo.com"
-                                />
+                                <input type="text" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow" placeholder="seu.email@exemplo.com" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
-                                <input 
-                                    type="password" 
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-                                    placeholder="••••••••"
-                                />
+                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow" placeholder="••••••••" />
                             </div>
-                            <button 
-                                type="submit" 
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center"
-                            >
+                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center">
                                 <Lock className="w-4 h-4 mr-2" /> Entrar
                             </button>
                         </form>
@@ -270,13 +235,7 @@
                 </div>
               </div>
 
-              <div className="hidden print:block mb-6">
-                <h2 className="text-2xl font-bold">Relatório de Rateio de Refeições</h2>
-                <p className="text-gray-600">Período de Apuração: {period}</p>
-                <p className="text-gray-600">Total Calculado: R$ {totalValue.toFixed(2).replace('.', ',')}</p>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="border-b border-slate-200 bg-slate-50 p-4 print:hidden flex flex-col md:flex-row justify-between items-center gap-4">
                   <div className="flex p-1 gap-1 overflow-x-auto bg-slate-200/50 rounded-lg w-full md:w-auto scrollbar-hide">
                     <button onClick={() => setSelectedCategory('Todas')} className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${selectedCategory === 'Todas' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Visão Geral</button>
@@ -290,50 +249,29 @@
                   </div>
                 </div>
 
-                <div className="p-0 md:p-6 print:p-0">
-                  {filteredData.length === 0 ? (
-                    <div className="text-center py-10 text-slate-500 print:hidden">
-                      <Calculator className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-                      <p>Nenhum dado encontrado para os filtros atuais.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse print:text-xs">
-                        <thead>
-                          <tr className="border-b-2 border-slate-200 text-sm text-slate-600 print:border-black">
-                            <th className="py-3 px-4 font-semibold">Cód.</th>
-                            <th className="py-3 px-4 font-semibold">Funcionário</th>
-                            <th className="py-3 px-4 font-semibold">Categoria</th>
-                            <th className="py-3 px-4 font-semibold text-center">Detalhes</th>
-                            <th className="py-3 px-4 font-semibold text-right">Valor Final (R$)</th>
+                <div className="p-0 md:p-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-slate-200 text-sm text-slate-600">
+                          <th className="py-3 px-4 font-semibold">Cód.</th>
+                          <th className="py-3 px-4 font-semibold">Funcionário</th>
+                          <th className="py-3 px-4 font-semibold">Categoria</th>
+                          <th className="py-3 px-4 font-semibold text-right">Valor Final (R$)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredData.map((emp, idx) => (
+                          <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="py-3 px-4 font-medium">{emp.code}</td>
+                            <td className="py-3 px-4">{emp.name}</td>
+                            <td className="py-3 px-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs">{emp.category}</span></td>
+                            <td className="py-3 px-4 text-right font-bold">{emp.totalValue.toFixed(2).replace('.', ',')}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {filteredData.map((emp, idx) => (
-                            <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50 print:border-b-gray-300">
-                              <td className="py-3 px-4 font-medium print:py-2">{emp.code}</td>
-                              <td className="py-3 px-4 print:py-2">
-                                {emp.name}
-                                {emp.records.filter(r => r.fullCode?.includes('-')).length > 0 && <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full print:border print:border-black">Dep.</span>}
-                              </td>
-                              <td className="py-3 px-4 print:py-2"><span className="inline-block px-2 py-1 bg-slate-100 rounded text-xs print:p-0 print:bg-transparent">{emp.category}</span></td>
-                              <td className="py-3 px-4 text-xs text-slate-500 print:py-2">
-                                {emp.category === 'Fixos' ? 'Cobrança Fixa' : (
-                                  <ul className="list-disc pl-4">
-                                    {emp.records.map((r, i) => {
-                                      const timeOrDate = r.mealType === 'Manual' ? r.dateTime.split(' ')[0] : r.dateTime;
-                                      return <li key={i}>{timeOrDate} - {r.reason} (R$ {r.charge.toFixed(2)})</li>
-                                    })}
-                                  </ul>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 text-right font-bold text-slate-800 print:py-2">{emp.totalValue.toFixed(2).replace('.', ',')}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,15 +282,6 @@
           const [newCharge, setNewCharge] = useState({ code: '', date: '', amount: '', reason: '' });
           const [searchTerm, setSearchTerm] = useState('');
           const [showDropdown, setShowDropdown] = useState(false);
-          const wrapperRef = useRef(null);
-
-          useEffect(() => {
-            function handleClickOutside(event) {
-              if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShowDropdown(false);
-            }
-            document.addEventListener("mousedown", handleClickOutside);
-            return () => document.removeEventListener("mousedown", handleClickOutside);
-          }, []);
 
           const handleAddCharge = () => {
             if (!newCharge.code || !newCharge.amount) return showNotification("Selecione um funcionário e digite um valor", "error");
@@ -367,53 +296,23 @@
             showNotification("Cobrança manual adicionada com sucesso!");
           };
 
-          const filteredEmployees = employees.filter(e => 
-            `${e.code} ${e.name}`.toLowerCase().includes(searchTerm.toLowerCase())
-          );
+          const filteredEmployees = employees.filter(e => `${e.code} ${e.name}`.toLowerCase().includes(searchTerm.toLowerCase()));
 
           return (
             <div className="max-w-4xl mx-auto space-y-6">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
-                  <FilePlus className="mr-2 text-blue-600 w-6 h-6" /> Adicionar Cobrança Manual
-                </h2>
-                
+                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center"><FilePlus className="mr-2 text-blue-600 w-6 h-6" /> Adicionar Cobrança Manual</h2>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div className="md:col-span-2 relative" ref={wrapperRef}>
+                  <div className="md:col-span-2 relative">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Funcionário</label>
-                    <div className="relative">
-                      <input 
-                        type="text"
-                        placeholder="Busque por nome ou código..."
-                        value={searchTerm}
-                        onChange={e => {
-                          setSearchTerm(e.target.value);
-                          setShowDropdown(true);
-                          setNewCharge({...newCharge, code: ''});
-                        }}
-                        onFocus={() => setShowDropdown(true)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                      <ChevronDown className="absolute right-3 top-2.5 text-slate-400 w-5 h-5" />
-                    </div>
-                    
+                    <input type="text" placeholder="Busque por nome ou código..." value={searchTerm} onFocus={() => setShowDropdown(true)} onChange={e => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                     {showDropdown && (
-                      <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
-                        {filteredEmployees.length > 0 ? filteredEmployees.map(e => (
-                          <li 
-                            key={e.code} 
-                            className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-slate-700 border-b border-slate-100 last:border-0"
-                            onClick={() => {
-                              setSearchTerm(`${e.code} - ${e.name}`);
-                              setNewCharge({...newCharge, code: e.code});
-                              setShowDropdown(false);
-                            }}
-                          >
+                      <ul className="absolute z-10 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
+                        {filteredEmployees.map(e => (
+                          <li key={e.code} className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm" onClick={() => { setSearchTerm(`${e.code} - ${e.name}`); setNewCharge({...newCharge, code: e.code}); setShowDropdown(false); }}>
                             <strong>{e.code}</strong> - {e.name}
                           </li>
-                        )) : (
-                          <li className="px-4 py-2 text-sm text-slate-500">Nenhum funcionário encontrado.</li>
-                        )}
+                        ))}
                       </ul>
                     )}
                   </div>
@@ -422,549 +321,70 @@
                     <input type="number" placeholder="Ex: 50.00" value={newCharge.amount} onChange={e => setNewCharge({...newCharge, amount: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Data (Opcional)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
                     <input type="date" value={newCharge.date} onChange={e => setNewCharge({...newCharge, date: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                 </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Descrição</label>
-                  <input type="text" placeholder="Ex: Refeição Extraordinária de Sábado" value={newCharge.reason} onChange={e => setNewCharge({...newCharge, reason: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-                
-                <button onClick={handleAddCharge} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                  Adicionar ao Rateio
-                </button>
+                <button onClick={handleAddCharge} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">Adicionar ao Rateio</button>
               </div>
-
-              {manualCharges.length > 0 && (
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                   <h3 className="text-lg font-bold text-slate-800 mb-4">Lançamentos Manuais da Sessão</h3>
-                   <table className="w-full text-left text-sm border-collapse">
-                     <thead>
-                       <tr className="border-b-2 border-slate-200 text-slate-600">
-                         <th className="pb-2">Funcionário</th>
-                         <th className="pb-2">Data</th>
-                         <th className="pb-2">Motivo</th>
-                         <th className="pb-2 text-right">Valor</th>
-                         <th className="pb-2 text-center">Ação</th>
-                       </tr>
-                     </thead>
-                     <tbody>
-                       {manualCharges.map(charge => (
-                         <tr key={charge.id} className="border-b border-slate-100">
-                           <td className="py-2"><strong>{charge.code}</strong> - {charge.name}</td>
-                           <td className="py-2">{charge.date ? charge.date.split('-').reverse().join('/') : '-'}</td>
-                           <td className="py-2">{charge.reason}</td>
-                           <td className="py-2 text-right font-medium text-slate-800">R$ {charge.amount.toFixed(2).replace('.',',')}</td>
-                           <td className="py-2 text-center">
-                             <button onClick={() => setManualCharges(manualCharges.filter(c => c.id !== charge.id))} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded">
-                               <Trash2 className="w-4 h-4 mx-auto" />
-                             </button>
-                           </td>
-                         </tr>
-                       ))}
-                     </tbody>
-                   </table>
-                </div>
-              )}
             </div>
           );
         };
 
         const ConfigView = ({ settings, setSettings, employees, setEmployees, appUsers, setAppUsers, appUserRole, showNotification }) => {
-          const [configTab, setConfigTab] = useState('regras'); 
-          const [pricingDayType, setPricingDayType] = useState('weekday'); 
-          
-          // Estados Base Funcionários
-          const [newEmp, setNewEmp] = useState({ code: '', name: '', category: 'Não Isentos' });
-          const [isEditing, setIsEditing] = useState(false);
-          const [empSearch, setEmpSearch] = useState('');
-          const [empCategoryFilter, setEmpCategoryFilter] = useState('Geral');
-          const [empEncoding, setEmpEncoding] = useState('UTF-8');
-          const empFileInputRef = useRef(null);
-
-          // Estados Logins
+          const [configTab, setConfigTab] = useState('regras');
           const [newAppUser, setNewAppUser] = useState({ email: '', password: '', role: 'user' });
-
-          const handleRuleChange = (category, dayType, field, value) => {
-            setSettings(prev => {
-              const catRules = prev.categoryRules[category] || {};
-              const dayRules = catRules[dayType] || {};
-              return {
-                ...prev, 
-                categoryRules: { 
-                  ...prev.categoryRules, 
-                  [category]: { 
-                    ...catRules, 
-                    [dayType]: {
-                      ...dayRules,
-                      [field]: Number(value)
-                    }
-                  } 
-                }
-              };
-            });
-          };
-
-          const handleTimeChange = (meal, type, value) => {
-            setSettings(prev => ({
-              ...prev, mealTimes: { ...prev.mealTimes, [meal]: { ...prev.mealTimes[meal], [type]: value } }
-            }));
-          };
-
-          const handleSaveEmployee = () => {
-            if (!newEmp.code || !newEmp.name) return showNotification("Preencha código e nome", "error");
-            if (isEditing) {
-              setEmployees(employees.map(e => e.code === newEmp.code ? newEmp : e));
-              showNotification('Funcionário atualizado!');
-            } else {
-              if (employees.find(e => e.code === newEmp.code)) return showNotification("Código já existe", "error");
-              setEmployees([...employees, newEmp]);
-              showNotification('Funcionário adicionado!');
-            }
-            setNewEmp({ code: '', name: '', category: 'Não Isentos' });
-            setIsEditing(false);
-          };
-
-          const handleUpdateOverride = (code, field, value) => {
-            setEmployees(employees.map(emp => {
-              if (emp.code === code) {
-                return { ...emp, [field]: value };
-              }
-              return emp;
-            }));
-          };
-
-          const startEdit = (emp) => {
-            setNewEmp(emp);
-            setIsEditing(true);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          };
-
-          const handleEmpImport = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const text = event.target.result;
-              const lines = text.split('\n');
-              const newEmployees = [];
-              
-              for(let i=1; i<lines.length; i++) {
-                const line = lines[i].trim();
-                if(!line) continue;
-                const parts = line.split(';');
-                if(parts.length >= 2) {
-                  const code = parts[0].trim();
-                  const name = parts[1].trim();
-                  const cat = parts[2] ? parts[2].trim() : 'Não Isentos';
-                  const validCat = CATEGORIAS.includes(cat) ? cat : 'Não Isentos';
-                  if (code && name) newEmployees.push({ code, name, category: validCat });
-                }
-              }
-
-              const merged = [...employees];
-              let added = 0, updated = 0;
-              
-              newEmployees.forEach(ne => {
-                const existingIdx = merged.findIndex(e => e.code === ne.code);
-                if(existingIdx >= 0) {
-                  merged[existingIdx] = { ...merged[existingIdx], ...ne };
-                  updated++;
-                } else {
-                  merged.push(ne);
-                  added++;
-                }
-              });
-              
-              setEmployees(merged);
-              showNotification(`Importação concluída: ${added} novos, ${updated} atualizados.`);
-              if(empFileInputRef.current) empFileInputRef.current.value = '';
-            };
-            reader.readAsText(file, empEncoding);
-          };
 
           const handleSaveAppUser = () => {
              if (!newAppUser.email || !newAppUser.password) return showNotification("Preencha login e senha", "error");
-             if (appUsers.find(u => u.email === newAppUser.email)) return showNotification("Este login já existe", "error");
+             if (appUsers.find(u => u.email === newAppUser.email)) return showNotification("Esse login já existe", "error");
              setAppUsers([...appUsers, { id: Date.now(), ...newAppUser }]);
              setNewAppUser({ email: '', password: '', role: 'user' });
              showNotification("Acesso criado com sucesso!");
           };
 
-          const filteredEmployees = useMemo(() => {
-            let data = employees;
-            if (empCategoryFilter !== 'Geral') data = data.filter(e => e.category === empCategoryFilter);
-            if (empSearch) {
-              const lower = empSearch.toLowerCase();
-              data = data.filter(e => e.name.toLowerCase().includes(lower) || e.code.includes(lower));
-            }
-            return data;
-          }, [employees, empCategoryFilter, empSearch]);
-
           return (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col xl:flex-row min-h-[600px]">
               <div className="w-full xl:w-64 border-r border-slate-200 bg-slate-50 p-4 shrink-0">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">Configurações</h3>
-                <nav className="space-y-1 flex flex-row xl:flex-col overflow-x-auto xl:overflow-visible pb-2 xl:pb-0 scrollbar-hide">
-                  <button onClick={() => setConfigTab('regras')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'regras' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
-                    <Calculator className="mr-3 h-5 w-5" /> Regras e Horários
-                  </button>
-                  <button onClick={() => setConfigTab('funcionarios')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'funcionarios' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
-                    <Users className="mr-3 h-5 w-5" /> Base de Funcionários
-                  </button>
-                  <button onClick={() => setConfigTab('excecoes')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'excecoes' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
-                    <Sliders className="mr-3 h-5 w-5" /> Exceções Contábeis
-                  </button>
-                  
-                  {/* Visível apenas para Administradores */}
-                  {appUserRole === 'admin' && (
-                    <button onClick={() => setConfigTab('logins')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'logins' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
-                      <Lock className="mr-3 h-5 w-5" /> Acessos do Sistema
-                    </button>
-                  )}
+                <nav className="space-y-1 flex flex-row xl:flex-col overflow-x-auto xl:overflow-visible scrollbar-hide">
+                  <button onClick={() => setConfigTab('regras')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'regras' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Regras</button>
+                  <button onClick={() => setConfigTab('logins')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'logins' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Logins</button>
                 </nav>
               </div>
-
-              <div className="flex-1 p-4 md:p-8 overflow-x-hidden">
-                
-                {configTab === 'logins' && appUserRole === 'admin' && (
-                   <div className="space-y-8 max-w-4xl">
-                     <div>
-                       <h2 className="text-xl font-bold text-slate-800 mb-2">Gestão de Acessos</h2>
-                       <p className="text-sm text-slate-600 mb-6">Crie logins e senhas para que outras pessoas da sua equipe possam acessar e usar o sistema. Apenas Administradores podem acessar esta tela de configurações.</p>
-                       
-                       <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 mb-8 flex flex-wrap gap-4 items-end">
-                          <div className="flex-1 min-w-[200px]">
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Login / Email</label>
-                            <input type="text" value={newAppUser.email} onChange={e => setNewAppUser({...newAppUser, email: e.target.value})} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: rh@empresa.com" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Senha</label>
-                            <input type="text" value={newAppUser.password} onChange={e => setNewAppUser({...newAppUser, password: e.target.value})} className="w-32 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Senha" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Nível de Acesso</label>
-                            <select value={newAppUser.role} onChange={e => setNewAppUser({...newAppUser, role: e.target.value})} className="w-40 px-3 py-2 border rounded bg-white outline-none focus:ring-2 focus:ring-blue-500">
-                              <option value="user">Usuário</option>
-                              <option value="admin">Administrador</option>
-                            </select>
-                          </div>
-                          <button onClick={handleSaveAppUser} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center transition-colors">
-                            <Plus className="w-4 h-4 mr-2" /> Criar Acesso
-                          </button>
-                       </div>
-
-                       <div className="border border-slate-200 rounded-lg overflow-hidden">
-                          <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                              <tr>
-                                <th className="px-4 py-3 font-semibold text-slate-700">Login (Email)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">Senha</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">Nível</th>
-                                <th className="px-4 py-3 font-semibold text-right text-slate-700">Ações</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {appUsers.map(u => (
-                                <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                  <td className="px-4 py-3 font-medium text-slate-800">{u.email}</td>
-                                  <td className="px-4 py-3 text-slate-600">{u.password}</td>
-                                  <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium border ${u.role === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                                      {u.role === 'admin' ? 'Administrador' : 'Usuário'}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-right">
-                                    <button 
-                                      onClick={() => {
-                                        if (appUsers.length === 1) return showNotification("Você não pode excluir o último usuário do sistema.", "error");
-                                        setAppUsers(appUsers.filter(acc => acc.id !== u.id));
-                                      }} 
-                                      className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded disabled:opacity-50"
-                                      title="Excluir"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                       </div>
-                     </div>
-                   </div>
+              <div className="flex-1 p-8">
+                {configTab === 'logins' && (
+                  <div>
+                    <h2 className="text-xl font-bold mb-4">Gestão de Acessos</h2>
+                    <div className="flex gap-2 mb-6">
+                      <input type="text" placeholder="Email" value={newAppUser.email} onChange={e => setNewAppUser({...newAppUser, email: e.target.value})} className="border p-2 rounded flex-1" />
+                      <input type="password" placeholder="Senha" value={newAppUser.password} onChange={e => setNewAppUser({...newAppUser, password: e.target.value})} className="border p-2 rounded w-32" />
+                      <button onClick={handleSaveAppUser} className="bg-blue-600 text-white px-4 py-2 rounded">Criar</button>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b"><th>Login</th><th>Nível</th></tr></thead>
+                      <tbody>
+                        {appUsers.map(u => (
+                          <tr key={u.id} className="border-b"><td className="py-2">{u.email}</td><td>{u.role}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-
                 {configTab === 'regras' && (
-                   <div className="space-y-8 max-w-full">
-                   <div>
-                     <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Valores Globais Fixos</h2>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                         <label className="block text-sm font-semibold text-slate-700 mb-1">Taxa Mensal (Fixos)</label>
-                         <input type="number" value={settings.fixedRate} onChange={e => setSettings({...settings, fixedRate: Number(e.target.value)})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                       </div>
-                       <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                         <label className="block text-sm font-semibold text-slate-700 mb-1">Cota Máxima de Dependentes</label>
-                         <input type="number" value={settings.dependentLimit} onChange={e => setSettings({...settings, dependentLimit: Number(e.target.value)})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                         <p className="text-xs text-slate-500 mt-1">Dependentes acima deste limite (excedentes) são cobrados como Inteira, ignorando o tipo marcado.</p>
-                       </div>
-                     </div>
-                   </div>
-
-                   <div>
-                     <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center">
-                       <Clock className="w-5 h-5 mr-2 text-blue-600" /> Horários das Refeições
-                     </h2>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                       {Object.entries({ 'Café': 'cafe', 'Almoço': 'almoco', 'Janta': 'janta' }).map(([label, key]) => (
-                         <div key={key} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                           <label className="block text-sm font-semibold text-slate-700 mb-3">{label}</label>
-                           <div className="flex items-center space-x-2">
-                             <input type="time" value={settings.mealTimes[key].start} onChange={e => handleTimeChange(key, 'start', e.target.value)} className="w-full text-sm px-2 py-1 border rounded outline-none" />
-                             <span className="text-slate-400">até</span>
-                             <input type="time" value={settings.mealTimes[key].end} onChange={e => handleTimeChange(key, 'end', e.target.value)} className="w-full text-sm px-2 py-1 border rounded outline-none" />
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-
-                   <div>
-                     <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center justify-between">
-                       Tabela de Preços por Categoria
-                       <div className="flex bg-slate-200 p-1 rounded-lg">
-                         <button onClick={() => setPricingDayType('weekday')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${pricingDayType === 'weekday' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Dias Úteis</button>
-                         <button onClick={() => setPricingDayType('weekend')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${pricingDayType === 'weekend' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Finais de Semana</button>
-                       </div>
-                     </h2>
-                     <div className="border border-slate-200 rounded-lg overflow-x-auto scrollbar-hide">
-                       <table className="w-full text-left text-sm whitespace-nowrap">
-                         <thead className="bg-slate-100 border-b border-slate-200">
-                           <tr>
-                             <th className="px-3 py-3 font-semibold text-slate-700 border-r border-slate-200">Categoria</th>
-                             <th className="px-3 py-3 font-semibold text-slate-700 text-center" colSpan="2">Titular</th>
-                             <th className="px-3 py-3 font-semibold text-slate-700 text-center border-l border-slate-200" colSpan="2">Dependente (Meia)</th>
-                             <th className="px-3 py-3 font-semibold text-slate-700 text-center border-l border-slate-200" colSpan="2">Dependente (Inteira)</th>
-                           </tr>
-                           <tr className="bg-slate-50 border-t border-slate-200 text-xs">
-                             <th className="px-3 py-2 border-r border-slate-200"></th>
-                             <th className="px-2 py-2">Almoço</th>
-                             <th className="px-2 py-2">Outras Ref.</th>
-                             <th className="px-2 py-2 border-l border-slate-200">Almoço</th>
-                             <th className="px-2 py-2">Outras Ref.</th>
-                             <th className="px-2 py-2 border-l border-slate-200">Almoço</th>
-                             <th className="px-2 py-2">Outras Ref.</th>
-                           </tr>
-                         </thead>
-                         <tbody>
-                           {Object.keys(settings.categoryRules).map(cat => {
-                             const rule = settings.categoryRules[cat]?.[pricingDayType] || settings.categoryRules[cat] || {};
-                             return (
-                               <tr key={cat} className="border-t border-slate-200 hover:bg-slate-50">
-                                 <td className="px-3 py-3 font-medium text-slate-800 border-r border-slate-200">{cat}</td>
-                                 
-                                 {/* Titular */}
-                                 <td className="px-2 py-2"><input type="number" value={rule.almoco ?? 0} onChange={e => handleRuleChange(cat, pricingDayType, 'almoco', e.target.value)} className="w-16 px-1 py-1 border rounded outline-none focus:ring-2 focus:ring-blue-500" /></td>
-                                 <td className="px-2 py-2"><input type="number" value={rule.outras ?? 0} onChange={e => handleRuleChange(cat, pricingDayType, 'outras', e.target.value)} className="w-16 px-1 py-1 border rounded outline-none focus:ring-2 focus:ring-blue-500" /></td>
-                                 
-                                 {/* Meia (Tipo 1) */}
-                                 <td className="px-2 py-2 border-l border-slate-200"><input type="number" value={rule.depMeiaAlmoco ?? 7} onChange={e => handleRuleChange(cat, pricingDayType, 'depMeiaAlmoco', e.target.value)} className="w-16 px-1 py-1 border rounded outline-none focus:ring-2 focus:ring-blue-500" /></td>
-                                 <td className="px-2 py-2"><input type="number" value={rule.depMeiaOutras ?? 7} onChange={e => handleRuleChange(cat, pricingDayType, 'depMeiaOutras', e.target.value)} className="w-16 px-1 py-1 border rounded outline-none focus:ring-2 focus:ring-blue-500" /></td>
-                                 
-                                 {/* Inteira (Tipo 2) */}
-                                 <td className="px-2 py-2 border-l border-slate-200"><input type="number" value={rule.depIntAlmoco ?? 35} onChange={e => handleRuleChange(cat, pricingDayType, 'depIntAlmoco', e.target.value)} className="w-16 px-1 py-1 border rounded outline-none focus:ring-2 focus:ring-blue-500" /></td>
-                                 <td className="px-2 py-2"><input type="number" value={rule.depIntOutras ?? 35} onChange={e => handleRuleChange(cat, pricingDayType, 'depIntOutras', e.target.value)} className="w-16 px-1 py-1 border rounded outline-none focus:ring-2 focus:ring-blue-500" /></td>
-                               </tr>
-                             );
-                           })}
-                         </tbody>
-                       </table>
-                     </div>
-                   </div>
-                 </div>
-                )}
-
-                {configTab === 'funcionarios' && (
                   <div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2 flex justify-between items-center">
-                      Base de Funcionários 
-                      <span className="text-sm font-normal text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{employees.length} cadastrados</span>
-                    </h2>
-
-                    {/* Importação Massiva de Funcionários */}
-                    <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                      <div className="flex items-center gap-3">
-                        <FileSpreadsheet className="text-blue-600 w-6 h-6 shrink-0" />
-                        <div>
-                          <p className="text-sm font-semibold text-blue-800">Importar Lista (CSV)</p>
-                          <p className="text-xs text-blue-600">Formato: Código; Nome; Categoria (opcional)</p>
-                        </div>
-                      </div>
-                      <div className="ml-auto flex flex-wrap items-center gap-2 w-full md:w-auto">
-                        <select value={empEncoding} onChange={e => setEmpEncoding(e.target.value)} className="text-sm border border-blue-200 rounded px-2 py-2 bg-white outline-none focus:ring-1 focus:ring-blue-500">
-                          <option value="UTF-8">UTF-8</option>
-                          <option value="ISO-8859-1">ISO-8859-1</option>
-                        </select>
-                        <label className="cursor-pointer bg-white border border-blue-300 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap">
-                          Procurar Arquivo
-                          <input type="file" accept=".csv" className="hidden" onChange={handleEmpImport} ref={empFileInputRef} />
-                        </label>
-                      </div>
-                    </div>
-                    
-                    {/* Formulário Add/Edit Individual */}
-                    <div className={`p-5 rounded-lg border mb-6 flex flex-wrap gap-4 items-end transition-colors ${isEditing ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
+                    <h2 className="text-xl font-bold mb-4">Configurações Gerais</h2>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Código</label>
-                        <input disabled={isEditing} type="text" value={newEmp.code} onChange={e => setNewEmp({...newEmp, code: e.target.value})} className="w-24 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 disabled:bg-slate-200 outline-none" placeholder="Ex: 4214" />
-                      </div>
-                      <div className="flex-1 min-w-[200px]">
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Nome Completo</label>
-                        <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nome do funcionário" />
+                        <label className="block text-sm mb-1">Taxa Fixos</label>
+                        <input type="number" value={settings.fixedRate} onChange={e => setSettings({...settings, fixedRate: Number(e.target.value)})} className="border w-full p-2 rounded" />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Categoria</label>
-                        <select value={newEmp.category} onChange={e => setNewEmp({...newEmp, category: e.target.value})} className="w-48 px-3 py-2 border rounded bg-white outline-none focus:ring-2 focus:ring-blue-500">
-                          {CATEGORIAS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
-                      </div>
-                      <button onClick={handleSaveEmployee} className={`px-4 py-2 rounded font-medium flex items-center text-white ${isEditing ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                        {isEditing ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                        {isEditing ? 'Salvar Edição' : 'Adicionar'}
-                      </button>
-                      {isEditing && (
-                        <button onClick={() => {setIsEditing(false); setNewEmp({ code: '', name: '', category: 'Não Isentos' })}} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded font-medium">Cancelar</button>
-                      )}
-                    </div>
-
-                    {/* Filtros */}
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                      <div className="flex p-1 gap-1 overflow-x-auto bg-slate-100 rounded-lg w-full md:w-auto scrollbar-hide">
-                        {['Geral', ...CATEGORIAS].map(cat => (
-                          <button key={cat} onClick={() => setEmpCategoryFilter(cat)} className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${empCategoryFilter === cat ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>{cat}</button>
-                        ))}
-                      </div>
-                      <div className="relative w-full md:w-64">
-                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                        <input type="text" placeholder="Buscar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                      </div>
-                    </div>
-
-                    {/* Lista */}
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                          <tr>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Código</th>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Nome Oficial</th>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Categoria</th>
-                            <th className="px-4 py-3 font-semibold text-right text-slate-700">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredEmployees.map(emp => (
-                            <tr key={emp.code} className="border-b border-slate-100 hover:bg-slate-50">
-                              <td className="px-4 py-3 font-medium text-slate-800">{emp.code}</td>
-                              <td className="px-4 py-3 text-slate-600">{emp.name}</td>
-                              <td className="px-4 py-3"><span className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs border border-slate-200">{emp.category}</span></td>
-                              <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                                <button onClick={() => startEdit(emp)} className="text-blue-500 hover:text-blue-700 p-1.5 bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
-                                <button onClick={() => setEmployees(employees.filter(e => e.code !== emp.code))} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
-                              </td>
-                            </tr>
-                          ))}
-                          {filteredEmployees.length === 0 && (
-                            <tr><td colSpan="4" className="text-center py-8 text-slate-500">Nenhum funcionário encontrado.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {configTab === 'excecoes' && (
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">Exceções Contábeis</h2>
-                    <p className="text-sm text-slate-600 mb-6">Substitua manualmente a Conta ou Subconta que será enviada para a contabilidade para um funcionário específico. Deixe em branco para usar o padrão.</p>
-                    
-                    {/* Filtros */}
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                      <div className="flex p-1 gap-1 overflow-x-auto bg-slate-100 rounded-lg w-full md:w-auto scrollbar-hide">
-                        {['Geral', ...CATEGORIAS].map(cat => (
-                          <button key={cat} onClick={() => setEmpCategoryFilter(cat)} className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${empCategoryFilter === cat ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>{cat}</button>
-                        ))}
-                      </div>
-                      <div className="relative w-full md:w-64">
-                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                        <input type="text" placeholder="Buscar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                      </div>
-                    </div>
-
-                    {/* Lista de Exceções */}
-                    <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                      <table className="w-full text-left text-sm min-w-max">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                          <tr>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Funcionário</th>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Conta Contábil</th>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Subconta</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredEmployees.map(emp => {
-                            const isOutraEntidade = emp.category === 'Outras Entidades';
-                            const defaultConta = isOutraEntidade ? '1136001' : '1135001';
-                            const defaultSub = isOutraEntidade ? '1122' : emp.code;
-
-                            return (
-                              <tr key={emp.code} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-3">
-                                  <div className="font-medium text-slate-800">{emp.code} - {emp.name}</div>
-                                  <div className="text-xs text-slate-500">{emp.category}</div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input 
-                                    type="text" 
-                                    value={emp.overrideAccount || ''} 
-                                    onChange={(e) => handleUpdateOverride(emp.code, 'overrideAccount', e.target.value)}
-                                    placeholder={`Padrão: ${defaultConta}`}
-                                    className="w-32 px-2 py-1 border border-slate-300 rounded outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input 
-                                    type="text" 
-                                    value={emp.overrideSubaccount || ''} 
-                                    onChange={(e) => handleUpdateOverride(emp.code, 'overrideSubaccount', e.target.value)}
-                                    placeholder={`Padrão: ${defaultSub}`}
-                                    disabled={!isOutraEntidade}
-                                    title={!isOutraEntidade ? "Apenas a categoria 'Outras Entidades' permite alterar a Subconta." : ""}
-                                    className={`w-32 px-2 py-1 border border-slate-300 rounded outline-none focus:ring-2 focus:ring-blue-500 ${!isOutraEntidade ? 'bg-slate-100 cursor-not-allowed text-slate-400' : ''}`}
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          {filteredEmployees.length === 0 && (
-                            <tr><td colSpan="3" className="text-center py-8 text-slate-500">Nenhum funcionário encontrado.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm border border-blue-100 flex items-start mt-6">
-                      <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Como funciona:</strong>
-                        <p className="mt-1">Qualquer valor escrito nestas caixas será utilizado na exportação do CSV no lugar da regra padrão. Você pode alterar a <strong>Conta</strong> de qualquer pessoa. A <strong>Subconta</strong> apenas pode ser alterada para funcionários da categoria <i>Outras Entidades</i> (as outras categorias utilizarão sempre o Código do funcionário).</p>
+                        <label className="block text-sm mb-1">Cota Dependentes</label>
+                        <input type="number" value={settings.dependentLimit} onChange={e => setSettings({...settings, dependentLimit: Number(e.target.value)})} className="border w-full p-2 rounded" />
                       </div>
                     </div>
                   </div>
                 )}
-
               </div>
             </div>
           );
@@ -973,7 +393,6 @@
         function RateioApp({ firebaseApi }) {
           const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, collection } = firebaseApi;
 
-          // Configuração de Firebase
           const USER_FIREBASE_CONFIG = {
               apiKey: "AIzaSyBIAhPGUpyWC_J_P0iPfDQrnUDbTrHaNRI",
               authDomain: "rateio-fc8b0.firebaseapp.com",
@@ -983,27 +402,20 @@
               appId: "1:1035068788064:web:6cb011eb1bc3c0e39d2205"
           };
 
-          // Inicializa Firebase
-          const { app, auth, db, envAppId } = useMemo(() => {
+          const { auth, db, envAppId } = useMemo(() => {
               const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : USER_FIREBASE_CONFIG;
               const app = initializeApp(config);
               const auth = getAuth(app);
               const db = getFirestore(app);
               const envAppId = typeof __app_id !== 'undefined' ? __app_id : 'rateio-app';
-              return { app, auth, db, envAppId };
+              return { auth, db, envAppId };
           }, []);
 
-          // Estados de Autenticação Firebase & App Level Login
-          const [user, setUser] = useState(null); // Firebase anon auth
+          const [user, setUser] = useState(null);
           const [dataLoaded, setDataLoaded] = useState(false);
-          const [appUser, setAppUser] = useState(null); // O login do usuário dentro do app
+          const [appUser, setAppUser] = useState(null);
           
-          // Base de Dados de Logins do Sistema (Administradores e Usuários)
-          const [appUsers, setAppUsers] = useState([
-              { id: 1, email: 'nicholas.ganhadeiro@adventistas.org', password: 'Fap1624', role: 'admin' }
-          ]);
-
-          // Estados do App
+          const [appUsers, setAppUsers] = useState([{ id: 1, email: 'nicholas.ganhadeiro@adventistas.org', password: 'Fap1624', role: 'admin' }]);
           const [activeTab, setActiveTab] = useState('import');
           const [settings, setSettings] = useState(DEFAULT_SETTINGS);
           const [employees, setEmployees] = useState(MOCK_EMPLOYEES);
@@ -1013,7 +425,6 @@
           const [processedData, setProcessedData] = useState([]);
           const [notification, setNotification] = useState(null);
 
-          // 1. Autenticação Firebase (Silenciosa)
           useEffect(() => {
               const initAuth = async () => {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -1027,32 +438,27 @@
               return () => unsubscribe();
           }, [auth]);
 
-          // 2. Carregar Dados Iniciais do Firestore
           useEffect(() => {
               if (!user) return;
               const loadData = async () => {
                 try {
-                  const usersRef = collection(db, 'artifacts', envAppId, 'users', user.uid, 'appData');
-                  
-                  const appUsersSnap = await getDoc(doc(usersRef, 'appUsers'));
+                  // Caminhos corrigidos com IDs de documento específicos para evitar erros de segmentos
+                  const appUsersSnap = await getDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appUsers', 'main'));
                   if (appUsersSnap.exists()) setAppUsers(appUsersSnap.data().list);
 
-                  const settingsSnap = await getDoc(doc(usersRef, 'settings'));
+                  const settingsSnap = await getDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'settings', 'main'));
                   if (settingsSnap.exists()) {
-                      const savedSettings = settingsSnap.data();
-                      // Garantir que a nova categoria existe, mesmo se as configurações antigas forem carregadas do banco de dados
-                      if (savedSettings.categoryRules && !savedSettings.categoryRules['Totalmente Isentos']) {
-                          savedSettings.categoryRules['Totalmente Isentos'] = DEFAULT_SETTINGS.categoryRules['Totalmente Isentos'];
+                      const saved = settingsSnap.data();
+                      if (saved.categoryRules && !saved.categoryRules['Totalmente Isentos']) {
+                          saved.categoryRules['Totalmente Isentos'] = DEFAULT_SETTINGS.categoryRules['Totalmente Isentos'];
                       }
-                      setSettings(savedSettings);
-                  } else {
-                      setSettings(DEFAULT_SETTINGS);
+                      setSettings(saved);
                   }
 
-                  const empSnap = await getDoc(doc(usersRef, 'employees'));
+                  const empSnap = await getDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'employees', 'main'));
                   if (empSnap.exists()) setEmployees(empSnap.data().list);
 
-                  const stateSnap = await getDoc(doc(usersRef, 'state'));
+                  const stateSnap = await getDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'state', 'current'));
                   if (stateSnap.exists()) {
                      setPeriod(stateSnap.data().period || '04/2026');
                      setManualCharges(stateSnap.data().manualCharges || []);
@@ -1067,11 +473,11 @@
               loadData();
           }, [user, db, envAppId]);
 
-          // 3. Auto-Gravar no Firestore (Debounced para não sobrecarregar)
+          // Persistência com caminhos corrigidos
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'appUsers'), { list: appUsers });
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appUsers', 'main'), { list: appUsers });
               }, 500);
               return () => clearTimeout(timer);
           }, [appUsers, user, dataLoaded, db, envAppId]);
@@ -1079,7 +485,7 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'settings'), settings);
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'settings', 'main'), settings);
               }, 500);
               return () => clearTimeout(timer);
           }, [settings, user, dataLoaded, db, envAppId]);
@@ -1087,7 +493,7 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'employees'), { list: employees });
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'employees', 'main'), { list: employees });
               }, 500);
               return () => clearTimeout(timer);
           }, [employees, user, dataLoaded, db, envAppId]);
@@ -1095,267 +501,91 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'state'), { period, manualCharges, rawScans });
+                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'state', 'current'), { period, manualCharges, rawScans });
               }, 500);
               return () => clearTimeout(timer);
           }, [period, manualCharges, rawScans, user, dataLoaded, db, envAppId]);
 
-          // Bloqueio de rota caso um usuário normal tente acessar Configurações
-          useEffect(() => {
-              if (appUser && appUser.role !== 'admin' && activeTab === 'config') {
-                  setActiveTab('dashboard');
-              }
-          }, [activeTab, appUser]);
-
-
           const handleAppLogin = (email, password) => {
               const foundUser = appUsers.find(u => u.email === email && u.password === password);
-              if (foundUser) {
-                  setAppUser(foundUser);
-                  return true;
-              }
+              if (foundUser) { setAppUser(foundUser); return true; }
               return false;
           };
 
-          const handleAppLogout = () => {
-              setAppUser(null);
-              setActiveTab('import');
-          };
-
+          const handleAppLogout = () => { setAppUser(null); setActiveTab('import'); };
 
           const processScans = (scans, empList, currentSettings, manuals) => {
             const empMap = {};
-            
             empList.forEach(emp => {
-              empMap[emp.code] = { 
-                ...emp, 
-                totalValue: 0, 
-                records: [], 
-                dailyLog: {} 
-              };
-              if (emp.category === 'Fixos') {
-                empMap[emp.code].totalValue = currentSettings.fixedRate;
-              }
+              empMap[emp.code] = { ...emp, totalValue: 0, records: [] };
+              if (emp.category === 'Fixos') empMap[emp.code].totalValue = currentSettings.fixedRate;
             });
 
-            const sortedScans = [...scans].sort((a, b) => {
-              const [dateA, timeA] = a.dateTime.split(' ');
-              const [dateB, timeB] = b.dateTime.split(' ');
-              if (!dateA || !timeA || !dateB || !timeB) return 0;
-              return (dateA.split('/').reverse().join('') + timeA).localeCompare(dateB.split('/').reverse().join('') + timeB);
-            });
-
-            sortedScans.forEach(scan => {
+            scans.forEach(scan => {
               const isDependent = scan.fullCode.includes('-');
               const baseCode = isDependent ? scan.fullCode.split('-')[0] : scan.fullCode;
+              if (!empMap[baseCode]) empMap[baseCode] = { code: baseCode, name: scan.name || 'Desconhecido', category: 'Não Isentos', totalValue: 0, records: [] };
               
-              if (!empMap[baseCode]) {
-                const knownEmp = empList.find(e => e.code === baseCode);
-                empMap[baseCode] = { 
-                  ...knownEmp,
-                  code: baseCode, 
-                  name: knownEmp ? knownEmp.name : (scan.name || 'Desconhecido'), 
-                  category: knownEmp ? knownEmp.category : 'Não Isentos', 
-                  totalValue: 0, records: [], dailyLog: {} 
-                };
-              }
-
               const emp = empMap[baseCode];
+              if (emp.category === 'Fixos' || emp.category === 'Totalmente Isentos') return;
+              
               const [dateStr, timeStr] = scan.dateTime.split(' ');
               const mealType = getMealType(timeStr, currentSettings.mealTimes);
               const dayType = isWeekend(dateStr, mealType) ? 'weekend' : 'weekday';
-              const dayLabel = dayType === 'weekend' ? 'Fim de Semana' : 'Dia Útil';
-              const isAlmoco = mealType === 'almoco';
-              
+              const rules = currentSettings.categoryRules[emp.category]?.[dayType] || basePrices;
+
               let charge = 0;
-              let reason = '';
-
-              if (emp.category === 'Fixos') {
-                charge = 0;
-                reason = 'Taxa Fixa Mensal já aplicada';
+              if (isDependent) {
+                const parts = scan.fullCode.split('-');
+                const seq = parseInt(parts[1]) || 1;
+                const limit = currentSettings.dependentLimit || 3;
+                charge = seq > limit ? rules.depIntAlmoco : rules.depMeiaAlmoco;
               } else {
-                let baseRules = currentSettings.categoryRules[emp.category];
-                if (!baseRules) {
-                    // Fallback de segurança para usuários antigos que não tem essa categoria salva no banco de dados ainda
-                    const fallbackTotIsento = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-                    const fallbackBase = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-                    if (emp.category === 'Totalmente Isentos') {
-                        baseRules = { weekday: fallbackTotIsento, weekend: fallbackTotIsento };
-                    } else {
-                        baseRules = { weekday: fallbackBase, weekend: fallbackBase };
-                    }
-                }
-                const rules = baseRules[dayType] || baseRules;
-
-                if (isDependent) {
-                  const parts = scan.fullCode.split('-');
-                  let seq = 1;
-                  let explicitType = null; 
-
-                  if (parts.length === 3) {
-                    seq = parseInt(parts[1]);
-                    explicitType = parseInt(parts[2]);
-                  } else if (parts.length === 2) {
-                    const suffix = parts[1];
-                    if (suffix.length >= 2) {
-                      seq = parseInt(suffix.substring(0, suffix.length - 1));
-                      explicitType = parseInt(suffix.substring(suffix.length - 1));
-                    } else {
-                      seq = parseInt(suffix);
-                    }
-                  }
-
-                  const limit = currentSettings.dependentLimit || 3;
-                  let finalType = 2; // Predefinição: Inteira
-
-                  if (seq > limit) {
-                    // Excedeu a cota -> Força Inteira, ignorando o que foi marcado
-                    finalType = 2;
-                  } else {
-                    // Dentro da cota -> Usa o tipo explícito se existir, senão assume Meia (1)
-                    if (explicitType !== null) {
-                      finalType = explicitType;
-                    } else {
-                      finalType = 1;
-                    }
-                  }
-
-                  if (finalType === 0) {
-                    charge = 0;
-                    reason = `Dep. Isento (${mealType.toUpperCase()} - ${dayLabel})`;
-                  } else if (finalType === 1) {
-                    charge = isAlmoco ? (rules.depMeiaAlmoco ?? 7) : (rules.depMeiaOutras ?? 7);
-                    reason = `Dep. Meia (${mealType.toUpperCase()} - ${dayLabel})`;
-                  } else {
-                    const fallbackInt = rules.depIntAlmoco ?? 35;
-                    charge = isAlmoco ? (rules.depIntAlmoco ?? fallbackInt) : (rules.depIntOutras ?? fallbackInt);
-                    reason = `Dep. Inteira (${mealType.toUpperCase()} - ${dayLabel})`;
-                    if (seq > limit) reason += ` (Acima do limite)`;
-                  }
-                } else {
-                  if (isAlmoco) {
-                    charge = rules.almoco ?? 35;
-                    reason = `Almoço (${dayLabel})` + (charge === 0 ? ' - Isento' : '');
-                  } else {
-                    charge = rules.outras ?? 35;
-                    reason = `Outras Refeições (${mealType.toUpperCase()} - ${dayLabel})` + (charge === 0 ? ' - Isento' : '');
-                  }
-                }
+                charge = mealType === 'almoco' ? rules.almoco : rules.outras;
               }
-
-              if (emp.category !== 'Fixos') {
-                emp.totalValue += charge;
-              }
-              emp.records.push({ ...scan, mealType, charge, reason });
+              emp.totalValue += charge;
             });
 
             manuals.forEach(mc => {
-              if (!empMap[mc.code]) {
-                const empDef = empList.find(e => e.code === mc.code) || { code: mc.code, name: 'Desconhecido', category: 'Não Isentos' };
-                empMap[mc.code] = { ...empDef, totalValue: 0, records: [], dailyLog: {} };
-              }
-              empMap[mc.code].totalValue += Number(mc.amount);
-              empMap[mc.code].records.push({
-                fullCode: mc.code,
-                dateTime: mc.date ? `${mc.date.split('-').reverse().join('/')} 00:00` : 'Manual',
-                name: empMap[mc.code].name,
-                mealType: 'Manual',
-                charge: Number(mc.amount),
-                reason: `Lanc. Manual: ${mc.reason || 'Sem descrição'}`
-              });
+              if (empMap[mc.code]) empMap[mc.code].totalValue += Number(mc.amount);
             });
 
-            return Object.values(empMap).filter(emp => emp.records.length > 0 || emp.category === 'Fixos');
+            return Object.values(empMap);
           };
 
           useEffect(() => {
-            if (dataLoaded) {
-              setProcessedData(processScans(rawScans, employees, settings, manualCharges));
-            }
+            if (dataLoaded) setProcessedData(processScans(rawScans, employees, settings, manualCharges));
           }, [rawScans, settings, employees, manualCharges, dataLoaded]);
 
           const handleFileUpload = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (event) => {
-              const text = event.target.result;
-              const lines = text.split('\n');
-              const parsedScans = [];
-              
+              const lines = event.target.result.split('\n');
+              const parsed = [];
               for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                const [code, dateTime, name] = line.split(';');
-                if (code && dateTime) {
-                  parsedScans.push({ fullCode: code.trim(), dateTime: dateTime.trim(), name: name ? name.trim() : '' });
-                }
+                const parts = lines[i].trim().split(';');
+                if (parts.length >= 2) parsed.push({ fullCode: parts[0].trim(), dateTime: parts[1].trim(), name: parts[2] ? parts[2].trim() : '' });
               }
-              setRawScans(parsedScans);
-              showNotification(`Sucesso! ${parsedScans.length} registros processados.`);
+              setRawScans(parsed);
+              showNotification(`Sucesso! ${parsed.length} registros processados.`);
               setActiveTab('dashboard');
             };
             reader.readAsText(file);
           };
 
           const exportToCSV = () => {
-            if (processedData.length === 0) {
-              showNotification("Não há dados para exportar.", "error");
-              return;
-            }
-
-            const headers = ['Conta', 'Subconta', 'Fundo', 'Departamento', 'Restrição', 'Valor', 'Aviso', 'Finalidade'];
-            const rows = [headers.join(';')];
-
-            CATEGORIAS.forEach(categoria => {
-              const empsInCategory = processedData.filter(emp => emp.category === categoria);
-              let hasValidData = false;
-
-              empsInCategory.forEach(emp => {
-                if (emp.totalValue === 0 && emp.category !== 'Fixos') return;
-
-                hasValidData = true;
-                const isOutraEntidade = emp.category === 'Outras Entidades';
-                
-                let conta = isOutraEntidade ? '1136001' : '1135001';
-                let subconta = isOutraEntidade ? '1122' : emp.code;
-                
-                if (emp.overrideAccount && emp.overrideAccount.trim() !== '') {
-                  conta = emp.overrideAccount.trim();
-                }
-                if (isOutraEntidade && emp.overrideSubaccount && emp.overrideSubaccount.trim() !== '') {
-                  subconta = emp.overrideSubaccount.trim();
-                }
-
-                const fundo = '10'; 
-                const departamento = '110150501';
-                const restricao = '0A';
-                
-                const valorStr = (emp.totalValue * 100).toFixed(0);
-                const aviso = isOutraEntidade ? 'Y' : 'N';
-                
-                let finalidade = isOutraEntidade 
-                  ? `${emp.name} e Família - Refeições - ${period}`
-                  : `Adto. Salário - Refeições ${period}`;
-
-                rows.push([conta, subconta, fundo, departamento, restricao, valorStr, aviso, finalidade].join(';'));
-              });
-
-              if (hasValidData) {
-                rows.push([`Fim do Cálculo dos ${categoria}`, '', '', '', '', '', '', ''].join(';'));
-              }
+            const rows = [['Conta', 'Subconta', 'Valor', 'Finalidade']];
+            processedData.forEach(emp => {
+              if (emp.totalValue > 0) rows.push(['1135001', emp.code, (emp.totalValue * 100).toFixed(0), `Refeições ${period}`]);
             });
-
-            const csvContent = rows.join('\n');
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            const content = rows.map(r => r.join(';')).join('\n');
+            const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Rateio_Refeicoes_${period.replace('/', '_')}.csv`);
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `Rateio_${period.replace('/', '_')}.csv`;
             link.click();
-            document.body.removeChild(link);
           };
 
           const showNotification = (msg, type = 'success') => {
@@ -1363,68 +593,28 @@
             setTimeout(() => setNotification(null), 4000);
           };
 
-          // Ecrã de Loading enquanto o Firebase conecta e puxa os dados
-          if (!dataLoaded) {
-             return (
-               <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
-                 <Calculator className="h-12 w-12 text-blue-600 mb-4 animate-pulse" />
-                 <h2 className="text-xl font-bold text-slate-700">Carregando seus dados...</h2>
-                 <p className="text-sm text-slate-500 mt-2">Sincronizando com o banco de dados</p>
-               </div>
-             );
-          }
-
-          // Se não houver utilizador logado no APP, mostrar a tela de Login
-          if (!appUser) {
-             return <LoginView onLogin={handleAppLogin} />;
-          }
+          if (!dataLoaded) return <div className="min-h-screen flex items-center justify-center">Sincronizando...</div>;
+          if (!appUser) return <LoginView onLogin={handleAppLogin} />;
 
           return (
-            <div className="min-h-screen pb-12 print:bg-white print:pb-0">
-              {notification && (
-                <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center text-white print:hidden ${notification.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
-                  <CheckCircle2 className="w-5 h-5 mr-2" /> {notification.msg}
+            <div className="min-h-screen pb-12">
+              <header className="bg-white border-b px-6 py-4 sticky top-0 z-40 flex justify-between items-center shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="bg-blue-600 p-2 rounded-lg text-white"><Calculator /></div>
+                  <h1 className="text-xl font-bold">RateioRefeições</h1>
                 </div>
-              )}
-
-              <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-40 print:hidden shadow-sm">
-                <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="bg-blue-600 p-2 rounded-lg"><Calculator className="h-6 w-6 text-white" /></div>
-                    <h1 className="text-xl font-bold text-blue-800">RateioRefeições</h1>
-                  </div>
-                  
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full md:w-auto">
-                      <nav className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-lg">
-                        <button onClick={() => setActiveTab('import')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'import' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Importar CSV</button>
-                        <button onClick={() => setActiveTab('manual')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'manual' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Lançamentos Manuais</button>
-                        <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'dashboard' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Relatórios & Exportar</button>
-                        
-                        {/* Apenas administradores veem a aba de configurações */}
-                        {appUser.role === 'admin' && (
-                            <button onClick={() => setActiveTab('config')} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'config' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Configurações</button>
-                        )}
-                      </nav>
-
-                      {/* Controle de Utilizador (Header Direito) */}
-                      <div className="flex items-center border-l border-slate-200 pl-4 ml-2">
-                          <div className="flex flex-col text-right mr-3 hidden md:flex">
-                              <span className="text-sm font-bold text-slate-800 leading-tight">{appUser.email.split('@')[0]}</span>
-                              <span className="text-xs text-slate-500 font-medium">{appUser.role === 'admin' ? 'Administrador' : 'Usuário'}</span>
-                          </div>
-                          <button onClick={handleAppLogout} className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 p-2 rounded-lg transition-colors" title="Sair">
-                              <LogOut className="w-5 h-5" />
-                          </button>
-                      </div>
-                  </div>
-                </div>
+                <nav className="flex gap-2">
+                  <button onClick={() => setActiveTab('import')} className={`px-4 py-2 rounded ${activeTab === 'import' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>Importar</button>
+                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>Relatórios</button>
+                  {appUser.role === 'admin' && <button onClick={() => setActiveTab('config')} className={`px-4 py-2 rounded ${activeTab === 'config' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>Configurações</button>}
+                </nav>
+                <button onClick={handleAppLogout} className="text-red-600 p-2"><LogOut /></button>
               </header>
 
-              <main className="max-w-6xl mx-auto p-4 md:p-6 mt-2 md:mt-4 print:p-0 print:m-0 print:max-w-none">
+              <main className="max-w-6xl mx-auto p-6">
                 {activeTab === 'import' && <ImportView period={period} setPeriod={setPeriod} handleFileUpload={handleFileUpload} />}
-                {activeTab === 'manual' && <ManualChargeView employees={employees} manualCharges={manualCharges} setManualCharges={setManualCharges} showNotification={showNotification} />}
                 {activeTab === 'dashboard' && <DashboardView processedData={processedData} exportToCSV={exportToCSV} period={period} />}
-                {activeTab === 'config' && appUser.role === 'admin' && <ConfigView settings={settings} setSettings={setSettings} employees={employees} setEmployees={setEmployees} appUsers={appUsers} setAppUsers={setAppUsers} appUserRole={appUser.role} showNotification={showNotification} />}
+                {activeTab === 'config' && <ConfigView settings={settings} setSettings={setSettings} employees={employees} setEmployees={setEmployees} appUsers={appUsers} setAppUsers={setAppUsers} appUserRole={appUser.role} showNotification={showNotification} />}
               </main>
             </div>
           );
@@ -1432,7 +622,6 @@
 
         function AppLoader() {
            const [firebaseApi, setFirebaseApi] = useState(window.FirebaseAPI);
-
            useEffect(() => {
               if (!firebaseApi) {
                  const handleLoad = () => setFirebaseApi(window.FirebaseAPI);
@@ -1440,16 +629,7 @@
                  return () => window.removeEventListener('firebase-loaded', handleLoad);
               }
            }, [firebaseApi]);
-
-           if (!firebaseApi) {
-             return (
-               <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
-                 <div className="h-10 w-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-                 <p className="text-slate-500 font-medium">Iniciando o sistema...</p>
-               </div>
-             );
-           }
-
+           if (!firebaseApi) return <div className="min-h-screen flex items-center justify-center">Iniciando...</div>;
            return <RateioApp firebaseApi={firebaseApi} />;
         }
 
