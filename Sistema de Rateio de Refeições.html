@@ -16,11 +16,9 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Ocultar barra de rolagem em áreas específicas */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Regras para Impressão / PDF */
         @media print {
             body { background: white !important; }
             .print\:hidden { display: none !important; }
@@ -55,87 +53,33 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- ÍCONES INLINE ---
+        // --- ÍCONES ---
         const Icon = (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props} />;
         const Upload = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></Icon>;
-        const Users = (p) => <Icon {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
         const Calculator = (p) => <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></Icon>;
-        const FileSpreadsheet = (p) => <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></Icon>;
-        const Download = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></Icon>;
         const Search = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Icon>;
         const Plus = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
         const Trash2 = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></Icon>;
-        const Edit = (p) => <Icon {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></Icon>;
-        const AlertCircle = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>;
-        const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></Icon>;
-        const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
-        const Printer = (p) => <Icon {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></Icon>;
-        const FilePlus = (p) => <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></Icon>;
-        const ChevronDown = (p) => <Icon {...p}><polyline points="6 9 12 15 18 9"/></Icon>;
-        const Sliders = (p) => <Icon {...p}><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></Icon>;
-        const Lock = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
         const LogOut = (p) => <Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon>;
+        const Lock = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
 
-        // --- CONFIGURAÇÕES INICIAIS ---
-        const CATEGORIAS = [
-          'Fixos', 
-          'Totalmente Isentos', 
-          'Isentos por Salário', 
-          'Não Isentos', 
-          'Outras Entidades', 
-          'Rescisões'
-        ];
-
+        // --- CONFIGURAÇÕES PADRÃO ---
+        const CATEGORIAS = ['Fixos', 'Totalmente Isentos', 'Isentos por Salário', 'Não Isentos', 'Outras Entidades', 'Rescisões'];
         const basePrices = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-        const isentosPrices = { almoco: 0, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-        const totalmenteIsentosPrices = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-
         const DEFAULT_SETTINGS = {
           fixedRate: 165,
           dependentLimit: 3,
-          mealTimes: {
-            cafe: { start: '05:00', end: '10:00' },
-            almoco: { start: '10:01', end: '15:00' },
-            janta: { start: '15:01', end: '23:59' }
-          },
+          mealTimes: { cafe: { start: '05:00', end: '10:00' }, almoco: { start: '10:01', end: '15:00' }, janta: { start: '15:01', end: '23:59' } },
           categoryRules: {
-            'Totalmente Isentos': { weekday: { ...totalmenteIsentosPrices }, weekend: { ...totalmenteIsentosPrices } },
-            'Isentos por Salário': { weekday: { ...isentosPrices }, weekend: { ...isentosPrices } }, 
+            'Totalmente Isentos': { weekday: { ...basePrices, almoco: 0, outras: 0 }, weekend: { ...basePrices, almoco: 0, outras: 0 } },
+            'Isentos por Salário': { weekday: { ...basePrices, almoco: 0 }, weekend: { ...basePrices, almoco: 0 } },
             'Não Isentos': { weekday: { ...basePrices }, weekend: { ...basePrices } },
             'Outras Entidades': { weekday: { ...basePrices }, weekend: { ...basePrices } },
             'Rescisões': { weekday: { ...basePrices }, weekend: { ...basePrices } }
           }
         };
 
-        const MOCK_EMPLOYEES = [
-          { code: '4214', name: 'João Silva', category: 'Isentos por Salário' },
-          { code: '1001', name: 'Maria Souza', category: 'Fixos' }
-        ];
-
-        // --- FUNÇÕES UTILITÁRIAS ---
-        const getMealType = (timeStr, mealTimes) => {
-          if (!timeStr) return 'almoco';
-          const t = timeStr.trim();
-          if (t >= mealTimes.cafe.start && t <= mealTimes.cafe.end) return 'cafe';
-          if (t >= mealTimes.almoco.start && t <= mealTimes.almoco.end) return 'almoco';
-          if (t >= mealTimes.janta.start && t <= mealTimes.janta.end) return 'janta';
-          return 'almoco'; 
-        };
-
-        const isWeekend = (dateStr, mealType) => {
-          if (!dateStr) return false;
-          const parts = dateStr.split('/');
-          if (parts.length !== 3) return false;
-          const [day, month, year] = parts;
-          const date = new Date(year, month - 1, day);
-          const dayOfWeek = date.getDay();
-          if (dayOfWeek === 0 || dayOfWeek === 6) return true;
-          if (dayOfWeek === 5 && mealType === 'janta') return true;
-          return false;
-        };
-
-        // --- COMPONENTES ---
-
+        // --- COMPONENTE LOGIN ---
         const LoginView = ({ onLogin }) => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
@@ -151,25 +95,19 @@
                 <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
                     <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-slate-200 p-8">
                         <div className="flex flex-col items-center mb-8">
-                            <div className="bg-blue-600 p-3 rounded-xl mb-4">
-                                <Calculator className="h-8 w-8 text-white" />
-                            </div>
+                            <div className="bg-blue-600 p-3 rounded-xl mb-4"><Calculator className="h-8 w-8 text-white" /></div>
                             <h1 className="text-2xl font-bold text-slate-800">RateioRefeições</h1>
                             <p className="text-sm text-slate-500 mt-1">Faça login para continuar</p>
                         </div>
-                        {error && (
-                            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-6 flex items-center">
-                                <AlertCircle className="w-4 h-4 mr-2" /> {error}
-                            </div>
-                        )}
+                        {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-6 flex items-center">{error}</div>}
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Login</label>
-                                <input type="text" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow" placeholder="seu.email@exemplo.com" />
+                                <input type="text" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="seu.email@adventistas.org" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
-                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow" placeholder="••••••••" />
+                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••" />
                             </div>
                             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center">
                                 <Lock className="w-4 h-4 mr-2" /> Entrar
@@ -180,216 +118,7 @@
             );
         };
 
-        const ImportView = ({ period, setPeriod, handleFileUpload }) => (
-          <div className="max-w-3xl mx-auto mt-8 bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center">
-              <Upload className="mr-3 text-blue-600 w-6 h-6" /> Importar Relatório de Refeições
-            </h2>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Período de Apuração (MM/AAAA)</label>
-              <input type="text" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: 04/2026" />
-            </div>
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors">
-              <FileSpreadsheet className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <p className="text-sm text-slate-600 mb-4">Selecione o arquivo CSV do relógio no formato: <br/><strong>Código; Data e Hora; Nome</strong></p>
-              <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium inline-block transition-colors">
-                Selecionar Arquivo CSV
-                <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-              </label>
-            </div>
-          </div>
-        );
-
-        const DashboardView = ({ processedData, exportToCSV, period }) => {
-          const [selectedCategory, setSelectedCategory] = useState('Todas');
-          const [dashSearch, setDashSearch] = useState('');
-
-          const filteredData = useMemo(() => {
-            let data = processedData;
-            if (selectedCategory !== 'Todas') data = data.filter(emp => emp.category === selectedCategory);
-            if (dashSearch) {
-              const lower = dashSearch.toLowerCase();
-              data = data.filter(emp => emp.name.toLowerCase().includes(lower) || emp.code.includes(lower));
-            }
-            return data;
-          }, [processedData, selectedCategory, dashSearch]);
-
-          const totalValue = processedData.reduce((acc, emp) => acc + emp.totalValue, 0);
-
-          return (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 md:col-span-2">
-                  <p className="text-sm font-medium text-slate-500 mb-1">Total a ser Rateado</p>
-                  <h3 className="text-3xl font-bold text-slate-800">R$ {totalValue.toFixed(2).replace('.', ',')}</h3>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-2">
-                  <button onClick={exportToCSV} className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-medium text-sm">
-                    <Download className="mr-2 h-4 w-4" /> Exportar CSV
-                  </button>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-2">
-                  <button onClick={() => window.print()} className="w-full flex items-center justify-center bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg font-medium text-sm">
-                    <Printer className="mr-2 h-4 w-4" /> Salvar PDF
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="border-b border-slate-200 bg-slate-50 p-4 print:hidden flex flex-col md:flex-row justify-between items-center gap-4">
-                  <div className="flex p-1 gap-1 overflow-x-auto bg-slate-200/50 rounded-lg w-full md:w-auto scrollbar-hide">
-                    <button onClick={() => setSelectedCategory('Todas')} className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${selectedCategory === 'Todas' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Visão Geral</button>
-                    {CATEGORIAS.map(cat => (
-                      <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${selectedCategory === cat ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>{cat}</button>
-                    ))}
-                  </div>
-                  <div className="relative w-full md:w-64">
-                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                    <input type="text" placeholder="Filtrar resultados..." value={dashSearch} onChange={e => setDashSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
-                  </div>
-                </div>
-
-                <div className="p-0 md:p-6">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b-2 border-slate-200 text-sm text-slate-600">
-                          <th className="py-3 px-4 font-semibold">Cód.</th>
-                          <th className="py-3 px-4 font-semibold">Funcionário</th>
-                          <th className="py-3 px-4 font-semibold">Categoria</th>
-                          <th className="py-3 px-4 font-semibold text-right">Valor Final (R$)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredData.map((emp, idx) => (
-                          <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="py-3 px-4 font-medium">{emp.code}</td>
-                            <td className="py-3 px-4">{emp.name}</td>
-                            <td className="py-3 px-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs">{emp.category}</span></td>
-                            <td className="py-3 px-4 text-right font-bold">{emp.totalValue.toFixed(2).replace('.', ',')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        };
-
-        const ManualChargeView = ({ employees, manualCharges, setManualCharges, showNotification }) => {
-          const [newCharge, setNewCharge] = useState({ code: '', date: '', amount: '', reason: '' });
-          const [searchTerm, setSearchTerm] = useState('');
-          const [showDropdown, setShowDropdown] = useState(false);
-
-          const handleAddCharge = () => {
-            if (!newCharge.code || !newCharge.amount) return showNotification("Selecione um funcionário e digite um valor", "error");
-            const emp = employees.find(e => e.code === newCharge.code);
-            setManualCharges([...manualCharges, { 
-              id: Date.now(), ...newCharge, 
-              name: emp ? emp.name : 'Desconhecido',
-              amount: Number(newCharge.amount) 
-            }]);
-            setNewCharge({ code: '', date: '', amount: '', reason: '' });
-            setSearchTerm('');
-            showNotification("Cobrança manual adicionada com sucesso!");
-          };
-
-          const filteredEmployees = employees.filter(e => `${e.code} ${e.name}`.toLowerCase().includes(searchTerm.toLowerCase()));
-
-          return (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center"><FilePlus className="mr-2 text-blue-600 w-6 h-6" /> Adicionar Cobrança Manual</h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div className="md:col-span-2 relative">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Funcionário</label>
-                    <input type="text" placeholder="Busque por nome ou código..." value={searchTerm} onFocus={() => setShowDropdown(true)} onChange={e => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                    {showDropdown && (
-                      <ul className="absolute z-10 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
-                        {filteredEmployees.map(e => (
-                          <li key={e.code} className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm" onClick={() => { setSearchTerm(`${e.code} - ${e.name}`); setNewCharge({...newCharge, code: e.code}); setShowDropdown(false); }}>
-                            <strong>{e.code}</strong> - {e.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Valor (R$)</label>
-                    <input type="number" placeholder="Ex: 50.00" value={newCharge.amount} onChange={e => setNewCharge({...newCharge, amount: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
-                    <input type="date" value={newCharge.date} onChange={e => setNewCharge({...newCharge, date: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                  </div>
-                </div>
-                <button onClick={handleAddCharge} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">Adicionar ao Rateio</button>
-              </div>
-            </div>
-          );
-        };
-
-        const ConfigView = ({ settings, setSettings, employees, setEmployees, appUsers, setAppUsers, appUserRole, showNotification }) => {
-          const [configTab, setConfigTab] = useState('regras');
-          const [newAppUser, setNewAppUser] = useState({ email: '', password: '', role: 'user' });
-
-          const handleSaveAppUser = () => {
-             if (!newAppUser.email || !newAppUser.password) return showNotification("Preencha login e senha", "error");
-             if (appUsers.find(u => u.email === newAppUser.email)) return showNotification("Esse login já existe", "error");
-             setAppUsers([...appUsers, { id: Date.now(), ...newAppUser }]);
-             setNewAppUser({ email: '', password: '', role: 'user' });
-             showNotification("Acesso criado com sucesso!");
-          };
-
-          return (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col xl:flex-row min-h-[600px]">
-              <div className="w-full xl:w-64 border-r border-slate-200 bg-slate-50 p-4 shrink-0">
-                <nav className="space-y-1 flex flex-row xl:flex-col overflow-x-auto xl:overflow-visible scrollbar-hide">
-                  <button onClick={() => setConfigTab('regras')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'regras' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Regras</button>
-                  <button onClick={() => setConfigTab('logins')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'logins' ? 'bg-blue-100 text-blue-700' : 'text-slate-600'}`}>Logins</button>
-                </nav>
-              </div>
-              <div className="flex-1 p-8">
-                {configTab === 'logins' && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4">Gestão de Acessos</h2>
-                    <div className="flex gap-2 mb-6">
-                      <input type="text" placeholder="Email" value={newAppUser.email} onChange={e => setNewAppUser({...newAppUser, email: e.target.value})} className="border p-2 rounded flex-1" />
-                      <input type="password" placeholder="Senha" value={newAppUser.password} onChange={e => setNewAppUser({...newAppUser, password: e.target.value})} className="border p-2 rounded w-32" />
-                      <button onClick={handleSaveAppUser} className="bg-blue-600 text-white px-4 py-2 rounded">Criar</button>
-                    </div>
-                    <table className="w-full text-sm">
-                      <thead><tr className="border-b"><th>Login</th><th>Nível</th></tr></thead>
-                      <tbody>
-                        {appUsers.map(u => (
-                          <tr key={u.id} className="border-b"><td className="py-2">{u.email}</td><td>{u.role}</td></tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {configTab === 'regras' && (
-                  <div>
-                    <h2 className="text-xl font-bold mb-4">Configurações Gerais</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm mb-1">Taxa Fixos</label>
-                        <input type="number" value={settings.fixedRate} onChange={e => setSettings({...settings, fixedRate: Number(e.target.value)})} className="border w-full p-2 rounded" />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Cota Dependentes</label>
-                        <input type="number" value={settings.dependentLimit} onChange={e => setSettings({...settings, dependentLimit: Number(e.target.value)})} className="border w-full p-2 rounded" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        };
-
+        // --- COMPONENTE PRINCIPAL APP ---
         function RateioApp({ firebaseApi }) {
           const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, collection } = firebaseApi;
 
@@ -416,15 +145,15 @@
           const [appUser, setAppUser] = useState(null);
           
           const [appUsers, setAppUsers] = useState([{ id: 1, email: 'nicholas.ganhadeiro@adventistas.org', password: 'Fap1624', role: 'admin' }]);
-          const [activeTab, setActiveTab] = useState('import');
           const [settings, setSettings] = useState(DEFAULT_SETTINGS);
           const [employees, setEmployees] = useState(MOCK_EMPLOYEES);
           const [period, setPeriod] = useState('04/2026');
           const [rawScans, setRawScans] = useState([]);
-          const [manualCharges, setManualCharges] = useState([]); 
-          const [processedData, setProcessedData] = useState([]);
+          const [manualCharges, setManualCharges] = useState([]);
+          const [activeTab, setActiveTab] = useState('import');
           const [notification, setNotification] = useState(null);
 
+          // 1. Auth Inicial
           useEffect(() => {
               const initAuth = async () => {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -438,34 +167,32 @@
               return () => unsubscribe();
           }, [auth]);
 
+          // 2. Carregar Dados do Firestore (Caminhos Corrigidos - Segmentos Pares)
           useEffect(() => {
               if (!user) return;
               const loadData = async () => {
                 try {
-                  // Caminhos corrigidos com IDs de documento específicos para evitar erros de segmentos
-                  const appUsersSnap = await getDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appUsers', 'main'));
-                  if (appUsersSnap.exists()) setAppUsers(appUsersSnap.data().list);
+                  const appId = envAppId;
+                  
+                  // Coleções e Documentos de configuração compartilhado
+                  const usersSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'appUsers', 'main'));
+                  if (usersSnap.exists()) setAppUsers(usersSnap.data().list || []);
 
-                  const settingsSnap = await getDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'settings', 'main'));
-                  if (settingsSnap.exists()) {
-                      const saved = settingsSnap.data();
-                      if (saved.categoryRules && !saved.categoryRules['Totalmente Isentos']) {
-                          saved.categoryRules['Totalmente Isentos'] = DEFAULT_SETTINGS.categoryRules['Totalmente Isentos'];
-                      }
-                      setSettings(saved);
-                  }
+                  const settingsSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'main'));
+                  if (settingsSnap.exists()) setSettings(settingsSnap.data());
 
-                  const empSnap = await getDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'employees', 'main'));
-                  if (empSnap.exists()) setEmployees(empSnap.data().list);
+                  const empSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', 'main'));
+                  if (empSnap.exists()) setEmployees(empSnap.data().list || []);
 
-                  const stateSnap = await getDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'state', 'current'));
+                  // Estado privado da sessão
+                  const stateSnap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'current'));
                   if (stateSnap.exists()) {
                      setPeriod(stateSnap.data().period || '04/2026');
                      setManualCharges(stateSnap.data().manualCharges || []);
                      setRawScans(stateSnap.data().rawScans || []);
                   }
-                } catch (error) {
-                  console.error("Erro ao carregar dados do Firebase:", error);
+                } catch (e) {
+                  console.error("Erro no Firebase:", e);
                 } finally {
                   setDataLoaded(true);
                 }
@@ -473,153 +200,234 @@
               loadData();
           }, [user, db, envAppId]);
 
-          // Persistência com caminhos corrigidos
+          // 3. Salvamento Automático
           useEffect(() => {
               if (!user || !dataLoaded) return;
+              const appId = envAppId;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appUsers', 'main'), { list: appUsers });
-              }, 500);
+                  setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'appUsers', 'main'), { list: appUsers });
+                  setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'main'), settings);
+                  setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'employees', 'main'), { list: employees });
+                  setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'current'), { period, manualCharges, rawScans });
+              }, 800);
               return () => clearTimeout(timer);
-          }, [appUsers, user, dataLoaded, db, envAppId]);
+          }, [appUsers, settings, employees, period, manualCharges, rawScans, user, dataLoaded]);
 
-          useEffect(() => {
-              if (!user || !dataLoaded) return;
-              const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'settings', 'main'), settings);
-              }, 500);
-              return () => clearTimeout(timer);
-          }, [settings, user, dataLoaded, db, envAppId]);
-
-          useEffect(() => {
-              if (!user || !dataLoaded) return;
-              const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'employees', 'main'), { list: employees });
-              }, 500);
-              return () => clearTimeout(timer);
-          }, [employees, user, dataLoaded, db, envAppId]);
-
-          useEffect(() => {
-              if (!user || !dataLoaded) return;
-              const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'state', 'current'), { period, manualCharges, rawScans });
-              }, 500);
-              return () => clearTimeout(timer);
-          }, [period, manualCharges, rawScans, user, dataLoaded, db, envAppId]);
-
-          const handleAppLogin = (email, password) => {
-              const foundUser = appUsers.find(u => u.email === email && u.password === password);
-              if (foundUser) { setAppUser(foundUser); return true; }
-              return false;
-          };
-
-          const handleAppLogout = () => { setAppUser(null); setActiveTab('import'); };
-
-          const processScans = (scans, empList, currentSettings, manuals) => {
+          // --- LÓGICA DE CÁLCULO ---
+          const processedData = useMemo(() => {
             const empMap = {};
-            empList.forEach(emp => {
-              empMap[emp.code] = { ...emp, totalValue: 0, records: [] };
-              if (emp.category === 'Fixos') empMap[emp.code].totalValue = currentSettings.fixedRate;
+            employees.forEach(e => {
+              empMap[e.code] = { ...e, totalValue: e.category === 'Fixos' ? settings.fixedRate : 0, records: [] };
             });
 
-            scans.forEach(scan => {
-              const isDependent = scan.fullCode.includes('-');
-              const baseCode = isDependent ? scan.fullCode.split('-')[0] : scan.fullCode;
+            rawScans.forEach(scan => {
+              const isDep = scan.fullCode.includes('-');
+              const baseCode = isDep ? scan.fullCode.split('-')[0] : scan.fullCode;
               if (!empMap[baseCode]) empMap[baseCode] = { code: baseCode, name: scan.name || 'Desconhecido', category: 'Não Isentos', totalValue: 0, records: [] };
               
               const emp = empMap[baseCode];
-              if (emp.category === 'Fixos' || emp.category === 'Totalmente Isentos') return;
-              
+              if (emp.category === 'Fixos') return;
+
               const [dateStr, timeStr] = scan.dateTime.split(' ');
-              const mealType = getMealType(timeStr, currentSettings.mealTimes);
+              const t = timeStr || '12:00';
+              let mealType = 'almoco';
+              if (t >= settings.mealTimes.cafe.start && t <= settings.mealTimes.cafe.end) mealType = 'cafe';
+              else if (t >= settings.mealTimes.janta.start && t <= settings.mealTimes.janta.end) mealType = 'janta';
+
               const dayType = isWeekend(dateStr, mealType) ? 'weekend' : 'weekday';
-              const rules = currentSettings.categoryRules[emp.category]?.[dayType] || basePrices;
+              const rules = settings.categoryRules[emp.category]?.[dayType] || basePrices;
 
               let charge = 0;
-              if (isDependent) {
+              let reason = '';
+
+              if (isDep) {
                 const parts = scan.fullCode.split('-');
-                const seq = parseInt(parts[1]) || 1;
-                const limit = currentSettings.dependentLimit || 3;
-                charge = seq > limit ? rules.depIntAlmoco : rules.depMeiaAlmoco;
+                let seq = 1;
+                let type = null;
+                if (parts.length === 3) { seq = parseInt(parts[1]); type = parseInt(parts[2]); }
+                else if (parts.length === 2) { 
+                    const s = parts[1]; 
+                    if (s.length >= 2) { seq = parseInt(s.substring(0, s.length-1)); type = parseInt(s.substring(s.length-1)); }
+                    else { seq = parseInt(s); }
+                }
+
+                if (seq > settings.dependentLimit) {
+                    charge = mealType === 'almoco' ? rules.depIntAlmoco : rules.depIntOutras;
+                    reason = `Dep. Inteira (Acima da Cota)`;
+                } else {
+                    const finalType = type !== null ? type : 1;
+                    if (finalType === 0) charge = 0;
+                    else if (finalType === 1) charge = mealType === 'almoco' ? rules.depMeiaAlmoco : rules.depMeiaOutras;
+                    else charge = mealType === 'almoco' ? rules.depIntAlmoco : rules.depIntOutras;
+                    reason = `Dep. ${finalType === 0 ? 'Isento' : finalType === 1 ? 'Meia' : 'Inteira'}`;
+                }
               } else {
                 charge = mealType === 'almoco' ? rules.almoco : rules.outras;
+                reason = mealType === 'almoco' ? 'Almoço' : 'Outra Ref.';
               }
+
               emp.totalValue += charge;
+              emp.records.push({ ...scan, charge, reason: `${reason} (${mealType})` });
             });
 
-            manuals.forEach(mc => {
-              if (empMap[mc.code]) empMap[mc.code].totalValue += Number(mc.amount);
-            });
-
-            return Object.values(empMap);
-          };
-
-          useEffect(() => {
-            if (dataLoaded) setProcessedData(processScans(rawScans, employees, settings, manualCharges));
-          }, [rawScans, settings, employees, manualCharges, dataLoaded]);
-
-          const handleFileUpload = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const lines = event.target.result.split('\n');
-              const parsed = [];
-              for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].trim().split(';');
-                if (parts.length >= 2) parsed.push({ fullCode: parts[0].trim(), dateTime: parts[1].trim(), name: parts[2] ? parts[2].trim() : '' });
+            manualCharges.forEach(mc => {
+              if (empMap[mc.code]) {
+                empMap[mc.code].totalValue += Number(mc.amount);
+                empMap[mc.code].records.push({ dateTime: mc.date || 'Manual', charge: Number(mc.amount), reason: `Manual: ${mc.reason || ''}` });
               }
-              setRawScans(parsed);
-              showNotification(`Sucesso! ${parsed.length} registros processados.`);
-              setActiveTab('dashboard');
-            };
-            reader.readAsText(file);
-          };
-
-          const exportToCSV = () => {
-            const rows = [['Conta', 'Subconta', 'Valor', 'Finalidade']];
-            processedData.forEach(emp => {
-              if (emp.totalValue > 0) rows.push(['1135001', emp.code, (emp.totalValue * 100).toFixed(0), `Refeições ${period}`]);
             });
-            const content = rows.map(r => r.join(';')).join('\n');
-            const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `Rateio_${period.replace('/', '_')}.csv`;
-            link.click();
+
+            return Object.values(empMap).filter(e => e.totalValue > 0 || e.category === 'Fixos');
+          }, [rawScans, employees, settings, manualCharges]);
+
+          const handleAppLogin = (email, password) => {
+            const found = appUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+            if (found) { setAppUser(found); return true; }
+            return false;
           };
 
-          const showNotification = (msg, type = 'success') => {
-            setNotification({ msg, type });
-            setTimeout(() => setNotification(null), 4000);
-          };
-
-          if (!dataLoaded) return <div className="min-h-screen flex items-center justify-center">Sincronizando...</div>;
+          if (!dataLoaded) return <div className="min-h-screen flex items-center justify-center font-bold text-blue-600">Sincronizando Sistema...</div>;
           if (!appUser) return <LoginView onLogin={handleAppLogin} />;
 
           return (
-            <div className="min-h-screen pb-12">
-              <header className="bg-white border-b px-6 py-4 sticky top-0 z-40 flex justify-between items-center shadow-sm">
-                <div className="flex items-center space-x-2">
-                  <div className="bg-blue-600 p-2 rounded-lg text-white"><Calculator /></div>
-                  <h1 className="text-xl font-bold">RateioRefeições</h1>
+            <div className="min-h-screen flex flex-col">
+              <header className="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+                <div className="flex items-center gap-2">
+                  <div className="bg-blue-600 p-2 rounded text-white"><Calculator /></div>
+                  <h1 className="font-bold text-xl">RateioRefeições</h1>
                 </div>
-                <nav className="flex gap-2">
-                  <button onClick={() => setActiveTab('import')} className={`px-4 py-2 rounded ${activeTab === 'import' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>Importar</button>
-                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>Relatórios</button>
-                  {appUser.role === 'admin' && <button onClick={() => setActiveTab('config')} className={`px-4 py-2 rounded ${activeTab === 'config' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>Configurações</button>}
+                <nav className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                  <button onClick={() => setActiveTab('import')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'import' ? 'bg-white shadow text-blue-600' : 'text-slate-600'}`}>Importar</button>
+                  <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'dashboard' ? 'bg-white shadow text-blue-600' : 'text-slate-600'}`}>Relatórios</button>
+                  {appUser.role === 'admin' && <button onClick={() => setActiveTab('config')} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'config' ? 'bg-white shadow text-blue-600' : 'text-slate-600'}`}>Ajustes</button>}
                 </nav>
-                <button onClick={handleAppLogout} className="text-red-600 p-2"><LogOut /></button>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-bold text-slate-500 hidden md:block">{appUser.email}</span>
+                  <button onClick={() => setAppUser(null)} className="text-red-500 p-2 hover:bg-red-50 rounded"><LogOut /></button>
+                </div>
               </header>
 
-              <main className="max-w-6xl mx-auto p-6">
-                {activeTab === 'import' && <ImportView period={period} setPeriod={setPeriod} handleFileUpload={handleFileUpload} />}
-                {activeTab === 'dashboard' && <DashboardView processedData={processedData} exportToCSV={exportToCSV} period={period} />}
-                {activeTab === 'config' && <ConfigView settings={settings} setSettings={setSettings} employees={employees} setEmployees={setEmployees} appUsers={appUsers} setAppUsers={setAppUsers} appUserRole={appUser.role} showNotification={showNotification} />}
+              <main className="flex-1 max-w-6xl w-full mx-auto p-6">
+                {activeTab === 'import' && (
+                  <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-blue-500 mb-4" />
+                    <h2 className="text-xl font-bold mb-4">Importar Marcações</h2>
+                    <input type="file" accept=".csv" onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const lines = ev.target.result.split('\n');
+                        const parsed = [];
+                        for(let i=1; i<lines.length; i++) {
+                          const p = lines[i].trim().split(';');
+                          if(p.length >= 2) parsed.push({ fullCode: p[0].trim(), dateTime: p[1].trim(), name: p[2] || '' });
+                        }
+                        setRawScans(parsed);
+                        setActiveTab('dashboard');
+                      };
+                      reader.readAsText(file);
+                    }} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                  </div>
+                )}
+
+                {activeTab === 'dashboard' && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <p className="text-xs font-bold text-slate-400 uppercase">Total do Período</p>
+                        <p className="text-3xl font-black text-slate-800">R$ {processedData.reduce((a, b) => a + b.totalValue, 0).toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <p className="text-xs font-bold text-slate-400 uppercase">Funcionários Ativos</p>
+                        <p className="text-3xl font-black text-slate-800">{processedData.length}</p>
+                      </div>
+                      <button onClick={() => {
+                        const rows = [['Conta', 'Subconta', 'Valor', 'Finalidade']];
+                        processedData.forEach(e => rows.push(['1135001', e.code, (e.totalValue * 100).toFixed(0), `Refeições ${period}`]));
+                        const blob = new Blob(['\uFEFF' + rows.map(r => r.join(';')).join('\n')], { type: 'text/csv;charset=utf-8' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `Rateio_${period.replace('/', '_')}.csv`;
+                        link.click();
+                      }} className="bg-green-600 text-white font-bold rounded-xl flex flex-col items-center justify-center hover:bg-green-700 transition-colors">
+                        <Upload className="mb-1 rotate-180" /> Exportar CSV Contábil
+                      </button>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                          <tr>
+                            <th className="px-6 py-4 font-bold">Cód.</th>
+                            <th className="px-6 py-4 font-bold">Nome</th>
+                            <th className="px-6 py-4 font-bold">Categoria</th>
+                            <th className="px-6 py-4 font-bold text-right">Valor Final (R$)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {processedData.map((emp, i) => (
+                            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4 font-medium text-slate-600">{emp.code}</td>
+                              <td className="px-6 py-4 font-bold text-slate-800">{emp.name}</td>
+                              <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase text-slate-500">{emp.category}</span></td>
+                              <td className="px-6 py-4 text-right font-black text-blue-600">R$ {emp.totalValue.toFixed(2).replace('.', ',')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'config' && (
+                  <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 space-y-8">
+                    <section>
+                      <h2 className="text-xl font-bold mb-4 border-b pb-2">Regras de Negócio</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Cota Máxima de Dependentes</label>
+                          <input type="number" value={settings.dependentLimit} onChange={e => setSettings({...settings, dependentLimit: Number(e.target.value)})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" />
+                          <p className="text-xs text-slate-400 mt-1">Dependentes excedentes são cobrados como Inteira automaticamente.</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Mensalidade (Fixos)</label>
+                          <input type="number" value={settings.fixedRate} onChange={e => setSettings({...settings, fixedRate: Number(e.target.value)})} className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                    </section>
+
+                    <section>
+                      <h2 className="text-xl font-bold mb-4 border-b pb-2">Gestão de Acessos</h2>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <input id="newLogin" placeholder="Novo Login (Email)" className="flex-1 border p-2 rounded-lg" />
+                        <input id="newPass" placeholder="Senha" className="w-32 border p-2 rounded-lg" />
+                        <button onClick={() => {
+                          const email = document.getElementById('newLogin').value;
+                          const pass = document.getElementById('newPass').value;
+                          if(!email || !pass) return;
+                          setAppUsers([...appUsers, { id: Date.now(), email, password: pass, role: 'user' }]);
+                          document.getElementById('newLogin').value = '';
+                          document.getElementById('newPass').value = '';
+                        }} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">Criar Conta</button>
+                      </div>
+                      <div className="border rounded-lg overflow-hidden">
+                        {appUsers.map((u, i) => (
+                          <div key={i} className="flex justify-between items-center p-3 border-b last:border-0 hover:bg-slate-50">
+                            <div><p className="font-bold text-sm">{u.email}</p><p className="text-[10px] text-slate-400 uppercase">{u.role}</p></div>
+                            {u.id !== 1 && <button onClick={() => setAppUsers(appUsers.filter(x => x.id !== u.id))} className="text-red-400 p-2"><Trash2 size={16}/></button>}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                )}
               </main>
             </div>
           );
         }
 
+        // --- CARREGADOR PRINCIPAL ---
         function AppLoader() {
            const [firebaseApi, setFirebaseApi] = useState(window.FirebaseAPI);
            useEffect(() => {
@@ -629,9 +437,12 @@
                  return () => window.removeEventListener('firebase-loaded', handleLoad);
               }
            }, [firebaseApi]);
-           if (!firebaseApi) return <div className="min-h-screen flex items-center justify-center">Iniciando...</div>;
+           if (!firebaseApi) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-400">Iniciando Firebase...</div>;
            return <RateioApp firebaseApi={firebaseApi} />;
         }
+
+        const isWeekend = (d, m) => { if(!d) return false; const [day, month, year] = d.split('/'); const date = new Date(year, month-1, day); const dow = date.getDay(); return dow===0 || dow===6 || (dow===5 && m==='janta'); };
+        const MOCK_EMPLOYEES = [{ code: '1001', name: 'Nicholas Ganhadeiro', category: 'Fixos' }];
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<AppLoader />);
