@@ -1038,7 +1038,16 @@
                   if (appUsersSnap.exists()) setAppUsers(appUsersSnap.data().list);
 
                   const settingsSnap = await getDoc(doc(usersRef, 'settings'));
-                  if (settingsSnap.exists()) setSettings(settingsSnap.data());
+                  if (settingsSnap.exists()) {
+                      const savedSettings = settingsSnap.data();
+                      // Garantir que a nova categoria existe, mesmo se as configurações antigas forem carregadas do banco de dados
+                      if (savedSettings.categoryRules && !savedSettings.categoryRules['Totalmente Isentos']) {
+                          savedSettings.categoryRules['Totalmente Isentos'] = DEFAULT_SETTINGS.categoryRules['Totalmente Isentos'];
+                      }
+                      setSettings(savedSettings);
+                  } else {
+                      setSettings(DEFAULT_SETTINGS);
+                  }
 
                   const empSnap = await getDoc(doc(usersRef, 'employees'));
                   if (empSnap.exists()) setEmployees(empSnap.data().list);
