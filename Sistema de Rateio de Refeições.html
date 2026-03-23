@@ -89,6 +89,7 @@
 
         const basePrices = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
         const isentosPrices = { almoco: 0, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
+        const totalmenteIsentosPrices = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
 
         const DEFAULT_SETTINGS = {
           fixedRate: 165,
@@ -99,6 +100,7 @@
             janta: { start: '15:01', end: '23:59' }
           },
           categoryRules: {
+            'Totalmente Isentos': { weekday: { ...totalmenteIsentosPrices }, weekend: { ...totalmenteIsentosPrices } },
             'Isentos por Salário': { weekday: { ...isentosPrices }, weekend: { ...isentosPrices } }, 
             'Não Isentos': { weekday: { ...basePrices }, weekend: { ...basePrices } },
             'Outras Entidades': { weekday: { ...basePrices }, weekend: { ...basePrices } },
@@ -1162,11 +1164,18 @@
               if (emp.category === 'Fixos') {
                 charge = 0;
                 reason = 'Taxa Fixa Mensal já aplicada';
-              } else if (emp.category === 'Totalmente Isentos') {
-                charge = 0;
-                reason = 'Isenção Total';
               } else {
-                const baseRules = currentSettings.categoryRules[emp.category] || {};
+                let baseRules = currentSettings.categoryRules[emp.category];
+                if (!baseRules) {
+                    // Fallback de segurança para usuários antigos que não tem essa categoria salva no banco de dados ainda
+                    const fallbackTotIsento = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
+                    const fallbackBase = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
+                    if (emp.category === 'Totalmente Isentos') {
+                        baseRules = { weekday: fallbackTotIsento, weekend: fallbackTotIsento };
+                    } else {
+                        baseRules = { weekday: fallbackBase, weekend: fallbackBase };
+                    }
+                }
                 const rules = baseRules[dayType] || baseRules;
 
                 if (isDependent) {
@@ -1220,7 +1229,7 @@
                     reason = `Almoço (${dayLabel})` + (charge === 0 ? ' - Isento' : '');
                   } else {
                     charge = rules.outras ?? 35;
-                    reason = `Outras Refeições (${mealType.toUpperCase()} - ${dayLabel})`;
+                    reason = `Outras Refeições (${mealType.toUpperCase()} - ${dayLabel})` + (charge === 0 ? ' - Isento' : '');
                   }
                 }
               }
