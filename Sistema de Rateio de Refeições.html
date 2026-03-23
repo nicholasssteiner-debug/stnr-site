@@ -158,7 +158,7 @@
             const handleSubmit = (e) => {
                 e.preventDefault();
                 const success = onLogin(email, password);
-                if (!success) setError('Usuário ou senha incorretos.');
+                if (!success) setError('Utilizador ou palavra-passe incorretos.');
             };
 
             return (
@@ -169,7 +169,7 @@
                                 <Calculator className="h-8 w-8 text-white" />
                             </div>
                             <h1 className="text-2xl font-bold text-slate-800">RateioRefeições</h1>
-                            <p className="text-sm text-slate-500 mt-1">Faça login para continuar</p>
+                            <p className="text-sm text-slate-500 mt-1">Inicie sessão para continuar</p>
                         </div>
 
                         {error && (
@@ -191,7 +191,7 @@
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Palavra-passe</label>
                                 <input 
                                     type="password" 
                                     required
@@ -224,9 +224,9 @@
             </div>
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors">
               <FileSpreadsheet className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <p className="text-sm text-slate-600 mb-4">Selecione o arquivo CSV do relógio no formato: <br/><strong>Código; Data e Hora; Nome</strong></p>
+              <p className="text-sm text-slate-600 mb-4">Selecione o ficheiro CSV do relógio no formato: <br/><strong>Código; Data e Hora; Nome</strong></p>
               <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium inline-block transition-colors">
-                Selecionar Arquivo CSV
+                Selecionar Ficheiro CSV
                 <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
               </label>
             </div>
@@ -254,7 +254,7 @@
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 md:col-span-2">
                   <p className="text-sm font-medium text-slate-500 mb-1">Total a ser Rateado</p>
-                  <h3 className="text-3xl font-bold text-slate-800">R$ {totalValue.toFixed(2).replace('.', ',')}</h3>
+                  <h3 className="text-3xl font-bold text-slate-800">€ {totalValue.toFixed(2).replace('.', ',')}</h3>
                 </div>
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-2">
                   <button onClick={exportToCSV} className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-medium text-sm">
@@ -263,7 +263,7 @@
                 </div>
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center gap-2">
                   <button onClick={() => window.print()} className="w-full flex items-center justify-center bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg font-medium text-sm">
-                    <Printer className="mr-2 h-4 w-4" /> Salvar PDF
+                    <Printer className="mr-2 h-4 w-4" /> Guardar PDF
                   </button>
                 </div>
               </div>
@@ -271,7 +271,7 @@
               <div className="hidden print:block mb-6">
                 <h2 className="text-2xl font-bold">Relatório de Rateio de Refeições</h2>
                 <p className="text-gray-600">Período de Apuração: {period}</p>
-                <p className="text-gray-600">Total Calculado: R$ {totalValue.toFixed(2).replace('.', ',')}</p>
+                <p className="text-gray-600">Total Calculado: € {totalValue.toFixed(2).replace('.', ',')}</p>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
@@ -284,7 +284,7 @@
                   </div>
                   <div className="relative w-full md:w-64">
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                    <input type="text" placeholder="Filtrar resultado..." value={dashSearch} onChange={e => setDashSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
+                    <input type="text" placeholder="Filtrar resultados..." value={dashSearch} onChange={e => setDashSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" />
                   </div>
                 </div>
 
@@ -302,8 +302,8 @@
                             <th className="py-3 px-4 font-semibold">Cód.</th>
                             <th className="py-3 px-4 font-semibold">Funcionário</th>
                             <th className="py-3 px-4 font-semibold">Categoria</th>
-                            <th className="py-3 px-4 font-semibold text-center">Detalhamento</th>
-                            <th className="py-3 px-4 font-semibold text-right">Valor Final (R$)</th>
+                            <th className="py-3 px-4 font-semibold text-center">Detalhes</th>
+                            <th className="py-3 px-4 font-semibold text-right">Valor Final (€)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -320,7 +320,7 @@
                                   <ul className="list-disc pl-4">
                                     {emp.records.map((r, i) => {
                                       const timeOrDate = r.mealType === 'Manual' ? r.dateTime.split(' ')[0] : r.dateTime;
-                                      return <li key={i}>{timeOrDate} - {r.reason} (R$ {r.charge.toFixed(2)})</li>
+                                      return <li key={i}>{timeOrDate} - {r.reason} (€ {r.charge.toFixed(2)})</li>
                                     })}
                                   </ul>
                                 )}
@@ -353,7 +353,7 @@
           }, []);
 
           const handleAddCharge = () => {
-            if (!newCharge.code || !newCharge.amount) return showNotification("Selecione um funcionário e digite um valor", "error");
+            if (!newCharge.code || !newCharge.amount) return showNotification("Selecione um funcionário e introduza um valor", "error");
             const emp = employees.find(e => e.code === newCharge.code);
             setManualCharges([...manualCharges, { 
               id: Date.now(), ...newCharge, 
@@ -382,7 +382,7 @@
                     <div className="relative">
                       <input 
                         type="text"
-                        placeholder="Busque por nome ou código..."
+                        placeholder="Procure por nome ou código..."
                         value={searchTerm}
                         onChange={e => {
                           setSearchTerm(e.target.value);
@@ -416,7 +416,7 @@
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Valor (R$)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Valor (€)</label>
                     <input type="number" placeholder="Ex: 50.00" value={newCharge.amount} onChange={e => setNewCharge({...newCharge, amount: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                   <div>
@@ -453,7 +453,7 @@
                            <td className="py-2"><strong>{charge.code}</strong> - {charge.name}</td>
                            <td className="py-2">{charge.date ? charge.date.split('-').reverse().join('/') : '-'}</td>
                            <td className="py-2">{charge.reason}</td>
-                           <td className="py-2 text-right font-medium text-slate-800">R$ {charge.amount.toFixed(2).replace('.',',')}</td>
+                           <td className="py-2 text-right font-medium text-slate-800">€ {charge.amount.toFixed(2).replace('.',',')}</td>
                            <td className="py-2 text-center">
                              <button onClick={() => setManualCharges(manualCharges.filter(c => c.id !== charge.id))} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded">
                                <Trash2 className="w-4 h-4 mx-auto" />
@@ -584,8 +584,8 @@
           };
 
           const handleSaveAppUser = () => {
-             if (!newAppUser.email || !newAppUser.password) return showNotification("Preencha login e senha", "error");
-             if (appUsers.find(u => u.email === newAppUser.email)) return showNotification("Esse login já existe", "error");
+             if (!newAppUser.email || !newAppUser.password) return showNotification("Preencha login e palavra-passe", "error");
+             if (appUsers.find(u => u.email === newAppUser.email)) return showNotification("Este login já existe", "error");
              setAppUsers([...appUsers, { id: Date.now(), ...newAppUser }]);
              setNewAppUser({ email: '', password: '', role: 'user' });
              showNotification("Acesso criado com sucesso!");
@@ -613,7 +613,7 @@
                     <Users className="mr-3 h-5 w-5" /> Base de Funcionários
                   </button>
                   <button onClick={() => setConfigTab('excecoes')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'excecoes' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
-                    <Sliders className="mr-3 h-5 w-5" /> Exceções Contábeis
+                    <Sliders className="mr-3 h-5 w-5" /> Exceções Contabilísticas
                   </button>
                   
                   {/* Visível apenas para Administradores */}
@@ -630,8 +630,8 @@
                 {configTab === 'logins' && appUserRole === 'admin' && (
                    <div className="space-y-8 max-w-4xl">
                      <div>
-                       <h2 className="text-xl font-bold text-slate-800 mb-2">Gerenciamento de Acessos</h2>
-                       <p className="text-sm text-slate-600 mb-6">Crie logins e senhas para que outras pessoas da sua equipe possam acessar e usar o sistema. Apenas Administradores podem acessar esta tela de configurações.</p>
+                       <h2 className="text-xl font-bold text-slate-800 mb-2">Gestão de Acessos</h2>
+                       <p className="text-sm text-slate-600 mb-6">Crie logins e palavras-passe para que outras pessoas da sua equipa possam aceder e utilizar o sistema. Apenas Administradores podem aceder a este ecrã de definições.</p>
                        
                        <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 mb-8 flex flex-wrap gap-4 items-end">
                           <div className="flex-1 min-w-[200px]">
@@ -639,13 +639,13 @@
                             <input type="text" value={newAppUser.email} onChange={e => setNewAppUser({...newAppUser, email: e.target.value})} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: rh@empresa.com" />
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Senha</label>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Palavra-passe</label>
                             <input type="text" value={newAppUser.password} onChange={e => setNewAppUser({...newAppUser, password: e.target.value})} className="w-32 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Senha" />
                           </div>
                           <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Nível de Acesso</label>
                             <select value={newAppUser.role} onChange={e => setNewAppUser({...newAppUser, role: e.target.value})} className="w-40 px-3 py-2 border rounded bg-white outline-none focus:ring-2 focus:ring-blue-500">
-                              <option value="user">Usuário</option>
+                              <option value="user">Utilizador</option>
                               <option value="admin">Administrador</option>
                             </select>
                           </div>
@@ -659,7 +659,7 @@
                             <thead className="bg-slate-50 border-b border-slate-200">
                               <tr>
                                 <th className="px-4 py-3 font-semibold text-slate-700">Login (Email)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">Senha</th>
+                                <th className="px-4 py-3 font-semibold text-slate-700">Palavra-passe</th>
                                 <th className="px-4 py-3 font-semibold text-slate-700">Nível</th>
                                 <th className="px-4 py-3 font-semibold text-right text-slate-700">Ações</th>
                               </tr>
@@ -671,13 +671,13 @@
                                   <td className="px-4 py-3 text-slate-600">{u.password}</td>
                                   <td className="px-4 py-3">
                                     <span className={`px-2 py-1 rounded text-xs font-medium border ${u.role === 'admin' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                                      {u.role === 'admin' ? 'Administrador' : 'Usuário'}
+                                      {u.role === 'admin' ? 'Administrador' : 'Utilizador'}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 text-right">
                                     <button 
                                       onClick={() => {
-                                        if (appUsers.length === 1) return showNotification("Você não pode deletar o último usuário do sistema.", "error");
+                                        if (appUsers.length === 1) return showNotification("Não pode apagar o último utilizador do sistema.", "error");
                                         setAppUsers(appUsers.filter(acc => acc.id !== u.id));
                                       }} 
                                       className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded disabled:opacity-50"
@@ -705,9 +705,9 @@
                          <input type="number" value={settings.fixedRate} onChange={e => setSettings({...settings, fixedRate: Number(e.target.value)})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                        </div>
                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                         <label className="block text-sm font-semibold text-slate-700 mb-1">Limite Dep. Diretos (Regra Antiga)</label>
+                         <label className="block text-sm font-semibold text-slate-700 mb-1">Cota Máxima de Dependentes</label>
                          <input type="number" value={settings.dependentLimit} onChange={e => setSettings({...settings, dependentLimit: Number(e.target.value)})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                         <p className="text-xs text-slate-500 mt-1">Usado se o sufixo tiver só 1 dígito (Ex: -1 a -3 é Meia. -4+ é Inteira).</p>
+                         <p className="text-xs text-slate-500 mt-1">Dependentes acima deste limite (excedentes) são cobrados como Inteira, ignorando o tipo marcado.</p>
                        </div>
                      </div>
                    </div>
@@ -717,7 +717,7 @@
                        <Clock className="w-5 h-5 mr-2 text-blue-600" /> Horários das Refeições
                      </h2>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                       {Object.entries({ 'Café': 'cafe', 'Almoço': 'almoco', 'Janta': 'janta' }).map(([label, key]) => (
+                       {Object.entries({ 'Café': 'cafe', 'Almoço': 'almoco', 'Jantar': 'janta' }).map(([label, key]) => (
                          <div key={key} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                            <label className="block text-sm font-semibold text-slate-700 mb-3">{label}</label>
                            <div className="flex items-center space-x-2">
@@ -735,7 +735,7 @@
                        Tabela de Preços por Categoria
                        <div className="flex bg-slate-200 p-1 rounded-lg">
                          <button onClick={() => setPricingDayType('weekday')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${pricingDayType === 'weekday' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Dias Úteis</button>
-                         <button onClick={() => setPricingDayType('weekend')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${pricingDayType === 'weekend' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Finais de Semana</button>
+                         <button onClick={() => setPricingDayType('weekend')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${pricingDayType === 'weekend' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'}`}>Fins de Semana</button>
                        </div>
                      </h2>
                      <div className="border border-slate-200 rounded-lg overflow-x-auto scrollbar-hide">
@@ -789,7 +789,7 @@
                   <div>
                     <h2 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2 flex justify-between items-center">
                       Base de Funcionários 
-                      <span className="text-sm font-normal text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{employees.length} cadastrados</span>
+                      <span className="text-sm font-normal text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{employees.length} registados</span>
                     </h2>
 
                     {/* Importação Massiva de Funcionários */}
@@ -807,7 +807,7 @@
                           <option value="ISO-8859-1">ISO-8859-1</option>
                         </select>
                         <label className="cursor-pointer bg-white border border-blue-300 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap">
-                          Procurar Arquivo
+                          Procurar Ficheiro
                           <input type="file" accept=".csv" className="hidden" onChange={handleEmpImport} ref={empFileInputRef} />
                         </label>
                       </div>
@@ -831,7 +831,7 @@
                       </div>
                       <button onClick={handleSaveEmployee} className={`px-4 py-2 rounded font-medium flex items-center text-white ${isEditing ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
                         {isEditing ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                        {isEditing ? 'Salvar Edição' : 'Adicionar'}
+                        {isEditing ? 'Guardar Edição' : 'Adicionar'}
                       </button>
                       {isEditing && (
                         <button onClick={() => {setIsEditing(false); setNewEmp({ code: '', name: '', category: 'Não Isentos' })}} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded font-medium">Cancelar</button>
@@ -847,7 +847,7 @@
                       </div>
                       <div className="relative w-full md:w-64">
                         <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                        <input type="text" placeholder="Buscar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <input type="text" placeholder="Procurar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                       </div>
                     </div>
 
@@ -885,8 +885,8 @@
 
                 {configTab === 'excecoes' && (
                   <div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-2">Exceções Contábeis</h2>
-                    <p className="text-sm text-slate-600 mb-6">Substitua manualmente a Conta ou Subconta que será enviada para a contabilidade para um funcionário específico. Deixe em branco para usar o padrão.</p>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">Exceções Contabilísticas</h2>
+                    <p className="text-sm text-slate-600 mb-6">Substitua manualmente a Conta ou Subconta que será enviada para a contabilidade para um funcionário específico. Deixe em branco para usar a pré-definição.</p>
                     
                     {/* Filtros */}
                     <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
@@ -897,7 +897,7 @@
                       </div>
                       <div className="relative w-full md:w-64">
                         <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                        <input type="text" placeholder="Buscar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <input type="text" placeholder="Procurar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                       </div>
                     </div>
 
@@ -907,7 +907,7 @@
                         <thead className="bg-slate-50 border-b border-slate-200">
                           <tr>
                             <th className="px-4 py-3 font-semibold text-slate-700">Funcionário</th>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Conta Contábil</th>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Conta Contabilística</th>
                             <th className="px-4 py-3 font-semibold text-slate-700">Subconta</th>
                           </tr>
                         </thead>
@@ -957,7 +957,7 @@
                       <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5" />
                       <div>
                         <strong>Como funciona:</strong>
-                        <p className="mt-1">Qualquer valor escrito nestas caixas será usado na exportação do CSV no lugar da regra padrão. Você pode alterar a <strong>Conta</strong> de qualquer pessoa. A <strong>Subconta</strong> só pode ser alterada para funcionários da categoria <i>Outras Entidades</i> (as outras categorias usarão sempre o Código do funcionário).</p>
+                        <p className="mt-1">Qualquer valor escrito nestas caixas será utilizado na exportação do CSV no lugar da regra padrão. Pode alterar a <strong>Conta</strong> de qualquer pessoa. A <strong>Subconta</strong> apenas pode ser alterada para funcionários da categoria <i>Outras Entidades</i> (as outras categorias utilizarão sempre o Código do funcionário).</p>
                       </div>
                     </div>
                   </div>
@@ -994,9 +994,9 @@
           // Estados de Autenticação Firebase & App Level Login
           const [user, setUser] = useState(null); // Firebase anon auth
           const [dataLoaded, setDataLoaded] = useState(false);
-          const [appUser, setAppUser] = useState(null); // O login do usuário dentro do app
+          const [appUser, setAppUser] = useState(null); // O login do utilizador dentro do app
           
-          // Banco de Logins do Sistema (Administradores e Usuários)
+          // Base de Dados de Logins do Sistema (Administradores e Utilizadores)
           const [appUsers, setAppUsers] = useState([
               { id: 1, email: 'nicholas.ganhadeiro@adventistas.org', password: 'Fap1624', role: 'admin' }
           ]);
@@ -1056,7 +1056,7 @@
               loadData();
           }, [user, db, envAppId]);
 
-          // 3. Auto-Salvar no Firestore (Debounced para não sobrecarregar)
+          // 3. Auto-Gravar no Firestore (Debounced para não sobrecarregar)
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
@@ -1089,7 +1089,7 @@
               return () => clearTimeout(timer);
           }, [period, manualCharges, rawScans, user, dataLoaded, db, envAppId]);
 
-          // Bloqueio de rota caso um usuário normal tente acessar Configurações
+          // Bloqueio de rota caso um utilizador normal tente aceder a Configurações
           useEffect(() => {
               if (appUser && appUser.role !== 'admin' && activeTab === 'config') {
                   setActiveTab('dashboard');
@@ -1187,24 +1187,37 @@
                     }
                   }
 
-                  const isType0 = explicitType === 0;
-                  const isDirect = explicitType === 1 || (explicitType === null && seq <= (currentSettings.dependentLimit || 3));
+                  const limit = currentSettings.dependentLimit || 3;
+                  let finalType = 2; // Predefinição: Inteira
 
-                  if (isType0) {
+                  if (seq > limit) {
+                    // Excedeu a cota -> Força Inteira, ignorando o que foi marcado
+                    finalType = 2;
+                  } else {
+                    // Dentro da cota -> Usa o tipo explícito se existir, senão assume Meia (1)
+                    if (explicitType !== null) {
+                      finalType = explicitType;
+                    } else {
+                      finalType = 1;
+                    }
+                  }
+
+                  if (finalType === 0) {
                     charge = 0;
                     reason = `Dep. Isento (${mealType.toUpperCase()} - ${dayLabel})`;
-                  } else if (isDirect) {
+                  } else if (finalType === 1) {
                     charge = isAlmoco ? (rules.depMeiaAlmoco ?? 7) : (rules.depMeiaOutras ?? 7);
                     reason = `Dep. Meia (${mealType.toUpperCase()} - ${dayLabel})`;
                   } else {
                     const fallbackInt = rules.depIntAlmoco ?? 35;
                     charge = isAlmoco ? (rules.depIntAlmoco ?? fallbackInt) : (rules.depIntOutras ?? fallbackInt);
                     reason = `Dep. Inteira (${mealType.toUpperCase()} - ${dayLabel})`;
+                    if (seq > limit) reason += ` (Acima do limite)`;
                   }
                 } else {
                   if (isAlmoco) {
                     charge = rules.almoco ?? 35;
-                    reason = `Almoço (${dayLabel})` + (charge === 0 ? ' - Isenta' : '');
+                    reason = `Almoço (${dayLabel})` + (charge === 0 ? ' - Isento' : '');
                   } else {
                     charge = rules.outras ?? 35;
                     reason = `Outras Refeições (${mealType.toUpperCase()} - ${dayLabel})`;
@@ -1262,7 +1275,7 @@
                 }
               }
               setRawScans(parsedScans);
-              showNotification(`Sucesso! ${parsedScans.length} registros processados.`);
+              showNotification(`Sucesso! ${parsedScans.length} registos processados.`);
               setActiveTab('dashboard');
             };
             reader.readAsText(file);
@@ -1332,18 +1345,18 @@
             setTimeout(() => setNotification(null), 4000);
           };
 
-          // Tela de Loading enquanto o Firebase conecta e puxa os dados
+          // Ecrã de Loading enquanto o Firebase conecta e puxa os dados
           if (!dataLoaded) {
              return (
                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
                  <Calculator className="h-12 w-12 text-blue-600 mb-4 animate-pulse" />
-                 <h2 className="text-xl font-bold text-slate-700">Carregando seus dados...</h2>
-                 <p className="text-sm text-slate-500 mt-2">Sincronizando com o banco de dados</p>
+                 <h2 className="text-xl font-bold text-slate-700">A carregar os seus dados...</h2>
+                 <p className="text-sm text-slate-500 mt-2">Sincronizando com a base de dados</p>
                </div>
              );
           }
 
-          // Se não houver usuário logado no APP, mostrar a tela de Login
+          // Se não houver utilizador logado no APP, mostrar a tela de Login
           if (!appUser) {
              return <LoginView onLogin={handleAppLogin} />;
           }
@@ -1375,11 +1388,11 @@
                         )}
                       </nav>
 
-                      {/* Controle de Usuário (Header Direito) */}
+                      {/* Controle de Utilizador (Header Direito) */}
                       <div className="flex items-center border-l border-slate-200 pl-4 ml-2">
                           <div className="flex flex-col text-right mr-3 hidden md:flex">
                               <span className="text-sm font-bold text-slate-800 leading-tight">{appUser.email.split('@')[0]}</span>
-                              <span className="text-xs text-slate-500 font-medium">{appUser.role === 'admin' ? 'Administrador' : 'Usuário'}</span>
+                              <span className="text-xs text-slate-500 font-medium">{appUser.role === 'admin' ? 'Administrador' : 'Utilizador'}</span>
                           </div>
                           <button onClick={handleAppLogout} className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 p-2 rounded-lg transition-colors" title="Sair">
                               <LogOut className="w-5 h-5" />
@@ -1414,7 +1427,7 @@
              return (
                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
                  <div className="h-10 w-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-                 <p className="text-slate-500 font-medium">Iniciando o sistema...</p>
+                 <p className="text-slate-500 font-medium">A iniciar o sistema...</p>
                </div>
              );
            }
