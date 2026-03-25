@@ -685,14 +685,12 @@
         // ==========================================
         // FIREBASE AUTH & LISTENERS (Acesso Público)
         // ==========================================
-        let authReady = false;
-
         const initAuth = async () => {
             try {
                 await signInAnonymously(auth);
             } catch(e) {
                 console.error("Falha ao autenticar no Firebase:", e);
-                document.getElementById('data-atualizacao').innerHTML = "<span class='text-red-500 font-bold'>Erro Banco de Dados</span>";
+                document.getElementById('data-atualizacao').innerHTML = "<span class='text-red-500 font-bold'>Aguardando Permissão do Domínio</span>";
             }
         };
 
@@ -700,14 +698,11 @@
 
         onAuthStateChanged(auth, (user) => {
             if(user) {
-                authReady = true;
                 setupFirestoreListeners();
                 verificarSessaoAtiva(); // Vê se já logou antes
             }
         });
 
-        // NOTA: Seguindo a regra do ambiente, os dados compartilhados ficam na rota "public"
-        // para que Administrador crie e Usuário veja as mesmas coisas.
         function setupFirestoreListeners() {
             if(!auth.currentUser) return;
             
@@ -774,12 +769,12 @@
             const erroEl = document.getElementById('login-error');
 
             // Fallback Mestre: Acesso de segurança inquebrável para o Admin
-            // Força a entrada e corrige o banco de dados se tiver ocorrido algum erro na criação
             if(usr === 'admin' && (pass === 'admin' || pass === '123')) {
                 const masterAdmin = { login: 'admin', senha: pass, nome: 'Administrador Principal', role: 'admin', depts: [] };
-                // Salva/Subscreve no BD real garantindo que o admin existe
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', 'admin');
-                setDoc(docRef, masterAdmin);
+                if (auth.currentUser) {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', 'admin');
+                    setDoc(docRef, masterAdmin).catch(err => console.log("Nota: Regras podem estar bloqueando gravação, mas o login prosseguirá."));
+                }
                 iniciarSistemaComo(masterAdmin);
                 return;
             }
@@ -834,7 +829,7 @@
         // ==========================================
         window.salvarUsuario = async function(e) {
             e.preventDefault();
-            if(!auth.currentUser) return;
+            if(!auth.currentUser) return alert('Banco de dados não conectado. Verifique os domínios autorizados no Firebase.');
 
             const login = document.getElementById('input-usr-login').value.trim();
             const role = document.getElementById('input-usr-role').value;
@@ -949,8 +944,7 @@
         };
 
         window.checkParentNode = function(checkbox) {
-            // Se eu desmarco um filho, não faz o parent desmarcar automagicamente pra não complicar,
-            // O importante é que no Save a gente pega apenas as '.chk-leaf-dept'
+            // Lógica isolada para folhas
         };
 
         function renderTabelaUsuarios() {
@@ -1067,7 +1061,7 @@
         // ==========================================
         window.adicionarVerba = async function(event) {
             event.preventDefault();
-            if (!auth.currentUser) return;
+            if (!auth.currentUser) return alert('Sem conexão!');
 
             const nova = {
                 diretoria: document.getElementById('input-diretoria').value.trim(),
@@ -1120,7 +1114,7 @@
         };
 
         window.lerCSV = async function(event) {
-            if (!auth.currentUser) return;
+            if (!auth.currentUser) return alert('Sem conexão com o banco de dados!');
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -1156,7 +1150,7 @@
         // ==========================================
         window.adicionarViagem = async function(event) {
             event.preventDefault();
-            if (!auth.currentUser) return;
+            if (!auth.currentUser) return alert('Sem conexão!');
             const idGenerico = Date.now().toString();
             const novaObj = {
                 id: idGenerico, data: document.getElementById('input-viagem-data').value,
@@ -1182,7 +1176,7 @@
 
         window.adicionarTI = async function(event) {
             event.preventDefault();
-            if (!auth.currentUser) return;
+            if (!auth.currentUser) return alert('Sem conexão!');
             const idGenerico = Date.now().toString();
             const novaObj = {
                 id: idGenerico, data: document.getElementById('input-ti-data').value,
@@ -1639,7 +1633,6 @@
         }
 
         function renderTabelaVerbas() {
-            // (Esta função permanece com seu funcionamento estrutural básico inalterado mas atende às chamadas corretas)
             const tbody = document.getElementById('table-verbas');
             let total = 0;
             if(verbas.length === 0) {
@@ -1721,7 +1714,7 @@
         }
 
         // ==========================================
-        // LEITURA DO GOOGLE SHEETS
+        // LEITURA DO GOOGLE SHEETS E INICIALIZAÇÃO
         // ==========================================
         async function carregarLancamentosPlanilha() {
             try {
@@ -1784,6 +1777,22 @@
             }
             ret.push(item.trim());
             return ret;
+        }
+
+        // --- CORREÇÃO DA INICIALIZAÇÃO PARA HOSPEDAGEM WEB ---
+        function inicializarApp() {
+            aplicarFiltrosEmCascata(null);
+            carregarLancamentosPlanilha();
+            
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.custom-dropdown')) window.fecharTodosDropdowns();
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarApp);
+        } else {
+            inicializarApp();
         }
 
     </script>
