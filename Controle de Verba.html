@@ -970,7 +970,7 @@
         }
 
         // ==========================================
-        // MAPEAMENTO GLOBAL UI DASHBOARD
+        // MAPEAMENTO GLOBAL UI DASHBOARD E FILTROS
         // ==========================================
         window.switchTab = function(tabId) {
             document.getElementById('view-dashboard').classList.add('hidden');
@@ -1038,13 +1038,14 @@
             });
         };
 
-        // NOVA LOGICA DO CHECKBOX PARA LIDAR COM A SANFONA DE MESES/ANO
+        // LÓGICA DE CHECKBOX REESCRITA (Comportamento Padrão Excel/Google Sheets)
         window.handleCheckboxChange = function(tipo, valor, isChecked) {
-            let selecionados = selecaoFiltros[tipo];
-            
+            let selecionados = selecaoFiltros[tipo] || ['todos'];
             let todasOpcoes = [];
-            if(tipo === 'mes') todasOpcoes = periodosLista.map(p => p.id);
-            else {
+            
+            if(tipo === 'mes') {
+                todasOpcoes = periodosLista.map(p => p.id);
+            } else {
                 const container = document.getElementById(`list-${tipo}`);
                 if(container) {
                      const inputs = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="todos"]):not(.chk-ano)'));
@@ -1053,10 +1054,13 @@
             }
 
             if (valor === 'todos') {
+                // Se clicar no master, ou seleciona tudo ou limpa tudo
                 selecionados = isChecked ? ['todos'] : [];
             } else {
+                // Se "Todos" estava marcado e o usuário desmarcou uma caixa específica
                 if (selecionados.includes('todos')) {
-                    selecionados = [...todasOpcoes]; // Expande 'todos' para desmarcar um específico
+                    // Transforma o "Todos" na lista inteira de opções, para poder desmarcar apenas o alvo
+                    selecionados = [...todasOpcoes];
                 }
                 
                 if (isChecked) {
@@ -1066,10 +1070,10 @@
                 }
             }
             
+            // Se todas as caixinhas individuais foram marcadas, volta ao estado "Todos"
             if (selecionados.length > 0 && selecionados.length === todasOpcoes.length && !selecionados.includes('todos')) {
                 selecionados = ['todos'];
             }
-            if (selecionados.length === 0) selecionados = ['todos'];
             
             selecaoFiltros[tipo] = selecionados;
             
@@ -1083,14 +1087,15 @@
             agendarAtualizacaoDashboard();
         };
 
-        // FUNÇÃO QUE MARCA/DESMARCA TODOS OS MESES DE UM ANO ESPECÍFICO (Checkbox Mestre do Ano)
+        // LÓGICA PARA CHECKBOX MESTRE DE ANO NA SANFONA
         window.toggleAnoMeses = function(ano, isChecked) {
             let selecionados = [...selecaoFiltros['mes']];
             const mesesDoAno = periodosLista.filter(p => p.id.endsWith(`/${ano}`)).map(p => p.id);
 
             if (selecionados.includes('todos')) {
                 if (isChecked) return; 
-                selecionados = periodosLista.map(p => p.id);
+                // Se "Todos" ativo e o usuário desmarcou um Ano, abre a lista e remove aquele Ano
+                selecionados = periodosLista.map(p => p.id); 
             }
 
             if (isChecked) {
@@ -1102,7 +1107,6 @@
             }
 
             if (selecionados.length > 0 && selecionados.length === periodosLista.length) selecionados = ['todos'];
-            if (selecionados.length === 0) selecionados = ['todos'];
 
             selecaoFiltros['mes'] = selecionados;
             
@@ -1118,151 +1122,7 @@
         };
 
         // ==========================================
-        // FUNÇÕES FIREBASE: VERBAS E GERAL
-        // ==========================================
-        window.adicionarVerba = async function(event) {
-            event.preventDefault();
-            if (!auth.currentUser) return alert('Sem conexão!');
-
-            const nova = {
-                diretoria: document.getElementById('input-diretoria').value.trim(),
-                setor: document.getElementById('input-setor').value.trim(),
-                departamento: document.getElementById('input-departamento').value.trim(),
-                valor: parseFloat(document.getElementById('input-valor').value)
-            };
-
-            const safeId = encodeURIComponent(nova.departamento); 
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
-            await setDoc(docRef, nova);
-
-            window.limparFormVerbas();
-            const btn = event.submitter;
-            const originalText = btn.innerText;
-            btn.innerText = "Salvo com sucesso!";
-            btn.classList.replace('bg-blue-600', 'bg-green-600');
-            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-blue-600'); }, 2000);
-        };
-
-        window.excluirVerba = async function(deptNome) {
-            if (!auth.currentUser) return;
-            if(confirm(`Excluir orçamento de '${deptNome}'?`)) {
-                const safeId = encodeURIComponent(deptNome);
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
-                await deleteDoc(docRef);
-            }
-        };
-
-        window.editarVerba = function(deptNome) {
-            const v = verbas.find(x => x.departamento === deptNome);
-            if(v) {
-                document.getElementById('input-diretoria').value = v.diretoria;
-                document.getElementById('input-setor').value = v.setor;
-                document.getElementById('input-departamento').value = v.departamento;
-                document.getElementById('input-valor').value = v.valor;
-                document.getElementById('input-departamento').setAttribute('readonly', 'true');
-                document.getElementById('input-departamento').classList.add('bg-gray-100');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        };
-
-        window.limparFormVerbas = function() {
-            document.getElementById('input-diretoria').value = '';
-            document.getElementById('input-setor').value = '';
-            document.getElementById('input-departamento').value = '';
-            document.getElementById('input-valor').value = '';
-            document.getElementById('input-departamento').removeAttribute('readonly');
-            document.getElementById('input-departamento').classList.remove('bg-gray-100');
-        };
-
-        window.lerCSV = async function(event) {
-            if (!auth.currentUser) return alert('Sem conexão com o banco de dados!');
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            
-            reader.onload = async function(e) {
-                const linhas = e.target.result.split(/\r?\n/);
-                let processados = 0;
-                for (let i = 1; i < linhas.length; i++) {
-                    if (!linhas[i].trim()) continue;
-                    const delimitador = linhas[i].includes(';') ? ';' : ',';
-                    const colunas = parseCSVLine(linhas[i], delimitador); 
-                    
-                    if (colunas.length >= 4) {
-                        const valFormatado = parseValorCSV(colunas[3]);
-                        const dept = colunas[2] ? colunas[2].trim() : '';
-                        if(!dept) continue;
-
-                        const nova = { diretoria: colunas[0].trim(), setor: colunas[1].trim(), departamento: dept, valor: valFormatado };
-                        const safeId = encodeURIComponent(dept);
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
-                        await setDoc(docRef, nova);
-                        processados++;
-                    }
-                }
-                alert(`Sucesso! ${processados} departamentos sincronizados na nuvem.`);
-                event.target.value = '';
-            };
-            reader.readAsText(file, 'UTF-8');
-        };
-
-        // ==========================================
-        // FUNÇÕES FIREBASE: VIAGENS E TI
-        // ==========================================
-        window.adicionarViagem = async function(event) {
-            event.preventDefault();
-            if (!auth.currentUser) return alert('Sem conexão!');
-            const idGenerico = Date.now().toString();
-            const novaObj = {
-                id: idGenerico, data: document.getElementById('input-viagem-data').value,
-                departamento: document.getElementById('input-viagem-dept').value,
-                descricao: document.getElementById('input-viagem-desc').value.trim(),
-                finalidade: document.getElementById('input-viagem-fin').value.trim(),
-                valor: parseFloat(document.getElementById('input-viagem-valor').value)
-            };
-            const dbRef = doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idGenerico);
-            await setDoc(dbRef, novaObj);
-            
-            document.getElementById('input-viagem-desc').value = ''; document.getElementById('input-viagem-fin').value = ''; document.getElementById('input-viagem-valor').value = '';
-            
-            const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = "Cadastrado!"; btn.classList.replace('bg-orange-500', 'bg-green-600');
-            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 2000);
-        };
-
-        window.excluirViagem = async function(idStr) {
-            if (!auth.currentUser) return;
-            if(confirm("Excluir viagem?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idStr));
-        };
-
-        window.adicionarTI = async function(event) {
-            event.preventDefault();
-            if (!auth.currentUser) return alert('Sem conexão!');
-            const idGenerico = Date.now().toString();
-            const novaObj = {
-                id: idGenerico, data: document.getElementById('input-ti-data').value,
-                departamento: document.getElementById('input-ti-dept').value,
-                descricao: document.getElementById('input-ti-desc').value.trim(),
-                finalidade: document.getElementById('input-ti-fin').value.trim(),
-                valor: parseFloat(document.getElementById('input-ti-valor').value)
-            };
-            const dbRef = doc(db, 'artifacts', appId, 'public', 'data', 'tis', idGenerico);
-            await setDoc(dbRef, novaObj);
-            
-            document.getElementById('input-ti-desc').value = ''; document.getElementById('input-ti-fin').value = ''; document.getElementById('input-ti-valor').value = '';
-            
-            const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = "Transferência Cadastrada!"; btn.classList.replace('bg-purple-600', 'bg-green-600');
-            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-purple-600'); }, 2000);
-        };
-
-        window.excluirTI = async function(idStr) {
-            if (!auth.currentUser) return;
-            if(confirm("Excluir transferência TI?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tis', idStr));
-        };
-
-        // ==========================================
-        // CASCATAS E FILTROS 
+        // CASCATAS E ATUALIZAÇÃO VISUAL (DROPDOWNS)
         // ==========================================
         function aplicarFiltrosEmCascata(origem = null) {
             let verbasPermitidas = verbas;
@@ -1277,15 +1137,17 @@
             }
 
             let verbasFiltradasDir = verbasPermitidas;
-            if (!selecaoFiltros.diretoria.includes('todos')) {
+            if (!selecaoFiltros.diretoria.includes('todos') && selecaoFiltros.diretoria.length > 0) {
                 verbasFiltradasDir = verbasPermitidas.filter(v => selecaoFiltros.diretoria.includes(v.diretoria));
+            } else if (selecaoFiltros.diretoria.length === 0) {
+                verbasFiltradasDir = []; // Nada selecionado
             }
 
             const setoresValidos = [...new Set(verbasFiltradasDir.map(v => v.setor))].filter(Boolean).sort();
             
             if (!selecaoFiltros.setor.includes('todos')) {
                 selecaoFiltros.setor = selecaoFiltros.setor.filter(s => setoresValidos.includes(s));
-                if (selecaoFiltros.setor.length === 0) selecaoFiltros.setor = ['todos'];
+                if (selecaoFiltros.setor.length === 0 && setoresValidos.length > 0) selecaoFiltros.setor = ['todos'];
             }
             
             if (origem === null || origem === 'diretoria') {
@@ -1293,31 +1155,31 @@
             }
 
             let verbasFiltradasSetor = verbasFiltradasDir;
-            if (!selecaoFiltros.setor.includes('todos')) {
+            if (!selecaoFiltros.setor.includes('todos') && selecaoFiltros.setor.length > 0) {
                 verbasFiltradasSetor = verbasFiltradasSetor.filter(v => selecaoFiltros.setor.includes(v.setor));
+            } else if (selecaoFiltros.setor.length === 0) {
+                verbasFiltradasSetor = [];
             }
 
             const deptsValidos = [...new Set(verbasFiltradasSetor.map(v => v.departamento))].filter(Boolean).sort();
 
             if (!selecaoFiltros.departamento.includes('todos')) {
                 selecaoFiltros.departamento = selecaoFiltros.departamento.filter(d => deptsValidos.includes(d));
-                if (selecaoFiltros.departamento.length === 0) selecaoFiltros.departamento = ['todos'];
+                if (selecaoFiltros.departamento.length === 0 && deptsValidos.length > 0) selecaoFiltros.departamento = ['todos'];
             }
 
             if (origem === null || origem === 'diretoria' || origem === 'setor') {
                 construirOpcoesDropdown('departamento', deptsValidos);
             }
 
-            // O Mês agora possui uma construção de dropdown sanfonada exclusiva
             if (origem === null) construirOpcoesDropdown('mes', periodosLista);
         }
 
-        // Nova Lógica Inteligente para criar Sanfonas dependendo do Tipo (Meses ou Normal)
         function construirOpcoesDropdown(tipo, opcoesValidas) {
             const container = document.getElementById(`list-${tipo}`);
             
             let searchHTML = '';
-            if (tipo !== 'mes') { // Meses não precisa de busca pesada, a sanfona já resolve
+            if (tipo !== 'mes') { 
                 searchHTML = `
                     <div class="p-2 border-b bg-gray-50 sticky top-0 z-10">
                         <input type="text" placeholder="Pesquisar..." class="w-full text-xs border border-gray-300 rounded p-1.5 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" onclick="event.stopPropagation()" onkeyup="window.filtrarListaSuspensa(event, '${tipo}')">
@@ -1325,16 +1187,17 @@
                 `;
             }
 
+            const isAllSelected = selecaoFiltros[tipo].includes('todos');
+
             let html = searchHTML + `
                 <label class="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b">
                     <input type="checkbox" value="todos" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                    ${selecaoFiltros[tipo].includes('todos') ? 'checked' : ''} 
+                    ${isAllSelected ? 'checked' : ''} 
                     onchange="window.handleCheckboxChange('${tipo}', 'todos', this.checked)"> 
                     <span class="font-bold text-gray-800">Selecionar Todos</span>
                 </label>
             `;
 
-            // SE FOR MESES: APLICA A LÓGICA DE SANFONA (Anos -> Meses)
             if (tipo === 'mes') {
                 const anosObj = {};
                 opcoesValidas.forEach(opt => {
@@ -1349,8 +1212,7 @@
                 Object.keys(anosObj).sort().forEach(ano => {
                     const anoId = `meses-do-ano-${ano}`;
                     
-                    // Verifica quantos meses deste ano estão selecionados
-                    const checkedCount = anosObj[ano].filter(m => selecaoFiltros[tipo].includes(m.id) || selecaoFiltros[tipo].includes('todos')).length;
+                    const checkedCount = anosObj[ano].filter(m => selecaoFiltros[tipo].includes(m.id) || isAllSelected).length;
                     const isAnoChecked = (checkedCount === anosObj[ano].length);
 
                     html += `
@@ -1364,11 +1226,11 @@
                     `;
 
                     anosObj[ano].forEach(mes => {
-                        const isChecked = selecaoFiltros[tipo].includes(mes.id) || selecaoFiltros[tipo].includes('todos');
+                        const isCheckedItem = isAllSelected || selecaoFiltros[tipo].includes(mes.id);
                         html += `
                             <label class="dropdown-item flex items-center px-4 py-1.5 hover:bg-gray-50 cursor-pointer text-sm transition-colors text-gray-700">
                                 <input type="checkbox" value="${mes.id}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                                ${isChecked ? 'checked' : ''} 
+                                ${isCheckedItem ? 'checked' : ''} 
                                 onchange="window.handleCheckboxChange('${tipo}', '${mes.id}', this.checked)"> 
                                 ${mes.nome}
                             </label>
@@ -1379,16 +1241,17 @@
                 html += '</ul>';
 
             } else {
-                // RENDERIZAÇÃO NORMAL PARA DIRETORIAS, SETORES, ETC.
                 opcoesValidas.forEach(opt => {
                     const valor = opt.id || opt;
                     const nome = opt.nome || opt;
-                    const isChecked = selecaoFiltros[tipo].includes(valor);
+                    const isCheckedItem = isAllSelected || selecaoFiltros[tipo].includes(valor);
+                    const valorSafe = String(valor).replace(/'/g, "\\'"); // Tratamento de segurança para aspas simples
+
                     html += `
                         <label class="dropdown-item flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm transition-colors text-gray-700">
-                            <input type="checkbox" value="${valor}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                            ${isChecked ? 'checked' : ''} 
-                            onchange="window.handleCheckboxChange('${tipo}', '${valor}', this.checked)"> 
+                            <input type="checkbox" value="${valorSafe}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                            ${isCheckedItem ? 'checked' : ''} 
+                            onchange="window.handleCheckboxChange('${tipo}', '${valorSafe}', this.checked)"> 
                             ${nome}
                         </label>
                     `;
@@ -1407,15 +1270,20 @@
             else if (sels.length === 1) {
                 if(tipo === 'mes') label.innerText = periodosLista.find(m=>m.id===sels[0])?.nome || sels[0];
                 else label.innerText = sels[0];
-            } else label.innerText = `${sels.length} selecionados`;
+            } 
+            else if (sels.length === 0) label.innerText = 'Nenhum';
+            else label.innerText = `${sels.length} selecionados`;
 
             const container = document.getElementById(`list-${tipo}`);
             if(!container) return;
 
-            // Tratamento visual para evitar re-renderização total caso não seja Mês
             if(tipo !== 'mes') {
-                const inputs = container.querySelectorAll('input[type="checkbox"]');
-                inputs.forEach(inp => { inp.checked = sels.includes(inp.value); });
+                const isAllSelected = sels.includes('todos');
+                const inputs = container.querySelectorAll('input[type="checkbox"]:not([value="todos"])');
+                inputs.forEach(inp => { inp.checked = isAllSelected || sels.includes(inp.value); });
+                
+                const masterInput = container.querySelector('input[type="checkbox"][value="todos"]');
+                if (masterInput) masterInput.checked = isAllSelected;
             }
         }
 
@@ -1477,6 +1345,9 @@
             verbas.forEach(v => { deptInfo[v.departamento.toLowerCase().trim()] = { diretoria: v.diretoria, setor: v.setor }; });
 
             function validaFiltro(deptRaw, dataRaw, isDataInput) {
+                // Se algum filtro estiver vazio, oculta os dados
+                if (sels.mes.length === 0 || sels.diretoria.length === 0 || sels.setor.length === 0 || sels.departamento.length === 0) return false;
+
                 const deptKey = deptRaw.toLowerCase().trim();
                 if(!deptsOrcadosTodos.includes(deptKey)) return false; 
                 if(isUserLimitado && !deptsPermitidosUser.includes(deptRaw)) return false; 
@@ -1506,6 +1377,7 @@
             const filtradosTI = tis.filter(t => validaFiltro(t.departamento, t.data, true));
 
             const filtradosVer = verbas.filter(v => {
+                if (sels.diretoria.length === 0 || sels.setor.length === 0 || sels.departamento.length === 0) return false;
                 if(isUserLimitado && !deptsPermitidosUser.includes(v.departamento)) return false;
                 const passDir = sels.diretoria.includes('todos') || sels.diretoria.includes(v.diretoria);
                 const passSet = sels.setor.includes('todos') || sels.setor.includes(v.setor);
@@ -1519,7 +1391,6 @@
         function renderDashboardFinal(lanFiltrados, verFiltradas, viaFiltradas, tiFiltrados, selMeses) {
             const totalOrcamentoAnual = verFiltradas.reduce((acc, curr) => acc + curr.valor, 0);
             
-            // Corrige a multiplicação do orçamento para caso selecionem anos compostos
             const mesesCount = selMeses.includes('todos') ? periodosLista.length : selMeses.length;
             const totalOrcamento = (totalOrcamentoAnual / 12) * mesesCount;
             
@@ -1709,6 +1580,95 @@
                 deptContainer.innerHTML = htmlBarras.join('');
             }
         }
+
+        // ==========================================
+        // FUNÇÕES FIREBASE: VERBAS
+        // ==========================================
+        window.adicionarVerba = async function(event) {
+            event.preventDefault();
+            if (!auth.currentUser) return alert('Sem conexão!');
+
+            const nova = {
+                diretoria: document.getElementById('input-diretoria').value.trim(),
+                setor: document.getElementById('input-setor').value.trim(),
+                departamento: document.getElementById('input-departamento').value.trim(),
+                valor: parseFloat(document.getElementById('input-valor').value)
+            };
+
+            const safeId = encodeURIComponent(nova.departamento); 
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+            await setDoc(docRef, nova);
+
+            window.limparFormVerbas();
+            const btn = event.submitter;
+            const originalText = btn.innerText;
+            btn.innerText = "Salvo com sucesso!";
+            btn.classList.replace('bg-blue-600', 'bg-green-600');
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-blue-600'); }, 2000);
+        };
+
+        window.excluirVerba = async function(deptNome) {
+            if (!auth.currentUser) return;
+            if(confirm(`Excluir orçamento de '${deptNome}'?`)) {
+                const safeId = encodeURIComponent(deptNome);
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+                await deleteDoc(docRef);
+            }
+        };
+
+        window.editarVerba = function(deptNome) {
+            const v = verbas.find(x => x.departamento === deptNome);
+            if(v) {
+                document.getElementById('input-diretoria').value = v.diretoria;
+                document.getElementById('input-setor').value = v.setor;
+                document.getElementById('input-departamento').value = v.departamento;
+                document.getElementById('input-valor').value = v.valor;
+                document.getElementById('input-departamento').setAttribute('readonly', 'true');
+                document.getElementById('input-departamento').classList.add('bg-gray-100');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        window.limparFormVerbas = function() {
+            document.getElementById('input-diretoria').value = '';
+            document.getElementById('input-setor').value = '';
+            document.getElementById('input-departamento').value = '';
+            document.getElementById('input-valor').value = '';
+            document.getElementById('input-departamento').removeAttribute('readonly');
+            document.getElementById('input-departamento').classList.remove('bg-gray-100');
+        };
+
+        window.lerCSV = async function(event) {
+            if (!auth.currentUser) return alert('Sem conexão com o banco de dados!');
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                const linhas = e.target.result.split(/\r?\n/);
+                let processados = 0;
+                for (let i = 1; i < linhas.length; i++) {
+                    if (!linhas[i].trim()) continue;
+                    const delimitador = linhas[i].includes(';') ? ';' : ',';
+                    const colunas = parseCSVLine(linhas[i], delimitador); 
+                    
+                    if (colunas.length >= 4) {
+                        const valFormatado = parseValorCSV(colunas[3]);
+                        const dept = colunas[2] ? colunas[2].trim() : '';
+                        if(!dept) continue;
+
+                        const nova = { diretoria: colunas[0].trim(), setor: colunas[1].trim(), departamento: dept, valor: valFormatado };
+                        const safeId = encodeURIComponent(dept);
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+                        await setDoc(docRef, nova);
+                        processados++;
+                    }
+                }
+                alert(`Sucesso! ${processados} departamentos sincronizados na nuvem.`);
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        };
 
         // ==========================================
         // RENDER DE TELAS SECUNDÁRIAS 
