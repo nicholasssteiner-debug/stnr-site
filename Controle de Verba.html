@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Controle de Verbas e Viagens</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script>
@@ -49,9 +46,6 @@
 </head>
 <body class="bg-brand-light font-sans text-gray-800 h-screen flex overflow-hidden">
 
-    <!-- ========================================== -->
-    <!-- TELA DE LOGIN                              -->
-    <!-- ========================================== -->
     <div id="view-login" class="absolute inset-0 z-50 bg-brand-dark flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
             <div class="text-center mb-6">
@@ -85,11 +79,6 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- ESTRUTURA PRINCIPAL (SISTEMA)              -->
-    <!-- ========================================== -->
-    
-    <!-- Sidebar -->
     <aside class="w-64 bg-brand-dark text-white flex flex-col transition-all duration-300 z-20 shadow-xl relative">
         <div class="p-6 flex flex-col items-center border-b border-gray-700">
             <i class="fa-solid fa-chart-pie text-4xl mb-2 text-blue-400"></i>
@@ -110,7 +99,6 @@
                 <span>Dashboard</span>
             </a>
             
-            <!-- Itens Exclusivos para Administradores -->
             <div id="menu-admin" class="space-y-2 hidden">
                 <div class="pt-4 pb-1">
                     <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-4">Gestão (Admin)</span>
@@ -147,15 +135,10 @@
         </div>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         
-        <!-- ========================================== -->
-        <!-- VIEW: DASHBOARD                            -->
-        <!-- ========================================== -->
         <div id="view-dashboard" class="flex flex-col h-full w-full absolute inset-0 bg-brand-light transition-opacity duration-300 z-10">
             
-            <!-- Top Filters -->
             <header class="bg-white p-4 shadow-sm z-20 flex flex-wrap gap-4 items-center">
                 
                 <div class="custom-dropdown relative w-36" id="dd-mes">
@@ -200,11 +183,9 @@
                 </div>
             </header>
 
-            <!-- Dashboard Grid -->
             <div class="flex-1 p-4 overflow-y-auto z-0" onclick="window.fecharTodosDropdowns()">
                 <div class="flex flex-col lg:flex-row gap-4 h-full">
                     
-                    <!-- Left Column: KPIs -->
                     <div class="w-full lg:w-48 flex flex-col gap-2">
                         <div class="bg-brand-card text-white p-3 rounded-lg shadow relative overflow-hidden">
                             <div class="absolute right-0 top-0 w-1 h-full bg-green-400"></div>
@@ -253,7 +234,6 @@
                         </div>
                     </div>
 
-                    <!-- Middle Column: Chart & Table -->
                     <div class="flex-1 flex flex-col gap-4 min-w-0">
                         <div class="bg-white p-4 rounded-lg shadow h-56 flex flex-col">
                             <h2 class="text-center text-gray-700 font-semibold mb-2 text-sm">Evolução de Consumo x Orçamento</h2>
@@ -265,7 +245,6 @@
                         <div class="bg-white p-0 rounded-lg shadow flex-1 flex flex-col min-h-[250px] overflow-hidden">
                             <div class="p-3 border-b border-gray-100 flex flex-wrap justify-between items-center bg-gray-50 gap-2">
                                 <h2 class="text-gray-700 font-semibold text-sm">Detalhamento de Despesas</h2>
-                                <!-- CONTROLE DE VISÃO DA TABELA -->
                                 <div class="flex bg-gray-200 rounded p-1 text-[11px] font-semibold text-gray-500 overflow-x-auto">
                                     <button class="px-3 py-1 rounded bg-white shadow-sm text-blue-600 transition-colors whitespace-nowrap" id="btn-tab-todos" onclick="window.mudarAbaTabela('todos')">Todas</button>
                                     <button class="px-3 py-1 rounded hover:text-gray-800 transition-colors whitespace-nowrap" id="btn-tab-contabil" onclick="window.mudarAbaTabela('contabil')">Contábeis</button>
@@ -288,33 +267,26 @@
                                         </tr>
                                     </thead>
                                     <tbody id="table-body" class="text-gray-600 divide-y divide-gray-100">
-                                        <!-- Preenchido via JS -->
-                                    </tbody>
+                                        </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right Column: Dept Execution -->
                     <div class="w-full lg:w-80 bg-white rounded-lg shadow flex flex-col overflow-hidden">
                         <h2 class="text-center text-gray-700 font-semibold p-4 text-sm border-b bg-gray-50" title="Considerando Contábil + Viagens + TI">Execução (Total por Departamento)</h2>
                         <div class="p-4 overflow-y-auto flex-1" id="dept-execution-list">
-                            <!-- Preenchido via JS -->
-                        </div>
+                            </div>
                     </div>
 
                 </div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- VIEW: VERBAS / ORÇAMENTO                   -->
-        <!-- ========================================== -->
         <div id="view-verbas" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-money-bill-wave text-blue-600 mr-2"></i> Gestão de Verbas (Orçamento)</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
                     <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Cadastrar ou Atualizar</h3>
                     
@@ -358,7 +330,6 @@
                     </form>
                 </div>
 
-                <!-- Tabela de Verbas Cadastradas -->
                 <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-bold text-gray-800">Departamentos e Orçamentos Registrados</h3>
@@ -376,22 +347,17 @@
                                 </tr>
                             </thead>
                             <tbody id="table-verbas" class="divide-y divide-gray-100">
-                                <!-- Preenchido via JS -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- VIEW: VIAGENS (MANUAL)                     -->
-        <!-- ========================================== -->
         <div id="view-viagens" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-plane text-orange-500 mr-2"></i> Lançamento Manual: Viagens</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
                     <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Viagem</h3>
 
@@ -404,8 +370,7 @@
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Destino</label>
                             <select id="input-viagem-dept" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="" disabled selected>Selecione um departamento...</option>
-                                <!-- Preenchido dinamicamente com as verbas -->
-                            </select>
+                                </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
@@ -423,7 +388,6 @@
                     </form>
                 </div>
 
-                <!-- Tabela de Viagens Registradas -->
                 <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-bold text-gray-800">Histórico de Lançamentos Manuais</h3>
@@ -441,22 +405,17 @@
                                 </tr>
                             </thead>
                             <tbody id="table-viagens" class="divide-y divide-gray-100">
-                                <!-- Preenchido via JS -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- VIEW: TI - TRANSFERÊNCIA INTERNA           -->
-        <!-- ========================================== -->
         <div id="view-ti" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-network-wired text-purple-500 mr-2"></i> TI - Transferência Interna</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
                     <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Transferência</h3>
 
@@ -469,8 +428,7 @@
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Afetado</label>
                             <select id="input-ti-dept" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="" disabled selected>Selecione um departamento...</option>
-                                <!-- Preenchido dinamicamente com as verbas -->
-                            </select>
+                                </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
@@ -488,7 +446,6 @@
                     </form>
                 </div>
 
-                <!-- Tabela de TI Registradas -->
                 <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-bold text-gray-800">Histórico de Transferências (TI)</h3>
@@ -506,22 +463,17 @@
                                 </tr>
                             </thead>
                             <tbody id="table-ti" class="divide-y divide-gray-100">
-                                <!-- Preenchido via JS -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- VIEW: USUÁRIOS E PERMISSÕES (ADMIN)        -->
-        <!-- ========================================== -->
         <div id="view-usuarios" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-users-gear text-blue-600 mr-2"></i> Gestão de Usuários e Permissões</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Painel de Inserção de Usuário -->
                 <div class="bg-white rounded-lg shadow flex flex-col h-full min-h-[500px]">
                     <div class="p-4 border-b bg-gray-50">
                         <h3 class="text-lg font-bold text-brand-card">Cadastrar Novo Acesso</h3>
@@ -557,8 +509,7 @@
                                     <p class="text-[10px] text-gray-600">Selecione o que este usuário poderá ver no Dashboard.</p>
                                 </div>
                                 <div class="p-4 overflow-y-auto flex-1 bg-gray-50" id="tree-permissoes">
-                                    <!-- Sanfona montada via JS baseada nas Verbas -->
-                                </div>
+                                    </div>
                             </div>
 
                             <div class="pt-4">
@@ -568,7 +519,6 @@
                     </div>
                 </div>
 
-                <!-- Lista de Usuários -->
                 <div class="bg-white rounded-lg shadow p-0 flex flex-col h-full min-h-[500px]">
                     <div class="p-4 border-b bg-gray-50">
                         <h3 class="text-lg font-bold text-gray-800">Usuários Ativos</h3>
@@ -584,17 +534,13 @@
                                 </tr>
                             </thead>
                             <tbody id="table-usuarios" class="divide-y divide-gray-100">
-                                <!-- Preenchido via JS -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- VIEW: INCONSISTÊNCIAS                      -->
-        <!-- ========================================== -->
         <div id="view-inconsistencias" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-red-600 mb-2 border-b border-red-200 pb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i> Inconsistências Detectadas</h2>
             <p class="text-gray-600 text-sm mb-6">Abaixo estão os lançamentos vindos da planilha cujos departamentos <b>não foram encontrados</b> na sua base de Verbas. Estes valores não estão sendo contabilizados no Dashboard principal até que você cadastre o departamento na aba "Verbas".</p>
@@ -613,8 +559,7 @@
                             </tr>
                         </thead>
                         <tbody id="table-inconsistencias" class="divide-y divide-gray-100">
-                            <!-- Preenchido via JS -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -622,7 +567,6 @@
 
     </main>
 
-    <!-- Application Logic Integrada ao Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -713,7 +657,7 @@
                     aplicarFiltrosEmCascata(null);
                     agendarAtualizacaoDashboard();
                     atualizarDropdownDepartamentosGeral();
-                    renderTreePermissoes(); // Atualiza a sanfona de admin
+                    if(usuarioLogadoAtual.role === 'admin') renderTreePermissoes(); // Atualiza a sanfona de admin
                 }
             }, (err) => console.error(err));
 
@@ -733,14 +677,12 @@
             onSnapshot(usuariosRef, (snapshot) => {
                 usuariosDB = []; snapshot.forEach(d => usuariosDB.push(d.data()));
                 
-                // Se o DB de usuários for 0, cria o admin master invisivelmente no cache para o 1º login não travar
                 if(usuariosDB.length === 0) {
                     usuariosDB.push({ login: 'admin', senha: 'admin', nome: 'Administrador Master', role: 'admin', depts: [] });
                 }
 
                 if(usuarioLogadoAtual) {
                     renderTabelaUsuarios();
-                    // Atualiza dados de sessão caso o admin altere as permissões deste usuário online
                     const atualizado = usuariosDB.find(u => u.login === usuarioLogadoAtual.login);
                     if(atualizado) {
                         usuarioLogadoAtual = atualizado;
@@ -768,7 +710,6 @@
             const pass = document.getElementById('login-pass').value.trim();
             const erroEl = document.getElementById('login-error');
 
-            // Fallback Mestre: Acesso de segurança inquebrável para o Admin
             if(usr === 'admin' && (pass === 'admin' || pass === '123')) {
                 const masterAdmin = { login: 'admin', senha: pass, nome: 'Administrador Principal', role: 'admin', depts: [] };
                 if (auth.currentUser) {
@@ -794,7 +735,6 @@
             document.getElementById('view-login').style.display = 'flex';
             document.getElementById('view-login').classList.remove('opacity-0', 'pointer-events-none');
             
-            // Limpar formulário de login
             document.getElementById('login-user').value = '';
             document.getElementById('login-pass').value = '';
         };
@@ -803,23 +743,19 @@
             usuarioLogadoAtual = userObj;
             localStorage.setItem('sessionUser', JSON.stringify(userObj));
             
-            // Esconde tela de login
             document.getElementById('view-login').classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => { document.getElementById('view-login').style.display = 'none'; }, 500);
 
-            // Atualiza UI baseada no nível de acesso
             document.getElementById('user-logged-name').innerText = userObj.nome;
             
             if(userObj.role === 'admin') {
                 document.getElementById('menu-admin').classList.remove('hidden');
+                renderTreePermissoes(); // <-- FIX: Garante que a sanfona seja montada imediatamente para o Admin logado
             } else {
                 document.getElementById('menu-admin').classList.add('hidden');
             }
 
-            // Garante que abaça no dashboard
             window.switchTab('dashboard');
-            
-            // Força atualizar filtros/tabelas agora com o contexto do usuário
             aplicarFiltrosEmCascata(null);
             renderTabelaUsuarios();
         }
@@ -834,7 +770,6 @@
             const login = document.getElementById('input-usr-login').value.trim();
             const role = document.getElementById('input-usr-role').value;
             
-            // Varre as caixinhas de departamento pra ver quais estão marcadas
             let deptsPermitidos = [];
             if(role === 'user') {
                 const checkboxes = document.querySelectorAll('.chk-leaf-dept:checked');
@@ -876,11 +811,9 @@
             }
         };
 
-        // Lógica da Sanfona (Monta Árvore Baseada nas Verbas Cadastradas)
         function renderTreePermissoes() {
             const container = document.getElementById('tree-permissoes');
             
-            // Construir hierarquia
             const arvore = {};
             verbas.forEach(v => {
                 if(!arvore[v.diretoria]) arvore[v.diretoria] = {};
@@ -891,7 +824,7 @@
             let html = '<ul class="text-sm space-y-2">';
             
             Object.keys(arvore).sort().forEach(dir => {
-                const dirId = `dir-${dir.replace(/\s+/g, '')}`;
+                const dirId = `dir-${dir.replace(/[\s\W]+/g, '')}`; // Limpeza de caracteres especiais no ID
                 html += `
                     <li class="tree-node border border-gray-200 bg-white rounded">
                         <div class="flex items-center gap-2 p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer" onclick="this.parentElement.classList.toggle('open')">
@@ -903,7 +836,7 @@
                 `;
 
                 Object.keys(arvore[dir]).sort().forEach(setor => {
-                    const setorId = `setor-${dir.replace(/\s+/g, '')}-${setor.replace(/\s+/g, '')}`;
+                    const setorId = `setor-${dir.replace(/[\s\W]+/g, '')}-${setor.replace(/[\s\W]+/g, '')}`;
                     html += `
                         <li class="tree-node mt-1 mb-1">
                             <div class="flex items-center gap-2 p-1 hover:bg-gray-50 cursor-pointer" onclick="this.parentElement.classList.toggle('open')">
@@ -1000,6 +933,12 @@
 
             if (tabId === 'dashboard') agendarAtualizacaoDashboard();
             if (tabId === 'viagens' || tabId === 'ti') atualizarDropdownDepartamentosGeral();
+            
+            // FIX: Força a atualização da sanfona caso o admin clique na aba
+            if (tabId === 'usuarios') {
+                renderTreePermissoes();
+                renderTabelaUsuarios();
+            }
         };
 
         window.mudarAbaTabela = function(tipo) {
@@ -1204,7 +1143,6 @@
         // CASCATAS E FILTROS 
         // ==========================================
         function aplicarFiltrosEmCascata(origem = null) {
-            // Se for usuário comum, ele só vê o que pode. Filtramos a base 'verbas' de acordo.
             let verbasPermitidas = verbas;
             if (usuarioLogadoAtual && usuarioLogadoAtual.role !== 'admin') {
                 const permits = usuarioLogadoAtual.depts || [];
@@ -1335,11 +1273,9 @@
             
             const deptsOrcadosTodos = verbas.map(v => v.departamento.toLowerCase().trim());
             
-            // Inconsistências (Somente Planilha)
             const lancamentosInconsistentes = [];
             lancamentos.forEach(l => {
                 const deptLancamento = l.departamento ? l.departamento.toLowerCase().trim() : '';
-                // Se é user limitado, só ve inconsistência dos depts que ele tem acesso (que teoricamente não estao orcados, mas se ele nao tem acesso à arvore, ele nao ve. Como é painel restrito, inconsistencia só faz sentido pro admin.
                 if(!isUserLimitado && !deptsOrcadosTodos.includes(deptLancamento) && (l.debito !== 0 || l.credito !== 0)) {
                     lancamentosInconsistentes.push(l);
                 }
@@ -1362,14 +1298,11 @@
             const deptInfo = {};
             verbas.forEach(v => { deptInfo[v.departamento.toLowerCase().trim()] = { diretoria: v.diretoria, setor: v.setor }; });
 
-            // FILTROS APLICADOS A TODOS OS CONJUNTOS DE DADOS
             function validaFiltro(deptRaw, dataRaw, isDataInput) {
                 const deptKey = deptRaw.toLowerCase().trim();
-                // 1. Limite Físico de Orçamento e de Acesso (User security)
                 if(!deptsOrcadosTodos.includes(deptKey)) return false; 
-                if(isUserLimitado && !deptsPermitidosUser.includes(deptRaw)) return false; // Bloqueio de acesso
+                if(isUserLimitado && !deptsPermitidosUser.includes(deptRaw)) return false; 
 
-                // 2. Filtros de Tela UI
                 const mes = isDataInput ? (dataRaw.split('-')[1] || '') : (dataRaw.split('/')[1] || ''); 
                 const info = deptInfo[deptKey] || { diretoria: 'Não Classificado', setor: 'Não Classificado' };
                 
@@ -1385,7 +1318,6 @@
             const filtradasViagens = viagens.filter(v => validaFiltro(v.departamento, v.data, true));
             const filtradosTI = tis.filter(t => validaFiltro(t.departamento, t.data, true));
 
-            // Filtro Verbas (Base)
             const filtradosVer = verbas.filter(v => {
                 if(isUserLimitado && !deptsPermitidosUser.includes(v.departamento)) return false;
                 const passDir = sels.diretoria.includes('todos') || sels.diretoria.includes(v.diretoria);
@@ -1426,9 +1358,6 @@
             else if (pctGastos > 80) { statusEl.innerText = "Atenção"; statusEl.className = "text-md font-bold text-orange-400"; }
             else { statusEl.innerText = "Saldo Saudável"; statusEl.className = "text-md font-bold text-green-400"; }
 
-            // ------------------------------------------
-            // Tabela Detalhamento
-            // ------------------------------------------
             let itensParaTabela = [];
 
             if (visualizacaoTabelaAtual === 'todos' || visualizacaoTabelaAtual === 'contabil') {
@@ -1491,9 +1420,6 @@
                 tbody.innerHTML = linhasHTML.join('');
             }
 
-            // ------------------------------------------
-            // Gráfico Mensal (Com TI Add)
-            // ------------------------------------------
             const mesesLabels = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
             const orcamentoMensalFixo = Array(12).fill(totalOrcamentoAnual / 12);
             let gastosMensaisContabil = Array(12).fill(0);
@@ -1554,9 +1480,6 @@
                 }
             }
 
-            // ------------------------------------------
-            // Barras de Execução Total
-            // ------------------------------------------
             const deptContainer = document.getElementById('dept-execution-list');
             const deptData = {};
             
@@ -1779,7 +1702,6 @@
             return ret;
         }
 
-        // --- CORREÇÃO DA INICIALIZAÇÃO PARA HOSPEDAGEM WEB ---
         function inicializarApp() {
             aplicarFiltrosEmCascata(null);
             carregarLancamentosPlanilha();
