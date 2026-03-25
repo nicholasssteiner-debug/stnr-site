@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Controle de Verbas e Viagens</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script>
@@ -46,6 +49,9 @@
 </head>
 <body class="bg-brand-light font-sans text-gray-800 h-screen flex overflow-hidden">
 
+    <!-- ========================================== -->
+    <!-- TELA DE LOGIN                              -->
+    <!-- ========================================== -->
     <div id="view-login" class="absolute inset-0 z-50 bg-brand-dark flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
             <div class="text-center mb-6">
@@ -79,6 +85,11 @@
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- ESTRUTURA PRINCIPAL (SISTEMA)              -->
+    <!-- ========================================== -->
+    
+    <!-- Sidebar -->
     <aside class="w-64 bg-brand-dark text-white flex flex-col transition-all duration-300 z-20 shadow-xl relative">
         <div class="p-6 flex flex-col items-center border-b border-gray-700">
             <i class="fa-solid fa-chart-pie text-4xl mb-2 text-blue-400"></i>
@@ -99,6 +110,7 @@
                 <span>Dashboard</span>
             </a>
             
+            <!-- Itens Exclusivos para Administradores -->
             <div id="menu-admin" class="space-y-2 hidden">
                 <div class="pt-4 pb-1">
                     <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-4">Gestão (Admin)</span>
@@ -135,14 +147,19 @@
         </div>
     </aside>
 
+    <!-- Main Content Area -->
     <main class="flex-1 flex flex-col h-full overflow-hidden relative">
         
+        <!-- ========================================== -->
+        <!-- VIEW: DASHBOARD                            -->
+        <!-- ========================================== -->
         <div id="view-dashboard" class="flex flex-col h-full w-full absolute inset-0 bg-brand-light transition-opacity duration-300 z-10">
             
+            <!-- Top Filters -->
             <header class="bg-white p-4 shadow-sm z-20 flex flex-wrap gap-4 items-center">
                 
                 <div class="custom-dropdown relative w-36" id="dd-mes">
-                    <label class="text-xs text-blue-600 font-semibold mb-1 block">Período</label>
+                    <label class="text-xs text-blue-600 font-semibold mb-1 block">Período (Mês/Ano)</label>
                     <div class="border-b border-gray-300 pb-1 flex justify-between items-center cursor-pointer text-sm" onclick="window.toggleDropdown(event, 'dd-mes')">
                         <span class="truncate pr-2" id="label-mes">Todos</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
@@ -183,9 +200,11 @@
                 </div>
             </header>
 
+            <!-- Dashboard Grid -->
             <div class="flex-1 p-4 overflow-y-auto z-0" onclick="window.fecharTodosDropdowns()">
                 <div class="flex flex-col lg:flex-row gap-4 h-full">
                     
+                    <!-- Left Column: KPIs -->
                     <div class="w-full lg:w-48 flex flex-col gap-2">
                         <div class="bg-brand-card text-white p-3 rounded-lg shadow relative overflow-hidden">
                             <div class="absolute right-0 top-0 w-1 h-full bg-green-400"></div>
@@ -234,6 +253,7 @@
                         </div>
                     </div>
 
+                    <!-- Middle Column: Chart & Table -->
                     <div class="flex-1 flex flex-col gap-4 min-w-0">
                         <div class="bg-white p-4 rounded-lg shadow h-56 flex flex-col">
                             <h2 class="text-center text-gray-700 font-semibold mb-2 text-sm">Evolução de Consumo x Orçamento</h2>
@@ -245,6 +265,7 @@
                         <div class="bg-white p-0 rounded-lg shadow flex-1 flex flex-col min-h-[250px] overflow-hidden">
                             <div class="p-3 border-b border-gray-100 flex flex-wrap justify-between items-center bg-gray-50 gap-2">
                                 <h2 class="text-gray-700 font-semibold text-sm">Detalhamento de Despesas</h2>
+                                <!-- CONTROLE DE VISÃO DA TABELA -->
                                 <div class="flex bg-gray-200 rounded p-1 text-[11px] font-semibold text-gray-500 overflow-x-auto">
                                     <button class="px-3 py-1 rounded bg-white shadow-sm text-blue-600 transition-colors whitespace-nowrap" id="btn-tab-todos" onclick="window.mudarAbaTabela('todos')">Todas</button>
                                     <button class="px-3 py-1 rounded hover:text-gray-800 transition-colors whitespace-nowrap" id="btn-tab-contabil" onclick="window.mudarAbaTabela('contabil')">Contábeis</button>
@@ -267,26 +288,33 @@
                                         </tr>
                                     </thead>
                                     <tbody id="table-body" class="text-gray-600 divide-y divide-gray-100">
-                                        </tbody>
+                                        <!-- Preenchido via JS -->
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Right Column: Dept Execution -->
                     <div class="w-full lg:w-80 bg-white rounded-lg shadow flex flex-col overflow-hidden">
                         <h2 class="text-center text-gray-700 font-semibold p-4 text-sm border-b bg-gray-50" title="Considerando Contábil + Viagens + TI">Execução (Total por Departamento)</h2>
                         <div class="p-4 overflow-y-auto flex-1" id="dept-execution-list">
-                            </div>
+                            <!-- Preenchido via JS -->
+                        </div>
                     </div>
 
                 </div>
             </div>
         </div>
 
+        <!-- ========================================== -->
+        <!-- VIEW: VERBAS / ORÇAMENTO                   -->
+        <!-- ========================================== -->
         <div id="view-verbas" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-money-bill-wave text-blue-600 mr-2"></i> Gestão de Verbas (Orçamento)</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
                     <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Cadastrar ou Atualizar</h3>
                     
@@ -330,6 +358,7 @@
                     </form>
                 </div>
 
+                <!-- Tabela de Verbas Cadastradas -->
                 <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-bold text-gray-800">Departamentos e Orçamentos Registrados</h3>
@@ -347,17 +376,22 @@
                                 </tr>
                             </thead>
                             <tbody id="table-verbas" class="divide-y divide-gray-100">
-                                </tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ========================================== -->
+        <!-- VIEW: VIAGENS (MANUAL)                     -->
+        <!-- ========================================== -->
         <div id="view-viagens" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-plane text-orange-500 mr-2"></i> Lançamento Manual: Viagens</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
                     <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Viagem</h3>
 
@@ -370,7 +404,8 @@
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Destino</label>
                             <select id="input-viagem-dept" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="" disabled selected>Selecione um departamento...</option>
-                                </select>
+                                <!-- Preenchido dinamicamente com as verbas -->
+                            </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
@@ -388,6 +423,7 @@
                     </form>
                 </div>
 
+                <!-- Tabela de Viagens Registradas -->
                 <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-bold text-gray-800">Histórico de Lançamentos Manuais</h3>
@@ -405,17 +441,22 @@
                                 </tr>
                             </thead>
                             <tbody id="table-viagens" class="divide-y divide-gray-100">
-                                </tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ========================================== -->
+        <!-- VIEW: TI - TRANSFERÊNCIA INTERNA           -->
+        <!-- ========================================== -->
         <div id="view-ti" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-network-wired text-purple-500 mr-2"></i> TI - Transferência Interna</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
                     <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Transferência</h3>
 
@@ -428,7 +469,8 @@
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Afetado</label>
                             <select id="input-ti-dept" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white">
                                 <option value="" disabled selected>Selecione um departamento...</option>
-                                </select>
+                                <!-- Preenchido dinamicamente com as verbas -->
+                            </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
@@ -446,6 +488,7 @@
                     </form>
                 </div>
 
+                <!-- Tabela de TI Registradas -->
                 <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
                     <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-bold text-gray-800">Histórico de Transferências (TI)</h3>
@@ -463,17 +506,22 @@
                                 </tr>
                             </thead>
                             <tbody id="table-ti" class="divide-y divide-gray-100">
-                                </tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ========================================== -->
+        <!-- VIEW: USUÁRIOS E PERMISSÕES (ADMIN)        -->
+        <!-- ========================================== -->
         <div id="view-usuarios" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-users-gear text-blue-600 mr-2"></i> Gestão de Usuários e Permissões</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Painel de Inserção de Usuário -->
                 <div class="bg-white rounded-lg shadow flex flex-col h-full min-h-[500px]">
                     <div class="p-4 border-b bg-gray-50">
                         <h3 class="text-lg font-bold text-brand-card">Cadastrar Novo Acesso</h3>
@@ -509,7 +557,8 @@
                                     <p class="text-[10px] text-gray-600">Selecione o que este usuário poderá ver no Dashboard.</p>
                                 </div>
                                 <div class="p-4 overflow-y-auto flex-1 bg-gray-50" id="tree-permissoes">
-                                    </div>
+                                    <!-- Sanfona montada via JS baseada nas Verbas -->
+                                </div>
                             </div>
 
                             <div class="pt-4">
@@ -519,6 +568,7 @@
                     </div>
                 </div>
 
+                <!-- Lista de Usuários -->
                 <div class="bg-white rounded-lg shadow p-0 flex flex-col h-full min-h-[500px]">
                     <div class="p-4 border-b bg-gray-50">
                         <h3 class="text-lg font-bold text-gray-800">Usuários Ativos</h3>
@@ -534,13 +584,17 @@
                                 </tr>
                             </thead>
                             <tbody id="table-usuarios" class="divide-y divide-gray-100">
-                                </tbody>
+                                <!-- Preenchido via JS -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ========================================== -->
+        <!-- VIEW: INCONSISTÊNCIAS                      -->
+        <!-- ========================================== -->
         <div id="view-inconsistencias" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
             <h2 class="text-2xl font-bold text-red-600 mb-2 border-b border-red-200 pb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i> Inconsistências Detectadas</h2>
             <p class="text-gray-600 text-sm mb-6">Abaixo estão os lançamentos vindos da planilha cujos departamentos <b>não foram encontrados</b> na sua base de Verbas. Estes valores não estão sendo contabilizados no Dashboard principal até que você cadastre o departamento na aba "Verbas".</p>
@@ -559,7 +613,8 @@
                             </tr>
                         </thead>
                         <tbody id="table-inconsistencias" class="divide-y divide-gray-100">
-                            </tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -567,6 +622,7 @@
 
     </main>
 
+    <!-- Application Logic Integrada ao Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -619,11 +675,16 @@
         let mainChartInstance = null;
         let renderTimeout = null;
 
-        const mesesLista = [
-            { id: '01', nome: 'Jan' }, { id: '02', nome: 'Fev' }, { id: '03', nome: 'Mar' },
-            { id: '04', nome: 'Abr' }, { id: '05', nome: 'Mai' }, { id: '06', nome: 'Jun' },
-            { id: '07', nome: 'Jul' }, { id: '08', nome: 'Ago' }, { id: '09', nome: 'Set' },
-            { id: '10', nome: 'Out' }, { id: '11', nome: 'Nov' }, { id: '12', nome: 'Dez' }
+        // NOVO: Lista de Períodos Separando Meses e Anos (2025/2026)
+        const periodosLista = [
+            { id: '01/2025', nome: 'Jan/2025' }, { id: '02/2025', nome: 'Fev/2025' }, { id: '03/2025', nome: 'Mar/2025' },
+            { id: '04/2025', nome: 'Abr/2025' }, { id: '05/2025', nome: 'Mai/2025' }, { id: '06/2025', nome: 'Jun/2025' },
+            { id: '07/2025', nome: 'Jul/2025' }, { id: '08/2025', nome: 'Ago/2025' }, { id: '09/2025', nome: 'Set/2025' },
+            { id: '10/2025', nome: 'Out/2025' }, { id: '11/2025', nome: 'Nov/2025' }, { id: '12/2025', nome: 'Dez/2025' },
+            { id: '01/2026', nome: 'Jan/2026' }, { id: '02/2026', nome: 'Fev/2026' }, { id: '03/2026', nome: 'Mar/2026' },
+            { id: '04/2026', nome: 'Abr/2026' }, { id: '05/2026', nome: 'Mai/2026' }, { id: '06/2026', nome: 'Jun/2026' },
+            { id: '07/2026', nome: 'Jul/2026' }, { id: '08/2026', nome: 'Ago/2026' }, { id: '09/2026', nome: 'Set/2026' },
+            { id: '10/2026', nome: 'Out/2026' }, { id: '11/2026', nome: 'Nov/2026' }, { id: '12/2026', nome: 'Dez/2026' }
         ];
 
         // ==========================================
@@ -750,7 +811,7 @@
             
             if(userObj.role === 'admin') {
                 document.getElementById('menu-admin').classList.remove('hidden');
-                renderTreePermissoes(); // <-- FIX: Garante que a sanfona seja montada imediatamente para o Admin logado
+                renderTreePermissoes(); 
             } else {
                 document.getElementById('menu-admin').classList.add('hidden');
             }
@@ -934,7 +995,6 @@
             if (tabId === 'dashboard') agendarAtualizacaoDashboard();
             if (tabId === 'viagens' || tabId === 'ti') atualizarDropdownDepartamentosGeral();
             
-            // FIX: Força a atualização da sanfona caso o admin clique na aba
             if (tabId === 'usuarios') {
                 renderTreePermissoes();
                 renderTabelaUsuarios();
@@ -1186,7 +1246,8 @@
                 construirOpcoesDropdown('departamento', deptsValidos);
             }
 
-            if (origem === null) construirOpcoesDropdown('mes', mesesLista);
+            // ATUALIZAÇÃO NOVO FILTRO DE MESES/ANO
+            if (origem === null) construirOpcoesDropdown('mes', periodosLista);
         }
 
         function construirOpcoesDropdown(tipo, opcoesValidas) {
@@ -1232,7 +1293,7 @@
             
             if (sels.includes('todos')) label.innerText = 'Todos';
             else if (sels.length === 1) {
-                if(tipo === 'mes') label.innerText = mesesLista.find(m=>m.id===sels[0])?.nome || sels[0];
+                if(tipo === 'mes') label.innerText = periodosLista.find(m=>m.id===sels[0])?.nome || sels[0];
                 else label.innerText = sels[0];
             } else label.innerText = `${sels.length} selecionados`;
 
@@ -1303,10 +1364,19 @@
                 if(!deptsOrcadosTodos.includes(deptKey)) return false; 
                 if(isUserLimitado && !deptsPermitidosUser.includes(deptRaw)) return false; 
 
-                const mes = isDataInput ? (dataRaw.split('-')[1] || '') : (dataRaw.split('/')[1] || ''); 
+                // Lógica de Mês/Ano Dinâmica
+                let mesAno = '';
+                if (isDataInput) {
+                    const p = dataRaw.split('-'); // Formato HTML: YYYY-MM-DD
+                    if (p.length >= 3) mesAno = `${p[1]}/${p[0]}`;
+                } else {
+                    const p = dataRaw.split('/'); // Formato Planilha: DD/MM/YYYY
+                    if (p.length >= 3) mesAno = `${p[1]}/${p[2]}`;
+                }
+                
                 const info = deptInfo[deptKey] || { diretoria: 'Não Classificado', setor: 'Não Classificado' };
                 
-                const passMes = sels.mes.includes('todos') || sels.mes.includes(mes);
+                const passMes = sels.mes.includes('todos') || sels.mes.includes(mesAno);
                 const passDir = sels.diretoria.includes('todos') || sels.diretoria.includes(info.diretoria);
                 const passSet = sels.setor.includes('todos') || sels.setor.includes(info.setor);
                 const passDept = sels.departamento.includes('todos') || sels.departamento.includes(deptRaw);
@@ -1331,7 +1401,9 @@
 
         function renderDashboardFinal(lanFiltrados, verFiltradas, viaFiltradas, tiFiltrados, selMeses) {
             const totalOrcamentoAnual = verFiltradas.reduce((acc, curr) => acc + curr.valor, 0);
-            const mesesCount = selMeses.includes('todos') ? 12 : selMeses.length;
+            
+            // Corrige a multiplicação do orçamento para caso selecionem anos compostos
+            const mesesCount = selMeses.includes('todos') ? periodosLista.length : selMeses.length;
             const totalOrcamento = (totalOrcamentoAnual / 12) * mesesCount;
             
             const totalGastosContabil = lanFiltrados.reduce((acc, curr) => acc + (curr.debito + curr.credito), 0);
@@ -1654,16 +1726,22 @@
                 for (let i = 1; i < linhas.length; i++) {
                     if (!linhas[i].trim()) continue;
                     let col = parseCSVLine(linhas[i]);
+                    
                     if (col.length >= 8) {
-                        lancamentos.push({
-                            lote: col[0]||'-', data: col[1]||'-', conta: col[2]||'-',
-                            debito: parseValorCSV(col[3]), credito: parseValorCSV(col[4]),
-                            descricao: col[5]||'-', finalidade: col[6]||'-',
-                            departamento: col[7]?col[7].trim():'-', subconta: col[8]||'-'
-                        });
+                        // ADIÇÃO: Filtro para considerar apenas contas contábeis que começam com "4" (Despesas)
+                        const contaStr = col[2] ? String(col[2]).trim() : '-';
+                        
+                        if (contaStr.startsWith('4')) {
+                            lancamentos.push({
+                                lote: col[0]||'-', data: col[1]||'-', conta: contaStr,
+                                debito: parseValorCSV(col[3]), credito: parseValorCSV(col[4]),
+                                descricao: col[5]||'-', finalidade: col[6]||'-',
+                                departamento: col[7]?col[7].trim():'-', subconta: col[8]||'-'
+                            });
+                        }
                     }
                 }
-                if (lancamentos.length === 0) throw new Error("CSV vazio.");
+                if (lancamentos.length === 0) throw new Error("CSV vazio ou sem contas iniciadas em 4.");
                 lancamentos.sort((a, b) => parseDateBR(a.data) - parseDateBR(b.data));
                 
                 document.getElementById('data-atualizacao').innerHTML = `<span class="text-green-400">Pronto (${new Date().toLocaleTimeString('pt-BR')})</span>`;
