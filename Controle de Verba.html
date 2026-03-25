@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Controle de Verbas e Viagens</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0f2027',
+                            card: '#002B49',
+                            light: '#f3f4f6',
+                            accent: '#00b4d8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .progress-bar-red { background-color: #ef4444; }
+        .progress-bar-orange { background-color: #f97316; }
+        .progress-bar-blue { background-color: #3b82f6; }
+        
+        /* Estilos do Dropdown Customizado */
+        .custom-dropdown-menu { display: none; }
+        .custom-dropdown.open .custom-dropdown-menu { display: block; }
+        .custom-dropdown-menu::-webkit-scrollbar { width: 4px; }
+
+        /* Arvore de Permissões (Sanfona) */
+        .tree-node > .tree-children { display: none; margin-left: 20px; border-left: 1px dashed #cbd5e1; padding-left: 10px; }
+        .tree-node.open > .tree-children { display: block; }
+    </style>
+</head>
+<body class="bg-brand-light font-sans text-gray-800 h-screen flex overflow-hidden">
+
+    <!-- ========================================== -->
+    <!-- TELA DE LOGIN                              -->
+    <!-- ========================================== -->
+    <div id="view-login" class="absolute inset-0 z-50 bg-brand-dark flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-chart-pie text-5xl text-blue-500 mb-3"></i>
+                <h2 class="text-2xl font-bold text-gray-800">Controle de Verbas</h2>
+                <p class="text-xs text-gray-500 mt-1">Faça login para acessar o painel</p>
+            </div>
+            
+            <form onsubmit="window.fazerLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Usuário</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3 top-3 text-gray-400"></i>
+                        <input type="text" id="login-user" required class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Senha</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-3 text-gray-400"></i>
+                        <input type="password" id="login-pass" required class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div id="login-error" class="hidden text-red-500 text-xs font-semibold text-center bg-red-50 p-2 rounded">
+                    Usuário ou senha incorretos.
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition duration-200">
+                    Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ESTRUTURA PRINCIPAL (SISTEMA)              -->
+    <!-- ========================================== -->
+    
+    <!-- Sidebar -->
+    <aside class="w-64 bg-brand-dark text-white flex flex-col transition-all duration-300 z-20 shadow-xl relative">
+        <div class="p-6 flex flex-col items-center border-b border-gray-700">
+            <i class="fa-solid fa-chart-pie text-4xl mb-2 text-blue-400"></i>
+            <h1 class="text-xl font-bold text-center leading-tight">Controle de<br>Verbas</h1>
+        </div>
+        
+        <div class="px-4 py-3 border-b border-gray-700/50 bg-gray-800/50 flex justify-between items-center">
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-400">Logado como:</span>
+                <span class="text-sm font-bold text-blue-300 truncate w-32" id="user-logged-name">...</span>
+            </div>
+            <button onclick="window.fazerLogout()" class="text-red-400 hover:text-red-300 text-xs font-bold" title="Sair"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+        </div>
+
+        <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+            <a href="#" onclick="window.switchTab('dashboard')" id="nav-dashboard" class="flex items-center gap-3 bg-gray-700/50 text-white px-4 py-3 rounded-lg border-l-4 border-blue-400 transition-colors">
+                <i class="fa-solid fa-chart-simple w-5 text-center text-gray-300"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            <!-- Itens Exclusivos para Administradores -->
+            <div id="menu-admin" class="space-y-2 hidden">
+                <div class="pt-4 pb-1">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-4">Gestão (Admin)</span>
+                </div>
+                <a href="#" onclick="window.switchTab('verbas')" id="nav-verbas" class="flex items-center gap-3 text-gray-400 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg border-l-4 border-transparent transition-colors">
+                    <i class="fa-solid fa-money-bill-wave w-5 text-center text-gray-300"></i>
+                    <span>Verbas / Orçamento</span>
+                </a>
+                <a href="#" onclick="window.switchTab('viagens')" id="nav-viagens" class="flex items-center gap-3 text-gray-400 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg border-l-4 border-transparent transition-colors">
+                    <i class="fa-solid fa-plane w-5 text-center text-gray-300"></i>
+                    <span>Viagens (Manual)</span>
+                </a>
+                <a href="#" onclick="window.switchTab('ti')" id="nav-ti" class="flex items-center gap-3 text-gray-400 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg border-l-4 border-transparent transition-colors">
+                    <i class="fa-solid fa-network-wired w-5 text-center text-gray-300"></i>
+                    <span>TI (Transferências)</span>
+                </a>
+                <a href="#" onclick="window.switchTab('inconsistencias')" id="nav-inconsistencias" class="flex items-center justify-between text-gray-400 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg border-l-4 border-transparent transition-colors">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-triangle-exclamation w-5 text-center text-gray-300"></i>
+                        <span>Inconsistências</span>
+                    </div>
+                    <span id="badge-inconsistencias" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
+                </a>
+                <a href="#" onclick="window.switchTab('usuarios')" id="nav-usuarios" class="flex items-center gap-3 text-gray-400 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg border-l-4 border-transparent transition-colors">
+                    <i class="fa-solid fa-users-gear w-5 text-center text-gray-300"></i>
+                    <span>Usuários e Acessos</span>
+                </a>
+            </div>
+        </nav>
+        
+        <div class="p-4 text-[10px] text-gray-500 text-center border-t border-gray-800">
+            Última Sincronização: <br>
+            <span id="data-atualizacao" class="text-gray-400">Conectando...</span>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        <!-- ========================================== -->
+        <!-- VIEW: DASHBOARD                            -->
+        <!-- ========================================== -->
+        <div id="view-dashboard" class="flex flex-col h-full w-full absolute inset-0 bg-brand-light transition-opacity duration-300 z-10">
+            
+            <!-- Top Filters -->
+            <header class="bg-white p-4 shadow-sm z-20 flex flex-wrap gap-4 items-center">
+                
+                <div class="custom-dropdown relative w-36" id="dd-mes">
+                    <label class="text-xs text-blue-600 font-semibold mb-1 block">Período</label>
+                    <div class="border-b border-gray-300 pb-1 flex justify-between items-center cursor-pointer text-sm" onclick="window.toggleDropdown(event, 'dd-mes')">
+                        <span class="truncate pr-2" id="label-mes">Todos</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
+                    </div>
+                    <div class="custom-dropdown-menu absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto" id="list-mes"></div>
+                </div>
+
+                <div class="custom-dropdown relative w-44" id="dd-diretoria">
+                    <label class="text-xs text-blue-600 font-semibold mb-1 block">Diretoria/Grupo</label>
+                    <div class="border-b border-gray-300 pb-1 flex justify-between items-center cursor-pointer text-sm" onclick="window.toggleDropdown(event, 'dd-diretoria')">
+                        <span class="truncate pr-2" id="label-diretoria">Todos</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
+                    </div>
+                    <div class="custom-dropdown-menu absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto" id="list-diretoria"></div>
+                </div>
+
+                <div class="custom-dropdown relative w-44" id="dd-setor">
+                    <label class="text-xs text-blue-600 font-semibold mb-1 block">Tipo de Setor</label>
+                    <div class="border-b border-gray-300 pb-1 flex justify-between items-center cursor-pointer text-sm" onclick="window.toggleDropdown(event, 'dd-setor')">
+                        <span class="truncate pr-2" id="label-setor">Todos</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
+                    </div>
+                    <div class="custom-dropdown-menu absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto" id="list-setor"></div>
+                </div>
+
+                <div class="custom-dropdown relative w-48" id="dd-departamento">
+                    <label class="text-xs text-blue-600 font-semibold mb-1 block">Departamento</label>
+                    <div class="border-b border-gray-300 pb-1 flex justify-between items-center cursor-pointer text-sm" onclick="window.toggleDropdown(event, 'dd-departamento')">
+                        <span class="truncate pr-2" id="label-departamento">Todos</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
+                    </div>
+                    <div class="custom-dropdown-menu absolute top-full left-0 mt-1 w-72 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto" id="list-departamento"></div>
+                </div>
+                
+                <div class="ml-auto flex gap-2">
+                    <button class="bg-brand-card text-white px-3 py-1.5 rounded hover:bg-blue-900 text-xs shadow-sm transition-colors" onclick="window.limparFiltros()"><i class="fa-solid fa-eraser mr-1"></i> Limpar Filtros</button>
+                    <button class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-300 text-xs shadow-sm transition-colors" onclick="window.print()"><i class="fa-solid fa-print"></i></button>
+                </div>
+            </header>
+
+            <!-- Dashboard Grid -->
+            <div class="flex-1 p-4 overflow-y-auto z-0" onclick="window.fecharTodosDropdowns()">
+                <div class="flex flex-col lg:flex-row gap-4 h-full">
+                    
+                    <!-- Left Column: KPIs -->
+                    <div class="w-full lg:w-48 flex flex-col gap-2">
+                        <div class="bg-brand-card text-white p-3 rounded-lg shadow relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-1 h-full bg-green-400"></div>
+                            <h3 class="text-xl font-bold" id="kpi-orcamento">R$ 0,00</h3>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs text-gray-300">Orçamento</span>
+                                <span class="text-[10px] font-bold text-green-400">100%</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-brand-card text-white p-3 rounded-lg shadow relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-1 h-full bg-blue-400"></div>
+                            <h3 class="text-xl font-bold" id="kpi-gastos">R$ 0,00</h3>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-[10px] text-gray-300" title="Débitos - Créditos">Contábil</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-brand-card text-white p-3 rounded-lg shadow relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-1 h-full bg-orange-400"></div>
+                            <h3 class="text-xl font-bold" id="kpi-viagens">R$ 0,00</h3>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-[10px] text-gray-300">Viagens</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-brand-card text-white p-3 rounded-lg shadow relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-1 h-full bg-purple-500"></div>
+                            <h3 class="text-xl font-bold" id="kpi-ti">R$ 0,00</h3>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-[10px] text-gray-300">TI Interna</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-800 text-white p-3 rounded-lg shadow relative overflow-hidden border border-gray-700">
+                            <div class="absolute right-0 top-0 w-1 h-full bg-indigo-400"></div>
+                            <h3 class="text-xl font-bold" id="kpi-saldo">R$ 0,00</h3>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs font-bold text-gray-300">Saldo Final</span>
+                                <span class="text-[10px] font-bold text-indigo-400" id="kpi-saldo-pct">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-brand-card text-white p-2 rounded-lg shadow flex-1 flex items-center justify-center text-center">
+                            <h2 class="text-md font-bold text-gray-400" id="kpi-status">Sem Dados</h2>
+                        </div>
+                    </div>
+
+                    <!-- Middle Column: Chart & Table -->
+                    <div class="flex-1 flex flex-col gap-4 min-w-0">
+                        <div class="bg-white p-4 rounded-lg shadow h-56 flex flex-col">
+                            <h2 class="text-center text-gray-700 font-semibold mb-2 text-sm">Evolução de Consumo x Orçamento</h2>
+                            <div class="flex-1 relative w-full h-full">
+                                <canvas id="mainChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-0 rounded-lg shadow flex-1 flex flex-col min-h-[250px] overflow-hidden">
+                            <div class="p-3 border-b border-gray-100 flex flex-wrap justify-between items-center bg-gray-50 gap-2">
+                                <h2 class="text-gray-700 font-semibold text-sm">Detalhamento de Despesas</h2>
+                                <!-- CONTROLE DE VISÃO DA TABELA -->
+                                <div class="flex bg-gray-200 rounded p-1 text-[11px] font-semibold text-gray-500 overflow-x-auto">
+                                    <button class="px-3 py-1 rounded bg-white shadow-sm text-blue-600 transition-colors whitespace-nowrap" id="btn-tab-todos" onclick="window.mudarAbaTabela('todos')">Todas</button>
+                                    <button class="px-3 py-1 rounded hover:text-gray-800 transition-colors whitespace-nowrap" id="btn-tab-contabil" onclick="window.mudarAbaTabela('contabil')">Contábeis</button>
+                                    <button class="px-3 py-1 rounded hover:text-gray-800 transition-colors whitespace-nowrap" id="btn-tab-viagens" onclick="window.mudarAbaTabela('viagens')">Viagens</button>
+                                    <button class="px-3 py-1 rounded hover:text-gray-800 transition-colors whitespace-nowrap" id="btn-tab-ti" onclick="window.mudarAbaTabela('ti')">TI (Transf.)</button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto flex-1">
+                                <table class="w-full text-sm text-left whitespace-nowrap">
+                                    <thead class="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 shadow-sm z-10">
+                                        <tr>
+                                            <th class="px-4 py-2">Data</th>
+                                            <th class="px-4 py-2">Origem / Lote</th>
+                                            <th class="px-4 py-2 text-right">Débito (Gasto)</th>
+                                            <th class="px-4 py-2 text-right">Crédito (Estorno)</th>
+                                            <th class="px-4 py-2 text-right">Líquido</th>
+                                            <th class="px-4 py-2">Conta</th>
+                                            <th class="px-4 py-2">Descrição / Finalidade</th>
+                                            <th class="px-4 py-2">Departamento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body" class="text-gray-600 divide-y divide-gray-100">
+                                        <!-- Preenchido via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Dept Execution -->
+                    <div class="w-full lg:w-80 bg-white rounded-lg shadow flex flex-col overflow-hidden">
+                        <h2 class="text-center text-gray-700 font-semibold p-4 text-sm border-b bg-gray-50" title="Considerando Contábil + Viagens + TI">Execução (Total por Departamento)</h2>
+                        <div class="p-4 overflow-y-auto flex-1" id="dept-execution-list">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: VERBAS / ORÇAMENTO                   -->
+        <!-- ========================================== -->
+        <div id="view-verbas" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-money-bill-wave text-blue-600 mr-2"></i> Gestão de Verbas (Orçamento)</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Painel de Inserção -->
+                <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Cadastrar ou Atualizar</h3>
+                    
+                    <div class="mb-6 p-4 border border-dashed border-gray-400 rounded-lg bg-gray-50 text-center hover:bg-gray-100 transition-colors">
+                        <i class="fa-solid fa-file-csv text-3xl text-green-600 mb-2"></i>
+                        <h3 class="text-sm font-bold text-gray-700">Importar em Lote (CSV)</h3>
+                        <p class="text-xs text-gray-500 mb-3">Colunas: Diretoria, Setor, Departamento, Valor</p>
+                        <input type="file" id="input-csv" accept=".csv" class="hidden" onchange="window.lerCSV(event)">
+                        <button type="button" onclick="document.getElementById('input-csv').click()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-xs font-medium transition shadow">
+                            Selecionar Arquivo CSV
+                        </button>
+                    </div>
+
+                    <div class="flex items-center my-4">
+                        <div class="flex-1 border-t border-gray-300"></div>
+                        <span class="px-3 text-xs text-gray-500 font-semibold uppercase">Inserção Manual / Edição</span>
+                        <div class="flex-1 border-t border-gray-300"></div>
+                    </div>
+
+                    <form onsubmit="window.adicionarVerba(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Diretoria/Grupo</label>
+                            <input type="text" id="input-diretoria" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tipo de Setor</label>
+                            <input type="text" id="input-setor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento</label>
+                            <input type="text" id="input-departamento" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Valor Orçado Anual (R$)</label>
+                            <input type="number" step="0.01" id="input-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="flex-1 bg-blue-600 text-white rounded p-2 hover:bg-blue-700 text-sm font-medium shadow transition">Salvar</button>
+                            <button type="button" onclick="window.limparFormVerbas()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabela de Verbas Cadastradas -->
+                <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-800">Departamentos e Orçamentos Registrados</h3>
+                        <span id="total-verbas-cadastradas" class="text-sm font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">Total: R$ 0,00</span>
+                    </div>
+                    <div class="overflow-y-auto flex-1 p-0">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3">Diretoria</th>
+                                    <th class="px-4 py-3">Setor</th>
+                                    <th class="px-4 py-3">Departamento</th>
+                                    <th class="px-4 py-3 text-right">Orçamento (Ano)</th>
+                                    <th class="px-4 py-3 text-center w-24">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-verbas" class="divide-y divide-gray-100">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: VIAGENS (MANUAL)                     -->
+        <!-- ========================================== -->
+        <div id="view-viagens" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-plane text-orange-500 mr-2"></i> Lançamento Manual: Viagens</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Painel de Inserção -->
+                <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Viagem</h3>
+
+                    <form onsubmit="window.adicionarViagem(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Data de Emissão</label>
+                            <input type="date" id="input-viagem-data" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Destino</label>
+                            <select id="input-viagem-dept" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white">
+                                <option value="" disabled selected>Selecione um departamento...</option>
+                                <!-- Preenchido dinamicamente com as verbas -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
+                            <input type="text" id="input-viagem-desc" required placeholder="Ex: Passagem Aérea SP-RJ" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Finalidade</label>
+                            <input type="text" id="input-viagem-fin" required placeholder="Ex: Visita ao Cliente X" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Gasto Líquido (R$)</label>
+                            <input type="number" step="0.01" id="input-viagem-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <button type="submit" class="w-full bg-orange-500 text-white rounded p-2 hover:bg-orange-600 text-sm font-medium shadow transition">Salvar Viagem</button>
+                    </form>
+                </div>
+
+                <!-- Tabela de Viagens Registradas -->
+                <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-800">Histórico de Lançamentos Manuais</h3>
+                        <span id="total-viagens-cadastradas" class="text-sm font-bold text-orange-600 bg-orange-100 px-3 py-1 rounded-full">Total: R$ 0,00</span>
+                    </div>
+                    <div class="overflow-y-auto flex-1 p-0">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3">Data</th>
+                                    <th class="px-4 py-3">Departamento</th>
+                                    <th class="px-4 py-3">Descrição / Finalidade</th>
+                                    <th class="px-4 py-3 text-right">Valor Gasto</th>
+                                    <th class="px-4 py-3 text-center w-16">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-viagens" class="divide-y divide-gray-100">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: TI - TRANSFERÊNCIA INTERNA           -->
+        <!-- ========================================== -->
+        <div id="view-ti" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-network-wired text-purple-500 mr-2"></i> TI - Transferência Interna</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Painel de Inserção -->
+                <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Transferência</h3>
+
+                    <form onsubmit="window.adicionarTI(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Data da Movimentação</label>
+                            <input type="date" id="input-ti-data" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Afetado</label>
+                            <select id="input-ti-dept" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white">
+                                <option value="" disabled selected>Selecione um departamento...</option>
+                                <!-- Preenchido dinamicamente com as verbas -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
+                            <input type="text" id="input-ti-desc" required placeholder="Ex: Rateio de Servidores AWS" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Finalidade</label>
+                            <input type="text" id="input-ti-fin" required placeholder="Ex: Custo de Hospedagem" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Valor Transferido (R$)</label>
+                            <input type="number" step="0.01" id="input-ti-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <button type="submit" class="w-full bg-purple-600 text-white rounded p-2 hover:bg-purple-700 text-sm font-medium shadow transition">Salvar Transferência</button>
+                    </form>
+                </div>
+
+                <!-- Tabela de TI Registradas -->
+                <div class="bg-white rounded-lg shadow p-0 lg:col-span-2 flex flex-col h-full min-h-[400px]">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-800">Histórico de Transferências (TI)</h3>
+                        <span id="total-ti-cadastradas" class="text-sm font-bold text-purple-600 bg-purple-100 px-3 py-1 rounded-full">Total: R$ 0,00</span>
+                    </div>
+                    <div class="overflow-y-auto flex-1 p-0">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3">Data</th>
+                                    <th class="px-4 py-3">Departamento</th>
+                                    <th class="px-4 py-3">Descrição / Finalidade</th>
+                                    <th class="px-4 py-3 text-right">Valor</th>
+                                    <th class="px-4 py-3 text-center w-16">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-ti" class="divide-y divide-gray-100">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: USUÁRIOS E PERMISSÕES (ADMIN)        -->
+        <!-- ========================================== -->
+        <div id="view-usuarios" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2"><i class="fa-solid fa-users-gear text-blue-600 mr-2"></i> Gestão de Usuários e Permissões</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Painel de Inserção de Usuário -->
+                <div class="bg-white rounded-lg shadow flex flex-col h-full min-h-[500px]">
+                    <div class="p-4 border-b bg-gray-50">
+                        <h3 class="text-lg font-bold text-brand-card">Cadastrar Novo Acesso</h3>
+                    </div>
+                    
+                    <div class="p-6 overflow-y-auto flex-1 flex flex-col">
+                        <form onsubmit="window.salvarUsuario(event)" id="form-usuario" class="space-y-4 flex-1 flex flex-col">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Login (Usuário)</label>
+                                    <input type="text" id="input-usr-login" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">Senha</label>
+                                    <input type="password" id="input-usr-senha" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Nome de Exibição</label>
+                                <input type="text" id="input-usr-nome" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Tipo de Acesso</label>
+                                <select id="input-usr-role" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white" onchange="window.toggleArvoresPermissao()">
+                                    <option value="user">Usuário Comum (Apenas Dashboard com Filtro)</option>
+                                    <option value="admin">Administrador (Acesso Total)</option>
+                                </select>
+                            </div>
+
+                            <div id="container-permissoes" class="flex-1 flex flex-col mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                                <div class="bg-blue-50 p-2 border-b border-gray-200">
+                                    <h4 class="text-sm font-bold text-blue-800">Limitar Acesso (Diretoria > Setor > Dept)</h4>
+                                    <p class="text-[10px] text-gray-600">Selecione o que este usuário poderá ver no Dashboard.</p>
+                                </div>
+                                <div class="p-4 overflow-y-auto flex-1 bg-gray-50" id="tree-permissoes">
+                                    <!-- Sanfona montada via JS baseada nas Verbas -->
+                                </div>
+                            </div>
+
+                            <div class="pt-4">
+                                <button type="submit" class="w-full bg-blue-600 text-white rounded p-3 hover:bg-blue-700 text-sm font-bold shadow transition">Criar / Atualizar Usuário</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista de Usuários -->
+                <div class="bg-white rounded-lg shadow p-0 flex flex-col h-full min-h-[500px]">
+                    <div class="p-4 border-b bg-gray-50">
+                        <h3 class="text-lg font-bold text-gray-800">Usuários Ativos</h3>
+                    </div>
+                    <div class="overflow-y-auto flex-1 p-0">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3">Login</th>
+                                    <th class="px-4 py-3">Nome</th>
+                                    <th class="px-4 py-3">Nível</th>
+                                    <th class="px-4 py-3 text-center w-24">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-usuarios" class="divide-y divide-gray-100">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: INCONSISTÊNCIAS                      -->
+        <!-- ========================================== -->
+        <div id="view-inconsistencias" class="hidden flex-col h-full w-full absolute inset-0 bg-gray-50 z-10 overflow-y-auto p-6">
+            <h2 class="text-2xl font-bold text-red-600 mb-2 border-b border-red-200 pb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i> Inconsistências Detectadas</h2>
+            <p class="text-gray-600 text-sm mb-6">Abaixo estão os lançamentos vindos da planilha cujos departamentos <b>não foram encontrados</b> na sua base de Verbas. Estes valores não estão sendo contabilizados no Dashboard principal até que você cadastre o departamento na aba "Verbas".</p>
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col flex-1">
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-sm text-left whitespace-nowrap">
+                        <thead class="text-xs text-red-800 uppercase bg-red-50 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-3">Data</th>
+                                <th class="px-4 py-3">Departamento Não Cadastrado</th>
+                                <th class="px-4 py-3 text-right">Débito</th>
+                                <th class="px-4 py-3 text-right">Crédito</th>
+                                <th class="px-4 py-3">Conta Contábil</th>
+                                <th class="px-4 py-3">Descrição</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inconsistencias" class="divide-y divide-gray-100">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Application Logic Integrada ao Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI_MKCy7QcEJJzXTMNt_MdRj_KYywC6dQ",
+            authDomain: "viagens-46f97.firebaseapp.com",
+            projectId: "viagens-46f97",
+            storageBucket: "viagens-46f97.firebasestorage.app",
+            messagingSenderId: "687153388092",
+            appId: "1:687153388092:web:5622f38a87d4632bb8c139"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const appId = "viagens-app"; 
+
+        // Helpers
+        const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        
+        function parseDateBR(dataStr) {
+            if (!dataStr || dataStr === '-') return 0;
+            const parts = dataStr.split('/');
+            if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+            return 0; 
+        }
+        function formatInputDateBR(dataYMD) {
+            if(!dataYMD) return '';
+            const p = dataYMD.split('-');
+            return `${p[2]}/${p[1]}/${p[0]}`;
+        }
+
+        // Dados Globais (Vindos do Firebase compartilhado)
+        let verbas = []; 
+        let lancamentos = []; // Planilha Google
+        let viagens = []; 
+        let tis = []; // Transferencias Internas
+        let usuariosDB = [];
+        
+        let usuarioLogadoAtual = null; // Controle de Sessão
+
+        const URL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRW1hV-qHtts5KVkz9YmJ_p1IeQbmH3f-GgdclOkeRqxlOWDrKCFgEp2icAKyNpwaZev6x0YDjadz48/pub?gid=829605431&single=true&output=csv";
+
+        let selecaoFiltros = { 'mes': ['todos'], 'diretoria': ['todos'], 'setor': ['todos'], 'departamento': ['todos'] };
+        let visualizacaoTabelaAtual = 'todos'; 
+        let mainChartInstance = null;
+        let renderTimeout = null;
+
+        const mesesLista = [
+            { id: '01', nome: 'Jan' }, { id: '02', nome: 'Fev' }, { id: '03', nome: 'Mar' },
+            { id: '04', nome: 'Abr' }, { id: '05', nome: 'Mai' }, { id: '06', nome: 'Jun' },
+            { id: '07', nome: 'Jul' }, { id: '08', nome: 'Ago' }, { id: '09', nome: 'Set' },
+            { id: '10', nome: 'Out' }, { id: '11', nome: 'Nov' }, { id: '12', nome: 'Dez' }
+        ];
+
+        // ==========================================
+        // FIREBASE AUTH & LISTENERS (Acesso Público)
+        // ==========================================
+        let authReady = false;
+
+        const initAuth = async () => {
+            try {
+                await signInAnonymously(auth);
+            } catch(e) {
+                console.error("Falha ao autenticar no Firebase:", e);
+                document.getElementById('data-atualizacao').innerHTML = "<span class='text-red-500 font-bold'>Erro Banco de Dados</span>";
+            }
+        };
+
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if(user) {
+                authReady = true;
+                setupFirestoreListeners();
+                verificarSessaoAtiva(); // Vê se já logou antes
+            }
+        });
+
+        // NOTA: Seguindo a regra do ambiente, os dados compartilhados ficam na rota "public"
+        // para que Administrador crie e Usuário veja as mesmas coisas.
+        function setupFirestoreListeners() {
+            if(!auth.currentUser) return;
+            
+            const verbasRef = collection(db, 'artifacts', appId, 'public', 'data', 'verbas');
+            onSnapshot(verbasRef, (snapshot) => {
+                verbas = []; snapshot.forEach(d => verbas.push(d.data()));
+                if(usuarioLogadoAtual) {
+                    aplicarFiltrosEmCascata(null);
+                    agendarAtualizacaoDashboard();
+                    atualizarDropdownDepartamentosGeral();
+                    renderTreePermissoes(); // Atualiza a sanfona de admin
+                }
+            }, (err) => console.error(err));
+
+            const viagensRef = collection(db, 'artifacts', appId, 'public', 'data', 'viagens');
+            onSnapshot(viagensRef, (snapshot) => {
+                viagens = []; snapshot.forEach(d => viagens.push(d.data()));
+                if(usuarioLogadoAtual) agendarAtualizacaoDashboard();
+            }, (err) => console.error(err));
+
+            const tiRef = collection(db, 'artifacts', appId, 'public', 'data', 'tis');
+            onSnapshot(tiRef, (snapshot) => {
+                tis = []; snapshot.forEach(d => tis.push(d.data()));
+                if(usuarioLogadoAtual) agendarAtualizacaoDashboard();
+            }, (err) => console.error(err));
+
+            const usuariosRef = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios');
+            onSnapshot(usuariosRef, (snapshot) => {
+                usuariosDB = []; snapshot.forEach(d => usuariosDB.push(d.data()));
+                
+                // Se o DB de usuários for 0, cria o admin master invisivelmente no cache para o 1º login não travar
+                if(usuariosDB.length === 0) {
+                    usuariosDB.push({ login: 'admin', senha: 'admin', nome: 'Administrador Master', role: 'admin', depts: [] });
+                }
+
+                if(usuarioLogadoAtual) {
+                    renderTabelaUsuarios();
+                    // Atualiza dados de sessão caso o admin altere as permissões deste usuário online
+                    const atualizado = usuariosDB.find(u => u.login === usuarioLogadoAtual.login);
+                    if(atualizado) {
+                        usuarioLogadoAtual = atualizado;
+                        localStorage.setItem('sessionUser', JSON.stringify(usuarioLogadoAtual));
+                        agendarAtualizacaoDashboard();
+                    }
+                }
+            }, (err) => console.error(err));
+        }
+
+        // ==========================================
+        // SISTEMA DE LOGIN E SESSÃO
+        // ==========================================
+        function verificarSessaoAtiva() {
+            const sessao = localStorage.getItem('sessionUser');
+            if(sessao) {
+                const userCache = JSON.parse(sessao);
+                iniciarSistemaComo(userCache);
+            }
+        }
+
+        window.fazerLogin = function(e) {
+            e.preventDefault();
+            const usr = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+            const erroEl = document.getElementById('login-error');
+
+            // Fallback Mestre: Acesso de segurança inquebrável para o Admin
+            // Força a entrada e corrige o banco de dados se tiver ocorrido algum erro na criação
+            if(usr === 'admin' && (pass === 'admin' || pass === '123')) {
+                const masterAdmin = { login: 'admin', senha: pass, nome: 'Administrador Principal', role: 'admin', depts: [] };
+                // Salva/Subscreve no BD real garantindo que o admin existe
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', 'admin');
+                setDoc(docRef, masterAdmin);
+                iniciarSistemaComo(masterAdmin);
+                return;
+            }
+
+            const encUser = usuariosDB.find(u => u.login === usr && u.senha === pass);
+            if(encUser) {
+                iniciarSistemaComo(encUser);
+            } else {
+                erroEl.classList.remove('hidden');
+                setTimeout(() => erroEl.classList.add('hidden'), 3000);
+            }
+        };
+
+        window.fazerLogout = function() {
+            localStorage.removeItem('sessionUser');
+            usuarioLogadoAtual = null;
+            document.getElementById('view-login').style.display = 'flex';
+            document.getElementById('view-login').classList.remove('opacity-0', 'pointer-events-none');
+            
+            // Limpar formulário de login
+            document.getElementById('login-user').value = '';
+            document.getElementById('login-pass').value = '';
+        };
+
+        function iniciarSistemaComo(userObj) {
+            usuarioLogadoAtual = userObj;
+            localStorage.setItem('sessionUser', JSON.stringify(userObj));
+            
+            // Esconde tela de login
+            document.getElementById('view-login').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => { document.getElementById('view-login').style.display = 'none'; }, 500);
+
+            // Atualiza UI baseada no nível de acesso
+            document.getElementById('user-logged-name').innerText = userObj.nome;
+            
+            if(userObj.role === 'admin') {
+                document.getElementById('menu-admin').classList.remove('hidden');
+            } else {
+                document.getElementById('menu-admin').classList.add('hidden');
+            }
+
+            // Garante que abaça no dashboard
+            window.switchTab('dashboard');
+            
+            // Força atualizar filtros/tabelas agora com o contexto do usuário
+            aplicarFiltrosEmCascata(null);
+            renderTabelaUsuarios();
+        }
+
+        // ==========================================
+        // ABA DE USUÁRIOS (Sanfona e Permissões)
+        // ==========================================
+        window.salvarUsuario = async function(e) {
+            e.preventDefault();
+            if(!auth.currentUser) return;
+
+            const login = document.getElementById('input-usr-login').value.trim();
+            const role = document.getElementById('input-usr-role').value;
+            
+            // Varre as caixinhas de departamento pra ver quais estão marcadas
+            let deptsPermitidos = [];
+            if(role === 'user') {
+                const checkboxes = document.querySelectorAll('.chk-leaf-dept:checked');
+                deptsPermitidos = Array.from(checkboxes).map(chk => chk.value);
+            }
+
+            const novoUser = {
+                login: login,
+                senha: document.getElementById('input-usr-senha').value.trim(),
+                nome: document.getElementById('input-usr-nome').value.trim(),
+                role: role,
+                depts: deptsPermitidos
+            };
+
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', encodeURIComponent(login));
+            await setDoc(docRef, novoUser);
+
+            document.getElementById('form-usuario').reset();
+            window.toggleArvoresPermissao();
+            alert("Usuário salvo com sucesso!");
+        };
+
+        window.excluirUsuario = async function(login) {
+            if(!auth.currentUser) return;
+            if(login === 'admin') return alert("O administrador padrão não pode ser excluído.");
+            if(confirm(`Excluir usuário '${login}'?`)) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', encodeURIComponent(login));
+                await deleteDoc(docRef);
+            }
+        };
+
+        window.toggleArvoresPermissao = function() {
+            const role = document.getElementById('input-usr-role').value;
+            const container = document.getElementById('container-permissoes');
+            if(role === 'admin') {
+                container.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                container.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        };
+
+        // Lógica da Sanfona (Monta Árvore Baseada nas Verbas Cadastradas)
+        function renderTreePermissoes() {
+            const container = document.getElementById('tree-permissoes');
+            
+            // Construir hierarquia
+            const arvore = {};
+            verbas.forEach(v => {
+                if(!arvore[v.diretoria]) arvore[v.diretoria] = {};
+                if(!arvore[v.diretoria][v.setor]) arvore[v.diretoria][v.setor] = [];
+                if(!arvore[v.diretoria][v.setor].includes(v.departamento)) arvore[v.diretoria][v.setor].push(v.departamento);
+            });
+
+            let html = '<ul class="text-sm space-y-2">';
+            
+            Object.keys(arvore).sort().forEach(dir => {
+                const dirId = `dir-${dir.replace(/\s+/g, '')}`;
+                html += `
+                    <li class="tree-node border border-gray-200 bg-white rounded">
+                        <div class="flex items-center gap-2 p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer" onclick="this.parentElement.classList.toggle('open')">
+                            <i class="fa-solid fa-chevron-right text-[10px] text-gray-500 w-3 transition-transform"></i>
+                            <input type="checkbox" class="chk-node chk-dir" value="${dir}" onclick="event.stopPropagation(); window.checkNodeChildren(this, '${dirId}')">
+                            <span class="font-bold text-gray-800">${dir}</span>
+                        </div>
+                        <ul class="tree-children" id="${dirId}">
+                `;
+
+                Object.keys(arvore[dir]).sort().forEach(setor => {
+                    const setorId = `setor-${dir.replace(/\s+/g, '')}-${setor.replace(/\s+/g, '')}`;
+                    html += `
+                        <li class="tree-node mt-1 mb-1">
+                            <div class="flex items-center gap-2 p-1 hover:bg-gray-50 cursor-pointer" onclick="this.parentElement.classList.toggle('open')">
+                                <i class="fa-solid fa-chevron-right text-[10px] text-gray-400 w-3 transition-transform"></i>
+                                <input type="checkbox" class="chk-node chk-setor" value="${setor}" onclick="event.stopPropagation(); window.checkNodeChildren(this, '${setorId}')">
+                                <span class="font-semibold text-gray-700">${setor}</span>
+                            </div>
+                            <ul class="tree-children" id="${setorId}">
+                    `;
+
+                    arvore[dir][setor].sort().forEach(dept => {
+                        html += `
+                            <li class="flex items-center gap-2 py-1 hover:bg-gray-50">
+                                <i class="fa-solid fa-caret-right text-gray-300 w-2 ml-4"></i>
+                                <input type="checkbox" class="chk-node chk-leaf-dept" value="${dept}" onclick="window.checkParentNode(this)">
+                                <span class="text-gray-600">${dept}</span>
+                            </li>
+                        `;
+                    });
+                    html += `</ul></li>`;
+                });
+                html += `</ul></li>`;
+            });
+
+            html += '</ul>';
+            if(Object.keys(arvore).length === 0) html = '<p class="text-xs text-gray-400">Nenhum departamento cadastrado nas Verbas ainda.</p>';
+            
+            container.innerHTML = html;
+        }
+
+        window.checkNodeChildren = function(checkbox, childrenContainerId) {
+            const isChecked = checkbox.checked;
+            const container = document.getElementById(childrenContainerId);
+            if(container) {
+                const childChecks = container.querySelectorAll('input[type="checkbox"]');
+                childChecks.forEach(chk => chk.checked = isChecked);
+            }
+        };
+
+        window.checkParentNode = function(checkbox) {
+            // Se eu desmarco um filho, não faz o parent desmarcar automagicamente pra não complicar,
+            // O importante é que no Save a gente pega apenas as '.chk-leaf-dept'
+        };
+
+        function renderTabelaUsuarios() {
+            const tbody = document.getElementById('table-usuarios');
+            if(usuariosDB.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">Nenhum usuário no banco de dados.</td></tr>`;
+                 return;
+            }
+            let linhasHTML = [];
+            usuariosDB.forEach(u => {
+                const badge = u.role === 'admin' ? '<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">Admin</span>' : '<span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold">Usuário</span>';
+                const lockBtn = u.login === 'admin' ? '' : `<button onclick="window.excluirUsuario('${u.login}')" class="text-red-500 hover:text-red-700" title="Excluir Acesso"><i class="fa-solid fa-trash"></i></button>`;
+                
+                linhasHTML.push(`
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 border-b font-mono text-gray-600">${u.login}</td>
+                        <td class="px-4 py-2 border-b font-bold text-gray-800">${u.nome}</td>
+                        <td class="px-4 py-2 border-b">${badge}</td>
+                        <td class="px-4 py-2 border-b text-center space-x-2">${lockBtn}</td>
+                    </tr>
+                `);
+            });
+            tbody.innerHTML = linhasHTML.join('');
+        }
+
+        // ==========================================
+        // MAPEAMENTO GLOBAL UI DASHBOARD
+        // ==========================================
+        window.switchTab = function(tabId) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-verbas').classList.add('hidden');
+            document.getElementById('view-viagens').classList.add('hidden');
+            document.getElementById('view-ti').classList.add('hidden');
+            document.getElementById('view-inconsistencias').classList.add('hidden');
+            document.getElementById('view-usuarios').classList.add('hidden');
+            
+            document.querySelectorAll('nav a').forEach(a => {
+                a.classList.remove('border-blue-400', 'border-red-400', 'border-orange-400', 'border-purple-400', 'bg-gray-700/50', 'text-white');
+                a.classList.add('border-transparent', 'text-gray-400');
+            });
+
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            document.getElementById(`view-${tabId}`).classList.add('flex');
+            
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if(activeNav) {
+                activeNav.classList.remove('border-transparent', 'text-gray-400');
+                if(tabId === 'inconsistencias') activeNav.classList.add('border-red-400', 'bg-gray-700/50', 'text-white');
+                else if(tabId === 'viagens') activeNav.classList.add('border-orange-400', 'bg-gray-700/50', 'text-white');
+                else if(tabId === 'ti') activeNav.classList.add('border-purple-400', 'bg-gray-700/50', 'text-white');
+                else activeNav.classList.add('border-blue-400', 'bg-gray-700/50', 'text-white');
+            }
+
+            if (tabId === 'dashboard') agendarAtualizacaoDashboard();
+            if (tabId === 'viagens' || tabId === 'ti') atualizarDropdownDepartamentosGeral();
+        };
+
+        window.mudarAbaTabela = function(tipo) {
+            visualizacaoTabelaAtual = tipo;
+            ['todos', 'contabil', 'viagens', 'ti'].forEach(id => {
+                document.getElementById(`btn-tab-${id}`).className = "px-3 py-1 rounded hover:text-gray-800 transition-colors whitespace-nowrap";
+            });
+            document.getElementById(`btn-tab-${tipo}`).className = "px-3 py-1 rounded bg-white shadow-sm text-blue-600 transition-colors whitespace-nowrap";
+            agendarAtualizacaoDashboard(); 
+        };
+
+        window.toggleDropdown = function(event, id) {
+            event.stopPropagation();
+            document.querySelectorAll('.custom-dropdown').forEach(el => {
+                if (el.id !== id) el.classList.remove('open');
+            });
+            document.getElementById(id).classList.toggle('open');
+        };
+
+        window.fecharTodosDropdowns = function() {
+            document.querySelectorAll('.custom-dropdown').forEach(el => el.classList.remove('open'));
+        };
+
+        window.filtrarListaSuspensa = function(event, tipo) {
+            const termo = event.target.value.toLowerCase();
+            const container = document.getElementById(`list-${tipo}`);
+            const labels = container.querySelectorAll('.dropdown-item');
+            labels.forEach(lbl => {
+                const texto = lbl.innerText.toLowerCase();
+                if (texto.includes(termo)) lbl.style.display = 'flex';
+                else lbl.style.display = 'none';
+            });
+        };
+
+        window.handleCheckboxChange = function(tipo, valor, isChecked) {
+            let selecionados = selecaoFiltros[tipo];
+            if (valor === 'todos') {
+                selecionados = isChecked ? ['todos'] : [];
+            } else {
+                selecionados = selecionados.filter(i => i !== 'todos');
+                if (isChecked) selecionados.push(valor);
+                else selecionados = selecionados.filter(i => i !== valor);
+            }
+            if (selecionados.length === 0) selecionados = ['todos'];
+            selecaoFiltros[tipo] = selecionados;
+            atualizarVisualDropdown(tipo);
+            aplicarFiltrosEmCascata(tipo);
+            agendarAtualizacaoDashboard();
+        };
+
+        window.limparFiltros = function() {
+            selecaoFiltros = { mes: ['todos'], diretoria: ['todos'], setor: ['todos'], departamento: ['todos'] };
+            aplicarFiltrosEmCascata(null); 
+            agendarAtualizacaoDashboard();
+        };
+
+        // ==========================================
+        // FUNÇÕES FIREBASE: VERBAS E GERAL
+        // ==========================================
+        window.adicionarVerba = async function(event) {
+            event.preventDefault();
+            if (!auth.currentUser) return;
+
+            const nova = {
+                diretoria: document.getElementById('input-diretoria').value.trim(),
+                setor: document.getElementById('input-setor').value.trim(),
+                departamento: document.getElementById('input-departamento').value.trim(),
+                valor: parseFloat(document.getElementById('input-valor').value)
+            };
+
+            const safeId = encodeURIComponent(nova.departamento); 
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+            await setDoc(docRef, nova);
+
+            window.limparFormVerbas();
+            const btn = event.submitter;
+            const originalText = btn.innerText;
+            btn.innerText = "Salvo com sucesso!";
+            btn.classList.replace('bg-blue-600', 'bg-green-600');
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-blue-600'); }, 2000);
+        };
+
+        window.excluirVerba = async function(deptNome) {
+            if (!auth.currentUser) return;
+            if(confirm(`Excluir orçamento de '${deptNome}'?`)) {
+                const safeId = encodeURIComponent(deptNome);
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+                await deleteDoc(docRef);
+            }
+        };
+
+        window.editarVerba = function(deptNome) {
+            const v = verbas.find(x => x.departamento === deptNome);
+            if(v) {
+                document.getElementById('input-diretoria').value = v.diretoria;
+                document.getElementById('input-setor').value = v.setor;
+                document.getElementById('input-departamento').value = v.departamento;
+                document.getElementById('input-valor').value = v.valor;
+                document.getElementById('input-departamento').setAttribute('readonly', 'true');
+                document.getElementById('input-departamento').classList.add('bg-gray-100');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        window.limparFormVerbas = function() {
+            document.getElementById('input-diretoria').value = '';
+            document.getElementById('input-setor').value = '';
+            document.getElementById('input-departamento').value = '';
+            document.getElementById('input-valor').value = '';
+            document.getElementById('input-departamento').removeAttribute('readonly');
+            document.getElementById('input-departamento').classList.remove('bg-gray-100');
+        };
+
+        window.lerCSV = async function(event) {
+            if (!auth.currentUser) return;
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                const linhas = e.target.result.split(/\r?\n/);
+                let processados = 0;
+                for (let i = 1; i < linhas.length; i++) {
+                    if (!linhas[i].trim()) continue;
+                    const delimitador = linhas[i].includes(';') ? ';' : ',';
+                    const colunas = parseCSVLine(linhas[i], delimitador); 
+                    
+                    if (colunas.length >= 4) {
+                        const valFormatado = parseValorCSV(colunas[3]);
+                        const dept = colunas[2] ? colunas[2].trim() : '';
+                        if(!dept) continue;
+
+                        const nova = { diretoria: colunas[0].trim(), setor: colunas[1].trim(), departamento: dept, valor: valFormatado };
+                        const safeId = encodeURIComponent(dept);
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+                        await setDoc(docRef, nova);
+                        processados++;
+                    }
+                }
+                alert(`Sucesso! ${processados} departamentos sincronizados na nuvem.`);
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        };
+
+        // ==========================================
+        // FUNÇÕES FIREBASE: VIAGENS E TI
+        // ==========================================
+        window.adicionarViagem = async function(event) {
+            event.preventDefault();
+            if (!auth.currentUser) return;
+            const idGenerico = Date.now().toString();
+            const novaObj = {
+                id: idGenerico, data: document.getElementById('input-viagem-data').value,
+                departamento: document.getElementById('input-viagem-dept').value,
+                descricao: document.getElementById('input-viagem-desc').value.trim(),
+                finalidade: document.getElementById('input-viagem-fin').value.trim(),
+                valor: parseFloat(document.getElementById('input-viagem-valor').value)
+            };
+            const dbRef = doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idGenerico);
+            await setDoc(dbRef, novaObj);
+            
+            document.getElementById('input-viagem-desc').value = ''; document.getElementById('input-viagem-fin').value = ''; document.getElementById('input-viagem-valor').value = '';
+            
+            const btn = event.submitter; const originalText = btn.innerText;
+            btn.innerText = "Cadastrado!"; btn.classList.replace('bg-orange-500', 'bg-green-600');
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 2000);
+        };
+
+        window.excluirViagem = async function(idStr) {
+            if (!auth.currentUser) return;
+            if(confirm("Excluir viagem?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idStr));
+        };
+
+        window.adicionarTI = async function(event) {
+            event.preventDefault();
+            if (!auth.currentUser) return;
+            const idGenerico = Date.now().toString();
+            const novaObj = {
+                id: idGenerico, data: document.getElementById('input-ti-data').value,
+                departamento: document.getElementById('input-ti-dept').value,
+                descricao: document.getElementById('input-ti-desc').value.trim(),
+                finalidade: document.getElementById('input-ti-fin').value.trim(),
+                valor: parseFloat(document.getElementById('input-ti-valor').value)
+            };
+            const dbRef = doc(db, 'artifacts', appId, 'public', 'data', 'tis', idGenerico);
+            await setDoc(dbRef, novaObj);
+            
+            document.getElementById('input-ti-desc').value = ''; document.getElementById('input-ti-fin').value = ''; document.getElementById('input-ti-valor').value = '';
+            
+            const btn = event.submitter; const originalText = btn.innerText;
+            btn.innerText = "Transferência Cadastrada!"; btn.classList.replace('bg-purple-600', 'bg-green-600');
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-purple-600'); }, 2000);
+        };
+
+        window.excluirTI = async function(idStr) {
+            if (!auth.currentUser) return;
+            if(confirm("Excluir transferência TI?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tis', idStr));
+        };
+
+        // ==========================================
+        // CASCATAS E FILTROS 
+        // ==========================================
+        function aplicarFiltrosEmCascata(origem = null) {
+            // Se for usuário comum, ele só vê o que pode. Filtramos a base 'verbas' de acordo.
+            let verbasPermitidas = verbas;
+            if (usuarioLogadoAtual && usuarioLogadoAtual.role !== 'admin') {
+                const permits = usuarioLogadoAtual.depts || [];
+                verbasPermitidas = verbas.filter(v => permits.includes(v.departamento));
+            }
+
+            if (origem === null) {
+                const todasDiretorias = [...new Set(verbasPermitidas.map(v => v.diretoria))].filter(Boolean).sort();
+                construirOpcoesDropdown('diretoria', todasDiretorias);
+            }
+
+            let verbasFiltradasDir = verbasPermitidas;
+            if (!selecaoFiltros.diretoria.includes('todos')) {
+                verbasFiltradasDir = verbasPermitidas.filter(v => selecaoFiltros.diretoria.includes(v.diretoria));
+            }
+
+            const setoresValidos = [...new Set(verbasFiltradasDir.map(v => v.setor))].filter(Boolean).sort();
+            
+            if (!selecaoFiltros.setor.includes('todos')) {
+                selecaoFiltros.setor = selecaoFiltros.setor.filter(s => setoresValidos.includes(s));
+                if (selecaoFiltros.setor.length === 0) selecaoFiltros.setor = ['todos'];
+            }
+            
+            if (origem === null || origem === 'diretoria') {
+                construirOpcoesDropdown('setor', setoresValidos);
+            }
+
+            let verbasFiltradasSetor = verbasFiltradasDir;
+            if (!selecaoFiltros.setor.includes('todos')) {
+                verbasFiltradasSetor = verbasFiltradasSetor.filter(v => selecaoFiltros.setor.includes(v.setor));
+            }
+
+            const deptsValidos = [...new Set(verbasFiltradasSetor.map(v => v.departamento))].filter(Boolean).sort();
+
+            if (!selecaoFiltros.departamento.includes('todos')) {
+                selecaoFiltros.departamento = selecaoFiltros.departamento.filter(d => deptsValidos.includes(d));
+                if (selecaoFiltros.departamento.length === 0) selecaoFiltros.departamento = ['todos'];
+            }
+
+            if (origem === null || origem === 'diretoria' || origem === 'setor') {
+                construirOpcoesDropdown('departamento', deptsValidos);
+            }
+
+            if (origem === null) construirOpcoesDropdown('mes', mesesLista);
+        }
+
+        function construirOpcoesDropdown(tipo, opcoesValidas) {
+            const container = document.getElementById(`list-${tipo}`);
+            let searchHTML = '';
+            if (tipo !== 'mes') {
+                searchHTML = `
+                    <div class="p-2 border-b bg-gray-50 sticky top-0 z-10">
+                        <input type="text" placeholder="Pesquisar..." class="w-full text-xs border border-gray-300 rounded p-1.5 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" onclick="event.stopPropagation()" onkeyup="window.filtrarListaSuspensa(event, '${tipo}')">
+                    </div>
+                `;
+            }
+
+            let html = searchHTML + `
+                <label class="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b">
+                    <input type="checkbox" value="todos" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                    ${selecaoFiltros[tipo].includes('todos') ? 'checked' : ''} 
+                    onchange="window.handleCheckboxChange('${tipo}', 'todos', this.checked)"> 
+                    <span class="font-bold text-gray-800">Selecionar Todos</span>
+                </label>
+            `;
+
+            opcoesValidas.forEach(opt => {
+                const valor = opt.id || opt;
+                const nome = opt.nome || opt;
+                const isChecked = selecaoFiltros[tipo].includes(valor);
+                html += `
+                    <label class="dropdown-item flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm transition-colors text-gray-700">
+                        <input type="checkbox" value="${valor}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                        ${isChecked ? 'checked' : ''} 
+                        onchange="window.handleCheckboxChange('${tipo}', '${valor}', this.checked)"> 
+                        ${nome}
+                    </label>
+                `;
+            });
+            container.innerHTML = html;
+            atualizarVisualDropdown(tipo);
+        }
+
+        function atualizarVisualDropdown(tipo) {
+            const label = document.getElementById(`label-${tipo}`);
+            const sels = selecaoFiltros[tipo];
+            
+            if (sels.includes('todos')) label.innerText = 'Todos';
+            else if (sels.length === 1) {
+                if(tipo === 'mes') label.innerText = mesesLista.find(m=>m.id===sels[0])?.nome || sels[0];
+                else label.innerText = sels[0];
+            } else label.innerText = `${sels.length} selecionados`;
+
+            const container = document.getElementById(`list-${tipo}`);
+            const inputs = container.querySelectorAll('input[type="checkbox"]');
+            inputs.forEach(inp => { inp.checked = sels.includes(inp.value); });
+        }
+
+        function atualizarDropdownDepartamentosGeral() {
+            ['input-viagem-dept', 'input-ti-dept'].forEach(idSelect => {
+                const select = document.getElementById(idSelect);
+                if(select) {
+                    const atual = select.value;
+                    select.innerHTML = '<option value="" disabled selected>Selecione um departamento orçado...</option>';
+                    const deptsOrdem = [...new Set(verbas.map(v => v.departamento))].sort();
+                    deptsOrdem.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d; opt.text = d;
+                        select.appendChild(opt);
+                    });
+                    if (atual && deptsOrdem.includes(atual)) select.value = atual;
+                }
+            });
+        }
+
+        // ==========================================
+        // MOTOR PRINCIPAL (PROCESSAMENTO DE DADOS)
+        // ==========================================
+        function agendarAtualizacaoDashboard() {
+            if(!usuarioLogadoAtual) return;
+            if (renderTimeout) clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => { processarEAtualizarTudo(); }, 100); 
+        }
+
+        function processarEAtualizarTudo() {
+            const isUserLimitado = usuarioLogadoAtual.role !== 'admin';
+            const deptsPermitidosUser = isUserLimitado ? (usuarioLogadoAtual.depts || []) : [];
+            
+            const deptsOrcadosTodos = verbas.map(v => v.departamento.toLowerCase().trim());
+            
+            // Inconsistências (Somente Planilha)
+            const lancamentosInconsistentes = [];
+            lancamentos.forEach(l => {
+                const deptLancamento = l.departamento ? l.departamento.toLowerCase().trim() : '';
+                // Se é user limitado, só ve inconsistência dos depts que ele tem acesso (que teoricamente não estao orcados, mas se ele nao tem acesso à arvore, ele nao ve. Como é painel restrito, inconsistencia só faz sentido pro admin.
+                if(!isUserLimitado && !deptsOrcadosTodos.includes(deptLancamento) && (l.debito !== 0 || l.credito !== 0)) {
+                    lancamentosInconsistentes.push(l);
+                }
+            });
+
+            const badge = document.getElementById('badge-inconsistencias');
+            if (lancamentosInconsistentes.length > 0 && !isUserLimitado) {
+                badge.innerText = lancamentosInconsistentes.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            renderInconsistencias(lancamentosInconsistentes);
+            renderTabelaVerbas();
+            renderTabelaViagens();
+            renderTabelaTI();
+
+            const sels = selecaoFiltros;
+            const deptInfo = {};
+            verbas.forEach(v => { deptInfo[v.departamento.toLowerCase().trim()] = { diretoria: v.diretoria, setor: v.setor }; });
+
+            // FILTROS APLICADOS A TODOS OS CONJUNTOS DE DADOS
+            function validaFiltro(deptRaw, dataRaw, isDataInput) {
+                const deptKey = deptRaw.toLowerCase().trim();
+                // 1. Limite Físico de Orçamento e de Acesso (User security)
+                if(!deptsOrcadosTodos.includes(deptKey)) return false; 
+                if(isUserLimitado && !deptsPermitidosUser.includes(deptRaw)) return false; // Bloqueio de acesso
+
+                // 2. Filtros de Tela UI
+                const mes = isDataInput ? (dataRaw.split('-')[1] || '') : (dataRaw.split('/')[1] || ''); 
+                const info = deptInfo[deptKey] || { diretoria: 'Não Classificado', setor: 'Não Classificado' };
+                
+                const passMes = sels.mes.includes('todos') || sels.mes.includes(mes);
+                const passDir = sels.diretoria.includes('todos') || sels.diretoria.includes(info.diretoria);
+                const passSet = sels.setor.includes('todos') || sels.setor.includes(info.setor);
+                const passDept = sels.departamento.includes('todos') || sels.departamento.includes(deptRaw);
+                
+                return passMes && passDir && passSet && passDept;
+            }
+
+            const filtradosLan = lancamentos.filter(l => validaFiltro(l.departamento, l.data, false));
+            const filtradasViagens = viagens.filter(v => validaFiltro(v.departamento, v.data, true));
+            const filtradosTI = tis.filter(t => validaFiltro(t.departamento, t.data, true));
+
+            // Filtro Verbas (Base)
+            const filtradosVer = verbas.filter(v => {
+                if(isUserLimitado && !deptsPermitidosUser.includes(v.departamento)) return false;
+                const passDir = sels.diretoria.includes('todos') || sels.diretoria.includes(v.diretoria);
+                const passSet = sels.setor.includes('todos') || sels.setor.includes(v.setor);
+                const passDept = sels.departamento.includes('todos') || sels.departamento.includes(v.departamento);
+                return passDir && passSet && passDept;
+            });
+
+            renderDashboardFinal(filtradosLan, filtradosVer, filtradasViagens, filtradosTI, sels.mes);
+        }
+
+        function renderDashboardFinal(lanFiltrados, verFiltradas, viaFiltradas, tiFiltrados, selMeses) {
+            const totalOrcamentoAnual = verFiltradas.reduce((acc, curr) => acc + curr.valor, 0);
+            const mesesCount = selMeses.includes('todos') ? 12 : selMeses.length;
+            const totalOrcamento = (totalOrcamentoAnual / 12) * mesesCount;
+            
+            const totalGastosContabil = lanFiltrados.reduce((acc, curr) => acc + (curr.debito + curr.credito), 0);
+            const totalGastosViagens = viaFiltradas.reduce((acc, curr) => acc + curr.valor, 0);
+            const totalGastosTI = tiFiltrados.reduce((acc, curr) => acc + curr.valor, 0);
+            
+            const totalGastoGeral = totalGastosContabil + totalGastosViagens + totalGastosTI;
+
+            const saldo = totalOrcamento - totalGastoGeral;
+
+            const pctGastos = totalOrcamento > 0 ? ((totalGastoGeral / totalOrcamento) * 100).toFixed(0) : 0;
+            const pctSaldo = totalOrcamento > 0 ? ((saldo / totalOrcamento) * 100).toFixed(0) : 0;
+
+            document.getElementById('kpi-orcamento').innerText = formatCurrency(totalOrcamento);
+            document.getElementById('kpi-gastos').innerText = formatCurrency(totalGastosContabil);
+            document.getElementById('kpi-viagens').innerText = formatCurrency(totalGastosViagens);
+            document.getElementById('kpi-ti').innerText = formatCurrency(totalGastosTI);
+            document.getElementById('kpi-saldo').innerText = formatCurrency(saldo);
+            document.getElementById('kpi-saldo-pct').innerText = `${pctSaldo}%`;
+
+            const statusEl = document.getElementById('kpi-status');
+            if (totalOrcamento === 0) { statusEl.innerText = "Sem Orçamento"; statusEl.className = "text-md font-bold text-gray-400"; }
+            else if (saldo < 0) { statusEl.innerText = "Estourado"; statusEl.className = "text-md font-bold text-red-400"; }
+            else if (pctGastos > 80) { statusEl.innerText = "Atenção"; statusEl.className = "text-md font-bold text-orange-400"; }
+            else { statusEl.innerText = "Saldo Saudável"; statusEl.className = "text-md font-bold text-green-400"; }
+
+            // ------------------------------------------
+            // Tabela Detalhamento
+            // ------------------------------------------
+            let itensParaTabela = [];
+
+            if (visualizacaoTabelaAtual === 'todos' || visualizacaoTabelaAtual === 'contabil') {
+                lanFiltrados.forEach(l => itensParaTabela.push({ ...l, tipoDoc: 'contabil', timeSort: parseDateBR(l.data) }));
+            }
+
+            if (visualizacaoTabelaAtual === 'todos' || visualizacaoTabelaAtual === 'viagens') {
+                viaFiltradas.forEach(v => {
+                    const dataBR = formatInputDateBR(v.data);
+                    itensParaTabela.push({
+                        tipoDoc: 'viagem', data: dataBR, lote: 'Manual (Viagem)',
+                        debito: v.valor, credito: 0, conta: 'DESP. VIAGENS', subconta: '-',
+                        descricao: v.descricao, finalidade: v.finalidade, departamento: v.departamento, timeSort: parseDateBR(dataBR)
+                    });
+                });
+            }
+
+            if (visualizacaoTabelaAtual === 'todos' || visualizacaoTabelaAtual === 'ti') {
+                tiFiltrados.forEach(t => {
+                    const dataBR = formatInputDateBR(t.data);
+                    itensParaTabela.push({
+                        tipoDoc: 'ti', data: dataBR, lote: 'Transf. TI',
+                        debito: t.valor, credito: 0, conta: 'TRANSF. INTERNA', subconta: '-',
+                        descricao: t.descricao, finalidade: t.finalidade, departamento: t.departamento, timeSort: parseDateBR(dataBR)
+                    });
+                });
+            }
+
+            itensParaTabela.sort((a, b) => a.timeSort - b.timeSort);
+
+            const tbody = document.getElementById('table-body');
+            if(itensParaTabela.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Nenhuma despesa encontrada para a visualização atual.</td></tr>`;
+            } else {
+                let linhasHTML = [];
+                itensParaTabela.forEach(l => {
+                    const liquido = l.debito + l.credito;
+                    let liquidoClass = liquido < 0 ? 'text-green-600' : 'text-gray-800 font-bold';
+                    
+                    let tagIcone = '';
+                    if(l.tipoDoc === 'viagem') tagIcone = `<span class="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold"><i class="fa-solid fa-plane"></i> VIAGENS</span>`;
+                    else if(l.tipoDoc === 'ti') tagIcone = `<span class="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold"><i class="fa-solid fa-network-wired"></i> TI</span>`;
+
+                    linhasHTML.push(`
+                        <tr class="hover:bg-gray-100 transition-colors">
+                            <td class="px-4 py-2 border-b border-gray-50 whitespace-nowrap">${l.data}</td>
+                            <td class="px-4 py-2 border-b border-gray-50 text-blue-600 font-medium">${l.lote}</td>
+                            <td class="px-4 py-2 border-b border-gray-50 text-right text-red-600">${l.debito !== 0 ? formatCurrency(l.debito) : '-'}</td>
+                            <td class="px-4 py-2 border-b border-gray-50 text-right text-green-600">${l.credito !== 0 ? formatCurrency(l.credito) : '-'}</td>
+                            <td class="px-4 py-2 border-b border-gray-50 text-right ${liquidoClass}">${formatCurrency(liquido)}</td>
+                            <td class="px-4 py-2 border-b border-gray-50 text-xs"><span class="font-mono text-gray-500">${l.conta}</span><br>${l.subconta}</td>
+                            <td class="px-4 py-2 border-b border-gray-50">
+                                <div class="font-medium text-gray-800 flex items-center">${l.descricao} ${tagIcone}</div>
+                                <div class="text-[10px] text-gray-500">${l.finalidade}</div>
+                            </td>
+                            <td class="px-4 py-2 border-b border-gray-50 text-xs font-semibold bg-blue-50/30">${l.departamento}</td>
+                        </tr>
+                    `);
+                });
+                tbody.innerHTML = linhasHTML.join('');
+            }
+
+            // ------------------------------------------
+            // Gráfico Mensal (Com TI Add)
+            // ------------------------------------------
+            const mesesLabels = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+            const orcamentoMensalFixo = Array(12).fill(totalOrcamentoAnual / 12);
+            let gastosMensaisContabil = Array(12).fill(0);
+            let gastosMensaisViagens = Array(12).fill(0);
+            let gastosMensaisTI = Array(12).fill(0);
+
+            lanFiltrados.forEach(l => {
+                const parts = l.data.split('/');
+                if (parts.length >= 2) {
+                    const mIdx = parseInt(parts[1], 10) - 1; 
+                    if (mIdx >= 0 && mIdx <= 11) gastosMensaisContabil[mIdx] += (l.debito + l.credito);
+                }
+            });
+
+            viaFiltradas.forEach(v => {
+                const parts = v.data.split('-'); 
+                if (parts.length >= 2) {
+                    const mIdx = parseInt(parts[1], 10) - 1; 
+                    if (mIdx >= 0 && mIdx <= 11) gastosMensaisViagens[mIdx] += v.valor;
+                }
+            });
+
+            tiFiltrados.forEach(t => {
+                const parts = t.data.split('-'); 
+                if (parts.length >= 2) {
+                    const mIdx = parseInt(parts[1], 10) - 1; 
+                    if (mIdx >= 0 && mIdx <= 11) gastosMensaisTI[mIdx] += t.valor;
+                }
+            });
+
+            if(!document.getElementById('view-dashboard').classList.contains('hidden')) {
+                const ctx = document.getElementById('mainChart').getContext('2d');
+                if(mainChartInstance) {
+                    mainChartInstance.data.datasets[0].data = orcamentoMensalFixo;
+                    mainChartInstance.data.datasets[1].data = gastosMensaisContabil;
+                    mainChartInstance.data.datasets[2].data = gastosMensaisViagens;
+                    mainChartInstance.data.datasets[3].data = gastosMensaisTI;
+                    mainChartInstance.update('none');
+                } else {
+                    mainChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: mesesLabels,
+                            datasets: [
+                                { type: 'line', label: 'Orçamento Fixo (Mês)', data: orcamentoMensalFixo, borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, fill: false, pointRadius: 0 },
+                                { type: 'bar', label: 'Contábil', data: gastosMensaisContabil, backgroundColor: '#002B49' },
+                                { type: 'bar', label: 'Viagens', data: gastosMensaisViagens, backgroundColor: '#f97316' },
+                                { type: 'bar', label: 'Transf. TI', data: gastosMensaisTI, backgroundColor: '#a855f7' }
+                            ]
+                        },
+                        options: { 
+                            responsive: true, 
+                            maintainAspectRatio: false, 
+                            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, 
+                            animation: { duration: 400 } 
+                        }
+                    });
+                }
+            }
+
+            // ------------------------------------------
+            // Barras de Execução Total
+            // ------------------------------------------
+            const deptContainer = document.getElementById('dept-execution-list');
+            const deptData = {};
+            
+            verFiltradas.forEach(v => { deptData[v.departamento] = { orcamento: (v.valor / 12) * mesesCount, gasto: 0 }; });
+            lanFiltrados.forEach(l => { if(deptData[l.departamento]) deptData[l.departamento].gasto += (l.debito + l.credito); });
+            viaFiltradas.forEach(v => { if(deptData[v.departamento]) deptData[v.departamento].gasto += v.valor; });
+            tiFiltrados.forEach(t => { if(deptData[t.departamento]) deptData[t.departamento].gasto += t.valor; });
+
+            const sortedDepts = Object.keys(deptData).map(nome => {
+                const o = deptData[nome].orcamento; const g = deptData[nome].gasto;
+                const pct = o > 0 ? (g / o) * 100 : (g > 0 ? 999 : 0);
+                return { nome, gasto: g, pct };
+            }).sort((a, b) => b.pct - a.pct);
+
+            if(sortedDepts.length === 0) {
+                deptContainer.innerHTML = `<div class="text-center text-gray-400 text-sm mt-4">Nenhum departamento orçado para exibir.</div>`;
+            } else {
+                let htmlBarras = [];
+                sortedDepts.forEach(d => {
+                    let color = 'progress-bar-blue'; let textCol = 'text-blue-600';
+                    if (d.pct >= 100) { color = 'progress-bar-red'; textCol = 'text-red-600'; }
+                    else if (d.pct >= 80) { color = 'progress-bar-orange'; textCol = 'text-orange-500'; }
+                    
+                    const barWidth = Math.max(0, Math.min(d.pct, 100)); 
+                    const pctTxt = d.pct === 999 ? 'N/A' : `${d.pct.toFixed(0)}%`;
+                    const gastoTexto = formatCurrency(d.gasto).replace('R$', '').trim();
+                    const isNegativo = d.gasto < 0;
+
+                    htmlBarras.push(`
+                        <div class="flex items-center gap-2 mb-3 text-sm">
+                            <div class="w-32 text-right truncate text-gray-600 font-medium" title="${d.nome}">${d.nome}</div>
+                            <div class="flex-1 bg-gray-200 h-6 rounded overflow-hidden relative flex items-center">
+                                ${isNegativo ? `<div class="h-full bg-green-500 transition-all duration-500" style="width: 100%"></div>` : `<div class="h-full ${color} transition-all duration-500" style="width: ${barWidth}%"></div>`}
+                                <div class="absolute right-2 ${isNegativo ? 'text-white' : textCol} font-bold text-xs drop-shadow-sm">${gastoTexto} (${isNegativo ? 'Estornado' : pctTxt})</div>
+                            </div>
+                        </div>`);
+                });
+                deptContainer.innerHTML = htmlBarras.join('');
+            }
+        }
+
+        // ==========================================
+        // RENDER DE TELAS SECUNDÁRIAS 
+        // ==========================================
+        function renderTabelaTI() {
+            const tbody = document.getElementById('table-ti');
+            let total = 0;
+            const ordenados = [...tis].sort((a,b) => new Date(a.data) - new Date(b.data));
+
+            if(ordenados.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum gasto de TI transferido.</td></tr>`;
+            } else {
+                let linhasHTML = [];
+                ordenados.forEach(v => {
+                    total += v.valor;
+                    linhasHTML.push(`
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-2 border-b whitespace-nowrap">${formatInputDateBR(v.data)}</td>
+                            <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                            <td class="px-4 py-2 border-b">
+                                <div class="font-medium text-gray-800">${v.descricao}</div>
+                                <div class="text-[10px] text-gray-500">${v.finalidade}</div>
+                            </td>
+                            <td class="px-4 py-2 border-b text-right font-bold text-purple-600">${formatCurrency(v.valor)}</td>
+                            <td class="px-4 py-2 border-b text-center">
+                                <button onclick="window.excluirTI('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `);
+                });
+                tbody.innerHTML = linhasHTML.join('');
+            }
+            document.getElementById('total-ti-cadastradas').innerText = `Total Lançado: ${formatCurrency(total)}`;
+        }
+
+        function renderTabelaVerbas() {
+            // (Esta função permanece com seu funcionamento estrutural básico inalterado mas atende às chamadas corretas)
+            const tbody = document.getElementById('table-verbas');
+            let total = 0;
+            if(verbas.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhuma verba cadastrada. Cadastre manualmente ou importe um CSV.</td></tr>`;
+            } else {
+                let linhasHTML = [];
+                verbas.forEach(v => {
+                    total += v.valor;
+                    const deptSafe = v.departamento.replace(/'/g, "\\'");
+                    linhasHTML.push(`
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 border-b">${v.diretoria}</td>
+                            <td class="px-4 py-2 border-b text-gray-600">${v.setor}</td>
+                            <td class="px-4 py-2 border-b font-semibold text-blue-800">${v.departamento}</td>
+                            <td class="px-4 py-2 border-b text-right font-bold text-green-700">${formatCurrency(v.valor)}</td>
+                            <td class="px-4 py-2 border-b text-center space-x-2">
+                                <button onclick="window.editarVerba('${deptSafe}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="window.excluirVerba('${deptSafe}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `);
+                });
+                tbody.innerHTML = linhasHTML.join('');
+            }
+            document.getElementById('total-verbas-cadastradas').innerText = `Total Orçado: ${formatCurrency(total)}`;
+        }
+
+        function renderTabelaViagens() {
+            const tbody = document.getElementById('table-viagens');
+            let total = 0;
+            const viagensOrdenadas = [...viagens].sort((a,b) => new Date(a.data) - new Date(b.data));
+
+            if(viagensOrdenadas.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum gasto de viagem registrado manualmente.</td></tr>`;
+            } else {
+                let linhasHTML = [];
+                viagensOrdenadas.forEach(v => {
+                    total += v.valor;
+                    linhasHTML.push(`
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-2 border-b whitespace-nowrap">${formatInputDateBR(v.data)}</td>
+                            <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                            <td class="px-4 py-2 border-b">
+                                <div class="font-medium text-gray-800">${v.descricao}</div>
+                                <div class="text-[10px] text-gray-500">${v.finalidade}</div>
+                            </td>
+                            <td class="px-4 py-2 border-b text-right font-bold text-orange-600">${formatCurrency(v.valor)}</td>
+                            <td class="px-4 py-2 border-b text-center">
+                                <button onclick="window.excluirViagem('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `);
+                });
+                tbody.innerHTML = linhasHTML.join('');
+            }
+            document.getElementById('total-viagens-cadastradas').innerText = `Total Lançado: ${formatCurrency(total)}`;
+        }
+
+        function renderInconsistencias(inc) {
+            const tbody = document.getElementById('table-inconsistencias');
+            if (inc.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500"><i class="fa-solid fa-check-circle text-green-500 text-2xl mb-2 block"></i>Nenhuma inconsistência!</td></tr>`;
+                return;
+            }
+            let linhasHTML = [];
+            inc.forEach(l => {
+                linhasHTML.push(`
+                    <tr class="hover:bg-red-50/50">
+                        <td class="px-4 py-2 border-b border-red-100">${l.data}</td>
+                        <td class="px-4 py-2 border-b border-red-100 font-bold text-red-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i>${l.departamento || '(Vazio)'}</td>
+                        <td class="px-4 py-2 border-b border-red-100 text-right font-mono text-red-600">${formatCurrency(l.debito)}</td>
+                        <td class="px-4 py-2 border-b border-red-100 text-right font-mono text-green-600">${formatCurrency(l.credito)}</td>
+                        <td class="px-4 py-2 border-b border-red-100 text-xs">${l.conta}</td>
+                        <td class="px-4 py-2 border-b border-red-100 text-xs text-gray-600">${l.descricao}</td>
+                    </tr>
+                `);
+            });
+            tbody.innerHTML = linhasHTML.join('');
+        }
+
+        // ==========================================
+        // LEITURA DO GOOGLE SHEETS
+        // ==========================================
+        async function carregarLancamentosPlanilha() {
+            try {
+                const resposta = await fetch(URL_GOOGLE_SHEETS);
+                if (!resposta.ok) throw new Error("Erro na conexão HTTP");
+                const dadosCSV = await resposta.text();
+                
+                if (dadosCSV.trim().startsWith('<!DOCTYPE html>') || dadosCSV.trim().startsWith('<html')) {
+                    throw new Error("O link retornou uma página HTML ao invés de CSV.");
+                }
+
+                const linhas = dadosCSV.split(/\r?\n/);
+                lancamentos = [];
+                for (let i = 1; i < linhas.length; i++) {
+                    if (!linhas[i].trim()) continue;
+                    let col = parseCSVLine(linhas[i]);
+                    if (col.length >= 8) {
+                        lancamentos.push({
+                            lote: col[0]||'-', data: col[1]||'-', conta: col[2]||'-',
+                            debito: parseValorCSV(col[3]), credito: parseValorCSV(col[4]),
+                            descricao: col[5]||'-', finalidade: col[6]||'-',
+                            departamento: col[7]?col[7].trim():'-', subconta: col[8]||'-'
+                        });
+                    }
+                }
+                if (lancamentos.length === 0) throw new Error("CSV vazio.");
+                lancamentos.sort((a, b) => parseDateBR(a.data) - parseDateBR(b.data));
+                
+                document.getElementById('data-atualizacao').innerHTML = `<span class="text-green-400">Pronto (${new Date().toLocaleTimeString('pt-BR')})</span>`;
+
+            } catch (erro) {
+                console.warn("Falha: ", erro);
+                document.getElementById('data-atualizacao').innerHTML = "<span class='text-red-500 font-bold'>Erro Planilha Externa</span>";
+                lancamentos = [];
+            }
+
+            if(usuarioLogadoAtual) {
+                aplicarFiltrosEmCascata(null); 
+                agendarAtualizacaoDashboard();
+            }
+        }
+
+        function parseValorCSV(v) {
+            if(!v) return 0;
+            let str = String(v).replace(/"/g, '').replace(/[R$\s]/g, '');
+            if (str.includes(',') && str.includes('.')) {
+                if (str.lastIndexOf(',') > str.lastIndexOf('.')) str = str.replace(/\./g, '').replace(',', '.'); 
+                else str = str.replace(/,/g, ''); 
+            } else if (str.includes(',')) str = str.replace(',', '.'); 
+            return parseFloat(str) || 0;
+        }
+
+        function parseCSVLine(text, delimiter = ',') {
+            let ret = [], keep = false, item = '';
+            for(let i=0; i<text.length; i++) {
+                let c = text[i];
+                if(c === '"') { keep = !keep; continue; }
+                if(c === delimiter && !keep) { ret.push(item.trim()); item = ''; continue; }
+                item += c;
+            }
+            ret.push(item.trim());
+            return ret;
+        }
+
+    </script>
+</body>
+</html>
