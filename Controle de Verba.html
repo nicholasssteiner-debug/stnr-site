@@ -42,9 +42,13 @@
         .custom-dropdown.open .custom-dropdown-menu { display: block; }
         .custom-dropdown-menu::-webkit-scrollbar { width: 4px; }
 
-        /* Arvore de Permissões (Sanfona) */
+        /* Arvore de Permissões e Filtros (Sanfona) */
         .tree-node > .tree-children { display: none; margin-left: 20px; border-left: 1px dashed #cbd5e1; padding-left: 10px; }
         .tree-node.open > .tree-children { display: block; }
+        
+        /* Ajuste Sanfona Meses */
+        .tree-mes-node > .tree-mes-children { display: none; padding-left: 8px; margin-top: 4px;}
+        .tree-mes-node.open > .tree-mes-children { display: block; }
     </style>
 </head>
 <body class="bg-brand-light font-sans text-gray-800 h-screen flex overflow-hidden">
@@ -158,13 +162,14 @@
             <!-- Top Filters -->
             <header class="bg-white p-4 shadow-sm z-20 flex flex-wrap gap-4 items-center">
                 
-                <div class="custom-dropdown relative w-36" id="dd-mes">
+                <div class="custom-dropdown relative w-44" id="dd-mes">
                     <label class="text-xs text-blue-600 font-semibold mb-1 block">Período (Mês/Ano)</label>
                     <div class="border-b border-gray-300 pb-1 flex justify-between items-center cursor-pointer text-sm" onclick="window.toggleDropdown(event, 'dd-mes')">
                         <span class="truncate pr-2" id="label-mes">Todos</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-gray-500"></i>
                     </div>
-                    <div class="custom-dropdown-menu absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto" id="list-mes"></div>
+                    <!-- Menu Sanfonado de Meses -->
+                    <div class="custom-dropdown-menu absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-80 overflow-y-auto" id="list-mes"></div>
                 </div>
 
                 <div class="custom-dropdown relative w-44" id="dd-diretoria">
@@ -661,12 +666,12 @@
 
         // Dados Globais (Vindos do Firebase compartilhado)
         let verbas = []; 
-        let lancamentos = []; // Planilha Google
+        let lancamentos = []; 
         let viagens = []; 
-        let tis = []; // Transferencias Internas
+        let tis = []; 
         let usuariosDB = [];
         
-        let usuarioLogadoAtual = null; // Controle de Sessão
+        let usuarioLogadoAtual = null; 
 
         const URL_GOOGLE_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRW1hV-qHtts5KVkz9YmJ_p1IeQbmH3f-GgdclOkeRqxlOWDrKCFgEp2icAKyNpwaZev6x0YDjadz48/pub?gid=829605431&single=true&output=csv";
 
@@ -675,7 +680,7 @@
         let mainChartInstance = null;
         let renderTimeout = null;
 
-        // NOVO: Lista de Períodos Separando Meses e Anos (2025/2026)
+        // Lista de Períodos
         const periodosLista = [
             { id: '01/2025', nome: 'Jan/2025' }, { id: '02/2025', nome: 'Fev/2025' }, { id: '03/2025', nome: 'Mar/2025' },
             { id: '04/2025', nome: 'Abr/2025' }, { id: '05/2025', nome: 'Mai/2025' }, { id: '06/2025', nome: 'Jun/2025' },
@@ -688,7 +693,7 @@
         ];
 
         // ==========================================
-        // FIREBASE AUTH & LISTENERS (Acesso Público)
+        // FIREBASE AUTH & LISTENERS 
         // ==========================================
         const initAuth = async () => {
             try {
@@ -704,7 +709,7 @@
         onAuthStateChanged(auth, (user) => {
             if(user) {
                 setupFirestoreListeners();
-                verificarSessaoAtiva(); // Vê se já logou antes
+                verificarSessaoAtiva(); 
             }
         });
 
@@ -718,7 +723,7 @@
                     aplicarFiltrosEmCascata(null);
                     agendarAtualizacaoDashboard();
                     atualizarDropdownDepartamentosGeral();
-                    if(usuarioLogadoAtual.role === 'admin') renderTreePermissoes(); // Atualiza a sanfona de admin
+                    if(usuarioLogadoAtual.role === 'admin') renderTreePermissoes(); 
                 }
             }, (err) => console.error(err));
 
@@ -885,7 +890,7 @@
             let html = '<ul class="text-sm space-y-2">';
             
             Object.keys(arvore).sort().forEach(dir => {
-                const dirId = `dir-${dir.replace(/[\s\W]+/g, '')}`; // Limpeza de caracteres especiais no ID
+                const dirId = `dir-${dir.replace(/[\s\W]+/g, '')}`; 
                 html += `
                     <li class="tree-node border border-gray-200 bg-white rounded">
                         <div class="flex items-center gap-2 p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer" onclick="this.parentElement.classList.toggle('open')">
@@ -1033,19 +1038,76 @@
             });
         };
 
+        // NOVA LOGICA DO CHECKBOX PARA LIDAR COM A SANFONA DE MESES/ANO
         window.handleCheckboxChange = function(tipo, valor, isChecked) {
             let selecionados = selecaoFiltros[tipo];
+            
+            let todasOpcoes = [];
+            if(tipo === 'mes') todasOpcoes = periodosLista.map(p => p.id);
+            else {
+                const container = document.getElementById(`list-${tipo}`);
+                if(container) {
+                     const inputs = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="todos"]):not(.chk-ano)'));
+                     todasOpcoes = inputs.map(i => i.value);
+                }
+            }
+
             if (valor === 'todos') {
                 selecionados = isChecked ? ['todos'] : [];
             } else {
-                selecionados = selecionados.filter(i => i !== 'todos');
-                if (isChecked) selecionados.push(valor);
-                else selecionados = selecionados.filter(i => i !== valor);
+                if (selecionados.includes('todos')) {
+                    selecionados = [...todasOpcoes]; // Expande 'todos' para desmarcar um específico
+                }
+                
+                if (isChecked) {
+                    if (!selecionados.includes(valor)) selecionados.push(valor);
+                } else {
+                    selecionados = selecionados.filter(i => i !== valor);
+                }
+            }
+            
+            if (selecionados.length > 0 && selecionados.length === todasOpcoes.length && !selecionados.includes('todos')) {
+                selecionados = ['todos'];
             }
             if (selecionados.length === 0) selecionados = ['todos'];
+            
             selecaoFiltros[tipo] = selecionados;
-            atualizarVisualDropdown(tipo);
+            
+            if(tipo === 'mes') {
+                construirOpcoesDropdown(tipo, periodosLista);
+            } else {
+                atualizarVisualDropdown(tipo);
+            }
+            
             aplicarFiltrosEmCascata(tipo);
+            agendarAtualizacaoDashboard();
+        };
+
+        // FUNÇÃO QUE MARCA/DESMARCA TODOS OS MESES DE UM ANO ESPECÍFICO (Checkbox Mestre do Ano)
+        window.toggleAnoMeses = function(ano, isChecked) {
+            let selecionados = [...selecaoFiltros['mes']];
+            const mesesDoAno = periodosLista.filter(p => p.id.endsWith(`/${ano}`)).map(p => p.id);
+
+            if (selecionados.includes('todos')) {
+                if (isChecked) return; 
+                selecionados = periodosLista.map(p => p.id);
+            }
+
+            if (isChecked) {
+                mesesDoAno.forEach(id => {
+                    if (!selecionados.includes(id)) selecionados.push(id);
+                });
+            } else {
+                selecionados = selecionados.filter(id => !mesesDoAno.includes(id));
+            }
+
+            if (selecionados.length > 0 && selecionados.length === periodosLista.length) selecionados = ['todos'];
+            if (selecionados.length === 0) selecionados = ['todos'];
+
+            selecaoFiltros['mes'] = selecionados;
+            
+            construirOpcoesDropdown('mes', periodosLista);
+            aplicarFiltrosEmCascata('mes');
             agendarAtualizacaoDashboard();
         };
 
@@ -1246,14 +1308,16 @@
                 construirOpcoesDropdown('departamento', deptsValidos);
             }
 
-            // ATUALIZAÇÃO NOVO FILTRO DE MESES/ANO
+            // O Mês agora possui uma construção de dropdown sanfonada exclusiva
             if (origem === null) construirOpcoesDropdown('mes', periodosLista);
         }
 
+        // Nova Lógica Inteligente para criar Sanfonas dependendo do Tipo (Meses ou Normal)
         function construirOpcoesDropdown(tipo, opcoesValidas) {
             const container = document.getElementById(`list-${tipo}`);
+            
             let searchHTML = '';
-            if (tipo !== 'mes') {
+            if (tipo !== 'mes') { // Meses não precisa de busca pesada, a sanfona já resolve
                 searchHTML = `
                     <div class="p-2 border-b bg-gray-50 sticky top-0 z-10">
                         <input type="text" placeholder="Pesquisar..." class="w-full text-xs border border-gray-300 rounded p-1.5 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" onclick="event.stopPropagation()" onkeyup="window.filtrarListaSuspensa(event, '${tipo}')">
@@ -1270,19 +1334,67 @@
                 </label>
             `;
 
-            opcoesValidas.forEach(opt => {
-                const valor = opt.id || opt;
-                const nome = opt.nome || opt;
-                const isChecked = selecaoFiltros[tipo].includes(valor);
-                html += `
-                    <label class="dropdown-item flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm transition-colors text-gray-700">
-                        <input type="checkbox" value="${valor}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                        ${isChecked ? 'checked' : ''} 
-                        onchange="window.handleCheckboxChange('${tipo}', '${valor}', this.checked)"> 
-                        ${nome}
-                    </label>
-                `;
-            });
+            // SE FOR MESES: APLICA A LÓGICA DE SANFONA (Anos -> Meses)
+            if (tipo === 'mes') {
+                const anosObj = {};
+                opcoesValidas.forEach(opt => {
+                    const idOriginal = opt.id;
+                    const nomeStr = opt.nome;
+                    const [mesStr, anoStr] = idOriginal.split('/');
+                    if (!anosObj[anoStr]) anosObj[anoStr] = [];
+                    anosObj[anoStr].push({ id: idOriginal, nome: nomeStr.split('/')[0] });
+                });
+
+                html += '<ul class="p-2 space-y-1">';
+                Object.keys(anosObj).sort().forEach(ano => {
+                    const anoId = `meses-do-ano-${ano}`;
+                    
+                    // Verifica quantos meses deste ano estão selecionados
+                    const checkedCount = anosObj[ano].filter(m => selecaoFiltros[tipo].includes(m.id) || selecaoFiltros[tipo].includes('todos')).length;
+                    const isAnoChecked = (checkedCount === anosObj[ano].length);
+
+                    html += `
+                        <li class="tree-mes-node border border-gray-200 bg-white rounded list-none shadow-sm mb-1">
+                            <div class="flex items-center gap-2 p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded" onclick="this.parentElement.classList.toggle('open')">
+                                <i class="fa-solid fa-chevron-right text-[10px] text-gray-500 w-3 transition-transform"></i>
+                                <input type="checkbox" class="chk-node chk-ano rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="${ano}" ${isAnoChecked ? 'checked' : ''} onclick="event.stopPropagation(); window.toggleAnoMeses('${ano}', this.checked)">
+                                <span class="font-bold text-gray-800">${ano}</span>
+                            </div>
+                            <ul class="tree-mes-children mt-1" id="${anoId}">
+                    `;
+
+                    anosObj[ano].forEach(mes => {
+                        const isChecked = selecaoFiltros[tipo].includes(mes.id) || selecaoFiltros[tipo].includes('todos');
+                        html += `
+                            <label class="dropdown-item flex items-center px-4 py-1.5 hover:bg-gray-50 cursor-pointer text-sm transition-colors text-gray-700">
+                                <input type="checkbox" value="${mes.id}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                ${isChecked ? 'checked' : ''} 
+                                onchange="window.handleCheckboxChange('${tipo}', '${mes.id}', this.checked)"> 
+                                ${mes.nome}
+                            </label>
+                        `;
+                    });
+                    html += `</ul></li>`;
+                });
+                html += '</ul>';
+
+            } else {
+                // RENDERIZAÇÃO NORMAL PARA DIRETORIAS, SETORES, ETC.
+                opcoesValidas.forEach(opt => {
+                    const valor = opt.id || opt;
+                    const nome = opt.nome || opt;
+                    const isChecked = selecaoFiltros[tipo].includes(valor);
+                    html += `
+                        <label class="dropdown-item flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm transition-colors text-gray-700">
+                            <input type="checkbox" value="${valor}" class="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                            ${isChecked ? 'checked' : ''} 
+                            onchange="window.handleCheckboxChange('${tipo}', '${valor}', this.checked)"> 
+                            ${nome}
+                        </label>
+                    `;
+                });
+            }
+
             container.innerHTML = html;
             atualizarVisualDropdown(tipo);
         }
@@ -1298,8 +1410,13 @@
             } else label.innerText = `${sels.length} selecionados`;
 
             const container = document.getElementById(`list-${tipo}`);
-            const inputs = container.querySelectorAll('input[type="checkbox"]');
-            inputs.forEach(inp => { inp.checked = sels.includes(inp.value); });
+            if(!container) return;
+
+            // Tratamento visual para evitar re-renderização total caso não seja Mês
+            if(tipo !== 'mes') {
+                const inputs = container.querySelectorAll('input[type="checkbox"]');
+                inputs.forEach(inp => { inp.checked = sels.includes(inp.value); });
+            }
         }
 
         function atualizarDropdownDepartamentosGeral() {
@@ -1728,7 +1845,6 @@
                     let col = parseCSVLine(linhas[i]);
                     
                     if (col.length >= 8) {
-                        // ADIÇÃO: Filtro para considerar apenas contas contábeis que começam com "4" (Despesas)
                         const contaStr = col[2] ? String(col[2]).trim() : '-';
                         
                         if (contaStr.startsWith('4')) {
