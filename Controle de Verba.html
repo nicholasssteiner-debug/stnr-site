@@ -1078,7 +1078,8 @@
             selecaoFiltros[tipo] = selecionados;
             
             if(tipo === 'mes') {
-                construirOpcoesDropdown(tipo, periodosLista);
+                // Ao invés de reconstruir o HTML e perder a sanfona aberta, apenas atualizamos os checks visualmente:
+                atualizarVisualDropdown(tipo);
             } else {
                 atualizarVisualDropdown(tipo);
             }
@@ -1110,7 +1111,7 @@
 
             selecaoFiltros['mes'] = selecionados;
             
-            construirOpcoesDropdown('mes', periodosLista);
+            atualizarVisualDropdown('mes'); // Atualiza a UI sem reconstruir o HTML
             aplicarFiltrosEmCascata('mes');
             agendarAtualizacaoDashboard();
         };
@@ -1277,7 +1278,24 @@
             const container = document.getElementById(`list-${tipo}`);
             if(!container) return;
 
-            if(tipo !== 'mes') {
+            // Se for mês, lida com caixas anuais e mensais visualmente
+            if (tipo === 'mes') {
+                const isAllSelected = sels.includes('todos');
+                const inputs = container.querySelectorAll('input[type="checkbox"]:not([value="todos"]):not(.chk-ano)');
+                inputs.forEach(inp => { inp.checked = isAllSelected || sels.includes(inp.value); });
+                
+                const anosInputs = container.querySelectorAll('.chk-ano');
+                anosInputs.forEach(anoInp => {
+                    const ano = anoInp.value;
+                    const mesesDoAno = periodosLista.filter(p => p.id.endsWith(`/${ano}`));
+                    const allMesesChecked = mesesDoAno.every(m => isAllSelected || sels.includes(m.id));
+                    anoInp.checked = allMesesChecked;
+                });
+
+                const masterInput = container.querySelector('input[type="checkbox"][value="todos"]');
+                if (masterInput) masterInput.checked = isAllSelected;
+
+            } else {
                 const isAllSelected = sels.includes('todos');
                 const inputs = container.querySelectorAll('input[type="checkbox"]:not([value="todos"])');
                 inputs.forEach(inp => { inp.checked = isAllSelected || sels.includes(inp.value); });
@@ -1524,7 +1542,7 @@
                         data: {
                             labels: mesesLabels,
                             datasets: [
-                                { type: 'line', label: 'Orçamento Fixo (Mês)', data: orcamentoMensalFixo, borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, fill: false, pointRadius: 0 },
+                                { type: 'line', label: 'Orçamento Fixo (Mês)', data: orcamentoMensalFixo, borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, fill: false, pointRadius: 0, pointHoverRadius: 6, pointHitRadius: 20 },
                                 { type: 'bar', label: 'Contábil', data: gastosMensaisContabil, backgroundColor: '#002B49' },
                                 { type: 'bar', label: 'Viagens', data: gastosMensaisViagens, backgroundColor: '#f97316' },
                                 { type: 'bar', label: 'Transf. TI', data: gastosMensaisTI, backgroundColor: '#a855f7' }
@@ -1532,7 +1550,8 @@
                         },
                         options: { 
                             responsive: true, 
-                            maintainAspectRatio: false, 
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
                             scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, 
                             animation: { duration: 400 } 
                         }
@@ -1668,6 +1687,61 @@
                 event.target.value = '';
             };
             reader.readAsText(file, 'UTF-8');
+        };
+
+        // ==========================================
+        // FUNÇÕES FIREBASE: VIAGENS E TI
+        // ==========================================
+        window.adicionarViagem = async function(event) {
+            event.preventDefault();
+            if (!auth.currentUser) return alert('Sem conexão!');
+            const idGenerico = Date.now().toString();
+            const novaObj = {
+                id: idGenerico, data: document.getElementById('input-viagem-data').value,
+                departamento: document.getElementById('input-viagem-dept').value,
+                descricao: document.getElementById('input-viagem-desc').value.trim(),
+                finalidade: document.getElementById('input-viagem-fin').value.trim(),
+                valor: parseFloat(document.getElementById('input-viagem-valor').value)
+            };
+            const dbRef = doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idGenerico);
+            await setDoc(dbRef, novaObj);
+            
+            document.getElementById('input-viagem-desc').value = ''; document.getElementById('input-viagem-fin').value = ''; document.getElementById('input-viagem-valor').value = '';
+            
+            const btn = event.submitter; const originalText = btn.innerText;
+            btn.innerText = "Cadastrado!"; btn.classList.replace('bg-orange-500', 'bg-green-600');
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 2000);
+        };
+
+        window.excluirViagem = async function(idStr) {
+            if (!auth.currentUser) return;
+            if(confirm("Excluir viagem?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idStr));
+        };
+
+        window.adicionarTI = async function(event) {
+            event.preventDefault();
+            if (!auth.currentUser) return alert('Sem conexão!');
+            const idGenerico = Date.now().toString();
+            const novaObj = {
+                id: idGenerico, data: document.getElementById('input-ti-data').value,
+                departamento: document.getElementById('input-ti-dept').value,
+                descricao: document.getElementById('input-ti-desc').value.trim(),
+                finalidade: document.getElementById('input-ti-fin').value.trim(),
+                valor: parseFloat(document.getElementById('input-ti-valor').value)
+            };
+            const dbRef = doc(db, 'artifacts', appId, 'public', 'data', 'tis', idGenerico);
+            await setDoc(dbRef, novaObj);
+            
+            document.getElementById('input-ti-desc').value = ''; document.getElementById('input-ti-fin').value = ''; document.getElementById('input-ti-valor').value = '';
+            
+            const btn = event.submitter; const originalText = btn.innerText;
+            btn.innerText = "Transferência Cadastrada!"; btn.classList.replace('bg-purple-600', 'bg-green-600');
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-purple-600'); }, 2000);
+        };
+
+        window.excluirTI = async function(idStr) {
+            if (!auth.currentUser) return;
+            if(confirm("Excluir transferência TI?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tis', idStr));
         };
 
         // ==========================================
