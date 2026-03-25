@@ -1054,12 +1054,9 @@
             }
 
             if (valor === 'todos') {
-                // Se clicar no master, ou seleciona tudo ou limpa tudo
                 selecionados = isChecked ? ['todos'] : [];
             } else {
-                // Se "Todos" estava marcado e o usuário desmarcou uma caixa específica
                 if (selecionados.includes('todos')) {
-                    // Transforma o "Todos" na lista inteira de opções, para poder desmarcar apenas o alvo
                     selecionados = [...todasOpcoes];
                 }
                 
@@ -1070,7 +1067,6 @@
                 }
             }
             
-            // Se todas as caixinhas individuais foram marcadas, volta ao estado "Todos"
             if (selecionados.length > 0 && selecionados.length === todasOpcoes.length && !selecionados.includes('todos')) {
                 selecionados = ['todos'];
             }
@@ -1078,7 +1074,6 @@
             selecaoFiltros[tipo] = selecionados;
             
             if(tipo === 'mes') {
-                // Ao invés de reconstruir o HTML e perder a sanfona aberta, apenas atualizamos os checks visualmente:
                 atualizarVisualDropdown(tipo);
             } else {
                 atualizarVisualDropdown(tipo);
@@ -1095,7 +1090,6 @@
 
             if (selecionados.includes('todos')) {
                 if (isChecked) return; 
-                // Se "Todos" ativo e o usuário desmarcou um Ano, abre a lista e remove aquele Ano
                 selecionados = periodosLista.map(p => p.id); 
             }
 
@@ -1111,7 +1105,7 @@
 
             selecaoFiltros['mes'] = selecionados;
             
-            atualizarVisualDropdown('mes'); // Atualiza a UI sem reconstruir o HTML
+            atualizarVisualDropdown('mes'); 
             aplicarFiltrosEmCascata('mes');
             agendarAtualizacaoDashboard();
         };
@@ -1141,14 +1135,20 @@
             if (!selecaoFiltros.diretoria.includes('todos') && selecaoFiltros.diretoria.length > 0) {
                 verbasFiltradasDir = verbasPermitidas.filter(v => selecaoFiltros.diretoria.includes(v.diretoria));
             } else if (selecaoFiltros.diretoria.length === 0) {
-                verbasFiltradasDir = []; // Nada selecionado
+                verbasFiltradasDir = []; 
             }
 
             const setoresValidos = [...new Set(verbasFiltradasDir.map(v => v.setor))].filter(Boolean).sort();
             
             if (!selecaoFiltros.setor.includes('todos')) {
+                const oldLen = selecaoFiltros.setor.length;
                 selecaoFiltros.setor = selecaoFiltros.setor.filter(s => setoresValidos.includes(s));
-                if (selecaoFiltros.setor.length === 0 && setoresValidos.length > 0) selecaoFiltros.setor = ['todos'];
+                
+                // CORREÇÃO DA CASCATA: Só volta para "Todos" se o filtro esvaziou POR CAUSA da exclusão do pai (oldLen > 0).
+                // Se já estava vazio (usuário desmarcou tudo), continua vazio.
+                if (selecaoFiltros.setor.length === 0 && oldLen > 0 && setoresValidos.length > 0) {
+                    selecaoFiltros.setor = ['todos'];
+                }
             }
             
             if (origem === null || origem === 'diretoria') {
@@ -1165,8 +1165,13 @@
             const deptsValidos = [...new Set(verbasFiltradasSetor.map(v => v.departamento))].filter(Boolean).sort();
 
             if (!selecaoFiltros.departamento.includes('todos')) {
+                const oldLen = selecaoFiltros.departamento.length;
                 selecaoFiltros.departamento = selecaoFiltros.departamento.filter(d => deptsValidos.includes(d));
-                if (selecaoFiltros.departamento.length === 0 && deptsValidos.length > 0) selecaoFiltros.departamento = ['todos'];
+                
+                // CORREÇÃO DA CASCATA
+                if (selecaoFiltros.departamento.length === 0 && oldLen > 0 && deptsValidos.length > 0) {
+                    selecaoFiltros.departamento = ['todos'];
+                }
             }
 
             if (origem === null || origem === 'diretoria' || origem === 'setor') {
