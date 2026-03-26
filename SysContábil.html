@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Contabilístico Avançado</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .synthetic-row { background-color: #f8fafc; font-weight: 600; }
+        .analytic-row { padding-left: 2rem !important; }
+        #auth-overlay { backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="flex h-screen bg-gray-100 font-sans overflow-hidden text-gray-800 relative">
+
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 z-[100] bg-slate-900/95 flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
+            <div class="flex items-center justify-center gap-3 mb-6 text-slate-900">
+                <i data-lucide="calculator" class="text-blue-600 w-8 h-8"></i>
+                <h1 class="text-2xl font-bold tracking-tight">ContaSys</h1>
+            </div>
+            
+            <h2 id="auth-title" class="text-xl font-bold text-center mb-6 text-gray-800">Acesse sua conta</h2>
+            
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">E-mail</label>
+                    <input type="email" id="auth-email" required class="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="auth-pass" required minlength="6" class="mt-1 w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div id="auth-error" class="hidden text-red-600 text-sm font-medium text-center"></div>
+                <button type="submit" id="auth-submit-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 px-4 rounded hover:bg-blue-700 transition flex justify-center items-center gap-2">
+                    <i data-lucide="log-in" class="w-5 h-5" id="auth-btn-icon"></i> <span id="auth-btn-text">Entrar</span>
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center text-sm text-gray-600 border-t pt-4">
+                <span id="auth-switch-text">Não tem uma conta?</span> 
+                <button type="button" onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline" id="auth-switch-btn">Criar agora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Datalists for Searchable Inputs -->
+    <datalist id="dl-contas"></datalist>
+    <datalist id="dl-contas-lancamento"></datalist>
+    <datalist id="dl-cc"></datalist>
+
+    <!-- Sidebar -->
+    <div class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 z-10 shadow-lg">
+        <div class="p-4 flex items-center gap-3 border-b border-slate-800">
+            <i data-lucide="calculator" class="text-blue-400 w-7 h-7"></i>
+            <h1 class="text-xl font-bold tracking-tight">ContaSys</h1>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto py-4" id="sidebar-nav">
+            <div class="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cadastros</div>
+            <button onclick="navigate('planoContas')" id="nav-planoContas" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="list" class="w-[18px] h-[18px]"></i> Plano de Contas
+            </button>
+            
+            <div class="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-2">Movimentação</div>
+            <button onclick="navigate('novoLote')" id="nav-novoLote" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="plus" class="w-[18px] h-[18px]"></i> Novo Lançamento
+            </button>
+            <button onclick="navigate('consultaLotes')" id="nav-consultaLotes" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="search" class="w-[18px] h-[18px]"></i> Consulta de Lotes
+            </button>
+            
+            <div class="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-2">Relatórios</div>
+            <button onclick="navigate('razao')" id="nav-razao" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="book-open" class="w-[18px] h-[18px]"></i> Razão Contábil
+            </button>
+            <button onclick="navigate('balancete')" id="nav-balancete" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="file-spreadsheet" class="w-[18px] h-[18px]"></i> Balancete
+            </button>
+            <button onclick="navigate('balanco')" id="nav-balanco" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="scale" class="w-[18px] h-[18px]"></i> Balanço Patrimonial
+            </button>
+            <button onclick="navigate('dre')" id="nav-dre" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="pie-chart" class="w-[18px] h-[18px]"></i> DRE
+            </button>
+            
+            <div class="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-6 mb-2">Sistema</div>
+            <button onclick="navigate('configuracao')" id="nav-configuracao" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i data-lucide="settings" class="w-[18px] h-[18px]"></i> Configurações
+            </button>
+        </nav>
+
+        <!-- User Info / Logout -->
+        <div class="p-4 border-t border-slate-800 flex flex-col gap-2">
+            <div class="text-xs text-slate-400 truncate" id="user-email-display">A carregar...</div>
+            <button onclick="doLogout()" class="flex items-center gap-2 text-sm text-slate-300 hover:text-white transition">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden relative">
+        <header class="bg-white shadow-sm h-16 flex items-center px-8 flex-shrink-0 z-0 border-b border-gray-200">
+            <h2 id="header-title" class="text-xl font-semibold text-gray-800 capitalize">Plano de Contas</h2>
+            <div class="ml-auto text-sm text-gray-500 flex items-center gap-2">
+                <i data-lucide="folder" class="w-4 h-4"></i>
+                <span id="current-workspace-name" class="font-medium text-blue-600">A carregar...</span>
+            </div>
+        </header>
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+            
+            <!-- VIEW: Plano de Contas -->
+            <div id="view-planoContas" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <div class="p-6 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-medium text-gray-800">Adicionar Nova Conta</h3>
+                            <span class="text-xs text-blue-600 bg-blue-100 px-3 py-1 rounded-full font-medium"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i>Modo Cascata Ativo</span>
+                        </div>
+                        <form id="form-add-conta" onsubmit="addAccount(event)" class="flex flex-wrap md:flex-nowrap gap-4 items-end">
+                            <div class="w-full md:w-1/4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                                <input required type="text" id="acc-code" placeholder="Ex: 1.1.03" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                            </div>
+                            <div class="w-full md:w-2/4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nome da Conta</label>
+                                <input required type="text" id="acc-name" placeholder="Ex: Aplicações Financeiras" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                            </div>
+                            <div class="w-full md:w-1/4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                                <select id="acc-type" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 outline-none bg-white">
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Passivo">Passivo</option>
+                                    <option value="Receita">Receita</option>
+                                    <option value="Despesa">Despesa</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center gap-2 h-[42px] w-full md:w-auto justify-center">
+                                <i data-lucide="plus" class="w-[18px] h-[18px]"></i> Adicionar
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="p-0 overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[700px]">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="p-4 font-semibold text-gray-600 text-sm w-32">Código</th>
+                                    <th class="p-4 font-semibold text-gray-600 text-sm">Nome da Conta</th>
+                                    <th class="p-4 font-semibold text-gray-600 text-sm w-48">Tipo / Nível</th>
+                                    <th class="p-4 font-semibold text-gray-600 text-sm w-32 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="plano-contas-tbody" class="divide-y divide-gray-100">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Novo Lote -->
+            <div id="view-novoLote" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Número do Lote</label>
+                            <input type="text" id="nl-lote-id" readonly class="w-full p-2 border border-gray-300 rounded bg-gray-100 focus:outline-none text-gray-600 font-mono cursor-not-allowed" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Data do Lançamento</label>
+                            <input type="date" id="nl-date" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </div>
+                        <div class="col-span-1 md:col-span-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Histórico Padrão</label>
+                            <input type="text" id="nl-desc" placeholder="Histórico ou descrição do fato contábil..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-lg overflow-x-auto mb-6">
+                        <table class="w-full text-left border-collapse min-w-[1000px]">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-3 text-sm font-medium text-gray-600 w-1/4">Conta (Pesquise)</th>
+                                    <th class="p-3 text-sm font-medium text-gray-600 w-1/5">Subconta</th>
+                                    <th class="p-3 text-sm font-medium text-gray-600 w-1/5">C. Custo</th>
+                                    <th class="p-3 text-sm font-medium text-gray-600 w-24">D / C</th>
+                                    <th class="p-3 text-sm font-medium text-gray-600 w-32">Valor (R$)</th>
+                                    <th class="p-3 text-sm font-medium text-gray-600 w-16 text-center"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="novo-lote-tbody" class="divide-y divide-gray-100">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                        </table>
+                        <div class="bg-gray-50 p-3 border-t border-gray-200">
+                            <button onclick="addNovoLoteLine()" class="text-blue-600 text-sm font-medium hover:text-blue-800 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Linha de Partida
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between items-center bg-gray-50 p-4 rounded-lg border border-gray-200 gap-4">
+                        <div class="flex gap-8 w-full md:w-auto">
+                            <div>
+                                <span class="block text-xs text-gray-500 uppercase font-semibold">Total Débitos</span>
+                                <span id="nl-total-d" class="text-xl font-bold text-gray-800">R$ 0,00</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs text-gray-500 uppercase font-semibold">Total Créditos</span>
+                                <span id="nl-total-c" class="text-xl font-bold text-gray-800">R$ 0,00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                            <div id="nl-warning" class="hidden items-center gap-2 text-red-600 text-sm font-medium">
+                                <i data-lucide="alert-circle" class="w-4 h-4"></i> <span id="nl-warning-text">Lançamento não bate!</span>
+                            </div>
+                            <button id="btn-save-lote" onclick="saveNovoLote()" class="w-full md:w-auto bg-green-600 text-white px-6 py-2 rounded font-medium hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-[18px] h-[18px]"></i> Salvar Lote
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Consulta Lotes -->
+            <div id="view-consultaLotes" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <div class="relative w-full md:w-96">
+                            <input type="text" id="consulta-search" oninput="renderConsultaLotes()" placeholder="Procurar por lote ou histórico..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"/>
+                            <i data-lucide="search" class="absolute left-3 top-2.5 text-gray-400 w-[18px] h-[18px]"></i>
+                        </div>
+                    </div>
+
+                    <div id="consulta-list" class="divide-y divide-gray-100 min-h-[200px]">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Razão -->
+            <div id="view-razao" class="view-section hidden flex flex-col gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Selecione a Conta ou Subconta para emitir o Razão (Pesquise)</label>
+                    <input type="text" list="dl-contas" id="razao-acc-select" onchange="renderRazaoContent()" placeholder="Ex: 1.1.01" class="w-full max-w-xl p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                </div>
+
+                <div id="razao-content-area" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hidden">
+                    <div class="p-6 border-b border-gray-200 bg-slate-50 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Ficha de Razão</h3>
+                            <p id="razao-acc-info" class="text-gray-500 text-sm">--</p>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr class="bg-white border-b border-gray-200 text-sm text-gray-500">
+                                    <th class="p-4 font-semibold w-28">Data</th>
+                                    <th class="p-4 font-semibold w-32">Lote</th>
+                                    <th class="p-4 font-semibold">Histórico / Subconta</th>
+                                    <th class="p-4 font-semibold w-32 text-right">Débito</th>
+                                    <th class="p-4 font-semibold w-32 text-right">Crédito</th>
+                                    <th class="p-4 font-semibold w-32 text-right">Saldo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="razao-tbody" class="divide-y divide-gray-100 text-sm">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                            <tfoot class="bg-gray-50 font-bold border-t-2 border-gray-300">
+                                <tr>
+                                    <td colSpan="3" class="p-4 text-right text-gray-600 uppercase text-xs">Totais do Período</td>
+                                    <td id="razao-t-deb" class="p-4 text-right text-gray-800">R$ 0,00</td>
+                                    <td id="razao-t-cre" class="p-4 text-right text-gray-800">R$ 0,00</td>
+                                    <td id="razao-t-sal" class="p-4 text-right text-blue-700 text-base">R$ 0,00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Balancete -->
+            <div id="view-balancete" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-slate-900 p-6 text-center text-white">
+                        <h2 class="text-2xl font-bold">Balancete de Verificação</h2>
+                        <p class="text-slate-400 mt-1">Consolidação Analítica e Sintética</p>
+                    </div>
+                    <div class="overflow-x-auto p-4">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
+                                    <th class="p-3 font-semibold w-32">Conta</th>
+                                    <th class="p-3 font-semibold">Descrição</th>
+                                    <th class="p-3 font-semibold w-32 text-right">Débito</th>
+                                    <th class="p-3 font-semibold w-32 text-right">Crédito</th>
+                                    <th class="p-3 font-semibold w-32 text-right">Saldo Atual</th>
+                                </tr>
+                            </thead>
+                            <tbody id="balancete-tbody" class="divide-y divide-gray-100 text-sm">
+                                <!-- Preenchido via JS -->
+                            </tbody>
+                            <tfoot class="bg-gray-50 font-bold border-t-2 border-gray-300">
+                                <tr>
+                                    <td colSpan="2" class="p-4 text-right text-gray-600 uppercase text-xs">Totais</td>
+                                    <td id="balancete-t-deb" class="p-4 text-right text-gray-800">R$ 0,00</td>
+                                    <td id="balancete-t-cre" class="p-4 text-right text-gray-800">R$ 0,00</td>
+                                    <td id="balancete-t-sal" class="p-4 text-right text-blue-700 text-base">R$ 0,00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Balanço Patrimonial -->
+            <div id="view-balanco" class="view-section hidden">
+                <div class="max-w-6xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-slate-900 p-6 text-center text-white">
+                        <h2 class="text-2xl font-bold">Balanço Patrimonial</h2>
+                        <p class="text-slate-400 mt-1">Posição Consolidada</p>
+                    </div>
+                    <div id="balanco-content" class="flex flex-col">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Configurações -->
+            <div id="view-configuracao" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    
+                    <!-- Tabs Config -->
+                    <div class="flex border-b border-gray-200 mb-6">
+                        <button onclick="switchConfigTab('dados')" id="tab-btn-dados" class="px-6 py-3 font-medium text-sm border-b-2 border-blue-600 text-blue-600">Atividades / Nuvem</button>
+                        <button onclick="switchConfigTab('dre')" id="tab-btn-dre" class="px-6 py-3 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700">Configurações da DRE</button>
+                        <button onclick="switchConfigTab('cc')" id="tab-btn-cc" class="px-6 py-3 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700">Centros de Custo</button>
+                    </div>
+
+                    <!-- Area: Dados / Projetos -->
+                    <div id="config-area-dados" class="block">
+                        <div class="mb-6">
+                            <h2 class="text-lg font-bold text-gray-800">Gerir Atividades na Nuvem</h2>
+                            <p class="text-gray-500 text-sm">Crie, carregue e intercale entre múltiplos balanços e projetos. Os dados são isolados à sua conta.</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200 mb-8 flex flex-col md:flex-row gap-4 justify-between items-center">
+                            <div class="w-full md:w-2/3">
+                                <h3 class="text-blue-800 font-bold mb-1">Salvar como Nova Atividade</h3>
+                                <p class="text-blue-600 text-sm mb-3">Dê um nome (ex: Empresa X - Balanço 2024) para o balanço em que você está trabalhando no momento.</p>
+                                <div class="flex gap-2 w-full">
+                                    <input type="text" id="ws-name-input" placeholder="Nome da Atividade..." class="flex-1 p-2 border border-blue-300 rounded focus:ring-blue-500 outline-none" />
+                                    <button onclick="createNewWorkspace()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center justify-center gap-2 whitespace-nowrap">
+                                        <i data-lucide="save" class="w-4 h-4"></i> Salvar 
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full text-left text-sm min-w-[600px]">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th class="p-3 font-semibold text-gray-600">Atividades Salvas</th>
+                                        <th class="p-3 font-semibold text-gray-600 w-48">Última Modificação</th>
+                                        <th class="p-3 font-semibold text-gray-600 w-32 text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ws-tbody" class="divide-y divide-gray-100">
+                                    <!-- Preenchido via JS -->
+                                    <tr><td colspan="3" class="p-4 text-center text-gray-500">Carregando atividades...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Area: DRE -->
+                    <div id="config-area-dre" class="hidden">
+                        <div class="mb-6">
+                            <h2 class="text-lg font-bold text-gray-800">Estrutura da DRE</h2>
+                            <p class="text-gray-500 text-sm">Mapeie as contas de resultado (Receitas e Despesas) para os grupos da DRE.</p>
+                        </div>
+                        <div id="configuracao-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Area: Centros de Custo -->
+                    <div id="config-area-cc" class="hidden">
+                        <div class="mb-6 flex justify-between items-start">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800">Centros de Custo</h2>
+                                <p class="text-gray-500 text-sm">Gerencie os departamentos/centros de custo. O primeiro atua como padrão.</p>
+                            </div>
+                        </div>
+                        
+                        <form onsubmit="addCostCenter(event)" class="flex gap-4 mb-6">
+                            <input type="text" id="cc-id-input" placeholder="Sigla (Ex: CC-02)" required class="w-1/4 p-2 border border-gray-300 rounded focus:ring-blue-500 outline-none" />
+                            <input type="text" id="cc-name-input" placeholder="Nome do Departamento" required class="flex-1 p-2 border border-gray-300 rounded focus:ring-blue-500 outline-none" />
+                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Adicionar
+                            </button>
+                        </form>
+
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th class="p-3 font-semibold text-gray-600 w-32">ID</th>
+                                        <th class="p-3 font-semibold text-gray-600">Centro de Custo</th>
+                                        <th class="p-3 font-semibold text-gray-600 w-24 text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cc-tbody" class="divide-y divide-gray-100">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- VIEW: DRE -->
+            <div id="view-dre" class="view-section hidden">
+                <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-slate-900 p-6 text-center text-white">
+                        <h2 class="text-2xl font-bold">Demonstração do Resultado do Exercício (DRE)</h2>
+                        <p class="text-slate-400 mt-1">Período Consolidado</p>
+                    </div>
+                    <div id="dre-content" class="flex flex-col">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modals & Toasts -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95 transition-transform duration-300" id="confirm-modal-box">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Atenção</h3>
+            <p id="confirm-msg" class="text-gray-600 text-sm mb-6">Tem a certeza?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeConfirm()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition">Cancelar</button>
+                <button id="confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCRIPT WITH FIREBASE (MODULAR) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+        // Firebase Config do Utilizador
+        const firebaseConfig = {
+            apiKey: "AIzaSyDn_eoBdLbAKyYanNWubHGF6GK0PDTtKmY",
+            authDomain: "fap--syscont.firebaseapp.com",
+            projectId: "fap--syscont",
+            storageBucket: "fap--syscont.firebasestorage.app",
+            messagingSenderId: "433456787681",
+            appId: "1:433456787681:web:61ded632b1b2ea1ce7c7a0",
+            measurementId: "G-0GRW1QZK79"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- AUTH LOGIC ---
+        let isLoginMode = true;
+        let currentUser = null;
+
+        // --- MOCK INITIAL STATE ---
+        const INITIAL_ACCOUNTS = [
+            { code: '1.1.01', name: 'Caixa', type: 'Ativo' },
+            { code: '1.1.02', name: 'Banco Conta Movimento', type: 'Ativo' },
+            { code: '1.1.03', name: 'Clientes', type: 'Ativo' },
+            { code: '1.1.04', name: '(-) Provisão para Devedores Duvidosos', type: 'Ativo' },
+            { code: '1.2.01', name: 'Estoque de Mercadorias', type: 'Ativo' },
+            { code: '1.3.01', name: 'Máquinas e Equipamentos', type: 'Ativo' },
+            { code: '1.3.02', name: '(-) Depreciação Acumulada', type: 'Ativo' },
+            { code: '2.1.01', name: 'Fornecedores a Pagar', type: 'Passivo' },
+            { code: '2.1.02', name: 'Salários a Pagar', type: 'Passivo' },
+            { code: '2.2.01', name: 'Capital Social', type: 'Passivo' },
+            { code: '2.2.02', name: '(-) Prejuízos Acumulados', type: 'Passivo' },
+            { code: '3.1.01', name: 'Receita Bruta de Vendas', type: 'Receita' },
+            { code: '3.1.02', name: 'Receita de Prestação de Serviços', type: 'Receita' },
+            { code: '3.2.01', name: '(-) Devoluções de Vendas', type: 'Receita' },
+            { code: '3.2.02', name: '(-) Impostos s/ Vendas', type: 'Receita' },
+            { code: '3.2.03', name: '(-) Descontos Incondicionais', type: 'Receita' },
+            { code: '4.1.01', name: 'Custo das Mercadorias Vendidas (CMV)', type: 'Despesa' },
+            { code: '4.2.01', name: 'Despesas com Salários', type: 'Despesa' },
+            { code: '4.2.02', name: 'Despesas com Aluguel', type: 'Despesa' },
+        ];
+
+        const INITIAL_DRE_CONFIG = {
+            receitaBruta: ['3.1.01', '3.1.02'],
+            deducoes: ['3.2.01', '3.2.02', '3.2.03'],
+            custos: ['4.1.01'],
+            despesasOperacionais: ['4.2.01', '4.2.02'],
+            outrasReceitasDespesas: []
+        };
+
+        const DRE_GROUPS = [
+            { id: 'receitaBruta', name: 'Receita Bruta de Vendas/Serviços' },
+            { id: 'deducoes', name: '(-) Deduções e Impostos sobre Vendas' },
+            { id: 'custos', name: '(-) Custos (CMV/CSP)' },
+            { id: 'despesasOperacionais', name: '(-) Despesas Operacionais' },
+            { id: 'outrasReceitasDespesas', name: '(+/-) Outras Receitas e Despesas' }
+        ];
+
+        // --- GLOBAL STATE ---
+        let state = {
+            activeTab: 'planoContas',
+            workspaceName: 'Atividade Inicial',
+            accounts: [],
+            batches: [], 
+            dreConfig: {},
+            costCenters: []
+        };
+
+        let currentWorkspaceId = null;
+        let novoLoteForm = { lines: [] };
+        let expandedBatchId = null;
+
+
+        // --- FIREBASE CLOUD SAVE / LOAD ---
+        const saveCurrentWorkspace = async () => {
+            if (!currentUser || !currentWorkspaceId) return;
+            try {
+                await setDoc(doc(db, "users", currentUser.uid, "workspaces", currentWorkspaceId), {
+                    state: state,
+                    workspaceName: state.workspaceName,
+                    updatedAt: Date.now()
+                }, { merge: true });
+                window.loadWorkspacesList();
+            } catch (e) {
+                console.error("Erro ao salvar:", e);
+                showToast("Erro ao sincronizar com nuvem.", "error");
+            }
+        };
+
+        window.createNewWorkspace = async () => {
+            const nameInput = document.getElementById('ws-name-input');
+            const name = nameInput.value.trim();
+            if (!name) {
+                showToast("Dê um nome à nova atividade.", "error");
+                return;
+            }
+            if (!currentUser) return;
+            
+            try {
+                const id = "ws_" + Date.now();
+                currentWorkspaceId = id;
+                state.workspaceName = name;
+                
+                await setDoc(doc(db, "users", currentUser.uid, "workspaces", id), {
+                    state: state,
+                    workspaceName: name,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now()
+                });
+                
+                nameInput.value = '';
+                document.getElementById('current-workspace-name').innerText = name;
+                showToast("Nova atividade salva na nuvem!");
+                window.loadWorkspacesList();
+            } catch (e) {
+                showToast("Erro ao criar atividade.", "error");
+            }
+        };
+
+        window.loadWorkspace = async (wsId) => {
+            if (!currentUser) return;
+            try {
+                const docSnap = await getDoc(doc(db, "users", currentUser.uid, "workspaces", wsId));
+                if (docSnap.exists()) {
+                    currentWorkspaceId = wsId;
+                    const data = docSnap.data();
+                    state = data.state;
+                    
+                    document.getElementById('current-workspace-name').innerText = state.workspaceName;
+                    updateDatalists();
+                    navigate(state.activeTab || 'planoContas');
+                    window.loadWorkspacesList();
+                    showToast("Atividade carregada com sucesso!");
+                }
+            } catch (e) {
+                showToast("Erro ao carregar.", "error");
+            }
+        };
+
+        window.deleteWorkspace = (wsId) => {
+            if(wsId === currentWorkspaceId) {
+                showToast("Não podes excluir a atividade que está aberta no momento.", "error");
+                return;
+            }
+            showConfirm("Tens a certeza que desejas excluir este balanço para sempre?", async () => {
+                await deleteDoc(doc(db, "users", currentUser.uid, "workspaces", wsId));
+                showToast("Atividade apagada.");
+                window.loadWorkspacesList();
+            });
+        };
+
+        window.loadWorkspacesList = async () => {
+            if (!currentUser) return;
+            const qs = await getDocs(collection(db, "users", currentUser.uid, "workspaces"));
+            const wsArray = [];
+            qs.forEach(d => wsArray.push({ id: d.id, ...d.data() }));
+            
+            wsArray.sort((a, b) => b.updatedAt - a.updatedAt);
+            
+            const tbody = document.getElementById('ws-tbody');
+            if (wsArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-500">Nenhuma atividade salva. Crie uma acima!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = wsArray.map(ws => `
+                <tr class="hover:bg-gray-50 ${ws.id === currentWorkspaceId ? 'bg-blue-50' : ''}">
+                    <td class="p-3 font-semibold text-gray-800">
+                        ${ws.workspaceName} 
+                        ${ws.id === currentWorkspaceId ? '<span class="ml-2 text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded uppercase font-bold tracking-wider">Atual</span>' : ''}
+                    </td>
+                    <td class="p-3 text-gray-600 text-sm">${new Date(ws.updatedAt).toLocaleString('pt-BR')}</td>
+                    <td class="p-3 text-center flex justify-center gap-2">
+                        <button onclick="loadWorkspace('${ws.id}')" class="text-blue-600 hover:text-blue-800 p-1" title="Carregar Atividade" ${ws.id === currentWorkspaceId ? 'disabled class="opacity-30"' : ''}>
+                            <i data-lucide="folder-open" class="w-[18px] h-[18px]"></i>
+                        </button>
+                        <button onclick="deleteWorkspace('${ws.id}')" class="text-red-500 hover:text-red-700 p-1" title="Excluir Atividade">
+                            <i data-lucide="trash-2" class="w-[18px] h-[18px]"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        const initUserWorkspaces = async () => {
+            const qs = await getDocs(collection(db, "users", currentUser.uid, "workspaces"));
+            
+            if (qs.empty) {
+                // Primeira vez: cria um estado padrão
+                state = {
+                    activeTab: 'planoContas',
+                    workspaceName: 'Atividade Inicial',
+                    accounts: [...INITIAL_ACCOUNTS],
+                    batches: [], 
+                    dreConfig: JSON.parse(JSON.stringify(INITIAL_DRE_CONFIG)),
+                    costCenters: [{ id: 'CC-01', name: 'Sede Administrativa' }]
+                };
+                currentWorkspaceId = "ws_" + Date.now();
+                await saveCurrentWorkspace();
+            } else {
+                // Puxa o modificado mais recentemente
+                let mostRecent = null;
+                qs.forEach(d => {
+                    const data = { id: d.id, ...d.data() };
+                    if (!mostRecent || data.updatedAt > mostRecent.updatedAt) {
+                        mostRecent = data;
+                    }
+                });
+                
+                currentWorkspaceId = mostRecent.id;
+                state = mostRecent.state;
+                if(!state.workspaceName) state.workspaceName = mostRecent.workspaceName || 'Sem Nome';
+            }
+
+            document.getElementById('current-workspace-name').innerText = state.workspaceName;
+            updateDatalists();
+            navigate(state.activeTab || 'planoContas');
+            window.loadWorkspacesList();
+        };
+
+
+        // --- AUTH UI & HANDLERS ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-overlay').classList.add('opacity-0', 'pointer-events-none');
+                document.getElementById('user-email-display').innerText = user.email;
+                initUserWorkspaces(); // Boot up system
+            } else {
+                currentUser = null;
+                document.getElementById('auth-overlay').classList.remove('opacity-0', 'pointer-events-none');
+            }
+        });
+
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? 'Acesse sua conta' : 'Crie uma nova conta';
+            document.getElementById('auth-btn-text').innerText = isLoginMode ? 'Entrar' : 'Cadastrar';
+            document.getElementById('auth-btn-icon').setAttribute('data-lucide', isLoginMode ? 'log-in' : 'user-plus');
+            document.getElementById('auth-switch-text').innerText = isLoginMode ? 'Não tem uma conta?' : 'Já tem uma conta?';
+            document.getElementById('auth-switch-btn').innerText = isLoginMode ? 'Criar agora' : 'Fazer Login';
+            document.getElementById('auth-error').classList.add('hidden');
+            lucide.createIcons();
+        };
+
+        window.handleAuthSubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            const errEl = document.getElementById('auth-error');
+            
+            try {
+                errEl.classList.add('hidden');
+                if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, pass);
+                }
+            } catch (error) {
+                console.error(error);
+                errEl.innerText = error.code === 'auth/invalid-credential' ? 'E-mail ou senha incorretos.' : 
+                                  error.code === 'auth/email-already-in-use' ? 'Este e-mail já está em uso.' : 
+                                  'Ocorreu um erro (' + error.code + '). Vá no Firebase e ative Email/Password.';
+                errEl.classList.remove('hidden');
+            }
+        };
+
+        window.doLogout = () => {
+            signOut(auth);
+        };
+
+        // --- UTILITÁRIOS ---
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+        };
+
+        const showToast = (msg, type = 'success') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : 'bg-green-600';
+            toast.className = `p-4 mb-2 rounded shadow text-white text-sm font-medium transform transition-all duration-300 translate-x-full opacity-0 ${bgColor} flex items-center gap-2 pointer-events-auto z-[9999]`;
+            toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-4 h-4"></i> ${msg}`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        let confirmCallback = null;
+        window.showConfirm = (msg, callback) => {
+            document.getElementById('confirm-msg').innerText = msg;
+            const modal = document.getElementById('confirm-modal');
+            const box = document.getElementById('confirm-modal-box');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                box.classList.remove('scale-95');
+                box.classList.add('scale-100');
+            }, 10);
+            confirmCallback = callback;
+        };
+
+        window.closeConfirm = () => {
+            const modal = document.getElementById('confirm-modal');
+            const box = document.getElementById('confirm-modal-box');
+            modal.classList.add('opacity-0');
+            box.classList.remove('scale-100');
+            box.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                confirmCallback = null;
+            }, 300);
+        };
+
+        document.getElementById('confirm-btn').addEventListener('click', () => {
+            if(confirmCallback) confirmCallback();
+            window.closeConfirm();
+        });
+
+        const getChildAccounts = (parentCode) => {
+            return state.accounts.filter(a => a.code.startsWith(parentCode + '.') && a.code.split('.').length === parentCode.split('.').length + 1);
+        };
+
+        const hasChildren = (code) => {
+            return state.accounts.some(a => a.code.startsWith(code + '.') && a.code !== code);
+        };
+
+        const updateDatalists = () => {
+            const dlContas = document.getElementById('dl-contas');
+            dlContas.innerHTML = state.accounts.map(acc => `<option value="${acc.code} - ${acc.name}"></option>`).join('');
+            
+            const dlContasLancamento = document.getElementById('dl-contas-lancamento');
+            const mainAccounts = state.accounts.filter(acc => !state.accounts.some(parent => acc.code.startsWith(parent.code + '.')));
+            dlContasLancamento.innerHTML = mainAccounts.map(acc => `<option value="${acc.code} - ${acc.name}"></option>`).join('');
+            
+            const dlCC = document.getElementById('dl-cc');
+            dlCC.innerHTML = state.costCenters.map(cc => `<option value="${cc.id} - ${cc.name}"></option>`).join('');
+        };
+
+        window.navigate = (tabId) => {
+            state.activeTab = tabId;
+            updateDatalists();
+            saveCurrentWorkspace(); // Save current pos
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-r-4', 'border-blue-400');
+                btn.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
+            });
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('bg-blue-600', 'text-white', 'border-r-4', 'border-blue-400');
+                activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
+            }
+
+            const titles = {
+                'planoContas': 'Plano de Contas', 'novoLote': 'Novo Lançamento', 'consultaLotes': 'Consulta de Lotes',
+                'razao': 'Razão Contábil', 'balancete': 'Balancete de Verificação', 'balanco': 'Balanço Patrimonial',
+                'dre': 'Demonstração do Resultado (DRE)', 'configuracao': 'Configurações'
+            };
+            document.getElementById('header-title').innerText = titles[tabId] || tabId;
+
+            document.querySelectorAll('.view-section').forEach(view => view.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            switch(tabId) {
+                case 'planoContas': window.renderPlanoContas(); break;
+                case 'novoLote': window.initNovoLote(); break;
+                case 'consultaLotes': window.renderConsultaLotes(); break;
+                case 'razao': window.initRazao(); break;
+                case 'balancete': window.renderBalancete(); break;
+                case 'balanco': window.renderBalanco(); break;
+                case 'configuracao': window.renderConfiguracaoDRE(); window.renderCCConfig(); break;
+                case 'dre': window.renderDRE(); break;
+            }
+        };
+
+        window.switchConfigTab = (tab) => {
+            document.getElementById('config-area-dre').classList.toggle('hidden', tab !== 'dre');
+            document.getElementById('config-area-cc').classList.toggle('hidden', tab !== 'cc');
+            document.getElementById('config-area-dados').classList.toggle('hidden', tab !== 'dados');
+            
+            const btnDre = document.getElementById('tab-btn-dre');
+            const btnCc = document.getElementById('tab-btn-cc');
+            const btnDados = document.getElementById('tab-btn-dados');
+            
+            const activeClass = "px-6 py-3 font-medium text-sm border-b-2 border-blue-600 text-blue-600";
+            const inactiveClass = "px-6 py-3 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+
+            btnDados.className = tab === 'dados' ? activeClass : inactiveClass;
+            btnDre.className = tab === 'dre' ? activeClass : inactiveClass;
+            btnCc.className = tab === 'cc' ? activeClass : inactiveClass;
+        };
+
+
+        // --- 1. PLANO DE CONTAS & CASCATA ---
+        window.renderPlanoContas = () => {
+            const tbody = document.getElementById('plano-contas-tbody');
+            tbody.innerHTML = '';
+            
+            state.accounts.sort((a, b) => a.code.localeCompare(b.code));
+
+            state.accounts.forEach(acc => {
+                const badgeClass = acc.type === 'Ativo' ? 'bg-green-100 text-green-800' : 
+                                   acc.type === 'Passivo' ? 'bg-orange-100 text-orange-800' : 
+                                   acc.type === 'Receita' ? 'bg-blue-100 text-blue-800' : 
+                                   'bg-red-100 text-red-800';
+                
+                const level = acc.code.split('.').length;
+                const isSynthetic = hasChildren(acc.code);
+                
+                let indentClass = "";
+                if(level > 3) indentClass = "pl-8";
+                if(level > 4) indentClass = "pl-12";
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition border-b border-gray-100 ${isSynthetic ? 'synthetic-row' : ''}">
+                        <td class="p-4 text-sm font-mono text-gray-800 ${indentClass}">${acc.code}</td>
+                        <td class="p-4 text-sm text-gray-800">${acc.name}</td>
+                        <td class="p-4 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${badgeClass}">${acc.type}</span>
+                            ${isSynthetic ? '<span class="ml-2 text-xs text-gray-400 italic">Sintética</span>' : ''}
+                        </td>
+                        <td class="p-4 text-center flex justify-center gap-2">
+                            <button onclick="promptSubAccount('${acc.code}', '${acc.type}')" class="text-blue-500 hover:text-blue-700 p-1" title="Adicionar Subconta">
+                                <i data-lucide="plus-square" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteAccount('${acc.code}')" class="text-red-500 hover:text-red-700 p-1" title="Excluir Conta">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        };
+
+        window.promptSubAccount = (parentCode, type) => {
+            const children = getChildAccounts(parentCode);
+            let nextNum = 1;
+            if(children.length > 0) {
+                const lastChildCode = children[children.length-1].code;
+                nextNum = parseInt(lastChildCode.split('.').pop()) + 1;
+            }
+            const newCode = `${parentCode}.${String(nextNum).padStart(2, '0')}`;
+            
+            document.getElementById('acc-code').value = newCode;
+            document.getElementById('acc-type').value = type;
+            document.getElementById('acc-name').focus();
+            showToast(`Sugerido código ${newCode} para a subconta de ${parentCode}`);
+        };
+
+        // Lógica de Cascata DOWN (Adicionar empurra p/ baixo)
+        const shiftAccountsDown = (newCode) => {
+            const parts = newCode.split('.');
+            const lastPart = parts.pop();
+            const prefix = parts.length > 0 ? parts.join('.') + '.' : '';
+
+            const siblings = state.accounts.filter(a => {
+                const p = a.code.split('.');
+                p.pop();
+                const aPrefix = p.length > 0 ? p.join('.') + '.' : '';
+                return aPrefix === prefix && a.code.split('.').length === newCode.split('.').length;
+            });
+
+            const mapShift = {};
+            siblings.sort((a, b) => b.code.localeCompare(a.code)); // Ordem decrescente
+
+            siblings.forEach(sib => {
+                const sibLastPart = sib.code.split('.').pop();
+                if (!isNaN(sibLastPart) && parseInt(sibLastPart) >= parseInt(lastPart)) {
+                    const newNum = parseInt(sibLastPart) + 1;
+                    const newSibCode = prefix + String(newNum).padStart(sibLastPart.length, '0');
+                    mapShift[sib.code] = newSibCode;
+
+                    state.accounts.forEach(child => {
+                        if (child.code.startsWith(sib.code + '.')) {
+                            const newChildCode = child.code.replace(sib.code, newSibCode);
+                            mapShift[child.code] = newChildCode;
+                        }
+                    });
+                }
+            });
+
+            if(Object.keys(mapShift).length > 0) {
+                state.accounts = state.accounts.map(a => mapShift[a.code] ? { ...a, code: mapShift[a.code] } : a);
+                state.batches.forEach(b => b.entries.forEach(e => { if (mapShift[e.accountCode]) e.accountCode = mapShift[e.accountCode]; }));
+                for (let key in state.dreConfig) state.dreConfig[key] = state.dreConfig[key].map(c => mapShift[c] || c);
+                saveCurrentWorkspace();
+                showToast(`Cascata: ${Object.keys(mapShift).length} conta(s) empurrada(s) p/ baixo!`, 'success');
+            }
+        };
+
+        // Lógica de Cascata UP (Apagar puxa p/ cima)
+        const shiftAccountsUp = (deletedCode) => {
+            const parts = deletedCode.split('.');
+            const deletedSuf = parseInt(parts.pop());
+            const prefix = parts.length > 0 ? parts.join('.') + '.' : '';
+
+            const siblingsToShift = state.accounts.filter(a => {
+                const p = a.code.split('.');
+                const suf = parseInt(p.pop());
+                const aPrefix = p.length > 0 ? p.join('.') + '.' : '';
+                return aPrefix === prefix && a.code.split('.').length === deletedCode.split('.').length && suf > deletedSuf;
+            });
+
+            if (siblingsToShift.length === 0) return;
+
+            const mapShift = {};
+            siblingsToShift.sort((a, b) => a.code.localeCompare(b.code)); // Ordem crescente para subir 3->2, depois 4->3
+
+            siblingsToShift.forEach(sib => {
+                const sibSuf = parseInt(sib.code.split('.').pop());
+                const newSuf = sibSuf - 1;
+                const newSibCode = prefix + String(newSuf).padStart(sib.code.split('.').pop().length, '0');
+                mapShift[sib.code] = newSibCode;
+
+                state.accounts.forEach(child => {
+                    if (child.code.startsWith(sib.code + '.')) {
+                        const newChildCode = child.code.replace(sib.code, newSibCode);
+                        mapShift[child.code] = newChildCode;
+                    }
+                });
+            });
+
+            if(Object.keys(mapShift).length > 0) {
+                state.accounts = state.accounts.map(a => mapShift[a.code] ? { ...a, code: mapShift[a.code] } : a);
+                state.batches.forEach(b => {
+                    b.entries.forEach(e => {
+                        if (mapShift[e.accountCode]) e.accountCode = mapShift[e.accountCode];
+                    });
+                });
+                for (let key in state.dreConfig) {
+                    state.dreConfig[key] = state.dreConfig[key].map(c => mapShift[c] || c);
+                }
+                showToast(`Cascata Reverse: ${Object.keys(mapShift).length} conta(s) puxada(s) p/ cima!`, 'success');
+            }
+        };
+
+        window.addAccount = (e) => {
+            e.preventDefault();
+            const codeInput = document.getElementById('acc-code');
+            const nameInput = document.getElementById('acc-name');
+            const typeInput = document.getElementById('acc-type');
+            
+            const code = codeInput.value.trim();
+            const name = nameInput.value.trim();
+            const type = typeInput.value;
+
+            if (state.accounts.some(a => a.code === code)) {
+                shiftAccountsDown(code);
+            }
+
+            state.accounts.push({ code, name, type });
+            updateDatalists();
+            
+            codeInput.value = '';
+            nameInput.value = '';
+            
+            window.renderPlanoContas();
+            saveCurrentWorkspace();
+            showToast("Conta adicionada com sucesso!");
+        };
+
+        window.deleteAccount = (code) => {
+            const hasSub = hasChildren(code);
+            let msg = `Tem certeza que deseja excluir a conta ${code}? (Contas subsequentes subirão para preencher o vazio)`;
+            
+            if(hasSub){
+                msg = `Atenção: A conta ${code} possui subcontas! Excluir apagará todas as subcontas em cascata e reajustará a numeração das seguintes. Continuar?`;
+            }
+
+            window.showConfirm(msg, () => {
+                state.accounts = state.accounts.filter(a => a.code !== code && !a.code.startsWith(code + '.'));
+                
+                for(let key in state.dreConfig) {
+                    state.dreConfig[key] = state.dreConfig[key].filter(c => c !== code && !c.startsWith(code + '.'));
+                }
+                
+                shiftAccountsUp(code); // Trigger reverse cascade
+                
+                updateDatalists();
+                window.renderPlanoContas();
+                saveCurrentWorkspace();
+                showToast("Conta excluída e numeração ajustada.");
+            });
+        };
+
+
+        // --- 2. NOVO LOTE ---
+        window.initNovoLote = () => {
+            document.getElementById('nl-lote-id').value = `LOTE-${String(state.batches.length + 1).padStart(4, '0')}`;
+            document.getElementById('nl-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('nl-desc').value = '';
+            
+            novoLoteForm.lines = [
+                { id: Date.now() + 1, accountCode: '', subAccountCode: '', ccId: '', type: 'D', value: '', textInput: '', ccInput: '' },
+                { id: Date.now() + 2, accountCode: '', subAccountCode: '', ccId: '', type: 'C', value: '', textInput: '', ccInput: '' }
+            ];
+            
+            renderNovoLoteLines();
+        };
+
+        const updateLoteTotalsUI = () => {
+            let totalDebit = 0;
+            let totalCredit = 0;
+
+            novoLoteForm.lines.forEach((line) => {
+                const val = parseFloat(line.value) || 0;
+                if (line.type === 'D') totalDebit += val;
+                if (line.type === 'C') totalCredit += val;
+            });
+
+            const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.001;
+            
+            const tdEl = document.getElementById('nl-total-d');
+            const tcEl = document.getElementById('nl-total-c');
+            tdEl.innerText = formatCurrency(totalDebit);
+            tcEl.innerText = formatCurrency(totalCredit);
+            
+            if(!isBalanced && totalDebit > 0) tdEl.classList.add('text-red-600'); else tdEl.classList.remove('text-red-600');
+            if(!isBalanced && totalCredit > 0) tcEl.classList.add('text-red-600'); else tcEl.classList.remove('text-red-600');
+
+            const warnEl = document.getElementById('nl-warning');
+            const btnSave = document.getElementById('btn-save-lote');
+            
+            if (!isBalanced && (totalDebit > 0 || totalCredit > 0)) {
+                warnEl.classList.remove('hidden');
+                warnEl.classList.add('flex');
+                document.getElementById('nl-warning-text').innerText = `Lançamento não bate! (Dif: ${formatCurrency(Math.abs(totalDebit - totalCredit))})`;
+                btnSave.disabled = true;
+            } else {
+                warnEl.classList.add('hidden');
+                warnEl.classList.remove('flex');
+                btnSave.disabled = !isBalanced;
+            }
+        };
+
+        const renderNovoLoteLines = () => {
+            const tbody = document.getElementById('novo-lote-tbody');
+            tbody.innerHTML = '';
+
+            const isCcLocked = state.costCenters.length === 1;
+            const defaultCcId = state.costCenters[0]?.id || '';
+            const defaultCcText = state.costCenters[0] ? `${state.costCenters[0].id} - ${state.costCenters[0].name}` : '';
+
+            novoLoteForm.lines.forEach((line) => {
+                if(isCcLocked && !line.ccId) {
+                    line.ccId = defaultCcId;
+                    line.ccInput = defaultCcText;
+                }
+
+                const children = line.accountCode ? getChildAccounts(line.accountCode) : [];
+                const hasSub = children.length > 0;
+                
+                const subOptions = hasSub ? 
+                    `<option value="">Selecione...</option>` + children.map(c => `<option value="${c.code}" ${line.subAccountCode === c.code ? 'selected' : ''}>${c.code} - ${c.name}</option>`).join('')
+                    : `<option value="">Não exigida</option>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <input type="text" list="dl-contas-lancamento" value="${line.textInput || ''}" onchange="handleLineContaSearch(${line.id}, this.value)" placeholder="Pesquise conta..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm" />
+                    </td>
+                    <td class="p-3">
+                        <select onchange="updateLoteLine(${line.id}, 'subAccountCode', this.value)" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-sm ${!hasSub ? 'bg-gray-100 cursor-not-allowed text-gray-400' : ''}" ${!hasSub ? 'disabled' : ''}>
+                            ${subOptions}
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <input type="text" list="dl-cc" value="${line.ccInput || ''}" onchange="handleLineCcSearch(${line.id}, this.value)" placeholder="Pesquise CC..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm ${isCcLocked ? 'bg-gray-100 cursor-not-allowed text-gray-500 font-medium' : ''}" ${isCcLocked ? 'readonly' : ''} />
+                    </td>
+                    <td class="p-3">
+                        <select onchange="updateLoteLine(${line.id}, 'type', this.value)" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white font-bold text-sm">
+                            <option value="D" ${line.type === 'D' ? 'selected' : ''}>D</option>
+                            <option value="C" ${line.type === 'C' ? 'selected' : ''}>C</option>
+                        </select>
+                    </td>
+                    <td class="p-3">
+                        <input type="number" step="0.01" min="0" placeholder="0.00" value="${line.value !== undefined ? line.value : ''}" oninput="updateLoteValue(${line.id}, this.value)" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-right text-sm font-medium text-gray-800" />
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="removeLoteLine(${line.id})" ${novoLoteForm.lines.length <= 2 ? 'disabled' : ''} class="text-red-500 hover:text-red-700 disabled:opacity-30 p-1 transition">
+                            <i data-lucide="trash-2" class="w-[18px] h-[18px]"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updateLoteTotalsUI();
+            lucide.createIcons();
+        };
+
+        window.handleLineContaSearch = (id, textValue) => {
+            const line = novoLoteForm.lines.find(l => l.id === id);
+            if(!line) return;
+            line.textInput = textValue;
+            
+            const codeMatch = textValue.split(' - ')[0];
+            const found = state.accounts.find(a => a.code === codeMatch);
+            
+            if(found) {
+                const isSubaccount = state.accounts.some(parent => found.code.startsWith(parent.code + '.'));
+                if (isSubaccount) {
+                    showToast("Selecione a conta principal. A subconta deve ser informada no campo ao lado.", "error");
+                    line.accountCode = '';
+                    line.subAccountCode = '';
+                    line.textInput = '';
+                } else {
+                    line.accountCode = found.code;
+                    line.subAccountCode = ''; 
+                }
+            } else {
+                line.accountCode = '';
+                line.subAccountCode = '';
+            }
+            renderNovoLoteLines();
+        };
+
+        window.handleLineCcSearch = (id, textValue) => {
+            const line = novoLoteForm.lines.find(l => l.id === id);
+            if(!line) return;
+            line.ccInput = textValue;
+            const idMatch = textValue.split(' - ')[0];
+            const found = state.costCenters.find(c => c.id === idMatch);
+            if(found) line.ccId = found.id; else line.ccId = '';
+        };
+
+        window.updateLoteLine = (id, field, value) => {
+            const line = novoLoteForm.lines.find(l => l.id === id);
+            if(line) { line[field] = value; renderNovoLoteLines(); }
+        };
+
+        window.updateLoteValue = (id, value) => {
+            const line = novoLoteForm.lines.find(l => l.id === id);
+            if(line) { line.value = value; updateLoteTotalsUI(); }
+        };
+
+        window.addNovoLoteLine = () => {
+            novoLoteForm.lines.push({ id: Date.now(), accountCode: '', subAccountCode: '', ccId: '', type: 'D', value: '', textInput: '', ccInput: '' });
+            renderNovoLoteLines();
+        };
+
+        window.removeLoteLine = (id) => {
+            if (novoLoteForm.lines.length > 2) {
+                novoLoteForm.lines = novoLoteForm.lines.filter(l => l.id !== id);
+                renderNovoLoteLines();
+            }
+        };
+
+        window.saveNovoLote = () => {
+            const batchId = document.getElementById('nl-lote-id').value;
+            const date = document.getElementById('nl-date').value;
+            const description = document.getElementById('nl-desc').value;
+
+            if (!description) { showToast("Preencha o histórico do lote.", "error"); return; }
+
+            const entries = [];
+            for (let l of novoLoteForm.lines) {
+                if (!l.accountCode || l.value === '' || !l.ccId) {
+                    showToast("Preencha todas as contas, centros de custo e valores.", "error");
+                    return;
+                }
+                const hasSub = hasChildren(l.accountCode);
+                if (hasSub && !l.subAccountCode) {
+                    showToast(`A conta ${l.accountCode} exige a seleção de uma subconta!`, "error");
+                    return;
+                }
+
+                entries.push({
+                    accountCode: hasSub ? l.subAccountCode : l.accountCode, // Salva o analítico
+                    ccId: l.ccId,
+                    type: l.type,
+                    value: parseFloat(l.value)
+                });
+            }
+
+            state.batches.unshift({ id: batchId, date, description, entries });
+            saveCurrentWorkspace();
+            showToast("Lote salvo com sucesso!");
+            navigate('consultaLotes');
+        };
+
+        // --- 3. CONSULTA LOTES ---
+        window.renderConsultaLotes = () => {
+            const listEl = document.getElementById('consulta-list');
+            const searchVal = document.getElementById('consulta-search').value.toLowerCase();
+            
+            const filtered = state.batches.filter(b => 
+                b.id.toLowerCase().includes(searchVal) ||
+                b.description.toLowerCase().includes(searchVal)
+            );
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="p-8 text-center text-gray-500">Nenhum lote encontrado.</div>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(batch => {
+                const isExpanded = expandedBatchId === batch.id;
+                const batchTotal = batch.entries.filter(e => e.type === 'D').reduce((acc, curr) => acc + curr.value, 0);
+                
+                let detailsHTML = '';
+                if (isExpanded) {
+                    detailsHTML = `
+                        <div class="bg-slate-50 p-4 md:p-6 border-t border-gray-100 shadow-inner overflow-x-auto">
+                            <h4 class="text-sm font-semibold text-gray-500 uppercase mb-3">Detalhes das Partidas</h4>
+                            <table class="w-full text-sm min-w-[600px]">
+                                <thead>
+                                    <tr class="text-left text-gray-500 border-b border-gray-200">
+                                        <th class="pb-2 font-medium w-24">Conta</th>
+                                        <th class="pb-2 font-medium">Nome</th>
+                                        <th class="pb-2 font-medium w-32">C. Custo</th>
+                                        <th class="pb-2 font-medium w-20 text-center">Tipo</th>
+                                        <th class="pb-2 font-medium w-32 text-right">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${batch.entries.map(e => `
+                                        <tr>
+                                            <td class="py-2 text-gray-600 font-mono">${e.accountCode}</td>
+                                            <td class="py-2 text-gray-800">${getAccountName(e.accountCode)}</td>
+                                            <td class="py-2 text-gray-500 text-xs">${e.ccId}</td>
+                                            <td class="py-2 text-center">
+                                                <span class="px-2 py-0.5 rounded text-xs font-bold ${e.type === 'D' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}">
+                                                    ${e.type}
+                                                </span>
+                                            </td>
+                                            <td class="py-2 text-right text-gray-800 font-medium">${formatCurrency(e.value)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="group border-b border-gray-100 last:border-0">
+                        <div class="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition flex-wrap md:flex-nowrap gap-2 md:gap-0" onclick="toggleBatch('${batch.id}')">
+                            <div class="mr-4 text-gray-400">
+                                <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-5 h-5"></i>
+                            </div>
+                            <div class="w-32 font-semibold text-gray-800">${batch.id}</div>
+                            <div class="w-32 text-gray-600 text-sm">${new Date(batch.date).toLocaleDateString('pt-BR')}</div>
+                            <div class="flex-1 text-gray-800 truncate text-sm w-full md:w-auto mt-2 md:mt-0">${batch.description}</div>
+                            <div class="w-full md:w-40 text-left md:text-right font-medium text-gray-800 mt-2 md:mt-0">${formatCurrency(batchTotal)}</div>
+                            <div class="w-16 flex justify-end absolute md:relative right-4 md:right-0">
+                                <button onclick="deleteBatch(event, '${batch.id}')" class="text-gray-400 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition p-1" title="Excluir Lote">
+                                    <i data-lucide="trash-2" class="w-[18px] h-[18px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                        ${detailsHTML}
+                    </div>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        };
+
+        window.toggleBatch = (id) => {
+            expandedBatchId = expandedBatchId === id ? null : id;
+            window.renderConsultaLotes();
+        };
+
+        window.deleteBatch = (event, id) => {
+            event.stopPropagation();
+            window.showConfirm('Atenção: A exclusão deste lote afetará os saldos. Tens a certeza de que desejas continuar?', () => {
+                state.batches = state.batches.filter(b => b.id !== id);
+                window.renderConsultaLotes();
+                saveCurrentWorkspace();
+                showToast("Lote excluído.");
+            });
+        };
+
+        const getAccountName = (code) => {
+            const acc = state.accounts.find(a => a.code === code);
+            return acc ? acc.name : 'Desconhecida';
+        };
+
+        // --- 4. RAZÃO CONTABILÍSTICO ---
+        window.initRazao = () => {
+            document.getElementById('razao-acc-select').value = '';
+            document.getElementById('razao-content-area').classList.add('hidden');
+        };
+
+        window.renderRazaoContent = () => {
+            const textValue = document.getElementById('razao-acc-select').value;
+            const code = textValue.split(' - ')[0];
+            const contentArea = document.getElementById('razao-content-area');
+            const acc = state.accounts.find(a => a.code === code);
+            
+            if (!acc) { contentArea.classList.add('hidden'); return; }
+            contentArea.classList.remove('hidden');
+            
+            const isRedutora = acc.name.startsWith('(-)');
+            let isDevedora = acc.type === 'Ativo' || acc.type === 'Despesa';
+            if (isRedutora) isDevedora = !isDevedora; 
+            
+            document.getElementById('razao-acc-info').innerText = `${acc.code} - ${acc.name} (Natureza: ${isDevedora ? 'Devedora' : 'Credora'})${hasChildren(acc.code) ? ' - Visão Sintética' : ''}`;
+
+            let runningBalance = 0;
+            let tDebit = 0;
+            let tCredit = 0;
+            const tbody = document.getElementById('razao-tbody');
+            tbody.innerHTML = '';
+
+            const sortedBatches = [...state.batches].sort((a, b) => new Date(a.date) - new Date(b.date));
+            let entriesFound = 0;
+
+            sortedBatches.forEach(batch => {
+                batch.entries.forEach(entry => {
+                    if (entry.accountCode.startsWith(acc.code)) {
+                        entriesFound++;
+                        if (entry.type === 'D') tDebit += entry.value;
+                        if (entry.type === 'C') tCredit += entry.value;
+
+                        if (isDevedora) {
+                            runningBalance += entry.type === 'D' ? entry.value : -entry.value;
+                        } else {
+                            runningBalance += entry.type === 'C' ? entry.value : -entry.value;
+                        }
+
+                        const balanceSuffix = runningBalance !== 0 ? (runningBalance > 0 ? (isDevedora ? 'D' : 'C') : (isDevedora ? 'C' : 'D')) : '';
+                        const balanceColor = runningBalance < 0 ? 'text-red-600' : 'text-gray-800';
+                        const descFinal = entry.accountCode !== acc.code ? `${batch.description} (Sub: ${entry.accountCode})` : batch.description;
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-4 text-gray-600">${new Date(batch.date).toLocaleDateString('pt-BR')}</td>
+                                <td class="p-4 text-gray-600 font-mono">${batch.id}</td>
+                                <td class="p-4 text-gray-800">${descFinal}</td>
+                                <td class="p-4 text-right text-gray-800">${entry.type === 'D' ? formatCurrency(entry.value) : ''}</td>
+                                <td class="p-4 text-right text-gray-800">${entry.type === 'C' ? formatCurrency(entry.value) : ''}</td>
+                                <td class="p-4 text-right font-medium ${balanceColor}">
+                                    ${formatCurrency(runningBalance)} ${balanceSuffix}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+            });
+
+            if (entriesFound === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">Nenhum movimento registrado.</td></tr>`;
+
+            document.getElementById('razao-t-deb').innerText = formatCurrency(tDebit);
+            document.getElementById('razao-t-cre').innerText = formatCurrency(tCredit);
+            document.getElementById('razao-t-sal').innerText = formatCurrency(runningBalance);
+        };
+
+
+        // --- NOVO: BALANCETE DE VERIFICAÇÃO ---
+        window.renderBalancete = () => {
+            const tbody = document.getElementById('balancete-tbody');
+            tbody.innerHTML = '';
+            
+            let globDebit = 0;
+            let globCredit = 0;
+            const sortedAccounts = [...state.accounts].sort((a, b) => a.code.localeCompare(b.code));
+
+            sortedAccounts.forEach(acc => {
+                let deb = 0; let cre = 0;
+                state.batches.forEach(b => {
+                    b.entries.forEach(e => {
+                        if(e.accountCode.startsWith(acc.code)) {
+                            if(e.type === 'D') deb += e.value;
+                            if(e.type === 'C') cre += e.value;
+                        }
+                    });
+                });
+
+                if(!hasChildren(acc.code)) {
+                    globDebit += deb;
+                    globCredit += cre;
+                }
+
+                if (deb === 0 && cre === 0) return;
+
+                const isRedutora = acc.name.startsWith('(-)');
+                let baseDevedora = acc.type === 'Ativo' || acc.type === 'Despesa';
+                let isDevedora = isRedutora ? !baseDevedora : baseDevedora;
+                
+                let saldo = isDevedora ? deb - cre : cre - deb;
+                const saldoSufixo = saldo > 0 ? (isDevedora ? 'D' : 'C') : (saldo < 0 ? (isDevedora ? 'C' : 'D') : '');
+
+                const level = acc.code.split('.').length;
+                let indentClass = level > 2 ? "pl-4" : "";
+                if(level > 3) indentClass = "pl-8";
+                
+                const isSynth = hasChildren(acc.code);
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 ${isSynth ? 'font-semibold text-gray-900 bg-gray-50' : 'text-gray-700'}">
+                        <td class="p-3 font-mono ${indentClass}">${acc.code}</td>
+                        <td class="p-3">${acc.name}</td>
+                        <td class="p-3 text-right">${formatCurrency(deb)}</td>
+                        <td class="p-3 text-right">${formatCurrency(cre)}</td>
+                        <td class="p-3 text-right ${saldo < 0 ? 'text-red-600' : ''}">${formatCurrency(Math.abs(saldo))} ${saldoSufixo}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('balancete-t-deb').innerText = formatCurrency(globDebit);
+            document.getElementById('balancete-t-cre').innerText = formatCurrency(globCredit);
+            const tSaldo = globDebit - globCredit;
+            document.getElementById('balancete-t-sal').innerText = formatCurrency(Math.abs(tSaldo)) + (tSaldo === 0 ? '' : (tSaldo > 0 ? ' D' : ' C'));
+        };
+
+        // --- 5. BALANÇO PATRIMONIAL ---
+        window.renderBalanco = () => {
+            const content = document.getElementById('balanco-content');
+            
+            const getBal = (accountCode) => {
+                let deb = 0, cre = 0;
+                state.batches.forEach(b => {
+                    b.entries.forEach(e => {
+                        if (e.accountCode.startsWith(accountCode)) {
+                            if (e.type === 'D') deb += e.value;
+                            if (e.type === 'C') cre += e.value;
+                        }
+                    });
+                });
+                return { d: deb, c: cre };
+            };
+
+            let totalAtivo = 0, totalPassivo = 0, resultado = 0;
+            const ativoLines = [], passivoLines = [];
+            
+            const sortedAccounts = [...state.accounts].sort((a, b) => a.code.localeCompare(b.code));
+
+            sortedAccounts.forEach(acc => {
+                const b = getBal(acc.code);
+                if (b.d === 0 && b.c === 0) return;
+
+                const isRedutora = acc.name.startsWith('(-)');
+                const baseDevedor = acc.type === 'Ativo' || acc.type === 'Despesa';
+                const isDevedora = isRedutora ? !baseDevedor : baseDevedor;
+
+                const balance = isDevedora ? (b.d - b.c) : (b.c - b.d);
+                const displayVal = isRedutora ? -balance : balance;
+                
+                const isSynth = hasChildren(acc.code);
+                const level = acc.code.split('.').length;
+
+                if (!isSynth) {
+                    if (acc.type === 'Ativo') totalAtivo += (b.d - b.c);
+                    else if (acc.type === 'Passivo') totalPassivo += (b.c - b.d);
+                    else if (acc.type === 'Receita') resultado += (b.c - b.d);
+                    else if (acc.type === 'Despesa') resultado -= (b.d - b.c);
+                }
+
+                if (acc.type === 'Ativo') ativoLines.push({ code: acc.code, name: acc.name, val: displayVal, isRedutora, isSynth, lvl: level });
+                else if (acc.type === 'Passivo') passivoLines.push({ code: acc.code, name: acc.name, val: displayVal, isRedutora, isSynth, lvl: level });
+            });
+
+            const renderLines = (lines) => {
+                if (lines.length === 0) return '<p class="text-center text-gray-500 text-sm italic py-4">Nenhum saldo.</p>';
+                return lines.map(l => `
+                    <div class="flex justify-between py-2 border-b border-gray-50 text-sm ${l.isSynth ? 'font-bold' : ''}" style="padding-left: ${(l.lvl-2)*1}rem">
+                        <span class="${l.isRedutora ? 'text-gray-500' : 'text-gray-700'}">${l.code} - ${l.name}</span>
+                        <span class="${l.val < 0 ? 'text-red-600' : 'text-gray-800'}">${formatCurrency(l.val)}</span>
+                    </div>
+                `).join('');
+            };
+
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+                    <div class="flex flex-col bg-white">
+                        <div class="bg-slate-50 p-4 font-bold text-gray-800 uppercase text-center border-b border-gray-200">Ativo</div>
+                        <div class="p-4 flex-1">${renderLines(ativoLines)}</div>
+                        <div class="bg-blue-50 p-4 flex justify-between items-center border-t border-blue-200">
+                            <span class="font-bold text-blue-900 uppercase text-sm">Total do Ativo</span>
+                            <span class="font-bold text-blue-900 text-lg">${formatCurrency(totalAtivo)}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col bg-white">
+                        <div class="bg-slate-50 p-4 font-bold text-gray-800 uppercase text-center border-b border-gray-200">Passivo e Patrimônio Líquido</div>
+                        <div class="p-4 flex-1">
+                            ${renderLines(passivoLines)}
+                            <div class="flex justify-between py-2 border-b border-gray-50 text-sm mt-6 font-semibold text-gray-800">
+                                <span>Resultado do Exercício (DRE)</span>
+                                <span class="${resultado < 0 ? 'text-red-600' : 'text-blue-600'}">${formatCurrency(resultado)}</span>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-4 flex justify-between items-center border-t border-blue-200">
+                            <span class="font-bold text-blue-900 uppercase text-sm">Total Passivo + PL</span>
+                            <span class="font-bold text-blue-900 text-lg">${formatCurrency(totalPassivo + resultado)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // --- 6. CONFIGURAÇÕES CC & DRE ---
+        window.renderCCConfig = () => {
+            const tbody = document.getElementById('cc-tbody');
+            tbody.innerHTML = state.costCenters.map((cc, i) => `
+                <tr class="hover:bg-gray-50">
+                    <td class="p-3 font-mono text-gray-800 font-semibold">${cc.id} ${i === 0 ? '<span class="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Padrão</span>' : ''}</td>
+                    <td class="p-3 text-gray-600">${cc.name}</td>
+                    <td class="p-3 text-center">
+                        ${i !== 0 ? `
+                        <button onclick="deleteCostCenter('${cc.id}')" class="text-red-500 hover:text-red-700 p-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                        ` : '<span class="text-xs text-gray-400">Bloqueado</span>'}
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        window.addCostCenter = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('cc-id-input').value.trim();
+            const name = document.getElementById('cc-name-input').value.trim();
+
+            if (state.costCenters.some(c => c.id === id)) {
+                showToast("ID de Centro de Custo já existe!", "error");
+                return;
+            }
+
+            state.costCenters.push({ id, name });
+            updateDatalists();
+            document.getElementById('cc-id-input').value = '';
+            document.getElementById('cc-name-input').value = '';
+            window.renderCCConfig();
+            saveCurrentWorkspace();
+            showToast("Centro de Custo adicionado!");
+        };
+
+        window.deleteCostCenter = (id) => {
+            window.showConfirm(`Excluir o Centro de Custo ${id}?`, () => {
+                state.costCenters = state.costCenters.filter(c => c.id !== id);
+                updateDatalists();
+                window.renderCCConfig();
+                saveCurrentWorkspace();
+                showToast("Centro de Custo excluído.");
+            });
+        };
+
+        window.renderConfiguracaoDRE = () => {
+            const grid = document.getElementById('configuracao-grid');
+            const resultAccounts = state.accounts.filter(a => (a.type === 'Receita' || a.type === 'Despesa') && !hasChildren(a.code));
+            
+            grid.innerHTML = DRE_GROUPS.map(group => {
+                const accountsHTML = resultAccounts.map(acc => {
+                    const isChecked = state.dreConfig[group.id].includes(acc.code) || state.dreConfig[group.id].some(c => acc.code.startsWith(c));
+                    const isAlocadaEmOutro = !isChecked && (
+                        state.dreConfig.receitaBruta.includes(acc.code) || state.dreConfig.deducoes.includes(acc.code) ||
+                        state.dreConfig.custos.includes(acc.code) || state.dreConfig.despesasOperacionais.includes(acc.code) ||
+                        state.dreConfig.outrasReceitasDespesas.includes(acc.code)
+                    );
+
+                    return `
+                        <label class="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition ${isAlocadaEmOutro ? 'opacity-40' : ''}">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleDreConfig('${group.id}', '${acc.code}', this.checked)" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"/>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium text-gray-800">${acc.code} - ${acc.name}</span>
+                                <span class="text-xs text-gray-500">${acc.type}</span>
+                            </div>
+                        </label>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="border border-gray-200 rounded-lg overflow-hidden flex flex-col h-80">
+                        <div class="bg-slate-50 border-b border-gray-200 p-3 font-semibold text-gray-700 text-sm flex-shrink-0">${group.name}</div>
+                        <div class="p-3 overflow-y-auto flex-1 bg-white">${accountsHTML}</div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.toggleDreConfig = (groupId, accountCode, isChecked) => {
+            for(let key in state.dreConfig) state.dreConfig[key] = state.dreConfig[key].filter(c => c !== accountCode);
+            if (isChecked) state.dreConfig[groupId].push(accountCode);
+            window.renderConfiguracaoDRE();
+            saveCurrentWorkspace();
+        };
+
+        // --- 7. DRE (Demonstração de Resultados) ---
+        const calcGroupBalance = (accountCodes, isRevenue = false) => {
+            let total = 0;
+            state.batches.forEach(batch => {
+                batch.entries.forEach(entry => {
+                    if (accountCodes.some(c => entry.accountCode.startsWith(c))) {
+                        if (isRevenue) total += entry.type === 'C' ? entry.value : -entry.value;
+                        else total += entry.type === 'D' ? entry.value : -entry.value;
+                    }
+                });
+            });
+            return total;
+        };
+
+        window.renderDRE = () => {
+            const dreContent = document.getElementById('dre-content');
+            
+            const receitaBruta = calcGroupBalance(state.dreConfig.receitaBruta, true);
+            const deducoes = calcGroupBalance(state.dreConfig.deducoes, false);
+            const receitaLiquida = receitaBruta - deducoes;
+            const custos = calcGroupBalance(state.dreConfig.custos, false);
+            const lucroBruto = receitaLiquida - custos;
+            const despesasOperacionais = calcGroupBalance(state.dreConfig.despesasOperacionais, false);
+            const outrasRecDesp = calcGroupBalance(state.dreConfig.outrasReceitasDespesas, true); 
+            const resultadoLiquido = lucroBruto - despesasOperacionais + outrasRecDesp;
+
+            const rowRenderer = (title, value, isHeader = false, isTotal = false, indent = false) => {
+                let classes = "flex justify-between items-center px-6 py-3 border-b border-gray-100 ";
+                if(isHeader) classes += "font-bold bg-slate-50 text-gray-800 uppercase text-xs tracking-wider ";
+                else if (isTotal) classes += "font-bold text-base bg-blue-50 text-blue-900 border-b-2 border-blue-200 ";
+                else classes += "text-gray-700 text-sm ";
+                if(indent) classes += "pl-12 text-gray-600 ";
+                return `<div class="${classes}"><span>${title}</span><span>${formatCurrency(value)}</span></div>`;
+            };
+
+            let html = '';
+            html += rowRenderer("1. RECEITA BRUTA DE VENDAS E SERVIÇOS", receitaBruta, true);
+            state.dreConfig.receitaBruta.forEach(code => html += rowRenderer(getAccountName(code), calcGroupBalance([code], true), false, false, true));
+
+            html += rowRenderer("2. (-) DEDUÇÕES DA RECEITA", deducoes, true);
+            state.dreConfig.deducoes.forEach(code => html += rowRenderer(getAccountName(code), calcGroupBalance([code], false), false, false, true));
+
+            html += rowRenderer("3. (=) RECEITA OPERACIONAL LÍQUIDA", receitaLiquida, false, true);
+
+            html += rowRenderer("4. (-) CUSTOS DAS VENDAS E SERVIÇOS (CMV)", custos, true);
+            state.dreConfig.custos.forEach(code => html += rowRenderer(getAccountName(code), calcGroupBalance([code], false), false, false, true));
+
+            html += rowRenderer("5. (=) RESULTADO BRUTO", lucroBruto, false, true);
+
+            html += rowRenderer("6. (-) DESPESAS OPERACIONAIS", despesasOperacionais, true);
+            state.dreConfig.despesasOperacionais.forEach(code => html += rowRenderer(getAccountName(code), calcGroupBalance([code], false), false, false, true));
+
+            html += rowRenderer("7. (+/-) OUTRAS RECEITAS E DESPESAS", outrasRecDesp, true);
+            state.dreConfig.outrasReceitasDespesas.forEach(code => html += rowRenderer(getAccountName(code), calcGroupBalance([code], true), false, false, true));
+
+            const resultBg = resultadoLiquido >= 0 ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900';
+            html += `
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center px-6 py-5 text-lg font-extrabold uppercase gap-2 sm:gap-0 ${resultBg}">
+                    <span>(=) RESULTADO LÍQUIDO DO EXERCÍCIO</span>
+                    <span>${formatCurrency(resultadoLiquido)}</span>
+                </div>
+            `;
+
+            dreContent.innerHTML = html;
+        };
+
+        // Initialize icons anyway for UI
+        lucide.createIcons();
+
+    </script>
+</body>
+</html>
