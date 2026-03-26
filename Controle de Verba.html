@@ -1785,9 +1785,9 @@
             } else {
                 let htmlBarras = [];
                 sortedDepts.forEach(d => {
-                    let color = 'progress-bar-blue'; let textCol = 'text-blue-600';
-                    if (d.pct >= 100) { color = 'progress-bar-red'; textCol = 'text-red-600'; }
-                    else if (d.pct >= 80) { color = 'progress-bar-orange'; textCol = 'text-orange-500'; }
+                    let color = 'progress-bar-blue'; let textCol = 'text-blue-700';
+                    if (d.pct >= 100) { color = 'progress-bar-red'; textCol = 'text-red-700'; }
+                    else if (d.pct >= 80) { color = 'progress-bar-orange'; textCol = 'text-orange-700'; }
                     
                     const barWidth = Math.max(0, Math.min(d.pct, 100)); 
                     const pctTxt = d.pct === 999 ? 'N/A' : `${d.pct.toFixed(0)}%`;
@@ -1799,7 +1799,7 @@
                             <div class="w-32 text-right truncate text-gray-600 font-medium" title="${d.nome}">${d.nome}</div>
                             <div class="flex-1 bg-gray-200 h-6 rounded overflow-hidden relative flex items-center">
                                 ${isNegativo ? `<div class="h-full bg-green-500 transition-all duration-500" style="width: 100%"></div>` : `<div class="h-full ${color} transition-all duration-500" style="width: ${barWidth}%"></div>`}
-                                <div class="absolute right-2 ${isNegativo ? 'text-white' : textCol} font-bold text-xs drop-shadow-sm">${gastoTexto} (${isNegativo ? 'Estornado' : pctTxt})</div>
+                                <div class="absolute right-1 font-bold text-[10px] sm:text-xs bg-white/90 px-1.5 py-0.5 rounded shadow-sm ${isNegativo ? 'text-green-700' : textCol}">${gastoTexto} (${isNegativo ? 'Estornado' : pctTxt})</div>
                             </div>
                         </div>`);
                 });
