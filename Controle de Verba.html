@@ -1429,13 +1429,53 @@
             
             const deptsOrcadosTodos = verbas.map(v => v.departamento.toLowerCase().trim());
             
+            // NOVO: Motor de Reconciliação Apenas para Inconsistências
             const lancamentosInconsistentes = [];
-            lancamentos.forEach(l => {
-                const deptLancamento = l.departamento ? l.departamento.toLowerCase().trim() : '';
-                if(!isUserLimitado && !deptsOrcadosTodos.includes(deptLancamento) && (l.debito !== 0 || l.credito !== 0)) {
-                    lancamentosInconsistentes.push(l);
+            
+            if (!isUserLimitado) {
+                const incPorDept = {};
+                
+                // Agrupa todos os lançamentos de departamentos não orçados
+                lancamentos.forEach(l => {
+                    const deptLancamento = l.departamento ? l.departamento.toLowerCase().trim() : '';
+                    if (!deptsOrcadosTodos.includes(deptLancamento) && (l.debito !== 0 || l.credito !== 0)) {
+                        if (!incPorDept[deptLancamento]) incPorDept[deptLancamento] = [];
+                        // Clonamos o objeto para não sujar o array global com o campo "anulado"
+                        incPorDept[deptLancamento].push({ ...l, anulado: false });
+                    }
+                });
+
+                for (let d in incPorDept) {
+                    let items = incPorDept[d];
+                    
+                    // Busca pares de valor idêntico e oposto para anular
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].anulado) continue;
+                        
+                        let valorLiquidoI = items[i].debito + items[i].credito;
+                        
+                        for (let j = i + 1; j < items.length; j++) {
+                            if (items[j].anulado) continue;
+                            
+                            let valorLiquidoJ = items[j].debito + items[j].credito;
+                            
+                            // Se a soma dos dois for zero (ou quase zero), eles se anulam perfeitamente
+                            if (Math.abs(valorLiquidoI + valorLiquidoJ) < 0.01) {
+                                items[i].anulado = true;
+                                items[j].anulado = true;
+                                break; // Já anulou o par, vai para a próxima linha
+                            }
+                        }
+                    }
+                    
+                    // O que não foi anulado, vai para a tela de inconsistências
+                    items.forEach(item => {
+                        if (!item.anulado) {
+                            lancamentosInconsistentes.push(item);
+                        }
+                    });
                 }
-            });
+            }
 
             const badge = document.getElementById('badge-inconsistencias');
             if (lancamentosInconsistentes.length > 0 && !isUserLimitado) {
@@ -2262,7 +2302,7 @@
         function renderInconsistencias(inc) {
             const tbody = document.getElementById('table-inconsistencias');
             if (inc.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500"><i class="fa-solid fa-check-circle text-green-500 text-2xl mb-2 block"></i>Nenhuma inconsistência!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500"><i class="fa-solid fa-check-circle text-green-500 text-2xl mb-2 block"></i>Nenhuma inconsistência pendente!</td></tr>`;
                 return;
             }
             let linhasHTML = [];
@@ -2313,6 +2353,7 @@
                         }
                     }
                 }
+
                 if (lancamentos.length === 0) throw new Error("CSV vazio ou sem contas iniciadas em 4.");
                 lancamentos.sort((a, b) => parseDateBR(a.data) - parseDateBR(b.data));
                 
