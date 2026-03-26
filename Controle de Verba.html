@@ -337,7 +337,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
-                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Cadastrar ou Atualizar</h3>
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Cadastrar Novo Orçamento</h3>
                     
                     <div class="mb-6 p-4 border border-dashed border-gray-400 rounded-lg bg-gray-50 text-center hover:bg-gray-100 transition-colors">
                         <i class="fa-solid fa-file-csv text-3xl text-green-600 mb-2"></i>
@@ -351,30 +351,30 @@
 
                     <div class="flex items-center my-4">
                         <div class="flex-1 border-t border-gray-300"></div>
-                        <span class="px-3 text-xs text-gray-500 font-semibold uppercase">Inserção Manual / Edição</span>
+                        <span class="px-3 text-xs text-gray-500 font-semibold uppercase">Inserção Manual</span>
                         <div class="flex-1 border-t border-gray-300"></div>
                     </div>
 
                     <form onsubmit="window.adicionarVerba(event)" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Diretoria/Grupo</label>
-                            <input type="text" id="input-diretoria" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-diretoria" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Tipo de Setor</label>
-                            <input type="text" id="input-setor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-setor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento</label>
-                            <input type="text" id="input-departamento" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-departamento" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Valor Orçado Anual Base (R$)</label>
-                            <input type="number" step="0.01" id="input-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="number" step="0.01" id="input-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="flex-1 bg-blue-600 text-white rounded p-2 hover:bg-blue-700 text-sm font-medium shadow transition">Salvar</button>
-                            <button type="button" onclick="window.limparFormVerbas()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
+                            <button type="submit" class="flex-1 bg-blue-600 text-white rounded p-2 hover:bg-blue-700 text-sm font-medium shadow transition">Cadastrar</button>
+                            <button type="button" onclick="document.querySelector('form').reset()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
                         </div>
                     </form>
                 </div>
@@ -415,29 +415,28 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit border-t-4 border-green-500">
-                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Adicionar Verba Extra</h3>
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Cadastrar Nova Receita</h3>
 
                     <form onsubmit="window.adicionarReceita(event)" class="space-y-4">
-                        <input type="hidden" id="input-receita-id">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Ano de Referência</label>
-                            <input type="number" id="input-receita-ano" min="2000" max="2100" required placeholder="Ex: 2025" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500">
+                            <input type="number" id="input-receita-ano" min="2000" max="2100" required placeholder="Ex: 2025" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Beneficiado</label>
-                            <input type="text" id="input-receita-dept" list="datalist-depts" autocomplete="off" required placeholder="Digite para buscar..." class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500">
+                            <input type="text" id="input-receita-dept" list="datalist-depts" autocomplete="off" required placeholder="Digite para buscar..." class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Origem / Descrição</label>
-                            <input type="text" id="input-receita-desc" required placeholder="Ex: Venda de Camisetas" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500">
+                            <input type="text" id="input-receita-desc" required placeholder="Ex: Venda de Camisetas" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Valor Arrecadado (R$)</label>
-                            <input type="number" step="0.01" id="input-receita-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500">
+                            <input type="number" step="0.01" id="input-receita-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500">
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="flex-1 bg-green-600 text-white rounded p-2 hover:bg-green-700 text-sm font-bold shadow transition">Salvar</button>
-                            <button type="button" onclick="window.limparFormReceitas()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-bold shadow transition">Limpar</button>
+                            <button type="submit" class="flex-1 bg-green-600 text-white rounded p-2 hover:bg-green-700 text-sm font-bold shadow transition">Adicionar ao Orçamento</button>
+                            <button type="button" onclick="document.querySelector('form').reset()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-bold shadow transition">Limpar</button>
                         </div>
                     </form>
                 </div>
@@ -456,7 +455,7 @@
                                     <th class="px-4 py-3">Departamento</th>
                                     <th class="px-4 py-3">Origem / Descrição</th>
                                     <th class="px-4 py-3 text-right">Valor Aumentado</th>
-                                    <th class="px-4 py-3 text-center w-16">Ações</th>
+                                    <th class="px-4 py-3 text-center w-24">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="table-receitas" class="divide-y divide-gray-100">
@@ -477,33 +476,32 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
-                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Viagem</h3>
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Nova Viagem</h3>
 
                     <form onsubmit="window.adicionarViagem(event)" class="space-y-4">
-                        <input type="hidden" id="input-viagem-id">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Data de Emissão</label>
-                            <input type="date" id="input-viagem-data" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="date" id="input-viagem-data" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Destino</label>
-                            <input type="text" id="input-viagem-dept" list="datalist-depts" autocomplete="off" required placeholder="Digite para buscar..." class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-viagem-dept" list="datalist-depts" autocomplete="off" required placeholder="Digite para buscar..." class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
-                            <input type="text" id="input-viagem-desc" required placeholder="Ex: Passagem Aérea SP-RJ" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-viagem-desc" required placeholder="Ex: Passagem Aérea SP-RJ" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Finalidade</label>
-                            <input type="text" id="input-viagem-fin" required placeholder="Ex: Visita ao Cliente X" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-viagem-fin" required placeholder="Ex: Visita ao Cliente X" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Gasto Líquido (R$)</label>
-                            <input type="number" step="0.01" id="input-viagem-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="number" step="0.01" id="input-viagem-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="flex-1 bg-orange-500 text-white rounded p-2 hover:bg-orange-600 text-sm font-medium shadow transition">Salvar</button>
-                            <button type="button" onclick="window.limparFormViagens()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
+                            <button type="submit" class="flex-1 bg-orange-500 text-white rounded p-2 hover:bg-orange-600 text-sm font-medium shadow transition">Cadastrar</button>
+                            <button type="button" onclick="document.querySelector('form').reset()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
                         </div>
                     </form>
                 </div>
@@ -522,7 +520,7 @@
                                     <th class="px-4 py-3">Departamento</th>
                                     <th class="px-4 py-3">Descrição / Finalidade</th>
                                     <th class="px-4 py-3 text-right">Valor Gasto</th>
-                                    <th class="px-4 py-3 text-center w-16">Ações</th>
+                                    <th class="px-4 py-3 text-center w-24">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="table-viagens" class="divide-y divide-gray-100">
@@ -543,33 +541,32 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Painel de Inserção -->
                 <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
-                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Transferência</h3>
+                    <h3 class="text-lg font-bold text-brand-card mb-4 border-b pb-2">Registrar Nova Transferência</h3>
 
                     <form onsubmit="window.adicionarTI(event)" class="space-y-4">
-                        <input type="hidden" id="input-ti-id">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Data da Movimentação</label>
-                            <input type="date" id="input-ti-data" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="date" id="input-ti-data" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Departamento Afetado</label>
-                            <input type="text" id="input-ti-dept" list="datalist-depts" autocomplete="off" required placeholder="Digite para buscar..." class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-ti-dept" list="datalist-depts" autocomplete="off" required placeholder="Digite para buscar..." class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Descrição</label>
-                            <input type="text" id="input-ti-desc" required placeholder="Ex: Rateio de Servidores AWS" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-ti-desc" required placeholder="Ex: Rateio de Servidores AWS" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Finalidade</label>
-                            <input type="text" id="input-ti-fin" required placeholder="Ex: Custo de Hospedagem" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="text" id="input-ti-fin" required placeholder="Ex: Custo de Hospedagem" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Valor Transferido (R$)</label>
-                            <input type="number" step="0.01" id="input-ti-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="number" step="0.01" id="input-ti-valor" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                         </div>
                         <div class="flex gap-2">
-                            <button type="submit" class="flex-1 bg-purple-600 text-white rounded p-2 hover:bg-purple-700 text-sm font-medium shadow transition">Salvar</button>
-                            <button type="button" onclick="window.limparFormTI()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
+                            <button type="submit" class="flex-1 bg-purple-600 text-white rounded p-2 hover:bg-purple-700 text-sm font-medium shadow transition">Cadastrar</button>
+                            <button type="button" onclick="document.querySelector('form').reset()" class="bg-gray-200 text-gray-700 rounded p-2 hover:bg-gray-300 text-sm font-medium shadow transition">Limpar</button>
                         </div>
                     </form>
                 </div>
@@ -588,7 +585,7 @@
                                     <th class="px-4 py-3">Departamento</th>
                                     <th class="px-4 py-3">Descrição / Finalidade</th>
                                     <th class="px-4 py-3 text-right">Valor</th>
-                                    <th class="px-4 py-3 text-center w-16">Ações</th>
+                                    <th class="px-4 py-3 text-center w-24">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="table-ti" class="divide-y divide-gray-100">
@@ -618,20 +615,20 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-700 mb-1">Login (Usuário)</label>
-                                    <input type="text" id="input-usr-login" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                                    <input type="text" id="input-usr-login" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-700 mb-1">Senha</label>
-                                    <input type="password" id="input-usr-senha" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                                    <input type="password" id="input-usr-senha" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-700 mb-1">Nome de Exibição</label>
-                                <input type="text" id="input-usr-nome" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500">
+                                <input type="text" id="input-usr-nome" required class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-700 mb-1">Tipo de Acesso</label>
-                                <select id="input-usr-role" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 bg-white" onchange="window.toggleArvoresPermissao()">
+                                <select id="input-usr-role" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white" onchange="window.toggleArvoresPermissao()">
                                     <option value="user">Usuário Comum (Apenas Dashboard com Filtro)</option>
                                     <option value="admin">Administrador (Acesso Total)</option>
                                 </select>
@@ -730,7 +727,12 @@
 
         const appId = "viagens-app"; 
 
-        // Helpers
+        // Helpers globais
+        window.verbaEditando = null;
+        window.receitaEditando = null;
+        window.viagemEditando = null;
+        window.tiEditando = null;
+
         const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
         
         function parseDateBR(dataStr) {
@@ -745,7 +747,7 @@
             return `${p[2]}/${p[1]}/${p[0]}`;
         }
 
-        // Dados Globais
+        // Dados Globais (Vindos do Firebase compartilhado)
         let verbas = []; 
         let lancamentos = []; 
         let viagens = []; 
@@ -807,24 +809,28 @@
                     window.atualizarDropdownDepartamentosGeral();
                     if(usuarioLogadoAtual.role === 'admin') renderTreePermissoes(); 
                 }
+                if(document.getElementById('view-verbas').classList.contains('flex')) renderTabelaVerbas();
             }, (err) => console.error(err));
 
             const viagensRef = collection(db, 'artifacts', appId, 'public', 'data', 'viagens');
             onSnapshot(viagensRef, (snapshot) => {
                 viagens = []; snapshot.forEach(d => viagens.push(d.data()));
                 if(usuarioLogadoAtual) agendarAtualizacaoDashboard();
+                if(document.getElementById('view-viagens').classList.contains('flex')) renderTabelaViagens();
             }, (err) => console.error(err));
 
             const tiRef = collection(db, 'artifacts', appId, 'public', 'data', 'tis');
             onSnapshot(tiRef, (snapshot) => {
                 tis = []; snapshot.forEach(d => tis.push(d.data()));
                 if(usuarioLogadoAtual) agendarAtualizacaoDashboard();
+                if(document.getElementById('view-ti').classList.contains('flex')) renderTabelaTI();
             }, (err) => console.error(err));
 
             const receitasRef = collection(db, 'artifacts', appId, 'public', 'data', 'receitas');
             onSnapshot(receitasRef, (snapshot) => {
                 receitas = []; snapshot.forEach(d => receitas.push(d.data()));
                 if(usuarioLogadoAtual) agendarAtualizacaoDashboard();
+                if(document.getElementById('view-receitas').classList.contains('flex')) renderTabelaReceitas();
             }, (err) => console.error(err));
 
             const usuariosRef = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios');
@@ -1797,16 +1803,28 @@
         };
 
         window.editarVerba = function(deptNome) {
-            const v = verbas.find(x => x.departamento === deptNome);
-            if(v) {
-                document.getElementById('input-diretoria').value = v.diretoria;
-                document.getElementById('input-setor').value = v.setor;
-                document.getElementById('input-departamento').value = v.departamento;
-                document.getElementById('input-valor').value = v.valor;
-                document.getElementById('input-departamento').setAttribute('readonly', 'true');
-                document.getElementById('input-departamento').classList.add('bg-gray-100');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            window.verbaEditando = deptNome;
+            renderTabelaVerbas();
+        };
+
+        window.cancelarEdicaoVerba = function() {
+            window.verbaEditando = null;
+            renderTabelaVerbas();
+        };
+
+        window.salvarEdicaoVerba = async function(deptNome) {
+            if (!auth.currentUser) return alert('Sem conexão!');
+            const diretoria = document.getElementById('edit-v-dir').value.trim();
+            const setor = document.getElementById('edit-v-set').value.trim();
+            const valor = parseFloat(document.getElementById('edit-v-val').value);
+            
+            const nova = { diretoria, setor, departamento: deptNome, valor };
+            const safeId = encodeURIComponent(deptNome); 
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+            await setDoc(docRef, nova);
+            
+            window.verbaEditando = null;
+            renderTabelaVerbas();
         };
 
         window.limparFormVerbas = function() {
@@ -1814,8 +1832,6 @@
             document.getElementById('input-setor').value = '';
             document.getElementById('input-departamento').value = '';
             document.getElementById('input-valor').value = '';
-            document.getElementById('input-departamento').removeAttribute('readonly');
-            document.getElementById('input-departamento').classList.remove('bg-gray-100');
         };
 
         window.lerCSV = async function(event) {
@@ -1860,8 +1876,7 @@
             const deptDigitado = document.getElementById('input-receita-dept').value.trim();
             if(!checarDeptValido(deptDigitado)) return;
 
-            const idAtual = document.getElementById('input-receita-id').value;
-            const idGenerico = idAtual ? idAtual : Date.now().toString();
+            const idGenerico = Date.now().toString();
 
             const novaObj = {
                 id: idGenerico, 
@@ -1876,25 +1891,35 @@
             window.limparFormReceitas();
             
             const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = idAtual ? "Atualizada!" : "Receita Cadastrada!"; 
+            btn.innerText = "Receita Cadastrada!"; 
             btn.classList.replace('bg-green-600', 'bg-blue-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-blue-600', 'bg-green-600'); }, 2000);
         };
 
         window.editarReceita = function(idStr) {
-            const r = receitas.find(x => x.id === idStr);
-            if(r) {
-                document.getElementById('input-receita-id').value = r.id;
-                document.getElementById('input-receita-ano').value = r.ano;
-                document.getElementById('input-receita-dept').value = r.departamento;
-                document.getElementById('input-receita-desc').value = r.descricao;
-                document.getElementById('input-receita-valor').value = r.valor;
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            window.receitaEditando = idStr; 
+            renderTabelaReceitas();
+        };
+
+        window.cancelarEdicaoReceita = function() {
+            window.receitaEditando = null; 
+            renderTabelaReceitas();
+        };
+
+        window.salvarEdicaoReceita = async function(idStr, deptNome) {
+            if (!auth.currentUser) return;
+            const ano = document.getElementById('edit-r-ano').value;
+            const desc = document.getElementById('edit-r-desc').value.trim();
+            const val = parseFloat(document.getElementById('edit-r-val').value);
+            
+            const novaObj = { id: idStr, ano: ano, departamento: deptNome, descricao: desc, valor: val };
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'receitas', idStr), novaObj);
+            
+            window.receitaEditando = null;
+            renderTabelaReceitas();
         };
 
         window.limparFormReceitas = function() {
-            document.getElementById('input-receita-id').value = '';
             document.getElementById('input-receita-ano').value = '';
             document.getElementById('input-receita-dept').value = '';
             document.getElementById('input-receita-desc').value = '';
@@ -1916,8 +1941,7 @@
             const deptDigitado = document.getElementById('input-viagem-dept').value.trim();
             if(!checarDeptValido(deptDigitado)) return; 
 
-            const idAtual = document.getElementById('input-viagem-id').value;
-            const idGenerico = idAtual ? idAtual : Date.now().toString();
+            const idGenerico = Date.now().toString();
 
             const novaObj = {
                 id: idGenerico, data: document.getElementById('input-viagem-data').value,
@@ -1932,26 +1956,36 @@
             window.limparFormViagens();
             
             const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = idAtual ? "Atualizado!" : "Cadastrado!"; 
+            btn.innerText = "Cadastrado!"; 
             btn.classList.replace('bg-orange-500', 'bg-green-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 2000);
         };
 
         window.editarViagem = function(idStr) {
-            const v = viagens.find(x => x.id === idStr);
-            if(v) {
-                document.getElementById('input-viagem-id').value = v.id;
-                document.getElementById('input-viagem-data').value = v.data;
-                document.getElementById('input-viagem-dept').value = v.departamento;
-                document.getElementById('input-viagem-desc').value = v.descricao;
-                document.getElementById('input-viagem-fin').value = v.finalidade;
-                document.getElementById('input-viagem-valor').value = v.valor;
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            window.viagemEditando = idStr; 
+            renderTabelaViagens();
+        };
+
+        window.cancelarEdicaoViagem = function() {
+            window.viagemEditando = null; 
+            renderTabelaViagens();
+        };
+
+        window.salvarEdicaoViagem = async function(idStr, deptNome) {
+            if (!auth.currentUser) return;
+            const data = document.getElementById('edit-vi-data').value;
+            const desc = document.getElementById('edit-vi-desc').value.trim();
+            const fin = document.getElementById('edit-vi-fin').value.trim();
+            const val = parseFloat(document.getElementById('edit-vi-val').value);
+            
+            const novaObj = { id: idStr, data: data, departamento: deptNome, descricao: desc, finalidade: fin, valor: val };
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'viagens', idStr), novaObj);
+            
+            window.viagemEditando = null;
+            renderTabelaViagens();
         };
 
         window.limparFormViagens = function() {
-            document.getElementById('input-viagem-id').value = '';
             document.getElementById('input-viagem-data').value = '';
             document.getElementById('input-viagem-dept').value = '';
             document.getElementById('input-viagem-desc').value = '';
@@ -1971,8 +2005,7 @@
             const deptDigitado = document.getElementById('input-ti-dept').value.trim();
             if(!checarDeptValido(deptDigitado)) return; 
 
-            const idAtual = document.getElementById('input-ti-id').value;
-            const idGenerico = idAtual ? idAtual : Date.now().toString();
+            const idGenerico = Date.now().toString();
 
             const novaObj = {
                 id: idGenerico, data: document.getElementById('input-ti-data').value,
@@ -1987,26 +2020,36 @@
             window.limparFormTI();
             
             const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = idAtual ? "Atualizado!" : "Transferência Cadastrada!"; 
+            btn.innerText = "Transferência Cadastrada!"; 
             btn.classList.replace('bg-purple-600', 'bg-green-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-purple-600'); }, 2000);
         };
 
         window.editarTI = function(idStr) {
-            const t = tis.find(x => x.id === idStr);
-            if(t) {
-                document.getElementById('input-ti-id').value = t.id;
-                document.getElementById('input-ti-data').value = t.data;
-                document.getElementById('input-ti-dept').value = t.departamento;
-                document.getElementById('input-ti-desc').value = t.descricao;
-                document.getElementById('input-ti-fin').value = t.finalidade;
-                document.getElementById('input-ti-valor').value = t.valor;
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            window.tiEditando = idStr; 
+            renderTabelaTI();
+        };
+
+        window.cancelarEdicaoTI = function() {
+            window.tiEditando = null; 
+            renderTabelaTI();
+        };
+
+        window.salvarEdicaoTI = async function(idStr, deptNome) {
+            if (!auth.currentUser) return;
+            const data = document.getElementById('edit-ti-data').value;
+            const desc = document.getElementById('edit-ti-desc').value.trim();
+            const fin = document.getElementById('edit-ti-fin').value.trim();
+            const val = parseFloat(document.getElementById('edit-ti-val').value);
+            
+            const novaObj = { id: idStr, data: data, departamento: deptNome, descricao: desc, finalidade: fin, valor: val };
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tis', idStr), novaObj);
+            
+            window.tiEditando = null;
+            renderTabelaTI();
         };
 
         window.limparFormTI = function() {
-            document.getElementById('input-ti-id').value = '';
             document.getElementById('input-ti-data').value = '';
             document.getElementById('input-ti-dept').value = '';
             document.getElementById('input-ti-desc').value = '';
@@ -2034,20 +2077,36 @@
                 let linhasHTML = [];
                 ordenados.forEach(v => {
                     total += v.valor;
-                    linhasHTML.push(`
-                        <tr class="hover:bg-green-50 transition-colors">
-                            <td class="px-4 py-2 border-b font-bold text-gray-700 whitespace-nowrap">${v.ano}</td>
-                            <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
-                            <td class="px-4 py-2 border-b">
-                                <div class="font-medium text-gray-800">${v.descricao}</div>
-                            </td>
-                            <td class="px-4 py-2 border-b text-right font-bold text-green-600">+ ${formatCurrency(v.valor)}</td>
-                            <td class="px-4 py-2 border-b text-center space-x-2">
-                                <button onclick="window.editarReceita('${v.id}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="window.excluirReceita('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    `);
+                    
+                    if (window.receitaEditando === v.id) {
+                        linhasHTML.push(`
+                            <tr class="bg-green-50/60 shadow-inner">
+                                <td class="px-2 py-2 border-b"><input type="number" id="edit-r-ano" value="${v.ano}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-green-500"></td>
+                                <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                                <td class="px-2 py-2 border-b"><input type="text" id="edit-r-desc" value="${v.descricao}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-green-500"></td>
+                                <td class="px-2 py-2 border-b"><input type="number" step="0.01" id="edit-r-val" value="${v.valor}" class="w-full border-gray-300 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-green-500"></td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.salvarEdicaoReceita('${v.id}', '${v.departamento}')" class="text-green-600 hover:text-green-800" title="Salvar"><i class="fa-solid fa-check text-lg"></i></button>
+                                    <button onclick="window.cancelarEdicaoReceita()" class="text-gray-500 hover:text-gray-700" title="Cancelar"><i class="fa-solid fa-xmark text-lg"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    } else {
+                        linhasHTML.push(`
+                            <tr class="hover:bg-green-50 transition-colors">
+                                <td class="px-4 py-2 border-b font-bold text-gray-700 whitespace-nowrap">${v.ano}</td>
+                                <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                                <td class="px-4 py-2 border-b">
+                                    <div class="font-medium text-gray-800">${v.descricao}</div>
+                                </td>
+                                <td class="px-4 py-2 border-b text-right font-bold text-green-600">+ ${formatCurrency(v.valor)}</td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.editarReceita('${v.id}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="window.excluirReceita('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    }
                 });
                 tbody.innerHTML = linhasHTML.join('');
             }
@@ -2065,21 +2124,40 @@
                 let linhasHTML = [];
                 ordenados.forEach(v => {
                     total += v.valor;
-                    linhasHTML.push(`
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-4 py-2 border-b whitespace-nowrap">${formatInputDateBR(v.data)}</td>
-                            <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
-                            <td class="px-4 py-2 border-b">
-                                <div class="font-medium text-gray-800">${v.descricao}</div>
-                                <div class="text-[10px] text-gray-500">${v.finalidade}</div>
-                            </td>
-                            <td class="px-4 py-2 border-b text-right font-bold text-purple-600">${formatCurrency(v.valor)}</td>
-                            <td class="px-4 py-2 border-b text-center space-x-2">
-                                <button onclick="window.editarTI('${v.id}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="window.excluirTI('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    `);
+                    
+                    if (window.tiEditando === v.id) {
+                        linhasHTML.push(`
+                            <tr class="bg-purple-50/60 shadow-inner">
+                                <td class="px-2 py-2 border-b"><input type="date" id="edit-ti-data" value="${v.data}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-purple-500"></td>
+                                <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                                <td class="px-2 py-2 border-b space-y-1">
+                                    <input type="text" id="edit-ti-desc" value="${v.descricao}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-purple-500" placeholder="Descrição">
+                                    <input type="text" id="edit-ti-fin" value="${v.finalidade}" class="w-full border-gray-300 rounded px-2 py-1 text-[10px] outline-none focus:ring-1 focus:ring-purple-500" placeholder="Finalidade">
+                                </td>
+                                <td class="px-2 py-2 border-b"><input type="number" step="0.01" id="edit-ti-val" value="${v.valor}" class="w-full border-gray-300 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-purple-500"></td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.salvarEdicaoTI('${v.id}', '${v.departamento}')" class="text-green-600 hover:text-green-800" title="Salvar"><i class="fa-solid fa-check text-lg"></i></button>
+                                    <button onclick="window.cancelarEdicaoTI()" class="text-gray-500 hover:text-gray-700" title="Cancelar"><i class="fa-solid fa-xmark text-lg"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    } else {
+                        linhasHTML.push(`
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2 border-b whitespace-nowrap">${formatInputDateBR(v.data)}</td>
+                                <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                                <td class="px-4 py-2 border-b">
+                                    <div class="font-medium text-gray-800">${v.descricao}</div>
+                                    <div class="text-[10px] text-gray-500">${v.finalidade}</div>
+                                </td>
+                                <td class="px-4 py-2 border-b text-right font-bold text-purple-600">${formatCurrency(v.valor)}</td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.editarTI('${v.id}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="window.excluirTI('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    }
                 });
                 tbody.innerHTML = linhasHTML.join('');
             }
@@ -2096,18 +2174,34 @@
                 verbas.forEach(v => {
                     total += v.valor;
                     const deptSafe = v.departamento.replace(/'/g, "\\'");
-                    linhasHTML.push(`
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-2 border-b">${v.diretoria}</td>
-                            <td class="px-4 py-2 border-b text-gray-600">${v.setor}</td>
-                            <td class="px-4 py-2 border-b font-semibold text-blue-800">${v.departamento}</td>
-                            <td class="px-4 py-2 border-b text-right font-bold text-green-700">${formatCurrency(v.valor)}</td>
-                            <td class="px-4 py-2 border-b text-center space-x-2">
-                                <button onclick="window.editarVerba('${deptSafe}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="window.excluirVerba('${deptSafe}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    `);
+                    
+                    if (window.verbaEditando === v.departamento) {
+                        linhasHTML.push(`
+                            <tr class="bg-blue-50/60 shadow-inner">
+                                <td class="px-2 py-2 border-b"><input type="text" id="edit-v-dir" value="${v.diretoria}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500"></td>
+                                <td class="px-2 py-2 border-b"><input type="text" id="edit-v-set" value="${v.setor}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500"></td>
+                                <td class="px-4 py-2 border-b font-semibold text-blue-800">${v.departamento}</td>
+                                <td class="px-2 py-2 border-b"><input type="number" step="0.01" id="edit-v-val" value="${v.valor}" class="w-full border-gray-300 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-blue-500"></td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.salvarEdicaoVerba('${deptSafe}')" class="text-green-600 hover:text-green-800" title="Salvar"><i class="fa-solid fa-check text-lg"></i></button>
+                                    <button onclick="window.cancelarEdicaoVerba()" class="text-gray-500 hover:text-gray-700" title="Cancelar"><i class="fa-solid fa-xmark text-lg"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    } else {
+                        linhasHTML.push(`
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 border-b">${v.diretoria}</td>
+                                <td class="px-4 py-2 border-b text-gray-600">${v.setor}</td>
+                                <td class="px-4 py-2 border-b font-semibold text-blue-800">${v.departamento}</td>
+                                <td class="px-4 py-2 border-b text-right font-bold text-green-700">${formatCurrency(v.valor)}</td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.editarVerba('${deptSafe}')" class="text-blue-500 hover:text-blue-700" title="Editar Orçamento"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="window.excluirVerba('${deptSafe}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    }
                 });
                 tbody.innerHTML = linhasHTML.join('');
             }
@@ -2125,21 +2219,40 @@
                 let linhasHTML = [];
                 viagensOrdenadas.forEach(v => {
                     total += v.valor;
-                    linhasHTML.push(`
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-4 py-2 border-b whitespace-nowrap">${formatInputDateBR(v.data)}</td>
-                            <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
-                            <td class="px-4 py-2 border-b">
-                                <div class="font-medium text-gray-800">${v.descricao}</div>
-                                <div class="text-[10px] text-gray-500">${v.finalidade}</div>
-                            </td>
-                            <td class="px-4 py-2 border-b text-right font-bold text-orange-600">${formatCurrency(v.valor)}</td>
-                            <td class="px-4 py-2 border-b text-center space-x-2">
-                                <button onclick="window.editarViagem('${v.id}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="window.excluirViagem('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    `);
+                    
+                    if (window.viagemEditando === v.id) {
+                        linhasHTML.push(`
+                            <tr class="bg-orange-50/60 shadow-inner">
+                                <td class="px-2 py-2 border-b"><input type="date" id="edit-vi-data" value="${v.data}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-orange-500"></td>
+                                <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                                <td class="px-2 py-2 border-b space-y-1">
+                                    <input type="text" id="edit-vi-desc" value="${v.descricao}" class="w-full border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-orange-500" placeholder="Descrição">
+                                    <input type="text" id="edit-vi-fin" value="${v.finalidade}" class="w-full border-gray-300 rounded px-2 py-1 text-[10px] outline-none focus:ring-1 focus:ring-orange-500" placeholder="Finalidade">
+                                </td>
+                                <td class="px-2 py-2 border-b"><input type="number" step="0.01" id="edit-vi-val" value="${v.valor}" class="w-full border-gray-300 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-orange-500"></td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.salvarEdicaoViagem('${v.id}', '${v.departamento}')" class="text-green-600 hover:text-green-800" title="Salvar"><i class="fa-solid fa-check text-lg"></i></button>
+                                    <button onclick="window.cancelarEdicaoViagem()" class="text-gray-500 hover:text-gray-700" title="Cancelar"><i class="fa-solid fa-xmark text-lg"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    } else {
+                        linhasHTML.push(`
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2 border-b whitespace-nowrap">${formatInputDateBR(v.data)}</td>
+                                <td class="px-4 py-2 border-b text-gray-600 font-semibold">${v.departamento}</td>
+                                <td class="px-4 py-2 border-b">
+                                    <div class="font-medium text-gray-800">${v.descricao}</div>
+                                    <div class="text-[10px] text-gray-500">${v.finalidade}</div>
+                                </td>
+                                <td class="px-4 py-2 border-b text-right font-bold text-orange-600">${formatCurrency(v.valor)}</td>
+                                <td class="px-4 py-2 border-b text-center space-x-3">
+                                    <button onclick="window.editarViagem('${v.id}')" class="text-blue-500 hover:text-blue-700" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="window.excluirViagem('${v.id}')" class="text-red-500 hover:text-red-700" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `);
+                    }
                 });
                 tbody.innerHTML = linhasHTML.join('');
             }
