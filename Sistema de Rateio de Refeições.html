@@ -1032,18 +1032,18 @@
               if (!user) return;
               const loadData = async () => {
                 try {
-                  const usersRef = collection(db, 'artifacts', envAppId, 'users', user.uid, 'appData');
+                  const publicRef = collection(db, 'artifacts', envAppId, 'public', 'data', 'appData');
                   
-                  const appUsersSnap = await getDoc(doc(usersRef, 'appUsers'));
+                  const appUsersSnap = await getDoc(doc(publicRef, 'appUsers'));
                   if (appUsersSnap.exists()) setAppUsers(appUsersSnap.data().list);
 
-                  const settingsSnap = await getDoc(doc(usersRef, 'settings'));
+                  const settingsSnap = await getDoc(doc(publicRef, 'settings'));
                   if (settingsSnap.exists()) setSettings(settingsSnap.data());
 
-                  const empSnap = await getDoc(doc(usersRef, 'employees'));
+                  const empSnap = await getDoc(doc(publicRef, 'employees'));
                   if (empSnap.exists()) setEmployees(empSnap.data().list);
 
-                  const stateSnap = await getDoc(doc(usersRef, 'state'));
+                  const stateSnap = await getDoc(doc(publicRef, 'state'));
                   if (stateSnap.exists()) {
                      setPeriod(stateSnap.data().period || '04/2026');
                      setManualCharges(stateSnap.data().manualCharges || []);
@@ -1062,7 +1062,7 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'appUsers'), { list: appUsers });
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appData', 'appUsers'), { list: appUsers });
               }, 500);
               return () => clearTimeout(timer);
           }, [appUsers, user, dataLoaded, db, envAppId]);
@@ -1070,7 +1070,7 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'settings'), settings);
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appData', 'settings'), settings);
               }, 500);
               return () => clearTimeout(timer);
           }, [settings, user, dataLoaded, db, envAppId]);
@@ -1078,7 +1078,7 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'employees'), { list: employees });
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appData', 'employees'), { list: employees });
               }, 500);
               return () => clearTimeout(timer);
           }, [employees, user, dataLoaded, db, envAppId]);
@@ -1086,7 +1086,7 @@
           useEffect(() => {
               if (!user || !dataLoaded) return;
               const timer = setTimeout(() => {
-                  setDoc(doc(db, 'artifacts', envAppId, 'users', user.uid, 'appData', 'state'), { period, manualCharges, rawScans });
+                  setDoc(doc(db, 'artifacts', envAppId, 'public', 'data', 'appData', 'state'), { period, manualCharges, rawScans });
               }, 500);
               return () => clearTimeout(timer);
           }, [period, manualCharges, rawScans, user, dataLoaded, db, envAppId]);
