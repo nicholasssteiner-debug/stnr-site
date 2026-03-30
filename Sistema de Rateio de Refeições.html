@@ -548,20 +548,30 @@
             const reader = new FileReader();
             reader.onload = (event) => {
               const text = event.target.result;
-              const lines = text.split('\n');
+              const lines = text.split(/\r?\n/);
               const newEmployees = [];
               
-              for(let i=1; i<lines.length; i++) {
-                const line = lines[i].trim();
-                if(!line) continue;
-                const parts = line.split(';');
-                if(parts.length >= 2) {
-                  const code = parts[0].trim();
-                  const name = parts[1].trim();
-                  const cat = parts[2] ? parts[2].trim() : 'Não Isentos';
-                  const validCat = CATEGORIAS.includes(cat) ? cat : 'Não Isentos';
-                  if (code && name) newEmployees.push({ code, name, category: validCat });
-                }
+              if (lines.length > 0) {
+                  const separator = lines[0].includes(';') ? ';' : ',';
+                  
+                  let startIndex = 1;
+                  const firstLineParts = lines[0].split(separator);
+                  if (firstLineParts.length >= 2 && !firstLineParts[1].toLowerCase().includes('nome')) {
+                      startIndex = 0;
+                  }
+
+                  for(let i=startIndex; i<lines.length; i++) {
+                    const line = lines[i].trim();
+                    if(!line) continue;
+                    const parts = line.split(separator);
+                    if(parts.length >= 2) {
+                      const code = parts[0].replace(/['"]/g, '').trim();
+                      const name = parts[1].replace(/['"]/g, '').trim();
+                      const catRaw = parts[2] ? parts[2].replace(/['"]/g, '').trim() : 'Não Isentos';
+                      const validCat = CATEGORIAS.includes(catRaw) ? catRaw : 'Não Isentos';
+                      if (code && name) newEmployees.push({ code, name, category: validCat });
+                    }
+                  }
               }
 
               const merged = [...employees];
@@ -580,6 +590,7 @@
               
               setEmployees(merged);
               showNotification(`Importação concluída: ${added} novos, ${updated} atualizados.`);
+              e.target.value = '';
               if(empFileInputRef.current) empFileInputRef.current.value = '';
             };
             reader.readAsText(file, empEncoding);
@@ -1272,20 +1283,50 @@
             const reader = new FileReader();
             reader.onload = (event) => {
               const text = event.target.result;
-              const lines = text.split('\n');
+              // Divide as quebras de linha independentemente de ser Windows (\r\n) ou Mac/Linux (\n)
+              const lines = text.split(/\r?\n/);
               const parsedScans = [];
               
-              for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                const [code, dateTime, name] = line.split(';');
-                if (code && dateTime) {
-                  parsedScans.push({ fullCode: code.trim(), dateTime: dateTime.trim(), name: name ? name.trim() : '' });
-                }
+              if (lines.length > 0) {
+                  // Descobre se o Excel salvou usando Ponto e Vírgula ou Vírgula comum
+                  const separator = lines[0].includes(';') ? ';' : ',';
+                  
+                  // Verifica se a primeira linha já é um dado válido ou é só o cabeçalho descritivo
+                  let startIndex = 1;
+                  const firstLineParts = lines[0].split(separator);
+                  if (firstLineParts.length >= 2 && /[0-9]/.test(firstLineParts[1])) {
+                      startIndex = 0; // A primeira linha já tem números (ex: data), então não vamos pular ela
+                  }
+
+                  for (let i = startIndex; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    const parts = line.split(separator);
+                    if (parts.length >= 2) {
+                      // Limpa as aspas escondidas geradas por alguns sistemas (ex: "4214")
+                      const code = parts[0].replace(/['"]/g, '').trim();
+                      const dateTime = parts[1].replace(/['"]/g, '').trim();
+                      const name = parts[2] ? parts[2].replace(/['"]/g, '').trim() : '';
+
+                      // Se tem um código e uma data minimamente válida (tem uma barra /)
+                      if (code && dateTime && dateTime.includes('/')) {
+                        parsedScans.push({ fullCode: code, dateTime: dateTime, name: name });
+                      }
+                    }
+                  }
               }
-              setRawScans(parsedScans);
-              showNotification(`Sucesso! ${parsedScans.length} registros processados.`);
-              setActiveTab('dashboard');
+              
+              if (parsedScans.length > 0) {
+                  setRawScans(parsedScans);
+                  showNotification(`Sucesso! ${parsedScans.length} registros processados.`);
+                  setActiveTab('dashboard');
+              } else {
+                  showNotification("Nenhum dado válido encontrado. Verifique o formato do arquivo CSV.", "error");
+              }
+              
+              // Essencial: Limpa a memória do botão para permitir enviar o mesmo arquivo logo em seguida
+              e.target.value = ''; 
             };
             reader.readAsText(file);
           };
