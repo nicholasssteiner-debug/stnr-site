@@ -226,11 +226,24 @@
             </div>
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors">
               <FileSpreadsheet className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <p className="text-sm text-slate-600 mb-4">Selecione o arquivo CSV do relógio no formato: <br/><strong>Código; Data e Hora; Nome</strong></p>
-              <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium inline-block transition-colors">
-                Selecionar Arquivo CSV
-                <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-              </label>
+              <p className="text-sm text-slate-600 mb-6">Selecione como deseja importar o arquivo CSV do relógio:</p>
+              
+              <div className="flex flex-col sm:flex-row justify-center gap-4 mb-4">
+                  <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium inline-block transition-colors">
+                    <span className="flex items-center justify-center"><Upload className="w-4 h-4 mr-2" /> Substituir Tudo</span>
+                    <input type="file" accept=".csv" className="hidden" onChange={(e) => handleFileUpload(e, 'replace')} />
+                  </label>
+                  
+                  <label className="cursor-pointer bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium inline-block transition-colors">
+                    <span className="flex items-center justify-center"><Plus className="w-4 h-4 mr-2" /> Adicionar Novos</span>
+                    <input type="file" accept=".csv" className="hidden" onChange={(e) => handleFileUpload(e, 'append')} />
+                  </label>
+              </div>
+              
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  <strong>Substituir Tudo:</strong> Apaga os batimentos atuais e carrega apenas os do novo arquivo.<br/>
+                  <strong>Adicionar Novos:</strong> Mantém os batimentos que já estão na tela e soma com os do novo arquivo.
+              </p>
             </div>
           </div>
         );
@@ -541,7 +554,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
-          const handleEmpImport = (e) => {
+          const handleEmpImport = (e, mode) => {
             const file = e.target.files[0];
             if (!file) return;
 
@@ -574,22 +587,29 @@
                   }
               }
 
-              const merged = [...employees];
-              let added = 0, updated = 0;
-              
-              newEmployees.forEach(ne => {
-                const existingIdx = merged.findIndex(e => e.code === ne.code);
-                if(existingIdx >= 0) {
-                  merged[existingIdx] = { ...merged[existingIdx], ...ne };
-                  updated++;
-                } else {
-                  merged.push(ne);
-                  added++;
-                }
-              });
-              
-              setEmployees(merged);
-              showNotification(`Importação concluída: ${added} novos, ${updated} atualizados.`);
+              if (mode === 'append') {
+                  const merged = [...employees];
+                  let added = 0, updated = 0;
+                  
+                  newEmployees.forEach(ne => {
+                    const existingIdx = merged.findIndex(e => e.code === ne.code);
+                    if(existingIdx >= 0) {
+                      merged[existingIdx] = { ...merged[existingIdx], ...ne };
+                      updated++;
+                    } else {
+                      merged.push(ne);
+                      added++;
+                    }
+                  });
+                  
+                  setEmployees(merged);
+                  showNotification(`Importação concluída: ${added} novos, ${updated} atualizados.`);
+              } else {
+                  // mode === 'replace'
+                  setEmployees(newEmployees);
+                  showNotification(`Sucesso! Lista de funcionários substituída (${newEmployees.length} carregados).`);
+              }
+
               e.target.value = '';
               if(empFileInputRef.current) empFileInputRef.current.value = '';
             };
@@ -809,7 +829,7 @@
                     </h2>
 
                     {/* Importação Massiva de Funcionários */}
-                    <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <div className="flex flex-col gap-4 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
                       <div className="flex items-center gap-3">
                         <FileSpreadsheet className="text-blue-600 w-6 h-6 shrink-0" />
                         <div>
@@ -817,16 +837,26 @@
                           <p className="text-xs text-blue-600">Formato: Código; Nome; Categoria (opcional)</p>
                         </div>
                       </div>
-                      <div className="ml-auto flex flex-wrap items-center gap-2 w-full md:w-auto">
-                        <select value={empEncoding} onChange={e => setEmpEncoding(e.target.value)} className="text-sm border border-blue-200 rounded px-2 py-2 bg-white outline-none focus:ring-1 focus:ring-blue-500">
+                      <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                        <select value={empEncoding} onChange={e => setEmpEncoding(e.target.value)} className="text-sm border border-blue-200 rounded px-2 py-2 bg-white outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-auto">
                           <option value="UTF-8">UTF-8</option>
                           <option value="ISO-8859-1">ISO-8859-1</option>
                         </select>
-                        <label className="cursor-pointer bg-white border border-blue-300 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap">
-                          Procurar Arquivo
-                          <input type="file" accept=".csv" className="hidden" onChange={handleEmpImport} ref={empFileInputRef} />
-                        </label>
+                        <div className="flex flex-wrap gap-2 w-full sm:w-auto ml-auto">
+                            <label className="cursor-pointer bg-white border border-blue-300 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap flex-1 text-center flex justify-center items-center">
+                              <Upload className="w-4 h-4 mr-2" /> Substituir Tudo
+                              <input type="file" accept=".csv" className="hidden" onChange={(e) => handleEmpImport(e, 'replace')} ref={empFileInputRef} />
+                            </label>
+                            
+                            <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap flex-1 text-center flex justify-center items-center">
+                              <Plus className="w-4 h-4 mr-2" /> Adicionar / Atualizar
+                              <input type="file" accept=".csv" className="hidden" onChange={(e) => handleEmpImport(e, 'append')} />
+                            </label>
+                        </div>
                       </div>
+                      <p className="text-xs text-blue-700 mt-1">
+                         <strong>Substituir:</strong> Apaga a base atual. <strong>Adicionar:</strong> Soma novos e atualiza nomes/categorias de códigos já existentes.
+                      </p>
                     </div>
                     
                     {/* Formulário Add/Edit Individual */}
@@ -1276,7 +1306,7 @@
             }
           }, [rawScans, settings, employees, manualCharges, dataLoaded]);
 
-          const handleFileUpload = (e) => {
+          const handleFileUpload = (e, mode) => {
             const file = e.target.files[0];
             if (!file) return;
 
@@ -1318,8 +1348,13 @@
               }
               
               if (parsedScans.length > 0) {
-                  setRawScans(parsedScans);
-                  showNotification(`Sucesso! ${parsedScans.length} registros processados.`);
+                  if (mode === 'append') {
+                      setRawScans(prev => [...prev, ...parsedScans]);
+                      showNotification(`Sucesso! ${parsedScans.length} novos registros adicionados à lista.`);
+                  } else {
+                      setRawScans(parsedScans);
+                      showNotification(`Sucesso! Lista substituída com ${parsedScans.length} registros.`);
+                  }
                   setActiveTab('dashboard');
               } else {
                   showNotification("Nenhum dado válido encontrado. Verifique o formato do arquivo CSV.", "error");
