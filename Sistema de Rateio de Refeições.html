@@ -1183,32 +1183,27 @@
                   let seq = 1;
                   let explicitType = null; 
 
-                  if (parts.length === 3) {
-                    seq = parseInt(parts[1]);
-                    explicitType = parseInt(parts[2]);
-                  } else if (parts.length === 2) {
-                    const suffix = parts[1];
-                    if (suffix.length >= 2) {
-                      seq = parseInt(suffix.substring(0, suffix.length - 1));
-                      explicitType = parseInt(suffix.substring(suffix.length - 1));
-                    } else {
-                      seq = parseInt(suffix);
-                    }
+                  if (parts.length >= 2) {
+                    const suffix = parts[parts.length - 1]; // Pega a parte depois do último traço
+                    
+                    // O último caractere do sufixo define a cobrança (0=Isento, 1=Meia, 2=Inteira)
+                    const typeStr = suffix.slice(-1);
+                    explicitType = parseInt(typeStr);
+                    
+                    // O restante antes do último caractere é a sequência (1º, 2º, 5º, etc...)
+                    const seqStr = suffix.slice(0, -1);
+                    seq = seqStr.length > 0 ? parseInt(seqStr) : 1;
                   }
 
                   const limit = currentSettings.dependentLimit || 3;
                   let finalType = 2; // Predefinição: Inteira
 
                   if (seq > limit) {
-                    // Excedeu a cota -> Força Inteira, ignorando o que foi marcado
+                    // Excedeu a cota permitida pelo sistema -> Força Inteira!
                     finalType = 2;
                   } else {
-                    // Dentro da cota -> Usa o tipo explícito se existir, senão assume Meia (1)
-                    if (explicitType !== null) {
-                      finalType = explicitType;
-                    } else {
-                      finalType = 1;
-                    }
+                    // Dentro da cota -> Usa o tipo lido do crachá
+                    finalType = isNaN(explicitType) ? 1 : explicitType;
                   }
 
                   if (finalType === 0) {
