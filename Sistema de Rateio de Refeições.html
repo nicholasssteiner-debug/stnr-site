@@ -586,9 +586,12 @@
           };
 
           const handleSaveAppUser = () => {
-             if (!newAppUser.email || !newAppUser.password) return showNotification("Preencha login e senha", "error");
-             if (appUsers.find(u => u.email === newAppUser.email)) return showNotification("Este login já existe", "error");
-             setAppUsers([...appUsers, { id: Date.now(), ...newAppUser }]);
+             const cleanEmail = newAppUser.email.trim().toLowerCase();
+             const cleanPassword = newAppUser.password.trim();
+             
+             if (!cleanEmail || !cleanPassword) return showNotification("Preencha login e senha", "error");
+             if (appUsers.find(u => u.email.trim().toLowerCase() === cleanEmail)) return showNotification("Este login já existe", "error");
+             setAppUsers([...appUsers, { id: Date.now(), email: cleanEmail, password: cleanPassword, role: newAppUser.role }]);
              setNewAppUser({ email: '', password: '', role: 'user' });
              showNotification("Acesso criado com sucesso!");
           };
@@ -1100,7 +1103,9 @@
 
 
           const handleAppLogin = (email, password) => {
-              const foundUser = appUsers.find(u => u.email === email && u.password === password);
+              const cleanEmail = email.trim().toLowerCase();
+              const cleanPassword = password.trim();
+              const foundUser = appUsers.find(u => u.email.trim().toLowerCase() === cleanEmail && u.password.trim() === cleanPassword);
               if (foundUser) {
                   setAppUser(foundUser);
                   return true;
