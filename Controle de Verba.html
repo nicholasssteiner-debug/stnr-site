@@ -874,7 +874,7 @@
                 const masterAdmin = { login: 'admin', senha: pass, nome: 'Administrador Principal', role: 'admin', depts: [] };
                 if (auth.currentUser) {
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', 'admin');
-                    setDoc(docRef, masterAdmin).catch(err => console.log("Nota: Regras podem estar bloqueando gravação."));
+                    setDoc(docRef, masterAdmin).catch(err => console.log("Nota: Regras podem estar bloqueando a gravação."));
                 }
                 iniciarSistemaComo(masterAdmin);
                 return;
@@ -1828,7 +1828,7 @@
             window.limparFormVerbas();
             const btn = event.submitter;
             const originalText = btn.innerText;
-            btn.innerText = "Salvo com sucesso!";
+            btn.innerText = "Cadastrado com sucesso!";
             btn.classList.replace('bg-blue-600', 'bg-green-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-blue-600'); }, 2000);
         };
@@ -1881,24 +1881,22 @@
             const reader = new FileReader();
             
             reader.onload = async function(e) {
-                const linhas = e.target.result.split(/\r?\n/);
+                const matrizCSV = parseCSVData(e.target.result);
                 let processados = 0;
-                for (let i = 1; i < linhas.length; i++) {
-                    if (!linhas[i].trim()) continue;
-                    const delimitador = linhas[i].includes(';') ? ';' : ',';
-                    const colunas = parseCSVLine(linhas[i], delimitador); 
+                for (let i = 1; i < matrizCSV.length; i++) {
+                    let colunas = matrizCSV[i];
                     
-                    if (colunas.length >= 4) {
-                        const valFormatado = parseValorCSV(colunas[3]);
-                        const dept = colunas[2] ? colunas[2].trim() : '';
-                        if(!dept) continue;
+                    if (colunas.length < 4 || !colunas.join('').trim()) continue;
+                    
+                    const valFormatado = parseValorCSV(colunas[3]);
+                    const dept = colunas[2] ? colunas[2].trim() : '';
+                    if(!dept) continue;
 
-                        const nova = { diretoria: colunas[0].trim(), setor: colunas[1].trim(), departamento: dept, valor: valFormatado };
-                        const safeId = encodeURIComponent(dept);
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
-                        await setDoc(docRef, nova);
-                        processados++;
-                    }
+                    const nova = { diretoria: colunas[0].trim(), setor: colunas[1].trim(), departamento: dept, valor: valFormatado };
+                    const safeId = encodeURIComponent(dept);
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'verbas', safeId);
+                    await setDoc(docRef, nova);
+                    processados++;
                 }
                 alert(`Sucesso! ${processados} departamentos sincronizados na nuvem.`);
                 event.target.value = '';
@@ -1931,7 +1929,7 @@
             window.limparFormReceitas();
             
             const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = "Receita Cadastrada!"; 
+            btn.innerText = "Receita Registrada!"; 
             btn.classList.replace('bg-green-600', 'bg-blue-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-blue-600', 'bg-green-600'); }, 2000);
         };
@@ -1996,7 +1994,7 @@
             window.limparFormViagens();
             
             const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = "Cadastrado!"; 
+            btn.innerText = "Registrado!"; 
             btn.classList.replace('bg-orange-500', 'bg-green-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-orange-500'); }, 2000);
         };
@@ -2060,7 +2058,7 @@
             window.limparFormTI();
             
             const btn = event.submitter; const originalText = btn.innerText;
-            btn.innerText = "Transferência Cadastrada!"; 
+            btn.innerText = "Transferência Registrada!"; 
             btn.classList.replace('bg-purple-600', 'bg-green-600');
             setTimeout(() => { btn.innerText = originalText; btn.classList.replace('bg-green-600', 'bg-purple-600'); }, 2000);
         };
@@ -2099,7 +2097,7 @@
 
         window.excluirTI = async function(idStr) {
             if (!auth.currentUser) return;
-            if(confirm("Excluir transferência TI?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tis', idStr));
+            if(confirm("Excluir transferência de TI?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tis', idStr));
         };
 
         // ==========================================
@@ -2324,6 +2322,37 @@
         // ==========================================
         // LEITURA DO GOOGLE SHEETS E INICIALIZAÇÃO
         // ==========================================
+        
+        // NOVO: Leitor de CSV Inteligente para lidar com Alt+Enter (quebras de linha nas células)
+        function parseCSVData(text) {
+            let delimiter = ',';
+            // Deteta o delimitador baseado na primeira linha
+            let firstLineEnd = text.indexOf('\n');
+            if (firstLineEnd === -1) firstLineEnd = text.length;
+            let firstLine = text.substring(0, firstLineEnd);
+            if (firstLine.includes(';') && !firstLine.includes(',')) delimiter = ';';
+
+            const arr = [];
+            let quote = false;
+            let row = 0, col = 0;
+            
+            for (let c = 0; c < text.length; c++) {
+                let cc = text[c], nc = text[c+1];
+                arr[row] = arr[row] || [];
+                arr[row][col] = arr[row][col] || '';
+
+                if (cc === '"' && quote && nc === '"') { arr[row][col] += cc; ++c; continue; }
+                if (cc === '"') { quote = !quote; continue; }
+                if (cc === delimiter && !quote) { ++col; continue; }
+                if (cc === '\r' && nc === '\n' && !quote) { ++row; col = 0; ++c; continue; }
+                if (cc === '\n' && !quote) { ++row; col = 0; continue; }
+                if (cc === '\r' && !quote) { ++row; col = 0; continue; }
+
+                arr[row][col] += cc;
+            }
+            return arr;
+        }
+
         async function carregarLancamentosPlanilha() {
             try {
                 const resposta = await fetch(URL_GOOGLE_SHEETS);
@@ -2334,23 +2363,25 @@
                     throw new Error("O link retornou uma página HTML ao invés de CSV.");
                 }
 
-                const linhas = dadosCSV.split(/\r?\n/);
+                // Substituímos o "split" que quebrava tudo pelo nosso novo leitor inteligente
+                const matrizCSV = parseCSVData(dadosCSV);
                 lancamentos = [];
-                for (let i = 1; i < linhas.length; i++) {
-                    if (!linhas[i].trim()) continue;
-                    let col = parseCSVLine(linhas[i]);
+                
+                for (let i = 1; i < matrizCSV.length; i++) {
+                    let col = matrizCSV[i];
                     
-                    if (col.length >= 8) {
-                        const contaStr = col[2] ? String(col[2]).trim() : '-';
-                        
-                        if (contaStr.startsWith('4')) {
-                            lancamentos.push({
-                                lote: col[0]||'-', data: col[1]||'-', conta: contaStr,
-                                debito: parseValorCSV(col[3]), credito: parseValorCSV(col[4]),
-                                descricao: col[5]||'-', finalidade: col[6]||'-',
-                                departamento: col[7]?col[7].trim():'-', subconta: col[8]||'-'
-                            });
-                        }
+                    // Se não tiver colunas suficientes ou a linha for vazia, ignora
+                    if (col.length < 8 || !col.join('').trim()) continue; 
+                    
+                    const contaStr = col[2] ? String(col[2]).trim() : '-';
+                    
+                    if (contaStr.startsWith('4')) {
+                        lancamentos.push({
+                            lote: col[0]||'-', data: col[1]||'-', conta: contaStr,
+                            debito: parseValorCSV(col[3]), credito: parseValorCSV(col[4]),
+                            descricao: col[5]||'-', finalidade: col[6]||'-',
+                            departamento: col[7]?col[7].trim():'-', subconta: col[8]||'-'
+                        });
                     }
                 }
 
@@ -2379,18 +2410,6 @@
                 else str = str.replace(/,/g, ''); 
             } else if (str.includes(',')) str = str.replace(',', '.'); 
             return parseFloat(str) || 0;
-        }
-
-        function parseCSVLine(text, delimiter = ',') {
-            let ret = [], keep = false, item = '';
-            for(let i=0; i<text.length; i++) {
-                let c = text[i];
-                if(c === '"') { keep = !keep; continue; }
-                if(c === delimiter && !keep) { ret.push(item.trim()); item = ''; continue; }
-                item += c;
-            }
-            ret.push(item.trim());
-            return ret;
         }
 
         function inicializarApp() {
