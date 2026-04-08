@@ -67,7 +67,7 @@
             </button>
         </div>
 
-        <!-- Painel de Configuração (Oculto por padrão) -->
+        <!-- Painel de Configuração -->
         <div id="settingsPanel" class="hidden absolute inset-0 bg-white z-50 p-6 flex flex-col justify-center">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Configuração</h2>
             <p class="text-gray-600 mb-4 text-sm">Para o aplicativo funcionar no teu computador/telemóvel, insere a tua Chave de API do Google Gemini (é gratuita).</p>
@@ -83,27 +83,24 @@
         <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
             <video id="cameraFeed" class="w-full h-full object-cover" autoplay playsinline></video>
             
-            <!-- Retângulo de mira/guia visual -->
             <div class="absolute inset-x-8 top-1/4 bottom-1/4 border-4 border-amber-500/50 border-dashed rounded-lg pointer-events-none flex items-center justify-center transition-all duration-300" id="guideFrame">
                 <div class="bg-black/50 text-white/70 px-3 py-1 rounded text-xs absolute -top-8">Enquadra o visor aqui</div>
             </div>
 
-            <!-- Botão de Captura Flutuante -->
             <div class="absolute bottom-6 left-0 right-0 flex justify-center">
                 <button id="captureBtn" class="bg-white text-amber-500 w-16 h-16 rounded-full shadow-[0_0_15px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-gray-100 transition-transform transform hover:scale-105 border-4 border-amber-500 focus:outline-none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M4 4h16v16H4z"/></svg>
                 </button>
             </div>
             
-            <!-- Overlay de Carregamento -->
             <div id="loadingOverlay" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white hidden z-20">
                 <div class="spinner mb-4"></div>
                 <p id="loadingText" class="font-medium text-lg text-center px-4">A ler o medidor...</p>
-                <p class="text-xs text-gray-300 mt-2 text-center px-4">Processando imagem com IA</p>
+                <p class="text-xs text-gray-300 mt-2 text-center px-4">Analisando imagem com IA</p>
             </div>
         </div>
 
-        <!-- Área de Resultados (Lista) -->
+        <!-- Área de Resultados -->
         <div class="h-[40%] bg-gray-50 p-4 overflow-y-auto border-t border-gray-200 flex flex-col">
             <div class="flex flex-col gap-3 mb-4">
                 <div class="flex justify-between items-center">
@@ -111,7 +108,6 @@
                     <div class="flex items-center gap-2">
                         <span id="counter" class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
                         
-                        <!-- Botão de Limpar Lista -->
                         <button id="clearListBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                         </button>
@@ -122,7 +118,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- Input para o Título da Leitura -->
                 <input type="text" id="readingTitle" placeholder="Título para a próxima leitura..." class="w-full text-sm p-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
             </div>
             
@@ -133,21 +128,17 @@
             </ul>
         </div>
         
-        <!-- Área de mensagens -->
         <div id="messageArea" class="hidden absolute bottom-4 left-4 right-4 rounded-lg text-white text-sm p-3 text-center shadow-lg transition-opacity duration-300 z-50">
         </div>
     </div>
 
-    <!-- Canvas oculto para capturar a imagem do vídeo -->
     <canvas id="snapshotCanvas" class="hidden"></canvas>
 
     <script type="module">
-        // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // A tua configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCI_MKCy7QcEJJzXTMNt_MdRj_KYywC6dQ",
             authDomain: "viagens-46f97.firebaseapp.com",
@@ -157,16 +148,12 @@
             appId: "1:687153388092:web:5622f38a87d4632bb8c139"
         };
 
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
-        // Identificação única para este app no Firestore
         const firestoreAppId = "meu-leitor-energia-v1";
         let currentUser = null;
 
-        // Elementos do DOM
         const video = document.getElementById('cameraFeed');
         const canvas = document.getElementById('snapshotCanvas');
         const captureBtn = document.getElementById('captureBtn');
@@ -179,13 +166,10 @@
         const guideFrame = document.getElementById('guideFrame');
         const readingTitleInput = document.getElementById('readingTitle');
         const downloadBtn = document.getElementById('downloadBtn');
-        
-        // Elementos de Limpar Lista
         const clearListBtn = document.getElementById('clearListBtn');
         const clearConfirmModal = document.getElementById('clearConfirmModal');
         const cancelClearBtn = document.getElementById('cancelClearBtn');
         const confirmClearBtn = document.getElementById('confirmClearBtn');
-        
         const settingsBtn = document.getElementById('settingsBtn');
         const settingsPanel = document.getElementById('settingsPanel');
         const saveApiBtn = document.getElementById('saveApiBtn');
@@ -196,35 +180,30 @@
         let readCount = 0;
         let localApiKey = localStorage.getItem('gemini_api_key') || "";
         
-        // Verificação de ambiente
-        const isCanvas = window.location.hostname.includes('usercontent.goog');
+        // Verifica se estamos no ambiente de Preview do sistema ou rodando externamente
+        const isCanvasEnv = window.location.hostname.includes('usercontent.goog');
 
-        // Autenticação Firebase
         async function initAuth() {
             try {
                 await signInAnonymously(auth);
             } catch (error) {
                 console.error("Firebase Auth Error:", error);
-                showMessage("Erro Firebase: Verifica se o 'Login Anónimo' está ativo no teu painel Firebase.", true);
+                showMessage("Erro Firebase: Ativa o 'Login Anónimo' no teu painel Firebase.", true);
             }
         }
 
-        // Listener de Auth
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) setupFirestoreListener();
         });
 
-        // Sincronização em tempo real
         function setupFirestoreListener() {
             if (!currentUser) return;
             const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
-            
             onSnapshot(readingsRef, (snapshot) => {
                 readingsList.innerHTML = '';
                 reportData = [];
                 readCount = 0;
-                
                 if (snapshot.empty) {
                     readingsList.appendChild(emptyState);
                     emptyState.style.display = 'block';
@@ -233,23 +212,17 @@
                     counterDisplay.textContent = '0';
                     return;
                 }
-
                 emptyState.style.display = 'none';
                 downloadBtn.classList.remove('hidden');
                 clearListBtn.classList.remove('hidden');
-
                 const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 docs.sort((a, b) => b.timestamp - a.timestamp);
-
                 docs.forEach(docData => {
                     renderReadingItem(docData);
                     reportData.push(docData);
                     readCount++;
                 });
                 counterDisplay.textContent = readCount;
-            }, (err) => {
-                console.error("Firestore error:", err);
-                showMessage("Erro ao ler dados da nuvem.", true);
             });
         }
 
@@ -277,13 +250,12 @@
             readingsList.appendChild(li);
         }
 
-        // --- SISTEMA DE LIMPEZA ---
         clearListBtn.addEventListener('click', () => clearConfirmModal.classList.remove('hidden'));
         cancelClearBtn.addEventListener('click', () => clearConfirmModal.classList.add('hidden'));
         confirmClearBtn.addEventListener('click', async () => {
             clearConfirmModal.classList.add('hidden');
             if (!currentUser) return;
-            loadingText.textContent = 'Apagando histórico...';
+            loadingText.textContent = 'Limpando dados...';
             loadingOverlay.classList.remove('hidden');
             try {
                 const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
@@ -292,14 +264,13 @@
                 await Promise.all(deletePromises);
                 showMessage("Lista limpa!");
             } catch (e) {
-                showMessage("Erro ao limpar lista.", true);
+                showMessage("Erro ao limpar dados.", true);
             } finally {
                 loadingOverlay.classList.add('hidden');
                 loadingText.textContent = 'A ler o medidor...';
             }
         });
 
-        // Configurações
         settingsBtn.addEventListener('click', () => {
             apiKeyInput.value = localApiKey;
             settingsPanel.classList.remove('hidden');
@@ -309,10 +280,9 @@
             localApiKey = apiKeyInput.value.trim();
             localStorage.setItem('gemini_api_key', localApiKey);
             settingsPanel.classList.add('hidden');
-            showMessage("Configuração salva!");
+            showMessage("Chave salva com sucesso!");
         });
 
-        // Câmera
         async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -320,7 +290,6 @@
                 });
                 video.srcObject = stream;
             } catch (err) {
-                console.error("Camera Error:", err);
                 if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
                     showMessage("Erro: Câmara exige site com HTTPS://", true);
                 } else {
@@ -336,11 +305,11 @@
             setTimeout(() => { messageArea.classList.add('hidden'); }, 4000);
         }
 
-        // Captura e Análise
         captureBtn.addEventListener('click', async () => {
-            const activeKey = localApiKey;
+            // Em ambiente de teste, a chave é vazia (injetada). No teu site, usa a local.
+            const activeKey = isCanvasEnv ? "" : localApiKey;
 
-            if (!activeKey) {
+            if (!isCanvasEnv && !activeKey) {
                 showMessage("Erro: Clica na engrenagem e insere a tua Gemini API Key.", true);
                 settingsPanel.classList.remove('hidden');
                 return;
@@ -352,7 +321,7 @@
             }
 
             if (!currentUser) {
-                showMessage("Aguardando ligação à nuvem...", true);
+                showMessage("Ligando à nuvem...", true);
                 return;
             }
 
@@ -382,13 +351,13 @@
                     const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
                     await addDoc(readingsRef, readingData);
                     readingTitleInput.value = '';
-                    showMessage("Sincronizado!");
+                    showMessage("Leitura sincronizada!");
                 } else {
-                    showMessage("IA não conseguiu ler. Tenta focar melhor.", true);
+                    showMessage("IA não conseguiu ler. Tenta focar no visor.", true);
                 }
             } catch (error) {
-                console.error("AI/Process Error:", error);
-                showMessage("Falha: Verifica a tua API Key e a internet.", true);
+                console.error("AI Error:", error);
+                showMessage(`Erro: ${error.message || 'Verifica a API Key e a Internet'}`, true);
             } finally {
                 loadingOverlay.classList.add('hidden');
                 captureBtn.disabled = false;
@@ -396,13 +365,14 @@
         });
 
         async function readMeterWithAI(base64Data, keyToUse) {
-            const modelName = "gemini-1.5-flash"; 
+            // Lógica Crucial: No Canvas do sistema usamos o modelo de preview. Externamente usamos o 1.5 Flash estável.
+            const modelName = isCanvasEnv ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
             
             const payload = {
                 contents: [{
                     parts: [
-                        { text: "Lê apenas os números de kWh deste medidor. Responde apenas o número. Se não vires um medidor claro, diz 'Erro'." },
+                        { text: "Lê apenas os números de kWh deste medidor de energia. Responde apenas o número com as casas decimais se houver. Exemplo: 012345.6. Se não vires um medidor claro, responde 'Erro'." },
                         { inlineData: { mimeType: "image/jpeg", data: base64Data } }
                     ]
                 }]
@@ -416,26 +386,30 @@
 
             if (!response.ok) {
                 const errJson = await response.json();
-                throw new Error(errJson.error?.message || "Erro na API");
+                console.error("API Error Body:", errJson);
+                // Melhora a mensagem para o utilizador
+                const msg = errJson.error?.message || "Erro Desconhecido";
+                if (msg.includes("API key not valid")) throw new Error("API Key Inválida");
+                if (response.status === 404) throw new Error("Modelo não encontrado. Tenta gemini-1.5-flash.");
+                throw new Error(msg);
             }
             
             const result = await response.json();
             return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         }
 
-        // Exportação
         downloadBtn.addEventListener('click', () => {
             if (reportData.length === 0) return;
             let csv = "\uFEFFTítulo,kWh,Data,Hora\n";
-            reportData.forEach(r => csv += `"${r.titulo}","${r.leitura}","${r.data}","${r.hora}"\n`);
+            reportData.forEach(r => csv += `"${r.titulo.replace(/"/g, '""')}","${r.leitura}","${r.data}","${r.hora}"\n`);
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
+            const link = document.body.appendChild(document.createElement("a"));
             link.href = URL.createObjectURL(blob);
-            link.download = `relatorio_${Date.now()}.csv`;
+            link.download = `relatorio_medidores_${Date.now()}.csv`;
             link.click();
+            document.body.removeChild(link);
         });
 
-        // --- LOGIN ---
         const loginScreen = document.getElementById('loginScreen');
         const usernameInput = document.getElementById('usernameInput');
         const passwordInput = document.getElementById('passwordInput');
