@@ -71,7 +71,7 @@
         <div id="settingsPanel" class="hidden absolute inset-0 bg-white z-50 p-6 flex flex-col justify-center">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Configuração</h2>
             <p class="text-gray-600 mb-4 text-sm">Para o aplicativo funcionar no teu computador/telemóvel, insere a tua Chave de API do Google Gemini (é gratuita).</p>
-            <input type="password" id="apiKeyInput" placeholder="Cola a tua API Key aqui" class="w-full border border-gray-300 p-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <input type="password" id="apiKeyInput" placeholder="Cole sua API Key aqui" class="w-full border border-gray-300 p-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500">
             <div class="flex gap-3">
                 <button id="saveApiBtn" class="flex-1 bg-amber-500 text-white p-3 rounded-lg font-bold hover:bg-amber-600">Guardar Chave</button>
                 <button id="closeSettingsBtn" class="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg font-bold hover:bg-gray-300">Fechar</button>
@@ -98,8 +98,8 @@
             <!-- Overlay de Carregamento -->
             <div id="loadingOverlay" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white hidden z-20">
                 <div class="spinner mb-4"></div>
-                <p id="loadingText" class="font-medium text-lg">A ler o medidor...</p>
-                <p class="text-xs text-gray-300 mt-2">A processar imagem com IA</p>
+                <p id="loadingText" class="font-medium text-lg text-center px-4">A ler o medidor...</p>
+                <p class="text-xs text-gray-300 mt-2 text-center px-4">Processando imagem com IA</p>
             </div>
         </div>
 
@@ -111,7 +111,7 @@
                     <div class="flex items-center gap-2">
                         <span id="counter" class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
                         
-                        <!-- Novo botão de Limpar Lista -->
+                        <!-- Botão de Limpar Lista -->
                         <button id="clearListBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                         </button>
@@ -123,7 +123,7 @@
                     </div>
                 </div>
                 <!-- Input para o Título da Leitura -->
-                <input type="text" id="readingTitle" placeholder="Título para a próxima leitura (ex: Casa da Praia)..." class="w-full text-sm p-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+                <input type="text" id="readingTitle" placeholder="Título para a próxima leitura..." class="w-full text-sm p-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
             </div>
             
             <ul id="readingsList" class="space-y-3 flex-1 overflow-y-auto pb-4">
@@ -144,7 +144,7 @@
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // A tua configuração do Firebase
@@ -161,7 +161,9 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const firestoreAppId = typeof __app_id !== 'undefined' ? __app_id : 'meu-leitor-energia';
+        
+        // Identificação única para este app no Firestore
+        const firestoreAppId = "meu-leitor-energia-v1";
         let currentUser = null;
 
         // Elementos do DOM
@@ -190,37 +192,32 @@
         const closeSettingsBtn = document.getElementById('closeSettingsBtn');
         const apiKeyInput = document.getElementById('apiKeyInput');
 
-        let reportData = []; // Array para guardar os dados do relatório sincronizados
+        let reportData = []; 
         let readCount = 0;
         let localApiKey = localStorage.getItem('gemini_api_key') || "";
-        const apiKey = ""; // Mantido vazio conforme as instruções do sistema
-        const isCanvas = window.location.hostname.includes('usercontent.goog') || typeof __app_id !== 'undefined';
+        
+        // Verificação de ambiente
+        const isCanvas = window.location.hostname.includes('usercontent.goog');
 
-        // Autenticação Silenciosa do Firebase (agora ativada só depois do login)
+        // Autenticação Firebase
         async function initAuth() {
             try {
-                // Como configuraste o teu próprio Firebase (viagens-46f97), o token interno 
-                // do ambiente causa um "mismatch". Forçamos o login anónimo direto no teu projeto.
-                // IMPORTANTE: Lembra-te de ativar o "Anónimo" no painel Authentication do teu Firebase!
                 await signInAnonymously(auth);
             } catch (error) {
-                console.error("Erro de Autenticação Firebase:", error);
-                showMessage("Erro ao ligar à nuvem. Ativa o 'Anónimo' no Firebase Auth.", true);
+                console.error("Firebase Auth Error:", error);
+                showMessage("Erro Firebase: Verifica se o 'Login Anónimo' está ativo no teu painel Firebase.", true);
             }
         }
 
-        // Monitorizar o estado da conta e carregar dados
+        // Listener de Auth
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            if (user) {
-                setupFirestoreListener();
-            }
+            if (user) setupFirestoreListener();
         });
 
-        // Ouvir alterações na base de dados em tempo real
+        // Sincronização em tempo real
         function setupFirestoreListener() {
             if (!currentUser) return;
-            
             const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
             
             onSnapshot(readingsRef, (snapshot) => {
@@ -241,7 +238,6 @@
                 downloadBtn.classList.remove('hidden');
                 clearListBtn.classList.remove('hidden');
 
-                // Ordenar do mais recente para o mais antigo (em memória)
                 const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 docs.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -250,18 +246,16 @@
                     reportData.push(docData);
                     readCount++;
                 });
-                
                 counterDisplay.textContent = readCount;
-            }, (error) => {
-                console.error("Erro no Snapshot do Firestore:", error);
+            }, (err) => {
+                console.error("Firestore error:", err);
+                showMessage("Erro ao ler dados da nuvem.", true);
             });
         }
 
-        // Renderizar um item na lista
         function renderReadingItem(docData) {
             const li = document.createElement('li');
             li.className = "bg-white p-4 rounded-xl shadow-sm flex flex-col gap-2 border border-gray-100 animate-fade-in";
-            
             li.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div class="flex items-center gap-3">
@@ -269,7 +263,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs font-semibold text-amber-600 mb-1 truncate max-w-[150px]" title="${docData.titulo}">${docData.titulo}</p>
+                            <p class="text-xs font-semibold text-amber-600 mb-1 truncate max-w-[150px]">${docData.titulo}</p>
                             <p class="font-bold text-gray-800 text-2xl tracking-wider font-mono">${docData.leitura} <span class="text-sm text-gray-400 font-sans tracking-normal">kWh</span></p>
                         </div>
                     </div>
@@ -283,66 +277,42 @@
             readingsList.appendChild(li);
         }
 
-        // --- SISTEMA DE LIMPEZA DE DADOS ---
-        clearListBtn.addEventListener('click', () => {
-            clearConfirmModal.classList.remove('hidden');
-            clearConfirmModal.classList.add('flex');
-        });
-
-        cancelClearBtn.addEventListener('click', () => {
-            clearConfirmModal.classList.add('hidden');
-            clearConfirmModal.classList.remove('flex');
-        });
-
+        // --- SISTEMA DE LIMPEZA ---
+        clearListBtn.addEventListener('click', () => clearConfirmModal.classList.remove('hidden'));
+        cancelClearBtn.addEventListener('click', () => clearConfirmModal.classList.add('hidden'));
         confirmClearBtn.addEventListener('click', async () => {
             clearConfirmModal.classList.add('hidden');
-            clearConfirmModal.classList.remove('flex');
-            
             if (!currentUser) return;
-            
-            loadingText.textContent = 'A apagar dados...';
+            loadingText.textContent = 'Apagando histórico...';
             loadingOverlay.classList.remove('hidden');
-            
             try {
                 const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
                 const snapshot = await getDocs(readingsRef);
-                
-                // Apaga os documentos um a um na base de dados
-                const deletePromises = snapshot.docs.map(document => 
-                    deleteDoc(doc(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras', document.id))
-                );
-                
+                const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras', d.id)));
                 await Promise.all(deletePromises);
-                showMessage("Histórico limpo com sucesso!", false);
-                
-            } catch (error) {
-                console.error("Erro ao limpar dados:", error);
-                showMessage("Erro ao tentar limpar o histórico.", true);
+                showMessage("Lista limpa!");
+            } catch (e) {
+                showMessage("Erro ao limpar lista.", true);
             } finally {
                 loadingOverlay.classList.add('hidden');
-                loadingText.textContent = 'A ler o medidor...'; // repõe o texto original
+                loadingText.textContent = 'A ler o medidor...';
             }
         });
 
-
-        // Gerenciamento de Configuração da API do Gemini
+        // Configurações
         settingsBtn.addEventListener('click', () => {
             apiKeyInput.value = localApiKey;
             settingsPanel.classList.remove('hidden');
         });
-
-        closeSettingsBtn.addEventListener('click', () => {
-            settingsPanel.classList.add('hidden');
-        });
-
+        closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.add('hidden'));
         saveApiBtn.addEventListener('click', () => {
             localApiKey = apiKeyInput.value.trim();
             localStorage.setItem('gemini_api_key', localApiKey);
             settingsPanel.classList.add('hidden');
-            showMessage("Chave guardada com sucesso!", false);
+            showMessage("Configuração salva!");
         });
 
-        // Inicializar câmera
+        // Câmera
         async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -350,8 +320,12 @@
                 });
                 video.srcObject = stream;
             } catch (err) {
-                console.error("Erro ao aceder à câmara:", err);
-                showMessage("Erro ao aceder à câmara. Verifica as permissões.", true);
+                console.error("Camera Error:", err);
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                    showMessage("Erro: Câmara exige site com HTTPS://", true);
+                } else {
+                    showMessage("Erro ao abrir câmara. Verifica as permissões.", true);
+                }
             }
         }
 
@@ -362,23 +336,23 @@
             setTimeout(() => { messageArea.classList.add('hidden'); }, 4000);
         }
 
-        // Função de captura
+        // Captura e Análise
         captureBtn.addEventListener('click', async () => {
-            const activeKey = isCanvas ? apiKey : localApiKey;
+            const activeKey = localApiKey;
 
-            if (!isCanvas && !activeKey) {
-                showMessage("Por favor, configura a tua API Key na engrenagem ali em cima.", true);
+            if (!activeKey) {
+                showMessage("Erro: Clica na engrenagem e insere a tua Gemini API Key.", true);
                 settingsPanel.classList.remove('hidden');
                 return;
             }
 
             if (!video.srcObject) {
-                showMessage("A câmara não está ativa.", true);
+                showMessage("Câmara inativa.", true);
                 return;
             }
 
             if (!currentUser) {
-                showMessage("A aguardar ligação à nuvem...", true);
+                showMessage("Aguardando ligação à nuvem...", true);
                 return;
             }
 
@@ -391,160 +365,105 @@
             try {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                const base64Image = canvas.toDataURL('image/jpeg', 0.8);
-                const base64Data = base64Image.split(',')[1];
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
                 const readingString = await readMeterWithAI(base64Data, activeKey);
                 
                 if (readingString && !readingString.toLowerCase().includes('erro')) {
-                    // Prepara os dados
                     const now = new Date();
-                    const dateStr = now.toLocaleDateString('pt-PT');
-                    const timeStr = now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-                    const titleValue = readingTitleInput.value.trim() || `Medidor ${readCount + 1}`;
-                    
                     const readingData = {
-                        titulo: titleValue,
+                        titulo: readingTitleInput.value.trim() || `Leitura ${readCount + 1}`,
                         leitura: readingString,
-                        data: dateStr,
-                        hora: timeStr,
+                        data: now.toLocaleDateString('pt-PT'),
+                        hora: now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
                         timestamp: Date.now()
                     };
-
-                    // Guarda no Firebase
                     const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
                     await addDoc(readingsRef, readingData);
-                    
                     readingTitleInput.value = '';
-                    showMessage("Leitura sincronizada com a nuvem!", false);
+                    showMessage("Sincronizado!");
                 } else {
-                    showMessage("Não foi possível ler os números com clareza.", true);
+                    showMessage("IA não conseguiu ler. Tenta focar melhor.", true);
                 }
-
             } catch (error) {
-                console.error("Erro:", error);
-                showMessage("Falha no processo.", true);
+                console.error("AI/Process Error:", error);
+                showMessage("Falha: Verifica a tua API Key e a internet.", true);
             } finally {
                 loadingOverlay.classList.add('hidden');
                 captureBtn.disabled = false;
             }
         });
 
-        // IA para ler o Medidor
         async function readMeterWithAI(base64Data, keyToUse) {
-            const modelName = isCanvas ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
+            const modelName = "gemini-1.5-flash"; 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
             
-            const prompt = `Você é um sistema de leitura automática de medidores de energia elétrica (relógios de luz). 
-            Olhe para a imagem fornecida. Você deve encontrar o visor digital e extrair APENAS a sequência de números exibida nele.
-            Regras rigorosas:
-            1. Inclua todos os números, incluindo zeros à esquerda (ex: 015972).
-            2. Se houver um ponto ou vírgula decimal, inclua-o junto com o último número (ex: 015972.2).
-            3. Não escreva "kWh", não escreva texto, não explique nada.
-            4. Se a imagem estiver muito borrada ou não for um medidor, responda apenas a palavra "Erro".
-            Sua resposta deve ser EXATAMENTE apenas o número lido.`;
-
             const payload = {
                 contents: [{
-                    role: "user",
                     parts: [
-                        { text: prompt },
+                        { text: "Lê apenas os números de kWh deste medidor. Responde apenas o número. Se não vires um medidor claro, diz 'Erro'." },
                         { inlineData: { mimeType: "image/jpeg", data: base64Data } }
                     ]
                 }]
             };
 
-            let retries = 5;
-            let delay = 1000;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    
-                    const result = await response.json();
-                    
-                    if (result.candidates && result.candidates[0].content.parts[0].text) {
-                        return result.candidates[0].content.parts[0].text.trim().replace(/\n/g, '');
-                    }
-                    return "Erro";
-
-                } catch (error) {
-                    if (i === retries - 1) throw error;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2;
-                }
+            if (!response.ok) {
+                const errJson = await response.json();
+                throw new Error(errJson.error?.message || "Erro na API");
             }
+            
+            const result = await response.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         }
 
-        // Função para baixar o relatório CSV
+        // Exportação
         downloadBtn.addEventListener('click', () => {
             if (reportData.length === 0) return;
-            
-            let csvContent = "\uFEFFTítulo,Leitura (kWh),Data,Hora\n";
-            
-            reportData.forEach(row => {
-                const safeTitle = row.titulo.replace(/"/g, '""');
-                csvContent += `"${safeTitle}","${row.leitura}","${row.data}","${row.hora}"\n`;
-            });
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            let csv = "\uFEFFTítulo,kWh,Data,Hora\n";
+            reportData.forEach(r => csv += `"${r.titulo}","${r.leitura}","${r.data}","${r.hora}"\n`);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `relatorio_medidores_${new Date().getTime()}.csv`);
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `relatorio_${Date.now()}.csv`;
             link.click();
-            document.body.removeChild(link);
         });
 
-        // --- SISTEMA DE LOGIN ---
+        // --- LOGIN ---
         const loginScreen = document.getElementById('loginScreen');
         const usernameInput = document.getElementById('usernameInput');
         const passwordInput = document.getElementById('passwordInput');
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
 
-        function iniciarApp() {
-            initAuth(); // Liga ao Firebase
-            startCamera(); // Liga a câmara
+        function startAppFlow() {
+            initAuth();
+            startCamera();
         }
 
         loginBtn.addEventListener('click', () => {
             if (usernameInput.value === 'Leitura' && passwordInput.value === 'Fap1624') {
                 sessionStorage.setItem('isLoggedIn', 'true');
-                loginScreen.classList.add('opacity-0'); // Efeito de fade out suave
+                loginScreen.classList.add('opacity-0');
                 setTimeout(() => {
                     loginScreen.style.display = 'none';
-                    iniciarApp();
+                    startAppFlow();
                 }, 500);
             } else {
                 loginError.classList.remove('hidden');
-                passwordInput.value = ''; // Limpa a senha se errar
             }
         });
 
-        // Verifica se já estava logado na sessão atual
         if (sessionStorage.getItem('isLoggedIn') === 'true') {
             loginScreen.style.display = 'none';
-            iniciarApp();
+            startAppFlow();
         }
-
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-            .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        `;
-        document.head.appendChild(style);
-
     </script>
 </body>
 </html>
