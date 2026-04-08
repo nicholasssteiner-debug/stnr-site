@@ -38,6 +38,21 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmação para Limpar Lista -->
+    <div id="clearConfirmModal" class="fixed inset-0 z-[110] bg-gray-900/80 hidden items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm flex flex-col items-center text-center">
+            <div class="bg-red-100 p-3 rounded-full text-red-600 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Limpar todas as leituras?</h3>
+            <p class="text-gray-600 text-sm mb-6">Esta ação apagará todo o histórico guardado na nuvem. Não poderá ser desfeita.</p>
+            <div class="flex gap-3 w-full">
+                <button id="cancelClearBtn" class="flex-1 bg-gray-200 text-gray-800 font-bold p-3 rounded-lg hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button id="confirmClearBtn" class="flex-1 bg-red-500 text-white font-bold p-3 rounded-lg hover:bg-red-600 transition-colors">Sim, limpar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="glass-panel w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh] max-h-[850px] relative">
         
         <!-- Cabeçalho -->
@@ -83,7 +98,7 @@
             <!-- Overlay de Carregamento -->
             <div id="loadingOverlay" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white hidden z-20">
                 <div class="spinner mb-4"></div>
-                <p class="font-medium text-lg">A ler o medidor...</p>
+                <p id="loadingText" class="font-medium text-lg">A ler o medidor...</p>
                 <p class="text-xs text-gray-300 mt-2">A processar imagem com IA</p>
             </div>
         </div>
@@ -95,9 +110,15 @@
                     <h2 class="text-gray-700 font-semibold text-lg">Leituras Guardadas</h2>
                     <div class="flex items-center gap-2">
                         <span id="counter" class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        
+                        <!-- Novo botão de Limpar Lista -->
+                        <button id="clearListBtn" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        </button>
+                        
                         <button id="downloadBtn" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            Baixar Relatório
+                            Baixar
                         </button>
                     </div>
                 </div>
@@ -124,7 +145,7 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // A tua configuração do Firebase
         const firebaseConfig = {
@@ -150,11 +171,18 @@
         const readingsList = document.getElementById('readingsList');
         const emptyState = document.getElementById('emptyState');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
         const counterDisplay = document.getElementById('counter');
         const messageArea = document.getElementById('messageArea');
         const guideFrame = document.getElementById('guideFrame');
         const readingTitleInput = document.getElementById('readingTitle');
         const downloadBtn = document.getElementById('downloadBtn');
+        
+        // Elementos de Limpar Lista
+        const clearListBtn = document.getElementById('clearListBtn');
+        const clearConfirmModal = document.getElementById('clearConfirmModal');
+        const cancelClearBtn = document.getElementById('cancelClearBtn');
+        const confirmClearBtn = document.getElementById('confirmClearBtn');
         
         const settingsBtn = document.getElementById('settingsBtn');
         const settingsPanel = document.getElementById('settingsPanel');
@@ -204,12 +232,14 @@
                     readingsList.appendChild(emptyState);
                     emptyState.style.display = 'block';
                     downloadBtn.classList.add('hidden');
+                    clearListBtn.classList.add('hidden');
                     counterDisplay.textContent = '0';
                     return;
                 }
 
                 emptyState.style.display = 'none';
                 downloadBtn.classList.remove('hidden');
+                clearListBtn.classList.remove('hidden');
 
                 // Ordenar do mais recente para o mais antigo (em memória)
                 const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -252,6 +282,48 @@
             `;
             readingsList.appendChild(li);
         }
+
+        // --- SISTEMA DE LIMPEZA DE DADOS ---
+        clearListBtn.addEventListener('click', () => {
+            clearConfirmModal.classList.remove('hidden');
+            clearConfirmModal.classList.add('flex');
+        });
+
+        cancelClearBtn.addEventListener('click', () => {
+            clearConfirmModal.classList.add('hidden');
+            clearConfirmModal.classList.remove('flex');
+        });
+
+        confirmClearBtn.addEventListener('click', async () => {
+            clearConfirmModal.classList.add('hidden');
+            clearConfirmModal.classList.remove('flex');
+            
+            if (!currentUser) return;
+            
+            loadingText.textContent = 'A apagar dados...';
+            loadingOverlay.classList.remove('hidden');
+            
+            try {
+                const readingsRef = collection(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras');
+                const snapshot = await getDocs(readingsRef);
+                
+                // Apaga os documentos um a um na base de dados
+                const deletePromises = snapshot.docs.map(document => 
+                    deleteDoc(doc(db, 'artifacts', firestoreAppId, 'users', currentUser.uid, 'leituras', document.id))
+                );
+                
+                await Promise.all(deletePromises);
+                showMessage("Histórico limpo com sucesso!", false);
+                
+            } catch (error) {
+                console.error("Erro ao limpar dados:", error);
+                showMessage("Erro ao tentar limpar o histórico.", true);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                loadingText.textContent = 'A ler o medidor...'; // repõe o texto original
+            }
+        });
+
 
         // Gerenciamento de Configuração da API do Gemini
         settingsBtn.addEventListener('click', () => {
