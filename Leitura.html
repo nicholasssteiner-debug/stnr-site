@@ -180,9 +180,8 @@
         let readCount = 0;
         let localApiKey = localStorage.getItem('gemini_api_key') || "";
         
-        let workingModel = localStorage.getItem('working_gemini_model') || null; // Memória permanente do modelo
+        let workingModel = localStorage.getItem('working_gemini_model') || null; 
         
-        // Verifica se estamos no ambiente de Preview do sistema ou rodando externamente
         const isCanvasEnv = window.location.hostname.includes('usercontent.goog');
 
         async function initAuth() {
@@ -281,7 +280,7 @@
         saveApiBtn.addEventListener('click', () => {
             localApiKey = apiKeyInput.value.trim();
             localStorage.setItem('gemini_api_key', localApiKey);
-            localStorage.removeItem('working_gemini_model'); // Limpa a memória do modelo se trocar a chave
+            localStorage.removeItem('working_gemini_model'); 
             workingModel = null;
             settingsPanel.classList.add('hidden');
             showMessage("Chave salva com sucesso!");
@@ -306,12 +305,10 @@
             messageArea.textContent = msg;
             messageArea.className = `absolute bottom-4 left-4 right-4 rounded-lg text-white text-sm p-3 text-center shadow-lg z-50 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
             messageArea.classList.remove('hidden');
-            // Dá mais tempo para o utilizador ler erros grandes
             setTimeout(() => { messageArea.classList.add('hidden'); }, 6000);
         }
 
         captureBtn.addEventListener('click', async () => {
-            // Em ambiente de teste, a chave é vazia (injetada). No teu site, usa a local.
             const activeKey = isCanvasEnv ? "" : localApiKey;
 
             if (!isCanvasEnv && !activeKey) {
@@ -320,7 +317,6 @@
                 return;
             }
 
-            // NOVA PROTEÇÃO: Verifica se o utilizador colou a chave do Firebase por engano
             if (!isCanvasEnv && activeKey === firebaseConfig.apiKey) {
                 showMessage("Erro: Você colou a chave do Firebase! É preciso gerar a chave do Gemini no Google AI Studio.", true);
                 settingsPanel.classList.remove('hidden');
@@ -332,7 +328,6 @@
                 return;
             }
             
-            // Proteção nova: Verifica se a câmara já carregou o tamanho do vídeo
             if (video.videoWidth === 0 || video.videoHeight === 0) {
                 showMessage("A câmera ainda está carregando. Aguarde um segundo e tente novamente.", true);
                 return;
@@ -375,7 +370,7 @@
                 }
             } catch (error) {
                 console.error("AI Error:", error);
-                showMessage(`Erro: ${error.message}`, true);
+                showMessage(`${error.message}`, true);
             } finally {
                 loadingOverlay.classList.add('hidden');
                 captureBtn.disabled = false;
@@ -388,15 +383,11 @@
             if (isCanvasEnv) {
                 modelsToTry = ["gemini-2.5-flash-preview-09-2025"];
             } else if (workingModel) {
-                // Se já sabemos qual modelo funciona, vai direto nele sem gastar cota pesquisando!
                 modelsToTry = [workingModel];
             } else {
-                // Força tentar os modelos "Flash" primeiro, pois eles dão 15 leituras/minuto.
-                // O modelo "Pro" dá apenas 2 leituras/minuto, por isso fica por último na lista de emergência.
                 modelsToTry = [
                     "gemini-1.5-flash", 
                     "gemini-1.5-flash-8b", 
-                    "gemini-1.5-flash-latest", 
                     "gemini-1.5-pro"
                 ];
             }
@@ -410,7 +401,7 @@
                 }]
             };
 
-            let lastErrorMsg = "";
+            let errorsLog = [];
 
             for (const modelName of modelsToTry) {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
@@ -424,40 +415,44 @@
 
                     if (!response.ok) {
                         const errText = await response.text();
-                        let errMsg = `Erro HTTP ${response.status}`;
+                        let errMsg = `HTTP ${response.status}`;
                         try {
                             const errJson = JSON.parse(errText);
                             errMsg = errJson.error?.message || errMsg;
                         } catch(e) {}
                         
-                        // Erro de limite de tempo (quota)
-                        if (response.status === 429) {
-                            throw new Error(`Limite atingido (${modelName}). Aguarde 1 minuto e tente novamente.`);
-                        }
-                        
-                        // Erros de Chave ou Permissão
-                        if (response.status === 403 || errMsg.includes("API key not valid")) {
-                            throw new Error("Chave sem permissão ou inválida. Tente gerar uma nova chave no AI Studio.");
-                        }
-
-                        // Se o modelo não for encontrado, ele SALVA o erro e pula pro próximo modelo do loop
+                        // ERRO 404: Modelo não encontrado. Esse é o ÚNICO erro que nos permite tentar o próximo modelo.
                         if (response.status === 404 || errMsg.includes("is not found") || errMsg.includes("not supported")) {
-                            lastErrorMsg = `Modelo ${modelName} recusado. Tentando outro...`;
+                            errorsLog.push(`${modelName}: Não encontrado`);
                             continue; 
                         }
                         
-                        // Erro de imagem corrompida
-                        if (response.status === 400) {
-                            throw new Error("Erro na imagem. Tente afastar um pouco o celular para focar melhor.");
+                        // =========================================================================
+                        // PARA QUALQUER OUTRO ERRO, O SISTEMA PARA NA HORA E AVISA VOCÊ
+                        // =========================================================================
+
+                        // Limite de uso
+                        if (response.status === 429 || errMsg.toLowerCase().includes("quota") || errMsg.toLowerCase().includes("exhausted")) {
+                            throw new Error("Limite grátis atingido! Aguarde 1 minuto exato e tente de novo.");
                         }
                         
-                        lastErrorMsg = `Google API diz: ${errMsg}`;
-                        continue;
+                        // Chave inválida
+                        if (response.status === 403 || errMsg.includes("API key not valid")) {
+                            throw new Error("Chave inválida ou sem permissão.");
+                        }
+                        
+                        // Imagem muito borrada ou rejeitada
+                        if (response.status === 400 && !errMsg.includes("API key")) {
+                            throw new Error("A IA rejeitou a imagem. Tente focar melhor no visor.");
+                        }
+                        
+                        // Erro de servidor do Google (500, 503)
+                        throw new Error(`Erro do Google (${modelName}): ${errMsg}`);
                     }
                     
                     const result = await response.json();
                     
-                    // SALVA O MODELO NA MEMÓRIA para as próximas fotos serem instantâneas!
+                    // Se o modelo funcionou perfeitamente, salva para usar sempre ele!
                     if (!isCanvasEnv && !workingModel) {
                         localStorage.setItem('working_gemini_model', modelName);
                         workingModel = modelName;
@@ -466,22 +461,22 @@
                     return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                     
                 } catch (error) {
-                    // Se for um erro crítico que sabemos que não adianta tentar outro modelo, encerramos na hora
-                    if (error.message.includes("Limite atingido") || error.message.includes("permissão") || error.message.includes("Erro na imagem")) {
+                    // Se foi um dos erros graves que capturamos acima, encerra o loop de vez!
+                    if (error.message.includes("Limite") || error.message.includes("Chave") || error.message.includes("IA rejeitou") || error.message.includes("Erro do Google")) {
                         throw error;
                     }
                     
-                    // Se for erro de internet, avisa e para
+                    // Erro de rede (CORS, sem internet, bloqueio de antivírus)
                     if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-                        throw new Error("Sem internet ou erro de conexão com a Google.");
+                        throw new Error("Sem internet ou bloqueado por conexão.");
                     }
                     
-                    lastErrorMsg = error.message;
+                    errorsLog.push(`${modelName}: ${error.message}`);
                 }
             }
             
-            // Se ele esgotar todos os modelos da lista, solta a mensagem final:
-            throw new Error(`Modelos indisponíveis na sua conta. Detalhe: ${lastErrorMsg}`);
+            // Só vai mostrar isso se TODOS os modelos derem erro 404 (Não Encontrado)
+            throw new Error(`Modelos indisponíveis. Tente gerar uma Chave nova. Detalhes: ${errorsLog.join(" | ")}`);
         }
 
         downloadBtn.addEventListener('click', () => {
