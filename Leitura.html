@@ -379,9 +379,10 @@
         });
 
         async function readMeterWithAI(base64Data, keyToUse) {
-            // Usamos apenas o modelo principal para obtermos o erro exato e transparente caso falhe
-            const modelName = isCanvasEnv ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
+            // Lista com várias versões para garantir que ele acha a correta para a sua chave
+            const modelsToTry = isCanvasEnv 
+                ? ["gemini-2.5-flash-preview-09-2025"] 
+                : ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-1.5-pro-latest"];
             
             const payload = {
                 contents: [{
@@ -392,43 +393,71 @@
                 }]
             };
 
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            let lastErrorMsg = "";
 
-                if (!response.ok) {
-                    const errText = await response.text();
-                    let errMsg = `Erro HTTP ${response.status}`;
-                    try {
-                        const errJson = JSON.parse(errText);
-                        errMsg = errJson.error?.message || errMsg;
-                    } catch(e) {}
-                    
-                    if (response.status === 429) {
-                        throw new Error("Muitas leituras seguidas (limite grátis). Aguarde 1 minuto e tente novamente.");
-                    }
-                    if (response.status === 403) {
-                        throw new Error("Chave sem permissão. Tente gerar uma chave nova no AI Studio.");
-                    }
-                    if (response.status === 400) {
-                        throw new Error("Erro na imagem. Tente afastar um pouco o celular para focar melhor.");
-                    }
-                    
-                    throw new Error(`Google API diz: ${errMsg}`);
-                }
+            for (const modelName of modelsToTry) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
                 
-                const result = await response.json();
-                return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                
-            } catch (error) {
-                if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-                    throw new Error("Sem internet ou erro de conexão com a Google.");
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        let errMsg = `Erro HTTP ${response.status}`;
+                        try {
+                            const errJson = JSON.parse(errText);
+                            errMsg = errJson.error?.message || errMsg;
+                        } catch(e) {}
+                        
+                        // Erro de limite de tempo (quota)
+                        if (response.status === 429) {
+                            throw new Error("Muitas leituras seguidas (limite grátis). Aguarde 1 minuto e tente novamente.");
+                        }
+                        
+                        // Erros de Chave ou Permissão
+                        if (response.status === 403 || errMsg.includes("API key not valid")) {
+                            throw new Error("Chave sem permissão ou inválida. Tente gerar uma nova chave no AI Studio.");
+                        }
+
+                        // Se o modelo não for encontrado, ele SALVA o erro e pula pro próximo modelo do loop
+                        if (response.status === 404 || errMsg.includes("is not found") || errMsg.includes("not supported")) {
+                            lastErrorMsg = `Modelo ${modelName} não encontrado.`;
+                            continue; 
+                        }
+                        
+                        // Erro de imagem corrompida
+                        if (response.status === 400) {
+                            throw new Error("Erro na imagem. Tente afastar um pouco o celular para focar melhor.");
+                        }
+                        
+                        lastErrorMsg = `Google API diz: ${errMsg}`;
+                        continue;
+                    }
+                    
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    
+                } catch (error) {
+                    // Se for um erro crítico que sabemos que não adianta tentar outro modelo, encerramos na hora
+                    if (error.message.includes("Muitas leituras") || error.message.includes("permissão") || error.message.includes("Erro na imagem")) {
+                        throw error;
+                    }
+                    
+                    // Se for erro de internet, avisa e para
+                    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+                        throw new Error("Sem internet ou erro de conexão com a Google.");
+                    }
+                    
+                    lastErrorMsg = error.message;
                 }
-                throw error;
             }
+            
+            // Se ele esgotar todos os modelos da lista, solta a mensagem final:
+            throw new Error(`Modelos indisponíveis na sua conta. Detalhe do Google: ${lastErrorMsg}`);
         }
 
         downloadBtn.addEventListener('click', () => {
