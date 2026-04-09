@@ -302,7 +302,8 @@
             messageArea.textContent = msg;
             messageArea.className = `absolute bottom-4 left-4 right-4 rounded-lg text-white text-sm p-3 text-center shadow-lg z-50 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
             messageArea.classList.remove('hidden');
-            setTimeout(() => { messageArea.classList.add('hidden'); }, 4000);
+            // Dá mais tempo para o utilizador ler erros grandes
+            setTimeout(() => { messageArea.classList.add('hidden'); }, 6000);
         }
 
         captureBtn.addEventListener('click', async () => {
@@ -317,6 +318,12 @@
 
             if (!video.srcObject) {
                 showMessage("Câmara inativa.", true);
+                return;
+            }
+            
+            // Proteção nova: Verifica se a câmara já carregou o tamanho do vídeo
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                showMessage("A câmara ainda está a carregar. Aguarda um segundo e tenta novamente.", true);
                 return;
             }
 
@@ -357,7 +364,7 @@
                 }
             } catch (error) {
                 console.error("AI Error:", error);
-                showMessage(`Erro: ${error.message || 'Verifica a API Key e a Internet'}`, true);
+                showMessage(`Erro da IA: ${error.message}`, true);
             } finally {
                 loadingOverlay.classList.add('hidden');
                 captureBtn.disabled = false;
@@ -365,10 +372,10 @@
         });
 
         async function readMeterWithAI(base64Data, keyToUse) {
-            // Tentamos vários modelos caso algum não esteja disponível na região ou chave
+            // Adicionei gemini-2.5-flash e gemini-1.5-flash-8b na lista para garantir mais compatibilidade
             const modelsToTry = isCanvasEnv 
                 ? ["gemini-2.5-flash-preview-09-2025"] 
-                : ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
+                : ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
             
             const payload = {
                 contents: [{
@@ -379,7 +386,7 @@
                 }]
             };
 
-            let lastErrorMsg = "";
+            let lastErrorMsg = "Erro desconhecido de conexão.";
 
             for (const modelName of modelsToTry) {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
@@ -395,29 +402,34 @@
                         const errJson = await response.json();
                         console.error(`Erro no modelo ${modelName}:`, errJson);
                         
-                        const msg = errJson.error?.message || "Erro Desconhecido";
+                        const msg = errJson.error?.message || `HTTP ${response.status}`;
                         
                         if (msg.includes("API key not valid")) {
                             throw new Error("A API Key inserida é inválida.");
                         }
                         
                         if (response.status === 404) {
-                            lastErrorMsg = `Modelo ${modelName} não encontrado.`;
-                            continue; // Tenta o próximo modelo da lista
+                            lastErrorMsg = `Modelo ${modelName} indisponível.`;
+                            continue; // Tenta o próximo
                         }
                         
                         if (response.status === 403) {
-                            throw new Error("Chave sem permissão. Usaste a chave do AI Studio?");
+                            throw new Error("A tua chave API não tem permissão para usar este modelo.");
+                        }
+                        
+                        if (response.status === 400) {
+                            lastErrorMsg = "Requisição inválida (imagem vazia ou corrompida).";
+                            continue; // Pode ser um erro pontual do payload, vamos tentar o próximo
                         }
 
-                        throw new Error(msg);
+                        lastErrorMsg = msg;
+                        continue;
                     }
                     
                     const result = await response.json();
                     return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                     
                 } catch (error) {
-                    // Se for um erro crítico (chave inválida ou sem permissão), paramos imediatamente
                     if (error.message.includes("inválida") || error.message.includes("permissão")) {
                         throw error;
                     }
@@ -425,8 +437,8 @@
                 }
             }
             
-            // Se testou todos os modelos e falhou
-            throw new Error("Nenhum modelo funcionou. Verifica se colaste a chave do Gemini (e não a do Firebase)!");
+            // Se testar tudo e falhar, exibe o último erro detalhado
+            throw new Error(`Nenhum modelo funcionou. Detalhe: ${lastErrorMsg}`);
         }
 
         downloadBtn.addEventListener('click', () => {
