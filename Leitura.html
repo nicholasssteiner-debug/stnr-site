@@ -63,7 +63,7 @@
             </h1>
             <!-- Botão de Configuração da API -->
             <button id="settingsBtn" class="p-2 bg-amber-600 rounded-full hover:bg-amber-700 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             </button>
         </div>
 
@@ -379,15 +379,43 @@
         });
 
         async function readMeterWithAI(base64Data, keyToUse) {
-            // Lista com várias versões para garantir que ele acha a correta para a sua chave
-            const modelsToTry = isCanvasEnv 
-                ? ["gemini-2.5-flash-preview-09-2025"] 
-                : ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-1.5-pro-latest"];
+            let modelsToTry = [];
             
+            if (isCanvasEnv) {
+                modelsToTry = ["gemini-2.5-flash-preview-09-2025"];
+            } else {
+                try {
+                    // Passo 1: Perguntar para a própria Google quais modelos essa chave específica pode usar
+                    const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keyToUse}`);
+                    if (modelsRes.ok) {
+                        const data = await modelsRes.json();
+                        // Filtra apenas modelos Gemini que suportam geração de conteúdo
+                        const valid = data.models
+                            .filter(m => m.supportedGenerationMethods?.includes("generateContent") && m.name.includes("gemini"))
+                            .map(m => m.name.replace("models/", ""));
+                        
+                        // Organiza para tentar os modelos "flash" (mais rápidos) primeiro
+                        modelsToTry = valid.sort((a, b) => {
+                            if (a.includes("flash") && !b.includes("flash")) return -1;
+                            if (!a.includes("flash") && b.includes("flash")) return 1;
+                            return 0;
+                        });
+                        console.log("Modelos autorizados para esta chave:", modelsToTry);
+                    }
+                } catch (e) {
+                    console.warn("Falha ao buscar modelos dinamicamente. Usando lista padrão.");
+                }
+                
+                // Se a busca falhar ou vier vazia, usa a nossa lista de fallback padrão
+                if (modelsToTry.length === 0) {
+                    modelsToTry = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-1.5-pro-latest", "gemini-pro"];
+                }
+            }
+
             const payload = {
                 contents: [{
                     parts: [
-                        { text: "Lê apenas os números de kWh deste medidor de energia. Responde apenas o número com as casas decimais se houver. Exemplo: 012345.6. Se não vires um medidor claro, responde 'Erro'." },
+                        { text: "Leia apenas os números de kWh deste medidor de energia. Responda apenas o número com as casas decimais se houver. Exemplo: 012345.6. Se não vir um medidor claro, responda 'Erro'." },
                         { inlineData: { mimeType: "image/jpeg", data: base64Data } }
                     ]
                 }]
@@ -425,7 +453,7 @@
 
                         // Se o modelo não for encontrado, ele SALVA o erro e pula pro próximo modelo do loop
                         if (response.status === 404 || errMsg.includes("is not found") || errMsg.includes("not supported")) {
-                            lastErrorMsg = `Modelo ${modelName} não encontrado.`;
+                            lastErrorMsg = `Modelo ${modelName} recusado. Tentando outro...`;
                             continue; 
                         }
                         
