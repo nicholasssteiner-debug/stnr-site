@@ -180,7 +180,7 @@
         let readCount = 0;
         let localApiKey = localStorage.getItem('gemini_api_key') || "";
         
-        let authorizedModelsCache = null; // Memória para não gastar cota à toa
+        let workingModel = localStorage.getItem('working_gemini_model') || null; // Memória permanente do modelo
         
         // Verifica se estamos no ambiente de Preview do sistema ou rodando externamente
         const isCanvasEnv = window.location.hostname.includes('usercontent.goog');
@@ -281,7 +281,8 @@
         saveApiBtn.addEventListener('click', () => {
             localApiKey = apiKeyInput.value.trim();
             localStorage.setItem('gemini_api_key', localApiKey);
-            authorizedModelsCache = null; // Limpa o cache se a chave mudar
+            localStorage.removeItem('working_gemini_model'); // Limpa a memória do modelo se trocar a chave
+            workingModel = null;
             settingsPanel.classList.add('hidden');
             showMessage("Chave salva com sucesso!");
         });
@@ -386,39 +387,18 @@
             
             if (isCanvasEnv) {
                 modelsToTry = ["gemini-2.5-flash-preview-09-2025"];
-            } else if (authorizedModelsCache) {
-                // Se já temos a lista salva na memória, usamos ela direto para economizar requisições (cota)
-                modelsToTry = authorizedModelsCache;
-                console.log("Usando modelos do cache:", modelsToTry);
+            } else if (workingModel) {
+                // Se já sabemos qual modelo funciona, vai direto nele sem gastar cota pesquisando!
+                modelsToTry = [workingModel];
             } else {
-                try {
-                    // Passo 1: Perguntar para a própria Google quais modelos essa chave específica pode usar (Apenas 1 vez)
-                    const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keyToUse}`);
-                    if (modelsRes.ok) {
-                        const data = await modelsRes.json();
-                        // Filtra apenas modelos Gemini que suportam geração de conteúdo
-                        const valid = data.models
-                            .filter(m => m.supportedGenerationMethods?.includes("generateContent") && m.name.includes("gemini"))
-                            .map(m => m.name.replace("models/", ""));
-                        
-                        // Organiza para tentar os modelos "flash" (mais rápidos) primeiro
-                        modelsToTry = valid.sort((a, b) => {
-                            if (a.includes("flash") && !b.includes("flash")) return -1;
-                            if (!a.includes("flash") && b.includes("flash")) return 1;
-                            return 0;
-                        });
-                        authorizedModelsCache = modelsToTry; // Salva na memória
-                        console.log("Modelos autorizados salvos no cache:", modelsToTry);
-                    }
-                } catch (e) {
-                    console.warn("Falha ao buscar modelos dinamicamente. Usando lista padrão.");
-                }
-                
-                // Se a busca falhar ou vier vazia, usa a nossa lista de fallback padrão
-                if (modelsToTry.length === 0) {
-                    modelsToTry = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-1.5-pro-latest", "gemini-pro"];
-                    authorizedModelsCache = modelsToTry; // Salva o fallback na memória também
-                }
+                // Força tentar os modelos "Flash" primeiro, pois eles dão 15 leituras/minuto.
+                // O modelo "Pro" dá apenas 2 leituras/minuto, por isso fica por último na lista de emergência.
+                modelsToTry = [
+                    "gemini-1.5-flash", 
+                    "gemini-1.5-flash-8b", 
+                    "gemini-1.5-flash-latest", 
+                    "gemini-1.5-pro"
+                ];
             }
 
             const payload = {
@@ -452,7 +432,7 @@
                         
                         // Erro de limite de tempo (quota)
                         if (response.status === 429) {
-                            throw new Error("Muitas leituras seguidas (limite grátis). Aguarde 1 minuto e tente novamente.");
+                            throw new Error(`Limite atingido (${modelName}). Aguarde 1 minuto e tente novamente.`);
                         }
                         
                         // Erros de Chave ou Permissão
@@ -476,11 +456,18 @@
                     }
                     
                     const result = await response.json();
+                    
+                    // SALVA O MODELO NA MEMÓRIA para as próximas fotos serem instantâneas!
+                    if (!isCanvasEnv && !workingModel) {
+                        localStorage.setItem('working_gemini_model', modelName);
+                        workingModel = modelName;
+                    }
+                    
                     return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                     
                 } catch (error) {
                     // Se for um erro crítico que sabemos que não adianta tentar outro modelo, encerramos na hora
-                    if (error.message.includes("Muitas leituras") || error.message.includes("permissão") || error.message.includes("Erro na imagem")) {
+                    if (error.message.includes("Limite atingido") || error.message.includes("permissão") || error.message.includes("Erro na imagem")) {
                         throw error;
                     }
                     
@@ -494,7 +481,7 @@
             }
             
             // Se ele esgotar todos os modelos da lista, solta a mensagem final:
-            throw new Error(`Modelos indisponíveis na sua conta. Detalhe do Google: ${lastErrorMsg}`);
+            throw new Error(`Modelos indisponíveis na sua conta. Detalhe: ${lastErrorMsg}`);
         }
 
         downloadBtn.addEventListener('click', () => {
