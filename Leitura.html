@@ -385,11 +385,7 @@
             } else if (workingModel) {
                 modelsToTry = [workingModel];
             } else {
-                modelsToTry = [
-                    "gemini-1.5-flash", 
-                    "gemini-1.5-flash-8b", 
-                    "gemini-1.5-pro"
-                ];
+                modelsToTry = ["gemini-1.5-flash"]; // Tenta o principal primeiro
             }
 
             const payload = {
@@ -401,7 +397,8 @@
                 }]
             };
 
-            let errorsLog = [];
+            let lastErrorMsg = "";
+            let needsDiscovery = false;
 
             for (const modelName of modelsToTry) {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
@@ -421,10 +418,11 @@
                             errMsg = errJson.error?.message || errMsg;
                         } catch(e) {}
                         
-                        // ERRO 404: Modelo não encontrado. Esse é o ÚNICO erro que nos permite tentar o próximo modelo.
+                        // ERRO 404: O modelo não existe para esta chave. Vamos acionar a auto-descoberta!
                         if (response.status === 404 || errMsg.includes("is not found") || errMsg.includes("not supported")) {
-                            errorsLog.push(`${modelName}: Não encontrado`);
-                            continue; 
+                            needsDiscovery = true;
+                            lastErrorMsg = `Modelo ${modelName} não encontrado.`;
+                            break; // Sai do loop para rodar a descoberta no Google
                         }
                         
                         // =========================================================================
@@ -461,22 +459,68 @@
                     return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                     
                 } catch (error) {
-                    // Se foi um dos erros graves que capturamos acima, encerra o loop de vez!
+                    // Se foi um dos erros graves que capturamos acima, encerra de vez!
                     if (error.message.includes("Limite") || error.message.includes("Chave") || error.message.includes("IA rejeitou") || error.message.includes("Erro do Google")) {
                         throw error;
                     }
                     
-                    // Erro de rede (CORS, sem internet, bloqueio de antivírus)
+                    // Erro de rede (sem internet ou falha externa)
                     if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
                         throw new Error("Sem internet ou bloqueado por conexão.");
                     }
                     
-                    errorsLog.push(`${modelName}: ${error.message}`);
+                    lastErrorMsg = error.message;
+                }
+            }
+
+            // --- AUTO DESCOBERTA (SÓ RODA SE DER ERRO 404 E SÓ GASTA COTA SE FALHAR TUDO) ---
+            if (needsDiscovery && !isCanvasEnv) {
+                try {
+                    // Pergunta pro Google a lista exata de modelos que essa sua chave permite
+                    const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keyToUse}`);
+                    if (!modelsRes.ok) throw new Error("Falha ao consultar modelos no Google.");
+                    
+                    const data = await modelsRes.json();
+                    const validModels = data.models
+                        .filter(m => m.supportedGenerationMethods?.includes("generateContent") && m.name.includes("gemini"))
+                        .map(m => m.name.replace("models/", ""));
+                        
+                    if (validModels.length === 0) {
+                        throw new Error("Sua chave API não tem acesso a modelos Gemini. Tente criar um NOVO projeto no Google AI Studio.");
+                    }
+
+                    // Pega o primeiro modelo "flash" liberado que o Google informou
+                    let discoveredModel = validModels.find(m => m.includes("flash")) || validModels[0];
+                    
+                    // Tenta a leitura com o modelo descoberto
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${discoveredModel}:generateContent?key=${keyToUse}`;
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Tentou o modelo (${discoveredModel}) mas o Google recusou a imagem.`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    // DEU CERTO! Salva o modelo descoberto na memória do celular
+                    localStorage.setItem('working_gemini_model', discoveredModel);
+                    workingModel = discoveredModel;
+                    
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    
+                } catch (discoveryError) {
+                     throw new Error(`Auto-descoberta falhou: ${discoveryError.message}`);
                 }
             }
             
-            // Só vai mostrar isso se TODOS os modelos derem erro 404 (Não Encontrado)
-            throw new Error(`Modelos indisponíveis. Tente gerar uma Chave nova. Detalhes: ${errorsLog.join(" | ")}`);
+            if (lastErrorMsg) {
+                throw new Error(`Detalhes: ${lastErrorMsg}`);
+            }
+            throw new Error("Nenhum modelo compatível encontrado.");
         }
 
         downloadBtn.addEventListener('click', () => {
