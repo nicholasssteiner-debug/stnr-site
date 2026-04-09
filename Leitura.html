@@ -365,9 +365,10 @@
         });
 
         async function readMeterWithAI(base64Data, keyToUse) {
-            // Lógica Crucial: No Canvas do sistema usamos o modelo de preview. Externamente usamos o 1.5 Flash estável.
-            const modelName = isCanvasEnv ? "gemini-2.5-flash-preview-09-2025" : "gemini-1.5-flash";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
+            // Tentamos vários modelos caso algum não esteja disponível na região ou chave
+            const modelsToTry = isCanvasEnv 
+                ? ["gemini-2.5-flash-preview-09-2025"] 
+                : ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
             
             const payload = {
                 contents: [{
@@ -378,24 +379,54 @@
                 }]
             };
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            let lastErrorMsg = "";
 
-            if (!response.ok) {
-                const errJson = await response.json();
-                console.error("API Error Body:", errJson);
-                // Melhora a mensagem para o utilizador
-                const msg = errJson.error?.message || "Erro Desconhecido";
-                if (msg.includes("API key not valid")) throw new Error("API Key Inválida");
-                if (response.status === 404) throw new Error("Modelo não encontrado. Tenta gemini-1.5-flash.");
-                throw new Error(msg);
+            for (const modelName of modelsToTry) {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${keyToUse}`;
+                
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errJson = await response.json();
+                        console.error(`Erro no modelo ${modelName}:`, errJson);
+                        
+                        const msg = errJson.error?.message || "Erro Desconhecido";
+                        
+                        if (msg.includes("API key not valid")) {
+                            throw new Error("A API Key inserida é inválida.");
+                        }
+                        
+                        if (response.status === 404) {
+                            lastErrorMsg = `Modelo ${modelName} não encontrado.`;
+                            continue; // Tenta o próximo modelo da lista
+                        }
+                        
+                        if (response.status === 403) {
+                            throw new Error("Chave sem permissão. Usaste a chave do AI Studio?");
+                        }
+
+                        throw new Error(msg);
+                    }
+                    
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    
+                } catch (error) {
+                    // Se for um erro crítico (chave inválida ou sem permissão), paramos imediatamente
+                    if (error.message.includes("inválida") || error.message.includes("permissão")) {
+                        throw error;
+                    }
+                    lastErrorMsg = error.message;
+                }
             }
             
-            const result = await response.json();
-            return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            // Se testou todos os modelos e falhou
+            throw new Error("Nenhum modelo funcionou. Verifica se colaste a chave do Gemini (e não a do Firebase)!");
         }
 
         downloadBtn.addEventListener('click', () => {
