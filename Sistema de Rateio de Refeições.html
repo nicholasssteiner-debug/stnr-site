@@ -70,6 +70,7 @@
         const AlertCircle = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>;
         const CheckCircle2 = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></Icon>;
         const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
+        const UserPlus = (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></Icon>;
         const Printer = (p) => <Icon {...p}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></Icon>;
         const FilePlus = (p) => <Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></Icon>;
         const ChevronDown = (p) => <Icon {...p}><polyline points="6 9 12 15 18 9"/></Icon>;
@@ -327,7 +328,7 @@
                               <td className="py-3 px-4 font-medium print:py-2">{emp.code}</td>
                               <td className="py-3 px-4 print:py-2">
                                 {emp.name}
-                                {emp.records.filter(r => r.fullCode?.includes('-')).length > 0 && <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full print:border print:border-black">Dep.</span>}
+                                {emp.records.filter(r => r.isDependent).length > 0 && <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full print:border print:border-black">Dep.</span>}
                               </td>
                               <td className="py-3 px-4 print:py-2"><span className="inline-block px-2 py-1 bg-slate-100 rounded text-xs print:p-0 print:bg-transparent">{emp.category}</span></td>
                               <td className="py-3 px-4 text-xs text-slate-500 print:py-2">
@@ -499,6 +500,10 @@
           // Estados Logins
           const [newAppUser, setNewAppUser] = useState({ email: '', password: '', role: 'user' });
 
+          // Estados Dependentes
+          const [selectedEmpForDep, setSelectedEmpForDep] = useState(null);
+          const [newDep, setNewDep] = useState({ code: '', name: '', type: 'meia' });
+
           const handleRuleChange = (category, dayType, field, value) => {
             setSettings(prev => {
               const catRules = prev.categoryRules[category] || {};
@@ -596,10 +601,10 @@
                   newEmployees.forEach(ne => {
                     const existingIdx = merged.findIndex(e => e.code === ne.code);
                     if(existingIdx >= 0) {
-                      merged[existingIdx] = { ...merged[existingIdx], ...ne };
+                      merged[existingIdx] = { ...merged[existingIdx], ...ne, dependents: merged[existingIdx].dependents || [] };
                       updated++;
                     } else {
-                      merged.push(ne);
+                      merged.push({ ...ne, dependents: [] });
                       added++;
                     }
                   });
@@ -651,6 +656,9 @@
                   </button>
                   <button onClick={() => setConfigTab('excecoes')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'excecoes' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
                     <Sliders className="mr-3 h-5 w-5" /> Exceções Contábeis
+                  </button>
+                  <button onClick={() => setConfigTab('dependentes')} className={`shrink-0 flex items-center px-3 py-2 text-sm font-medium rounded-lg ${configTab === 'dependentes' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}>
+                    <UserPlus className="mr-3 h-5 w-5" /> Dependentes
                   </button>
                   
                   {/* Visível apenas para Administradores */}
@@ -1010,6 +1018,160 @@
                   </div>
                 )}
 
+                {configTab === 'dependentes' && (
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Gestão de Dependentes</h2>
+                    
+                    {!selectedEmpForDep ? (
+                      <>
+                        <p className="text-sm text-slate-600 mb-6">Selecione um funcionário abaixo para cadastrar ou remover seus dependentes. Os códigos cadastrados aqui serão cobrados na fatura do titular.</p>
+                        
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                          <div className="relative w-full md:w-64">
+                            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                            <input type="text" placeholder="Buscar funcionário..." value={empSearch} onChange={e => setEmpSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                          </div>
+                        </div>
+
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                              <tr>
+                                <th className="px-4 py-3 font-semibold text-slate-700">Código</th>
+                                <th className="px-4 py-3 font-semibold text-slate-700">Funcionário</th>
+                                <th className="px-4 py-3 font-semibold text-slate-700 text-center">Dependentes Cadastrados</th>
+                                <th className="px-4 py-3 font-semibold text-right text-slate-700">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredEmployees.map(emp => (
+                                <tr key={emp.code} className="border-b border-slate-100 hover:bg-slate-50">
+                                  <td className="px-4 py-3 font-medium text-slate-800">{emp.code}</td>
+                                  <td className="px-4 py-3 text-slate-600">{emp.name}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-200">
+                                      {(emp.dependents || []).length}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <button onClick={() => setSelectedEmpForDep(emp)} className="text-blue-600 hover:text-blue-800 font-medium text-xs px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded transition-colors">
+                                      Gerenciar
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                              {filteredEmployees.length === 0 && (
+                                <tr><td colSpan="4" className="text-center py-8 text-slate-500">Nenhum funcionário encontrado.</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="animate-fade-in">
+                        <div className="flex items-center gap-4 mb-6">
+                          <button onClick={() => { setSelectedEmpForDep(null); setNewDep({ code: '', name: '', type: 'meia' }); }} className="text-slate-500 hover:text-slate-800 text-sm font-medium flex items-center bg-slate-100 px-3 py-1.5 rounded-lg">
+                            &larr; Voltar
+                          </button>
+                          <div className="border-l border-slate-300 pl-4">
+                            <p className="text-sm text-slate-500">Titular selecionado:</p>
+                            <p className="font-bold text-slate-800">{selectedEmpForDep.code} - {selectedEmpForDep.name}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 mb-6 flex flex-wrap gap-4 items-end">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Cód. Crachá Dependente</label>
+                            <input type="text" value={newDep.code} onChange={e => setNewDep({...newDep, code: e.target.value})} className="w-40 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: 9991" />
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Dependente</label>
+                            <input type="text" value={newDep.name} onChange={e => setNewDep({...newDep, name: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nome completo" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Cobrança</label>
+                            <select value={newDep.type} onChange={e => setNewDep({...newDep, type: e.target.value})} className="w-40 px-3 py-2 border border-slate-300 rounded bg-white outline-none focus:ring-2 focus:ring-blue-500">
+                              <option value="meia">Meia</option>
+                              <option value="inteira">Inteira</option>
+                              <option value="isento">Isento</option>
+                            </select>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              if (!newDep.code || !newDep.name) return showNotification("Preencha código e nome", "error");
+                              
+                              const allCodes = new Set();
+                              employees.forEach(e => {
+                                allCodes.add(e.code);
+                                (e.dependents || []).forEach(d => allCodes.add(d.code));
+                              });
+                              if (allCodes.has(newDep.code)) return showNotification("Este código já existe no sistema.", "error");
+
+                              const updatedEmp = { 
+                                ...selectedEmpForDep, 
+                                dependents: [...(selectedEmpForDep.dependents || []), { ...newDep, id: Date.now() }] 
+                              };
+                              
+                              setEmployees(employees.map(e => e.code === selectedEmpForDep.code ? updatedEmp : e));
+                              setSelectedEmpForDep(updatedEmp);
+                              setNewDep({ code: '', name: '', type: 'meia' });
+                              showNotification("Dependente adicionado com sucesso!");
+                            }} 
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center transition-colors"
+                          >
+                            <Plus className="w-4 h-4 mr-2" /> Adicionar
+                          </button>
+                        </div>
+
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-100 border-b border-slate-200">
+                              <tr>
+                                <th className="px-4 py-3 font-semibold text-slate-700">Código</th>
+                                <th className="px-4 py-3 font-semibold text-slate-700">Nome do Dependente</th>
+                                <th className="px-4 py-3 font-semibold text-slate-700">Tipo</th>
+                                <th className="px-4 py-3 font-semibold text-right text-slate-700">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(selectedEmpForDep.dependents || []).map(dep => (
+                                <tr key={dep.code} className="border-b border-slate-100 hover:bg-slate-50">
+                                  <td className="px-4 py-3 font-medium text-slate-800">{dep.code}</td>
+                                  <td className="px-4 py-3 text-slate-600">{dep.name}</td>
+                                  <td className="px-4 py-3 capitalize">
+                                    <span className={`px-2 py-1 rounded text-xs font-medium border ${dep.type === 'isento' ? 'bg-green-50 text-green-700 border-green-200' : dep.type === 'meia' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                      {dep.type}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <button 
+                                      onClick={() => {
+                                        const updatedEmp = { 
+                                          ...selectedEmpForDep, 
+                                          dependents: selectedEmpForDep.dependents.filter(d => d.code !== dep.code) 
+                                        };
+                                        setEmployees(employees.map(e => e.code === selectedEmpForDep.code ? updatedEmp : e));
+                                        setSelectedEmpForDep(updatedEmp);
+                                        showNotification("Dependente removido!");
+                                      }} 
+                                      className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!selectedEmpForDep.dependents || selectedEmpForDep.dependents.length === 0) && (
+                                <tr><td colSpan="4" className="text-center py-8 text-slate-500">Nenhum dependente cadastrado para este titular.</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
             </div>
           );
@@ -1163,17 +1325,24 @@
 
           const processScans = (scans, empList, currentSettings, manuals) => {
             const empMap = {};
+            const codeLookup = {};
             
             empList.forEach(emp => {
               empMap[emp.code] = { 
                 ...emp, 
                 totalValue: 0, 
                 records: [], 
-                dailyLog: {} 
+                dailyLog: {},
+                dependents: emp.dependents || []
               };
               if (emp.category === 'Fixos') {
                 empMap[emp.code].totalValue = currentSettings.fixedRate;
               }
+
+              codeLookup[emp.code] = { role: 'titular', empCode: emp.code };
+              (emp.dependents || []).forEach(dep => {
+                codeLookup[dep.code] = { role: 'dependent', empCode: emp.code, depType: dep.type, depName: dep.name };
+              });
             });
 
             const sortedScans = [...scans].sort((a, b) => {
@@ -1183,9 +1352,11 @@
               return (dateA.split('/').reverse().join('') + timeA).localeCompare(dateB.split('/').reverse().join('') + timeB);
             });
 
+            const depMealCount = {};
+
             sortedScans.forEach(scan => {
-              const isDependent = scan.fullCode.includes('-');
-              const baseCode = isDependent ? scan.fullCode.split('-')[0] : scan.fullCode;
+              const scanInfo = codeLookup[scan.fullCode];
+              const baseCode = scanInfo ? scanInfo.empCode : scan.fullCode;
               
               if (!empMap[baseCode]) {
                 const knownEmp = empList.find(e => e.code === baseCode);
@@ -1194,7 +1365,7 @@
                   code: baseCode, 
                   name: knownEmp ? knownEmp.name : (scan.name || 'Desconhecido'), 
                   category: knownEmp ? knownEmp.category : 'Não Isentos', 
-                  totalValue: 0, records: [], dailyLog: {} 
+                  totalValue: 0, records: [], dailyLog: {}, dependents: []
                 };
               }
 
@@ -1207,6 +1378,7 @@
               
               let charge = 0;
               let reason = '';
+              let isDepRecord = false;
 
               if (emp.category === 'Fixos') {
                 charge = 0;
@@ -1214,7 +1386,6 @@
               } else {
                 let baseRules = currentSettings.categoryRules[emp.category];
                 if (!baseRules) {
-                    // Fallback de segurança para usuários antigos que não tem essa categoria salva no banco de dados ainda
                     const fallbackTotIsento = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
                     const fallbackBase = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
                     if (emp.category === 'Totalmente Isentos') {
@@ -1225,45 +1396,33 @@
                 }
                 const rules = baseRules[dayType] || baseRules;
 
-                if (isDependent) {
-                  const parts = scan.fullCode.split('-');
-                  let seq = 1;
-                  let explicitType = null; 
-
-                  if (parts.length >= 2) {
-                    const suffix = parts[parts.length - 1]; // Pega a parte depois do último traço
-                    
-                    // O último caractere do sufixo define a cobrança (0=Isento, 1=Meia, 2=Inteira)
-                    const typeStr = suffix.slice(-1);
-                    explicitType = parseInt(typeStr);
-                    
-                    // O restante antes do último caractere é a sequência (1º, 2º, 5º, etc...)
-                    const seqStr = suffix.slice(0, -1);
-                    seq = seqStr.length > 0 ? parseInt(seqStr) : 1;
-                  }
-
+                if (scanInfo && scanInfo.role === 'dependent') {
+                  isDepRecord = true;
+                  
+                  if (!depMealCount[baseCode]) depMealCount[baseCode] = {};
+                  if (!depMealCount[baseCode][dateStr]) depMealCount[baseCode][dateStr] = {};
+                  if (!depMealCount[baseCode][dateStr][mealType]) depMealCount[baseCode][dateStr][mealType] = 0;
+                  
+                  depMealCount[baseCode][dateStr][mealType]++;
+                  const currentCount = depMealCount[baseCode][dateStr][mealType];
                   const limit = currentSettings.dependentLimit || 3;
-                  let finalType = 2; // Predefinição: Inteira
-
-                  if (seq > limit) {
-                    // Excedeu a cota permitida pelo sistema -> Força Inteira!
-                    finalType = 2;
-                  } else {
-                    // Dentro da cota -> Usa o tipo lido do crachá
-                    finalType = isNaN(explicitType) ? 1 : explicitType;
+                  
+                  let finalType = scanInfo.depType;
+                  if (currentCount > limit) {
+                    finalType = 'inteira'; 
                   }
 
-                  if (finalType === 0) {
+                  if (finalType === 'isento') {
                     charge = 0;
-                    reason = `Dep. Isento (${mealType.toUpperCase()} - ${dayLabel})`;
-                  } else if (finalType === 1) {
+                    reason = `Dep. Isento (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
+                  } else if (finalType === 'meia') {
                     charge = isAlmoco ? (rules.depMeiaAlmoco ?? 7) : (rules.depMeiaOutras ?? 7);
-                    reason = `Dep. Meia (${mealType.toUpperCase()} - ${dayLabel})`;
+                    reason = `Dep. Meia (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
                   } else {
                     const fallbackInt = rules.depIntAlmoco ?? 35;
                     charge = isAlmoco ? (rules.depIntAlmoco ?? fallbackInt) : (rules.depIntOutras ?? fallbackInt);
-                    reason = `Dep. Inteira (${mealType.toUpperCase()} - ${dayLabel})`;
-                    if (seq > limit) reason += ` (Acima do limite)`;
+                    reason = `Dep. Inteira (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
+                    if (currentCount > limit) reason += ` (Acima do limite)`;
                   }
                 } else {
                   if (isAlmoco) {
@@ -1279,12 +1438,12 @@
               if (emp.category !== 'Fixos') {
                 emp.totalValue += charge;
               }
-              emp.records.push({ ...scan, mealType, charge, reason });
+              emp.records.push({ ...scan, mealType, charge, reason, isDependent: isDepRecord });
             });
 
             manuals.forEach(mc => {
               if (!empMap[mc.code]) {
-                const empDef = empList.find(e => e.code === mc.code) || { code: mc.code, name: 'Desconhecido', category: 'Não Isentos' };
+                const empDef = empList.find(e => e.code === mc.code) || { code: mc.code, name: 'Desconhecido', category: 'Não Isentos', dependents: [] };
                 empMap[mc.code] = { ...empDef, totalValue: 0, records: [], dailyLog: {} };
               }
               empMap[mc.code].totalValue += Number(mc.amount);
@@ -1294,7 +1453,8 @@
                 name: empMap[mc.code].name,
                 mealType: 'Manual',
                 charge: Number(mc.amount),
-                reason: `Lanc. Manual: ${mc.reason || 'Sem descrição'}`
+                reason: `Lanc. Manual: ${mc.reason || 'Sem descrição'}`,
+                isDependent: false
               });
             });
 
