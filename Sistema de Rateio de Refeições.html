@@ -1380,50 +1380,50 @@
               let reason = '';
               let isDepRecord = false;
 
-              if (emp.category === 'Fixos') {
-                charge = 0;
-                reason = 'Taxa Fixa Mensal já aplicada';
-              } else {
-                let baseRules = currentSettings.categoryRules[emp.category];
-                if (!baseRules) {
-                    const fallbackTotIsento = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-                    const fallbackBase = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
-                    if (emp.category === 'Totalmente Isentos') {
-                        baseRules = { weekday: fallbackTotIsento, weekend: fallbackTotIsento };
-                    } else {
-                        baseRules = { weekday: fallbackBase, weekend: fallbackBase };
-                    }
-                }
-                const rules = baseRules[dayType] || baseRules;
-
-                if (scanInfo && scanInfo.role === 'dependent') {
-                  isDepRecord = true;
-                  
-                  if (!depMealCount[baseCode]) depMealCount[baseCode] = {};
-                  if (!depMealCount[baseCode][dateStr]) depMealCount[baseCode][dateStr] = {};
-                  if (!depMealCount[baseCode][dateStr][mealType]) depMealCount[baseCode][dateStr][mealType] = 0;
-                  
-                  depMealCount[baseCode][dateStr][mealType]++;
-                  const currentCount = depMealCount[baseCode][dateStr][mealType];
-                  const limit = currentSettings.dependentLimit || 3;
-                  
-                  let finalType = scanInfo.depType;
-                  if (currentCount > limit) {
-                    finalType = 'inteira'; 
-                  }
-
-                  if (finalType === 'isento') {
-                    charge = 0;
-                    reason = `Dep. Isento (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
-                  } else if (finalType === 'meia') {
-                    charge = isAlmoco ? (rules.depMeiaAlmoco ?? 7) : (rules.depMeiaOutras ?? 7);
-                    reason = `Dep. Meia (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
+              let baseRules = currentSettings.categoryRules[emp.category];
+              if (!baseRules) {
+                  const fallbackTotIsento = { almoco: 0, outras: 0, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
+                  const fallbackBase = { almoco: 35, outras: 35, depMeiaAlmoco: 7, depMeiaOutras: 7, depIntAlmoco: 35, depIntOutras: 35 };
+                  if (emp.category === 'Totalmente Isentos') {
+                      baseRules = { weekday: fallbackTotIsento, weekend: fallbackTotIsento };
                   } else {
-                    const fallbackInt = rules.depIntAlmoco ?? 35;
-                    charge = isAlmoco ? (rules.depIntAlmoco ?? fallbackInt) : (rules.depIntOutras ?? fallbackInt);
-                    reason = `Dep. Inteira (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
-                    if (currentCount > limit) reason += ` (Acima do limite)`;
+                      baseRules = { weekday: fallbackBase, weekend: fallbackBase };
                   }
+              }
+              const rules = baseRules[dayType] || baseRules;
+
+              if (scanInfo && scanInfo.role === 'dependent') {
+                isDepRecord = true;
+                
+                if (!depMealCount[baseCode]) depMealCount[baseCode] = {};
+                if (!depMealCount[baseCode][dateStr]) depMealCount[baseCode][dateStr] = {};
+                if (!depMealCount[baseCode][dateStr][mealType]) depMealCount[baseCode][dateStr][mealType] = 0;
+                
+                depMealCount[baseCode][dateStr][mealType]++;
+                const currentCount = depMealCount[baseCode][dateStr][mealType];
+                const limit = currentSettings.dependentLimit || 3;
+                
+                let finalType = scanInfo.depType;
+                if (currentCount > limit) {
+                  finalType = 'inteira'; 
+                }
+
+                if (finalType === 'isento') {
+                  charge = 0;
+                  reason = `Dep. Isento (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
+                } else if (finalType === 'meia') {
+                  charge = isAlmoco ? (rules.depMeiaAlmoco ?? 7) : (rules.depMeiaOutras ?? 7);
+                  reason = `Dep. Meia (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
+                } else {
+                  const fallbackInt = rules.depIntAlmoco ?? 35;
+                  charge = isAlmoco ? (rules.depIntAlmoco ?? fallbackInt) : (rules.depIntOutras ?? fallbackInt);
+                  reason = `Dep. Inteira (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
+                  if (currentCount > limit) reason += ` (Acima do limite)`;
+                }
+              } else {
+                if (emp.category === 'Fixos') {
+                  charge = 0;
+                  reason = 'Taxa Fixa Mensal já aplicada';
                 } else {
                   if (isAlmoco) {
                     charge = rules.almoco ?? 35;
@@ -1435,9 +1435,9 @@
                 }
               }
 
-              if (emp.category !== 'Fixos') {
-                emp.totalValue += charge;
-              }
+              // Soma sempre. Se o titular for fixo, o charge dele é 0. Mas se for dependente, o charge entra.
+              emp.totalValue += charge;
+              
               emp.records.push({ ...scan, mealType, charge, reason, isDependent: isDepRecord });
             });
 
