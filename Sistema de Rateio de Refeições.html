@@ -94,7 +94,6 @@
 
         const DEFAULT_SETTINGS = {
           fixedRate: 165,
-          dependentLimit: 3,
           mealTimes: {
             cafe: { start: '05:00', end: '10:00' },
             almoco: { start: '10:01', end: '15:00' },
@@ -332,14 +331,13 @@
                               </td>
                               <td className="py-3 px-4 print:py-2"><span className="inline-block px-2 py-1 bg-slate-100 rounded text-xs print:p-0 print:bg-transparent">{emp.category}</span></td>
                               <td className="py-3 px-4 text-xs text-slate-500 print:py-2">
-                                {emp.category === 'Fixos' ? 'Cobrança Fixa' : (
-                                  <ul className="list-disc pl-4">
-                                    {emp.records.map((r, i) => {
-                                      const timeOrDate = r.mealType === 'Manual' ? r.dateTime.split(' ')[0] : r.dateTime;
-                                      return <li key={i}>{timeOrDate} - {r.reason} (R$ {r.charge.toFixed(2)})</li>
-                                    })}
-                                  </ul>
-                                )}
+                                {emp.category === 'Fixos' && <div className="font-semibold text-slate-700 mb-1">Taxa Fixa</div>}
+                                <ul className="list-disc pl-4">
+                                  {emp.records.filter(r => emp.category !== 'Fixos' || r.isDependent || r.mealType === 'Manual').map((r, i) => {
+                                    const timeOrDate = r.mealType === 'Manual' ? r.dateTime.split(' ')[0] : r.dateTime;
+                                    return <li key={i}>{timeOrDate} - {r.reason} (R$ {r.charge.toFixed(2)})</li>
+                                  })}
+                                </ul>
                               </td>
                               <td className="py-3 px-4 text-right font-bold text-slate-800 print:py-2">{emp.totalValue.toFixed(2).replace('.', ',')}</td>
                             </tr>
@@ -748,11 +746,6 @@
                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                          <label className="block text-sm font-semibold text-slate-700 mb-1">Taxa Mensal (Fixos)</label>
                          <input type="number" value={settings.fixedRate} onChange={e => setSettings({...settings, fixedRate: Number(e.target.value)})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                       </div>
-                       <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                         <label className="block text-sm font-semibold text-slate-700 mb-1">Cota Máxima de Dependentes</label>
-                         <input type="number" value={settings.dependentLimit} onChange={e => setSettings({...settings, dependentLimit: Number(e.target.value)})} className="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                         <p className="text-xs text-slate-500 mt-1">Dependentes acima deste limite (excedentes) são cobrados como Inteira, ignorando o tipo marcado.</p>
                        </div>
                      </div>
                    </div>
@@ -1352,8 +1345,6 @@
               return (dateA.split('/').reverse().join('') + timeA).localeCompare(dateB.split('/').reverse().join('') + timeB);
             });
 
-            const depMealCount = {};
-
             sortedScans.forEach(scan => {
               const scanInfo = codeLookup[scan.fullCode];
               const baseCode = scanInfo ? scanInfo.empCode : scan.fullCode;
@@ -1394,19 +1385,7 @@
 
               if (scanInfo && scanInfo.role === 'dependent') {
                 isDepRecord = true;
-                
-                if (!depMealCount[baseCode]) depMealCount[baseCode] = {};
-                if (!depMealCount[baseCode][dateStr]) depMealCount[baseCode][dateStr] = {};
-                if (!depMealCount[baseCode][dateStr][mealType]) depMealCount[baseCode][dateStr][mealType] = 0;
-                
-                depMealCount[baseCode][dateStr][mealType]++;
-                const currentCount = depMealCount[baseCode][dateStr][mealType];
-                const limit = currentSettings.dependentLimit || 3;
-                
                 let finalType = scanInfo.depType;
-                if (currentCount > limit) {
-                  finalType = 'inteira'; 
-                }
 
                 if (finalType === 'isento') {
                   charge = 0;
@@ -1418,7 +1397,6 @@
                   const fallbackInt = rules.depIntAlmoco ?? 35;
                   charge = isAlmoco ? (rules.depIntAlmoco ?? fallbackInt) : (rules.depIntOutras ?? fallbackInt);
                   reason = `Dep. Inteira (${scanInfo.depName}) - ${mealType.toUpperCase()} - ${dayLabel}`;
-                  if (currentCount > limit) reason += ` (Acima do limite)`;
                 }
               } else {
                 if (emp.category === 'Fixos') {
