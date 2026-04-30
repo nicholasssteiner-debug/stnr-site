@@ -986,9 +986,7 @@
                                     value={emp.overrideSubaccount || ''} 
                                     onChange={(e) => handleUpdateOverride(emp.code, 'overrideSubaccount', e.target.value)}
                                     placeholder={`Padrão: ${defaultSub}`}
-                                    disabled={!isOutraEntidade}
-                                    title={!isOutraEntidade ? "Apenas a categoria 'Outras Entidades' permite alterar a Subconta." : ""}
-                                    className={`w-32 px-2 py-1 border border-slate-300 rounded outline-none focus:ring-2 focus:ring-blue-500 ${!isOutraEntidade ? 'bg-slate-100 cursor-not-allowed text-slate-400' : ''}`}
+                                    className="w-32 px-2 py-1 border border-slate-300 rounded outline-none focus:ring-2 focus:ring-blue-500"
                                   />
                                 </td>
                               </tr>
@@ -1005,7 +1003,7 @@
                       <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5" />
                       <div>
                         <strong>Como funciona:</strong>
-                        <p className="mt-1">Qualquer valor escrito nestas caixas será utilizado na exportação do CSV no lugar da regra padrão. Você pode alterar a <strong>Conta</strong> de qualquer pessoa. A <strong>Subconta</strong> apenas pode ser alterada para funcionários da categoria <i>Outras Entidades</i> (as outras categorias utilizarão sempre o Código do funcionário).</p>
+                        <p className="mt-1">Qualquer valor escrito nestas caixas será utilizado na exportação do CSV no lugar da regra padrão. Você pode alterar a <strong>Conta</strong> e a <strong>Subconta</strong> de qualquer pessoa.</p>
                       </div>
                     </div>
                   </div>
@@ -1543,7 +1541,7 @@
                 if (emp.overrideAccount && emp.overrideAccount.trim() !== '') {
                   conta = emp.overrideAccount.trim();
                 }
-                if (isOutraEntidade && emp.overrideSubaccount && emp.overrideSubaccount.trim() !== '') {
+                if (emp.overrideSubaccount && emp.overrideSubaccount.trim() !== '') {
                   subconta = emp.overrideSubaccount.trim();
                 }
 
