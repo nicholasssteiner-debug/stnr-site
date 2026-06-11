@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
-        // Configuração restaurada do seu ficheiro original
+        // Configuração original restaurada
         window.firebaseConfig = {
           apiKey: "AIzaSyB7ov_J4nPV2XKmKaRhozTFdMB_3-sI6bY",
           authDomain: "mapa-de-analise-por-conta.firebaseapp.com",
@@ -87,21 +87,20 @@
         }
     </style>
 </head>
-<body class="p-4 sm:p-6 lg:p-8">
+<body class="p-4 sm:p-6 lg:p-8 relative">
     <div class="max-w-7xl mx-auto">
 
-        <!-- Seção de Sessão Colaborativa -->
         <div id="session-container" class="card p-6 rounded-xl mb-8">
             <h2 class="text-2xl font-bold text-white mb-4">Colaboração em Tempo Real</h2>
             <div id="create-session-view">
-                <p class="text-gray-400 mb-4">Para começar, carregue um arquivo CSV para criar uma nova sessão de análise e compartilhe o ID com sua equipe.</p>
+                <p class="text-gray-400 mb-4">Para começar, carregue um ficheiro CSV para criar uma nova sessão de análise e partilhe o ID com a sua equipa.</p>
                 <input type="file" id="csv-file" class="hidden" accept=".csv">
                 <button id="create-session-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" disabled>
                     A autenticar...
                 </button>
             </div>
              <div id="join-session-view" class="mt-6 border-t border-gray-700 pt-6">
-                 <p class="text-gray-400 mb-4">Ou, se você tem um ID de sessão, cole-o abaixo para entrar.</p>
+                 <p class="text-gray-400 mb-4">Ou, se tem um ID de sessão, cole-o abaixo para entrar.</p>
                  <div class="flex gap-2">
                      <input type="text" id="session-id-input" placeholder="Cole o ID da sessão aqui" class="flex-grow bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                      <button id="join-session-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors" disabled>Entrar</button>
@@ -113,15 +112,21 @@
         </div>
         
         <!-- Informação da Sessão Ativa -->
-        <div id="active-session-info" class="hidden card p-4 rounded-lg mb-8 bg-gray-900">
-             <p class="text-sm text-gray-400">Sessão: 
-                <strong id="session-id-display" class="text-lg text-yellow-400 font-mono cursor-pointer" title="Clique para copiar"></strong>
-            </p>
-             <p class="text-xs text-gray-500 mt-2">O seu ID: <span id="user-id-display" class="font-mono"></span></p>
+        <div id="active-session-info" class="hidden card p-4 rounded-lg mb-8 bg-gray-900 flex justify-between items-center">
+            <div>
+                 <p class="text-sm text-gray-400">Sessão: 
+                    <strong id="session-id-display" class="text-lg text-yellow-400 font-mono cursor-pointer" title="Clique para copiar"></strong>
+                </p>
+                 <p class="text-xs text-gray-500 mt-2">O seu ID: <span id="user-id-display" class="font-mono"></span></p>
+            </div>
+            <!-- Botão de Novo Lançamento -->
+            <button onclick="openModal()" id="open-modal-btn" class="hidden bg-indigo-600 hover:bg-indigo-700 shadow-lg text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Novo Lançamento
+            </button>
         </div>
 
 
-        <!-- Conteúdo do Dashboard -->
         <div id="dashboard-content" class="hidden">
             <!-- Cabeçalho -->
             <header class="mb-8">
@@ -187,10 +192,10 @@
                                     <th class="px-4 py-3 min-w-[150px]">Fornecedor</th>
                                     <th class="px-4 py-3 min-w-[100px]">Lançamento</th>
                                     <th class="px-4 py-3 min-w-[100px]">Vencimento</th>
-                                    <th class="px-4 py-3 min-w-[200px]">Descrição</th>
                                     <th class="px-4 py-3">Valor</th>
-                                    <th class="px-4 py-3 text-center">Status</th>
+                                    <th class="px-4 py-3 min-w-[200px]">Descrição</th>
                                     <th class="px-4 py-3 min-w-[200px]">Obs. Analista</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
                                     <th class="px-4 py-3 min-w-[200px]">Obs. Responsável</th>
                                     <th class="px-4 py-3 text-center">Ações</th>
                                 </tr>
@@ -203,12 +208,61 @@
         </div>
     </div>
     
-    <div id="toast-notification" class="fixed bottom-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-all duration-300 transform translate-y-16 opacity-0"></div>
+    <div id="new-entry-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-gray-800 rounded-xl p-6 md:p-8 w-full max-w-lg shadow-2xl border border-gray-700 transform scale-95 transition-transform duration-300" id="modal-card">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-white">Novo Lançamento Manual</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="new-entry-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Fornecedor</label>
+                    <input type="text" id="ne-fornecedor" required placeholder="Ex: CONCESSIONÁRIA DE ENERGIA" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Lançamento (ID/Data)</label>
+                        <input type="text" id="ne-lancamento" required placeholder="Ex: 01/01/2026" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Data Vencimento</label>
+                        <input type="text" id="ne-vencimento" placeholder="dd/mm/aaaa" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Valor (R$)</label>
+                    <input type="number" step="0.01" id="ne-valor" required placeholder="1500.50" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Descrição</label>
+                    <input type="text" id="ne-descricao" placeholder="Descrição do que foi pago..." class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Observações do Analista</label>
+                    <input type="text" id="ne-observacoes" placeholder="Notas sobre este lançamento" class="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                </div>
+                
+                <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-700">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors">Adicionar Lançamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="toast-notification" class="fixed bottom-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg hidden transition-all duration-300 transform translate-y-16 opacity-0 z-50"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc, writeBatch, collection, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, writeBatch, collection, query, onSnapshot, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const fileInput = document.getElementById('csv-file');
         const createSessionBtn = document.getElementById('create-session-btn');
@@ -226,6 +280,9 @@
         const dashboardContent = document.getElementById('dashboard-content');
         const activeSessionInfo = document.getElementById('active-session-info');
         const loadingState = document.getElementById('loading-state');
+        const openModalBtn = document.getElementById('open-modal-btn');
+        const modal = document.getElementById('new-entry-modal');
+        const modalCard = document.getElementById('modal-card');
 
         let db, auth, userId, currentDashboardId = null, unsubscribeFromEntries = null;
         let suppliersChartInstance = null, fullDataset = [], isOverdueFilterActive = false, isChartVisible = false;
@@ -262,10 +319,83 @@
         function showToast(msg, isErr = false) {
             const toast = document.getElementById('toast-notification');
             toast.textContent = msg;
-            toast.className = `fixed bottom-5 right-5 text-white py-3 px-5 rounded-lg shadow-lg transition-all duration-300 transform ${isErr ? 'bg-red-600' : 'bg-green-600'}`;
+            toast.className = `fixed bottom-5 right-5 text-white py-3 px-5 rounded-lg shadow-lg transition-all duration-300 transform z-50 ${isErr ? 'bg-red-600' : 'bg-green-600'}`;
             toast.classList.remove('hidden', 'opacity-0', 'translate-y-16');
             setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-16'); setTimeout(() => toast.classList.add('hidden'), 300); }, 3000);
         }
+
+        // Função inteligente para converter datas corrompidas do Excel
+        function parseExcelDate(serial) {
+            if (!serial) return '';
+            if (serial.includes('/')) return serial; 
+            
+            const num = parseInt(serial);
+            if (!isNaN(num) && num > 10000) {
+                const date = new Date((num - 25569) * 86400 * 1000);
+                date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+                const d = String(date.getDate()).padStart(2, '0');
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const y = date.getFullYear();
+                return `${d}/${m}/${y}`;
+            }
+            return serial;
+        }
+
+        // Funções do Modal de Novo Lançamento
+        window.openModal = () => {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalCard.classList.remove('scale-95');
+                modalCard.classList.add('scale-100');
+            }, 10);
+        };
+
+        window.closeModal = () => {
+            modal.classList.add('opacity-0');
+            modalCard.classList.remove('scale-100');
+            modalCard.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        // Lógica de Submissão do Lançamento Manual
+        document.getElementById('new-entry-form').onsubmit = async (e) => {
+            e.preventDefault();
+            if (!currentDashboardId) return showToast("Nenhuma sessão ativa.", true);
+
+            const btnSubmit = e.target.querySelector('button[type="submit"]');
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "A guardar...";
+
+            const fornecedorText = document.getElementById('ne-fornecedor').value.trim();
+            const fornecedorId = fornecedorText.toUpperCase().replace(/[^A-Z0-9]/g, '_'); 
+            
+            const novoItem = {
+                fornecedor: fornecedorText,
+                fornecedorId: fornecedorId,
+                "Lançamento": document.getElementById('ne-lancamento').value,
+                "Apontamento": document.getElementById('ne-vencimento').value,
+                "Descrição": document.getElementById('ne-descricao').value,
+                "Observações": document.getElementById('ne-observacoes').value,
+                valor: parseFloat(document.getElementById('ne-valor').value),
+                observation_responsible: '',
+                is_settled: false,
+                is_manual: true 
+            };
+
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`), novoItem);
+                showToast("Lançamento adicionado com sucesso!");
+                closeModal();
+                e.target.reset(); 
+            } catch(err) {
+                console.error(err);
+                showToast("Erro ao adicionar lançamento.", true);
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = "Adicionar Lançamento";
+            }
+        };
 
         function toggleChart() {
             isChartVisible = !isChartVisible;
@@ -284,7 +414,7 @@
         }
 
         async function createSession() {
-            if (!fileInput.files[0]) return showToast("Selecione um arquivo", true);
+            if (!fileInput.files[0]) return showToast("Selecione um ficheiro", true);
             showLoading(true);
             Papa.parse(fileInput.files[0], {
                 delimiter: ";", encoding: "ISO-8859-1",
@@ -306,36 +436,80 @@
             if (!snap.exists()) return (showToast("Sessão não existe", true), showLoading(false));
             currentDashboardId = id;
             accountNumberEl.textContent = `Conta: ${snap.data().accountNumber}`;
+            
+            // Ativa o botão de exportar
+            exportButton.disabled = false;
+
             unsubscribeFromEntries = onSnapshot(collection(db, `/artifacts/${appId}/public/data/dashboards/${id}/entries`), (s) => {
                 fullDataset = s.docs.map(d => ({ id: d.id, ...d.data() }));
                 initializeDashboard();
                 dashboardContent.classList.remove('hidden');
                 sessionContainer.classList.add('hidden');
                 activeSessionInfo.classList.remove('hidden');
+                openModalBtn.classList.remove('hidden'); 
                 document.getElementById('session-id-display').textContent = currentDashboardId;
                 showLoading(false);
             }, (error) => { showToast("Erro ao carregar dados.", true); });
         }
 
         function processCsvData(data) {
-            const records = []; let curSupN, curSupI, headers = [], accNum;
-            data.forEach(row => {
-                if (row.length < 1) return;
-                if (!accNum && row[0]?.includes("Mapa de Análise")) accNum = row[0].match(/(\d+)/)?.[1];
+            const records = []; 
+            let headers = []; 
+            let accNum;
+
+            data.forEach((row) => {
+                if (row.length === 0 || row.every(cell => !cell || cell.trim() === '')) return; 
                 
-                // MUDANÇA AQUI: Regex Genérico para capturar "CÓDIGO - NOME"
-                // Captura qualquer coisa que comece com números/pontos/barras/traços
-                // seguido de " - " e depois o restante do texto (Nome)
-                const supMatch = row[0]?.match(/^([\d\.\/\-]+)\s*-\s*(.+)/);
+                const firstCol = row[0]?.toString().trim() || '';
+                if (!accNum && firstCol.includes("Mapa de Análise")) {
+                    accNum = firstCol.match(/(\d+)/)?.[1];
+                }
                 
-                if (supMatch) { curSupI = supMatch[1]; curSupN = supMatch[2]; return; }
-                if (row.some(h => h?.includes('Valor'))) { headers = row.map(h => h?.trim()); return; }
-                if (curSupI && headers.length) {
-                    const r = {}; headers.forEach((h, i) => { if(h) r[h] = row[i]; });
-                    if (r['Lançamento']) {
-                        r.fornecedor = curSupN; r.fornecedorId = curSupI;
-                        r.valor = parseFloat(r['Valor (R$)']?.replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || 0;
-                        records.push(r);
+                if (headers.length === 0) {
+                    const isHeaderRow = row.some(h => h?.toString().includes('Fornecedor')) && row.some(h => h?.toString().includes('Valor'));
+                    if (isHeaderRow) {
+                        headers = row.map(h => h ? h.toString().trim() : ''); 
+                        return; 
+                    }
+                }
+                
+                if (headers.length > 0) {
+                    const r = {}; 
+                    headers.forEach((h, i) => { 
+                        if(h) {
+                            let val = row[i]?.toString().trim() || '';
+                            if ((h.includes('Lançamento') || h.includes('Vencimento') || h.includes('Apontamento')) && val) {
+                                val = parseExcelDate(val);
+                            }
+                            r[h] = val;
+                        }
+                    });
+                    
+                    if (r['Fornecedor'] && r['Fornecedor'] !== '') {
+                        
+                        const fornecedorRaw = r['Fornecedor'];
+                        let curSupI = fornecedorRaw;
+                        let curSupN = fornecedorRaw;
+
+                        const supMatch = fornecedorRaw.match(/^([\d\.\/\-]+)\s*-\s*(.+)/);
+                        if (supMatch) { 
+                            curSupI = supMatch[1]; 
+                            curSupN = supMatch[2]; 
+                        } else {
+                            curSupI = fornecedorRaw.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+                        }
+
+                        r.fornecedor = curSupN; 
+                        r.fornecedorId = curSupI;
+                        
+                        const valorBruto = r['Valor (R$)'] || r['Valor'] || '0';
+                        r.valor = parseFloat(valorBruto.replace('R$', '').trim().replace(/\./g, '').replace(',', '.')) || 0;
+                        
+                        r['Observações'] = r['Observação'] || r['Observações'] || '';
+
+                        if (r['Lançamento'] || r.valor !== 0) {
+                            records.push(r);
+                        }
                     }
                 }
             });
@@ -343,19 +517,14 @@
         }
 
         function initializeDashboard() {
-            // Guardar a seleção atual para não perder o filtro ao atualizar
             const currentSelection = supplierFilter.value;
-
-            const map = new Map(); fullDataset.forEach(i => map.set(i.fornecedorId, i.fornecedor));
+            
+            const uniqueSuppliers = [...new Set(fullDataset.map(i => i.fornecedor))].sort((a,b) => a.localeCompare(b));
             
             supplierFilter.innerHTML = '<option value="all">Todos os Fornecedores</option>' + 
-                [...map.entries()].sort((a,b) => a[1].localeCompare(b[1])).map(([id, n]) => `<option value="${id}">${n}</option>`).join('');
+                uniqueSuppliers.map(n => `<option value="${n}">${n}</option>`).join('');
             
-            // Restaurar a seleção se ela ainda existir
-            if (currentSelection) {
-                supplierFilter.value = currentSelection;
-            }
-
+            if (currentSelection) supplierFilter.value = currentSelection;
             applyFilters();
         }
 
@@ -367,7 +536,7 @@
 
         function applyFilters() {
             const sup = supplierFilter.value;
-            let data = sup === 'all' ? fullDataset : fullDataset.filter(i => i.fornecedorId === sup);
+            let data = sup === 'all' ? fullDataset : fullDataset.filter(i => i.fornecedor === sup);
             if (isOverdueFilterActive) data = data.filter(isItemOverdue);
             renderDashboard(data);
         }
@@ -375,17 +544,19 @@
         function renderDashboard(data) {
             document.getElementById('total-value').textContent = formatCurrency(data.reduce((a, b) => a + b.valor, 0));
             document.getElementById('total-entries').textContent = data.length;
-            document.getElementById('total-suppliers').textContent = new Set(data.map(i => i.fornecedorId)).size;
-            document.getElementById('overdue-entries').textContent = (supplierFilter.value === 'all' ? fullDataset : fullDataset.filter(i => i.fornecedorId === supplierFilter.value)).filter(isItemOverdue).length;
+            document.getElementById('total-suppliers').textContent = new Set(data.map(i => i.fornecedor)).size;
+            document.getElementById('overdue-entries').textContent = (supplierFilter.value === 'all' ? fullDataset : fullDataset.filter(i => i.fornecedor === supplierFilter.value)).filter(isItemOverdue).length;
 
-            // Ordenação Alfabética para o Gráfico
-            const valueById = data.reduce((acc, i) => {
-                acc[i.fornecedorId] = acc[i.fornecedorId] || { name: i.fornecedor, value: 0 };
-                acc[i.fornecedorId].value += i.valor;
+            const valueByName = data.reduce((acc, i) => {
+                acc[i.fornecedor] = acc[i.fornecedor] || { value: 0 };
+                acc[i.fornecedor].value += i.valor;
                 return acc;
             }, {});
             
-            const sortedChartData = Object.values(valueById).sort((a, b) => a.name.localeCompare(b.name));
+            const sortedChartData = Object.keys(valueByName).sort((a, b) => a.localeCompare(b)).map(name => ({
+                name: name,
+                value: valueByName[name].value
+            }));
 
             if (suppliersChartInstance) suppliersChartInstance.destroy();
             suppliersChartInstance = new Chart('suppliersChart', {
@@ -396,24 +567,24 @@
                 },
                 options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
-
-            // Ordenação Alfabética para a Tabela de Detalhes
             const sortedTableData = [...data].sort((a, b) => a.fornecedor.localeCompare(b.fornecedor));
 
             tableBody.innerHTML = sortedTableData.map(item => `
-                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors ${item.is_settled ? 'settled' : ''}">
-                    <td class="px-4 py-4 whitespace-normal break-words align-top font-medium text-blue-300">${item.fornecedor}</td>
-                    <td class="px-4 py-4 whitespace-normal break-words align-top">${item['Lançamento']}</td>
+                <tr class="border-b border-gray-700 hover:bg-gray-800 transition-colors ${item.is_settled ? 'settled' : ''} ${item.is_manual ? 'bg-indigo-900/10' : ''}">
+                    <td class="px-4 py-4 whitespace-normal break-words align-top font-medium text-blue-300">
+                        ${item.fornecedor} ${item.is_manual ? '<span class="text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded ml-1">Manual</span>' : ''}
+                    </td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top">${item['Lançamento'] || '-'}</td>
                     <td class="px-4 py-4 whitespace-normal break-words align-top">${item['Apontamento'] || '-'}</td>
-                    <td class="px-4 py-4 whitespace-normal break-words align-top leading-relaxed text-gray-200">${item['Descrição'] || ''}</td>
-                    <td class="px-4 py-4 font-bold align-top">${formatCurrency(item.valor)}</td>
+                    <td class="px-4 py-4 font-bold align-top text-white">${formatCurrency(item.valor)}</td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top leading-relaxed text-gray-200">${item['Descrição'] || '-'}</td>
+                    <td class="px-4 py-4 whitespace-normal break-words align-top italic text-gray-400 leading-relaxed">${item['Observações'] || '-'}</td>
                     <td class="px-4 py-4 text-center align-top">
                         <span class="px-2 py-1 rounded-full text-xs font-semibold ${isItemOverdue(item) ? 'bg-red-900/50 text-red-200 border border-red-700' : 'bg-green-900/50 text-green-200 border border-green-700'}">
                             ${isItemOverdue(item) ? 'Vencido' : 'Em dia'}
                         </span>
                     </td>
-                    <td class="px-4 py-4 whitespace-normal break-words align-top italic text-gray-400 leading-relaxed">${item['Observações'] || '-'}</td>
-                    <td class="px-4 py-4 whitespace-normal break-words align-top bg-gray-900/40 rounded-sm cursor-text focus:bg-gray-900" contenteditable="true" data-id="${item.id}">
+                    <td class="px-4 py-4 whitespace-normal break-words align-top bg-gray-900/40 rounded-sm cursor-text focus:bg-gray-900 border-b border-transparent focus:border-blue-500" contenteditable="true" data-id="${item.id}">
                         ${item.observation_responsible || ''}
                     </td>
                     <td class="px-4 py-4 text-center align-top">
@@ -429,6 +600,38 @@
             document.getElementById('join-session-view').classList.toggle('hidden', l);
         }
 
+        // Lógica adicionada para o botão Exportar
+        exportButton.onclick = () => {
+            if(!fullDataset || fullDataset.length === 0) return showToast("Sem dados para exportar", true);
+            
+            // Formatar os dados de forma limpa para o CSV
+            const dadosParaExportar = fullDataset.map(item => ({
+                Fornecedor: item.fornecedor,
+                Lançamento: item['Lançamento'] || '',
+                Vencimento: item['Apontamento'] || '',
+                Valor: item.valor,
+                Descrição: item['Descrição'] || '',
+                'Obs Analista': item['Observações'] || '',
+                'Obs Responsável': item.observation_responsible || '',
+                Status: isItemOverdue(item) ? 'Vencido' : 'Em dia',
+                Acertado: item.is_settled ? 'Sim' : 'Não'
+            }));
+
+            const csv = Papa.unparse(dadosParaExportar);
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' }); // Adiciona BOM para caracteres especiais
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Mapa_Analise_${currentDashboardId}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast("Exportação concluída com sucesso!");
+        };
+
         document.addEventListener('DOMContentLoaded', initFirebase);
         createSessionBtn.onclick = () => fileInput.click();
         fileInput.onchange = createSession;
@@ -437,19 +640,16 @@
         toggleChartBtn.onclick = toggleChart;
         overdueCard.onclick = () => { isOverdueFilterActive = !isOverdueFilterActive; overdueCard.classList.toggle('active'); applyFilters(); };
         
-        // CORREÇÃO: Uso de 'focusout' ao invés de 'blur' ou 'onblur'
         tableBody.addEventListener('focusout', async (e) => {
             if (e.target.hasAttribute('data-id')) {
                 const newValue = e.target.textContent.trim();
                 const docId = e.target.dataset.id;
-                
                 try {
                     await updateDoc(doc(db, `/artifacts/${appId}/public/data/dashboards/${currentDashboardId}/entries`, docId), { 
                         observation_responsible: newValue 
                     });
-                    // Opcional: Feedback visual de salvamento pode ser adicionado aqui
                 } catch (error) {
-                    console.error("Erro ao salvar observação:", error);
+                    console.error("Erro ao guardar observação:", error);
                 }
             }
         });
