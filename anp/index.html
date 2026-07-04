@@ -132,6 +132,33 @@
     cursor: pointer; display: inline-block; width: 16px; text-align: center;
     color: var(--azul-claro); font-weight: 700; user-select: none;
   }
+
+  /* ---------- Selos de variação nos cartões ---------- */
+  .badge-delta {
+    display: inline-block; margin-top: 6px; padding: 2px 10px;
+    font-size: 12px; font-weight: 600; border-radius: 10px;
+  }
+  .badge-delta.bom { background: #e2f3e8; color: #2e7d4f; }
+  .badge-delta.ruim { background: #fbe4e2; color: #b3423a; }
+  .badge-delta.neutro { background: #eef1f4; color: #778; }
+
+  /* ---------- Comparativo ---------- */
+  .legenda { display: flex; gap: 18px; justify-content: center; margin-bottom: 10px; font-size: 13px; color: #556; }
+  .legenda .chip::before {
+    content: ""; display: inline-block; width: 12px; height: 12px;
+    background: var(--c); border-radius: 3px; margin-right: 6px; vertical-align: -1px;
+  }
+  .cascata-svg, .linhas-svg { width: 100%; height: auto; display: block; }
+  .barras-duplas { display: flex; align-items: flex-end; justify-content: space-around; height: 210px; padding: 0 6px; }
+  .par-mes { display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; flex: 1; max-width: 90px; }
+  .par-mes .duas { display: flex; align-items: flex-end; gap: 3px; height: 100%; justify-content: center; }
+  .par-mes .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .par-mes .rotulo-v { font-size: 10px; color: #667; margin-bottom: 2px; white-space: nowrap; }
+  .par-mes .b { width: 22px; border-radius: 2px 2px 0 0; min-height: 2px; }
+  .par-mes .b.ant { background: #9db8cc; }
+  .par-mes .b.atu { background: var(--azul-tabela); }
+  .par-mes .b.negativo { background: #c0504d; }
+  .par-mes .rotulo-mes { font-size: 12px; color: #666; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -171,6 +198,7 @@
     <div class="abas">
       <button class="aba-btn ativa" data-aba="visao">Visão Geral</button>
       <button class="aba-btn" data-aba="dre">DRE por Mês</button>
+      <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
     </div>
 
     <div id="aba-visao" class="conteudo-aba">
@@ -207,6 +235,25 @@
           <thead id="dre-cabecalho"></thead>
           <tbody id="dre-corpo"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div id="aba-comp" class="conteudo-aba" style="display:none">
+      <div class="painel grafico">
+        <h2 id="titulo-cascata">Cascata do Resultado</h2>
+        <div id="grafico-cascata"></div>
+      </div>
+      <div class="graficos">
+        <div class="painel grafico">
+          <h2 id="titulo-comp-meses">Resultado Mês a Mês</h2>
+          <div id="legenda-meses" class="legenda"></div>
+          <div id="grafico-comp-meses" class="barras-duplas"></div>
+        </div>
+        <div class="painel grafico">
+          <h2 id="titulo-acumulado">Resultado Acumulado</h2>
+          <div id="legenda-acumulado" class="legenda"></div>
+          <div id="grafico-acumulado"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -443,17 +490,40 @@ function render() {
   const linhas = dadosFiltrados();
   const m = calcularMedidas(linhas);
 
-  // ----- Cartões -----
+  // ----- Cartões (contagem animada + variação vs mesmo período do ano anterior) -----
+  const f = filtrosAtuais();
+  const anoAtual = f.anos.length ? Math.max(...f.anos) : null;
+  let ant = null;
+  if (f.anos.length === 1 && linhasDRE.some(d => d.Ano === anoAtual - 1)) {
+    ant = calcularMedidas(linhasDRE.filter(d => d.Ano === anoAtual - 1 &&
+      f.campos.includes(d.Entidade) && d.Mes >= f.mesIni && d.Mes <= f.mesFim));
+  }
   const cartoes = [
-    ["Prestação de Serviços", n(m.prest)],
-    ["Resultado", n(m.resultado)],
-    ["%Resultado", pct(m.pResultado)],
-    ["%Resultado S/ Subv", pct(m.pResSemSubv)],
-    ["%Despesa c/ Pessoal", pct(m.pPessoal)],
-    ["%Adm e Gerais", pct(m.pAdm)],
+    { titulo: "Prestação de Serviços", tipo: "num", valor: m.prest, antes: ant && ant.prest, sobeBom: true },
+    { titulo: "Resultado", tipo: "num", valor: m.resultado, antes: ant && ant.resultado, sobeBom: true },
+    { titulo: "%Resultado", tipo: "pct", valor: m.pResultado, antes: ant && ant.pResultado, sobeBom: true },
+    { titulo: "%Resultado S/ Subv", tipo: "pct", valor: m.pResSemSubv, antes: ant && ant.pResSemSubv, sobeBom: true },
+    { titulo: "%Despesa c/ Pessoal", tipo: "pct", valor: m.pPessoal, antes: ant && ant.pPessoal, sobeBom: false },
+    { titulo: "%Adm e Gerais", tipo: "pct", valor: m.pAdm, antes: ant && ant.pAdm, sobeBom: false },
   ];
-  document.getElementById("cartoes").innerHTML = cartoes.map(([t, v]) =>
-    `<div class="cartao"><div class="titulo">${t}</div><div class="valor">${v}</div></div>`).join("");
+  document.getElementById("cartoes").innerHTML = cartoes.map(c => {
+    let selo = "";
+    if (c.antes != null && isFinite(c.antes)) {
+      // pct: diferença em pontos percentuais; num: variação %
+      const delta = c.tipo === "pct" ? (c.valor - c.antes) * 100 : (c.antes ? c.valor / c.antes - 1 : NaN);
+      if (isFinite(delta) && Math.abs(delta) > 0.0005) {
+        const subiu = delta > 0;
+        const classe = subiu === c.sobeBom ? "bom" : "ruim";
+        const texto = c.tipo === "pct"
+          ? `${subiu ? "▲" : "▼"} ${fmtPct.format(Math.abs(delta))} p.p. vs ${anoAtual - 1}`
+          : `${subiu ? "▲" : "▼"} ${fmtPct.format(Math.abs(delta) * 100)}% vs ${anoAtual - 1}`;
+        selo = `<div class="badge-delta ${classe}">${texto}</div>`;
+      }
+    }
+    return `<div class="cartao"><div class="titulo">${c.titulo}</div>
+      <div class="valor" data-tipo="${c.tipo}" data-valor="${c.valor}"></div>${selo}</div>`;
+  }).join("");
+  document.querySelectorAll("#cartoes .valor").forEach(animaValor);
 
   // ----- Tabela -----
   const linhaTabela = (rotulo, md, classe) => `
@@ -486,8 +556,164 @@ function render() {
   desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
   desenharBarras("grafico-resultado", linhas, "resultado");
 
-  // ----- Aba DRE -----
+  // ----- Abas DRE e Comparativo -----
   renderDRE(linhas);
+  renderComparativo();
+}
+
+/* Contagem animada dos cartões */
+function animaValor(el) {
+  const alvo = +el.dataset.valor, tipo = el.dataset.tipo;
+  const formata = v => tipo === "pct" ? pct(v) : n(v);
+  if (!isFinite(alvo)) { el.textContent = "—"; return; }
+  const inicio = performance.now(), duracao = 700;
+  requestAnimationFrame(function passo(t) {
+    const p = Math.min(1, (t - inicio) / duracao);
+    const suave = 1 - Math.pow(1 - p, 3);
+    el.textContent = formata(alvo * suave);
+    if (p < 1) requestAnimationFrame(passo);
+  });
+}
+
+const fmtCompacto = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
+const nc = v => fmtCompacto.format(Math.round(v));
+
+/* =====================================================================
+   ABA COMPARATIVO ANUAL: cascata do resultado, barras ano x ano e
+   linhas de resultado acumulado. Compara o maior ano selecionado com
+   o ano anterior, respeitando o intervalo de meses e o Campo.
+   ===================================================================== */
+function renderComparativo() {
+  const f = filtrosAtuais();
+  const anosDisponiveis = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisponiveis.length) return;
+  const anoAtual = f.anos.length ? Math.max(...f.anos) : anosDisponiveis[anosDisponiveis.length - 1];
+  const anoAnterior = anoAtual - 1;
+  const temAnterior = linhasDRE.some(d => d.Ano === anoAnterior);
+  const doAno = ano => linhasDRE.filter(d => d.Ano === ano &&
+    f.campos.includes(d.Entidade) && d.Mes >= f.mesIni && d.Mes <= f.mesFim);
+  const atual = doAno(anoAtual);
+  const anterior = temAnterior ? doAno(anoAnterior) : [];
+
+  const mIni = Math.max(1, Math.min(12, f.mesIni)), mFim = Math.max(1, Math.min(12, f.mesFim));
+  const periodo = mIni === mFim ? NOMES_MESES[mIni - 1] : `${NOMES_MESES[mIni - 1]}–${NOMES_MESES[mFim - 1]}`;
+  document.getElementById("titulo-cascata").textContent = `Cascata do Resultado — ${anoAtual} (${periodo})`;
+
+  desenharCascata(atual);
+  desenharCompMeses(atual, anterior, anoAtual, anoAnterior, temAnterior);
+  desenharAcumulado(atual, anterior, anoAtual, anoAnterior, temAnterior);
+}
+
+function desenharCascata(linhas) {
+  const alvo = document.getElementById("grafico-cascata");
+  if (!linhas.length) { alvo.innerHTML = `<div class="vazio">Sem dados para os filtros selecionados</div>`; return; }
+  const m = calcularMedidas(linhas);
+  const somaGrupo = filtro => linhas.reduce((s, l) => filtro(l) ? s + l.saldo : s, 0);
+  const passos = [
+    { nome: "Receitas", v: somaGrupo(l => l.dre2 === "RECEITAS") },
+    { nome: "Pessoal", v: -m.pessoal },
+    { nome: "Adm e Gerais", v: -m.adm },
+    { nome: "Educ. Assist.", v: -m.educ },
+    { nome: "Outorgamentos", v: somaGrupo(l => l.dre3 === "Outorgamentos") },
+    { nome: "Subvenções", v: m.subv },
+  ];
+  if (Math.abs(m.naoRec) > 0.5) passos.push({ nome: "Não Recorrente", v: m.naoRec });
+
+  let acum = 0;
+  const barras = passos.map(p => { const ini = acum; acum += p.v; return { ...p, ini, fim: acum }; });
+  barras.push({ nome: "RESULTADO", v: m.resultado, ini: 0, fim: m.resultado, final: true });
+
+  const teto = Math.max(...barras.map(b => Math.max(b.ini, b.fim)), 1);
+  const piso = Math.min(...barras.map(b => Math.min(b.ini, b.fim)), 0);
+  const L = 980, A = 330, topoY = 40, baseY = 285, margem = 30;
+  const escala = (baseY - topoY) / (teto - piso || 1);
+  const y = v => baseY - (v - piso) * escala;
+  const larg = (L - 2 * margem) / barras.length;
+
+  let svg = "";
+  barras.forEach((b, i) => {
+    const x = margem + i * larg + larg * 0.14, w = larg * 0.72;
+    const yTopo = y(Math.max(b.ini, b.fim));
+    const h = Math.max(2, Math.abs(b.fim - b.ini) * escala);
+    const cor = b.final ? "#2c5f7c" : (b.v >= 0 ? "#4a9d6e" : "#c0504d");
+    svg += `<rect x="${x}" y="${yTopo}" width="${w}" height="${h}" rx="3" fill="${cor}">
+      <animate attributeName="height" from="0" to="${h}" dur="0.5s" fill="freeze"/>
+      <animate attributeName="y" from="${yTopo + h}" to="${yTopo}" dur="0.5s" fill="freeze"/>
+    </rect>`;
+    svg += `<text x="${x + w / 2}" y="${yTopo - 7}" text-anchor="middle" font-size="13" font-weight="600" fill="#334">${nc(b.v)}</text>`;
+    svg += `<text x="${x + w / 2}" y="${baseY + 20}" text-anchor="middle" font-size="12" fill="#667">${b.nome}</text>`;
+    if (!b.final) {
+      const xProx = margem + (i + 1) * larg + larg * 0.14;
+      svg += `<line x1="${x + w}" y1="${y(b.fim)}" x2="${xProx}" y2="${y(b.fim)}" stroke="#aab" stroke-dasharray="4 3"/>`;
+    }
+  });
+  svg += `<line x1="${margem - 10}" y1="${y(0)}" x2="${L - margem + 10}" y2="${y(0)}" stroke="#889"/>`;
+  alvo.innerHTML = `<svg class="cascata-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function desenharCompMeses(atual, anterior, anoAtual, anoAnterior, temAnterior) {
+  const el = document.getElementById("grafico-comp-meses");
+  document.getElementById("legenda-meses").innerHTML =
+    (temAnterior ? `<span class="chip" style="--c:#9db8cc">${anoAnterior}</span>` : "") +
+    `<span class="chip" style="--c:#2c5f7c">${anoAtual}</span>`;
+  const meses = [...new Set([...atual, ...anterior].map(d => d.Mes))].sort((a, b) => a - b);
+  if (!meses.length) { el.innerHTML = `<div class="vazio">Sem dados</div>`; return; }
+
+  const resDo = (linhas, mes) => calcularMedidas(linhas.filter(d => d.Mes === mes)).resultado;
+  const dados = meses.map(mes => ({
+    mes,
+    a: resDo(atual, mes),
+    b: temAnterior ? resDo(anterior, mes) : null,
+  }));
+  const maxAbs = Math.max(...dados.flatMap(d => [Math.abs(d.a), Math.abs(d.b ?? 0)]), 1);
+
+  el.innerHTML = dados.map(d => {
+    const barra = (v, classe) => v == null ? "" :
+      `<div class="col"><div class="rotulo-v">${nc(v)}</div>
+       <div class="b ${classe}${v < 0 ? " negativo" : ""}" style="height:${Math.max(2, Math.abs(v) / maxAbs * 150)}px"></div></div>`;
+    return `<div class="par-mes"><div class="duas">${barra(d.b, "ant")}${barra(d.a, "atu")}</div>
+      <div class="rotulo-mes">${NOMES_MESES[d.mes - 1]}</div></div>`;
+  }).join("");
+}
+
+function desenharAcumulado(atual, anterior, anoAtual, anoAnterior, temAnterior) {
+  const el = document.getElementById("grafico-acumulado");
+  document.getElementById("legenda-acumulado").innerHTML =
+    (temAnterior ? `<span class="chip" style="--c:#9db8cc">${anoAnterior}</span>` : "") +
+    `<span class="chip" style="--c:#2c5f7c">${anoAtual}</span>`;
+  const meses = [...new Set([...atual, ...anterior].map(d => d.Mes))].sort((a, b) => a - b);
+  if (!meses.length) { el.innerHTML = `<div class="vazio">Sem dados</div>`; return; }
+
+  const serie = linhas => {
+    let s = 0;
+    return meses.map(mes => {
+      if (!linhas.some(d => d.Mes === mes)) return null;
+      s += calcularMedidas(linhas.filter(d => d.Mes === mes)).resultado;
+      return s;
+    });
+  };
+  const sAtual = serie(atual);
+  const sAnt = temAnterior ? serie(anterior) : [];
+  const valores = [...sAtual, ...sAnt].filter(v => v != null);
+  const maxV = Math.max(...valores, 0), minV = Math.min(...valores, 0);
+  const L = 480, A = 250, esq = 14, dir = 52, topoY = 18, baseY = 212;
+  const x = i => esq + (meses.length === 1 ? (L - esq - dir) / 2 : i * (L - esq - dir) / (meses.length - 1));
+  const y = v => baseY - (v - minV) / (maxV - minV || 1) * (baseY - topoY);
+
+  const linhaSvg = (s, cor) => {
+    const pts = s.map((v, i) => v == null ? null : `${x(i)},${y(v)}`).filter(Boolean).join(" ");
+    const bolas = s.map((v, i) => v == null ? "" : `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${cor}"/>`).join("");
+    let rot = "";
+    for (let i = s.length - 1; i >= 0; i--) {
+      if (s[i] != null) { rot = `<text x="${x(i) + 7}" y="${y(s[i]) + 4}" font-size="12" font-weight="600" fill="${cor}">${nc(s[i])}</text>`; break; }
+    }
+    return `<polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="2.5"/>${bolas}${rot}`;
+  };
+  let svg = `<line x1="${esq}" y1="${y(0)}" x2="${L - dir}" y2="${y(0)}" stroke="#ccd"/>`;
+  svg += meses.map((mes, i) => `<text x="${x(i)}" y="${baseY + 24}" text-anchor="middle" font-size="11" fill="#667">${NOMES_MESES[mes - 1]}</text>`).join("");
+  if (temAnterior) svg += linhaSvg(sAnt, "#9db8cc");
+  svg += linhaSvg(sAtual, "#2c5f7c");
+  el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
 }
 
 /* Matriz "DRE por Mês": hierarquia DRE 2 > DRE 3 > DRE 4, meses nas colunas.
@@ -702,8 +928,8 @@ async function carregarAutomatico() {
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
   document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  document.getElementById("aba-visao").style.display = btn.dataset.aba === "visao" ? "" : "none";
-  document.getElementById("aba-dre").style.display = btn.dataset.aba === "dre" ? "" : "none";
+  for (const aba of ["visao", "dre", "comp"])
+    document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
 }));
 
 /* ---------- Inicialização ---------- */
