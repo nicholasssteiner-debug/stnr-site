@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Análise Financeira Campos</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --azul-escuro: #2c5f7c;
+    --azul-header: #33607d;
+    --azul-tabela: #2c5f7c;
+    --azul-claro: #5b9bd5;
+    --cinza-titulo: #8aa8bd;
+    --fundo: #eef1f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--fundo);
+    color: #222;
+  }
+
+  /* ---------- Cabeçalho ---------- */
+  header {
+    background: var(--azul-header);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+  }
+  header h1 { font-size: 26px; font-weight: 400; text-align: center; flex: 1; }
+  header .info { font-size: 12px; text-align: right; min-width: 160px; }
+
+  /* ---------- Layout ---------- */
+  .container { display: flex; min-height: calc(100vh - 56px); }
+
+  /* ---------- Barra lateral (filtros) ---------- */
+  aside {
+    width: 240px;
+    background: linear-gradient(180deg, #3d7ea6 0%, #7db8dc 60%, #b7d9ee 100%);
+    color: #fff;
+    padding: 18px 16px;
+    flex-shrink: 0;
+  }
+  aside .logo { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+  aside h3 { font-size: 15px; font-weight: 600; margin: 18px 0 8px; }
+  aside label { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 2px; cursor: pointer; }
+  aside input[type="checkbox"] { width: 15px; height: 15px; accent-color: #1e3a4f; }
+  .meses-box { display: flex; gap: 10px; margin: 8px 0 4px; }
+  .meses-box input {
+    width: 70px; padding: 5px 8px; border: none; border-radius: 3px;
+    font-size: 14px; text-align: center;
+  }
+  aside .dica { font-size: 11px; font-style: italic; opacity: .9; margin-top: 4px; }
+  aside hr { border: none; border-top: 1px solid rgba(255,255,255,.6); margin: 22px 0; }
+
+  /* ---------- Carregar arquivo ---------- */
+  .arquivo {
+    margin-top: 26px;
+    background: rgba(255,255,255,.18);
+    border: 1px dashed rgba(255,255,255,.8);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .arquivo:hover { background: rgba(255,255,255,.3); }
+  .arquivo strong { display: block; font-size: 13px; margin-bottom: 4px; }
+  #status-arquivo { font-size: 11px; margin-top: 8px; word-break: break-all; }
+
+  /* ---------- Área principal ---------- */
+  main { flex: 1; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; overflow-x: auto; }
+
+  /* ---------- Cartões ---------- */
+  .cartoes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .cartao {
+    background: #fff; border-radius: 4px; padding: 10px 14px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    text-align: center;
+  }
+  .cartao .titulo { color: var(--cinza-titulo); font-size: 13px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cartao .valor { color: #1f4e6b; font-size: 26px; font-weight: 600; white-space: nowrap; }
+
+  /* ---------- Tabela ---------- */
+  .painel { background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  thead th {
+    background: var(--azul-tabela); color: #fff; padding: 7px 9px;
+    text-align: left; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.25);
+  }
+  tbody td { padding: 6px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid #e4e9ee; }
+  tbody td:first-child { text-align: left; }
+  tbody tr.grupo td { font-weight: 700; background: #f4f7fa; }
+  tbody tr.total td { font-weight: 700; background: #e8eef4; border-top: 2px solid var(--azul-tabela); }
+  tbody tr.detalhe td:first-child { padding-left: 26px; }
+
+  /* ---------- Gráficos ---------- */
+  .graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grafico h2 { color: var(--cinza-titulo); font-size: 16px; font-weight: 400; margin: 4px 6px 12px; }
+  .barras { display: flex; align-items: flex-end; justify-content: space-around; height: 190px; padding: 0 10px; }
+  .barra-item { display: flex; flex-direction: column; align-items: center; width: 70px; height: 100%; justify-content: flex-end; }
+  .barra-item .rotulo-valor { font-size: 11px; color: #555; margin-bottom: 3px; }
+  .barra-item .barra { width: 100%; max-width: 60px; background: var(--azul-tabela); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .barra-item .barra.neg { background: #c0504d; }
+  .barra-item .rotulo-mes { font-size: 12px; color: #666; margin-top: 5px; }
+  .vazio { color: #999; font-style: italic; padding: 30px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="min-width:160px; font-weight:600;">Adventista</div>
+  <h1>Análise Financeira Campos</h1>
+  <div class="info">Contabilidade CTec<br><span id="data-atualizacao">—</span></div>
+</header>
+
+<div class="container">
+  <aside>
+    <h3>Ano</h3>
+    <div id="filtro-anos"></div>
+
+    <h3>Meses</h3>
+    <div class="meses-box">
+      <input type="number" id="mes-ini" min="1" max="12" value="1">
+      <input type="number" id="mes-fim" min="1" max="12" value="12">
+    </div>
+    <div class="dica">Selecione o Intervalo de Meses</div>
+
+    <hr>
+
+    <h3>Campo</h3>
+    <div id="filtro-campos"></div>
+
+    <div class="arquivo" id="area-arquivo">
+      <strong>📂 Carregar planilha</strong>
+      Clique aqui ou arraste o arquivo Excel (.xlsx) exportado do banco
+      <input type="file" id="input-arquivo" accept=".xlsx,.xls" style="display:none">
+      <div id="status-arquivo">Exibindo dados de exemplo</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="cartoes" id="cartoes"></div>
+
+    <div class="painel">
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th><th>Prest. Serviços</th><th>Resultado</th><th>%Resultado</th>
+            <th>Resultado S/ Sub</th><th>%Res. S/ Subv</th><th>Pessoal</th><th>%Pessoal</th>
+            <th>Adm Gerais</th><th>%Adm Gerais</th><th>Educação Assis</th><th>%Educ Assis</th>
+          </tr>
+        </thead>
+        <tbody id="corpo-tabela"></tbody>
+      </table>
+    </div>
+
+    <div class="graficos">
+      <div class="painel grafico">
+        <h2>Resultado do Mês S/ Subvenção</h2>
+        <div class="barras" id="grafico-sem-subv"></div>
+      </div>
+      <div class="painel grafico">
+        <h2>Resultado do Mês</h2>
+        <div class="barras" id="grafico-resultado"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* =====================================================================
+   LÓGICA REPLICADA DO POWER BI (query BD_AASI + medidas DAX)
+   Validada em 03/07/2026 contra o painel original: todas as medidas,
+   percentuais e gráficos mensais batem exatamente.
+
+   Regras (iguais à query M do BI):
+   1. Só entram linhas SEM subconta (Subconta nula).
+   2. Saldo base: mês 12 usa Saldo_Ajustado; demais meses, Saldo_Legal.
+   3. Cada conta é ligada ao De/Para DRE (join exato por código);
+      contas fora do De/Para ficam de fora; contas com 2 mapeamentos
+      geram 2 linhas (transitam valor entre grupos da DRE).
+   4. Sinal "+" mantém, "−" inverte; depois multiplica tudo por −1
+      (receitas ficam positivas).
+
+   Medidas (iguais ao DAX):
+   - Resultado            = soma de todas as linhas mapeadas
+   - Prestação de Serviços= DRE3 "Prestação de Serviços" + "Dízimo Líquidos de Repasses"
+   - Pessoal              = −soma(DRE3 "Despesas Com Pessoal")
+   - Adm Gerais           = −soma(DRE3 "Administrativas e Gerais")
+   - Educação Assist      = −soma(DRE3 "Educação, Assistência E Orientação Social")
+   - Subvenções Recebidas = soma(DRE3 "Subvenções Recebidas")
+   - Não Recorrente       = soma(DRE2 "RESULTADO NÃO RECORRENTE")
+   - Resultado S/ Subv    = Resultado − Subvenções − Não Recorrente
+   - Percentuais sempre sobre Prestação de Serviços
+   ===================================================================== */
+
+const DRE3 = {
+  prest: "Prestação de Serviços",
+  dizimo: "Dízimo Líquidos de Repasses",
+  pessoal: "Despesas Com Pessoal",
+  adm: "Administrativas e Gerais",
+  educ: "Educação, Assistência E Orientação Social",
+  subv: "Subvenções Recebidas",
+};
+const DRE2_NAO_RECORRENTE = "RESULTADO NÃO RECORRENTE";
+
+/* De/Para DRE padrão (cópia do arquivo de parâmetros do BI).
+   É substituído automaticamente se a planilha carregada tiver uma aba
+   com as colunas Sinal / Conta / DRE 2 / DRE 3. */
+const MAPA_DRE_PADRAO = [
+  ["+","3111000","RECEITAS","Dízimo Líquidos de Repasses"],
+  ["+","3131001","RECEITAS","Doações E Contribuições Recebidas"],
+  ["+","3131002","RECEITAS","Doações E Contribuições Recebidas"],
+  ["+","3131015","RECEITAS","Doações E Contribuições Recebidas"],
+  ["+","3131020","RECEITAS","Doações E Contribuições Recebidas"],
+  ["+","3135201","RECEITAS","Doações E Contribuições Recebidas"],
+  ["+","3141000","RECEITAS","Prestação de Serviços"],
+  ["+","3141100","RECEITAS","Prestação de Serviços"],
+  ["+","3141200","RECEITAS","Prestação de Serviços"],
+  ["+","3141300","RECEITAS","Prestação de Serviços"],
+  ["+","3186000","RECEITAS","Prestação de Serviços"],
+  ["+","3187000","RECEITAS","Prestação de Serviços"],
+  ["+","3187500","RECEITAS","Prestação de Serviços"],
+  ["+","3149000","RECEITAS","Prestação de Serviços"],
+  ["+","3149100","RECEITAS","Prestação de Serviços"],
+  ["+","3149200","RECEITAS","Prestação de Serviços"],
+  ["+","4126007","RECEITAS","Prestação de Serviços"],
+  ["+","3180000","RECEITAS","Outras Receitas Recorrentes"],
+  ["-","3186000","RECEITAS","Outras Receitas Recorrentes"],
+  ["-","3187000","RECEITAS","Outras Receitas Recorrentes"],
+  ["-","3187500","RECEITAS","Outras Receitas Recorrentes"],
+  ["+","3192200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3193200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3195100","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3195200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3197200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3198100","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3210000","RESULTADO NÃO RECORRENTE","Receitas Não Recorrentes"],
+  ["+","4111000","DESPESAS","Despesas Com Pessoal"],
+  ["+","4112000","DESPESAS","Despesas Com Pessoal"],
+  ["+","4113000","DESPESAS","Despesas Com Pessoal"],
+  ["+","4114000","DESPESAS","Despesas Com Pessoal"],
+  ["+","4119000","DESPESAS","Despesas Com Pessoal"],
+  ["+","4119500","DESPESAS","Despesas Com Pessoal"],
+  ["+","4121052","DESPESAS","Despesas Com Pessoal"],
+  ["+","4121058","DESPESAS","Despesas Com Pessoal"],
+  ["+","4129122","DESPESAS","Despesas Com Pessoal"],
+  ["+","4195210","DESPESAS","Despesas Com Pessoal"],
+  ["+","4121000","DESPESAS","Administrativas e Gerais"],
+  ["+","4121500","DESPESAS","Administrativas e Gerais"],
+  ["+","4121800","DESPESAS","Administrativas e Gerais"],
+  ["+","4122000","DESPESAS","Administrativas e Gerais"],
+  ["+","4122500","DESPESAS","Administrativas e Gerais"],
+  ["+","4123000","DESPESAS","Administrativas e Gerais"],
+  ["+","4124000","DESPESAS","Administrativas e Gerais"],
+  ["+","4125000","DESPESAS","Administrativas e Gerais"],
+  ["+","4126000","DESPESAS","Administrativas e Gerais"],
+  ["+","4128500","DESPESAS","Administrativas e Gerais"],
+  ["+","4129000","DESPESAS","Administrativas e Gerais"],
+  ["+","4129500","DESPESAS","Administrativas e Gerais"],
+  ["+","4129600","DESPESAS","Administrativas e Gerais"],
+  ["-","4126007","DESPESAS","Administrativas e Gerais"],
+  ["-","4121052","DESPESAS","Administrativas e Gerais"],
+  ["-","4121058","DESPESAS","Administrativas e Gerais"],
+  ["-","4129122","DESPESAS","Administrativas e Gerais"],
+  ["-","4195210","DESPESAS","Outorgamentos"],
+  ["+","4141000","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4141100","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4142000","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4146500","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4146000","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4149500","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4149600","DESPESAS","Educação, Assistência E Orientação Social"],
+  ["+","4190000","DESPESAS","Outorgamentos"],
+  ["+","3191005","DESPESAS","Outorgamentos"],
+  ["+","4210000","RESULTADO NÃO RECORRENTE","Despesas Não Recorrentes"],
+  ["+","3195110","RECEITAS","Prestação de Serviços"],
+  ["-","3195110","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+];
+
+const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+/* De/Para Entidade (aba "Campos" da planilha: Entidade / Nome / Tipo) */
+let mapaEntidades = { "1622": { nome: "ANP", tipo: "Campo" } };
+const nomeDe = e => (mapaEntidades[e] && mapaEntidades[e].nome) || e;
+const tipoDe = e => (mapaEntidades[e] && mapaEntidades[e].tipo) || "Campo";
+
+/* =====================================================================
+   DADOS DE EXEMPLO (reproduzem os totais do print do BI, 2026 m1-4)
+   Substituídos ao carregar a planilha real.
+   ===================================================================== */
+function dadosExemplo() {
+  // [mês, conta, saldo legal] — sinais como no banco (receita negativa)
+  const lanc = [
+    [1,"3141100",-3005906],[2,"3141100",-3005906],[3,"3141100",-3005906],[4,"3141100",-3005907],
+    [1,"4111000",1603508],[2,"4111000",1603508],[3,"4111000",1603509],[4,"4111000",1603509],
+    [1,"4121000",1029523],[2,"4121000",1029523],[3,"4121000",1029523],[4,"4121000",1029524],
+    [1,"4141000",59498],[2,"4141000",59498],[3,"4141000",59498],[4,"4141000",59499],
+    [1,"3193200",-1000000],[2,"3193200",-1000000],[3,"3193200",-1000000],[4,"3193200",-1000000],
+    [2,"3195200",-38712],
+    [1,"3180000",205578],[2,"3180000",8473],[3,"3180000",-9971],[4,"3180000",-48889],
+  ];
+  return lanc.map(([mes, conta, saldo]) => ({
+    Ano: 2026, Mes: mes, Entidade: "1622", Conta: conta, Subconta: "",
+    SaldoLegal: saldo, SaldoAjustado: saldo,
+  }));
+}
+
+/* ===================================================================== */
+let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, dre3]) => ({ sinal, conta, dre2, dre3 }));
+let dadosBrutos = dadosExemplo();
+let linhasDRE = [];   // resultado do processamento (equivalente à tabela BD_AASI)
+
+// Replica a query BD_AASI: filtro de subconta, saldo por mês, join com o
+// De/Para, aplicação do sinal e inversão final.
+function processar() {
+  const porConta = {};
+  for (const m of mapaDRE) (porConta[m.conta] = porConta[m.conta] || []).push(m);
+
+  linhasDRE = [];
+  for (const d of dadosBrutos) {
+    if (d.Subconta) continue;                                  // Subconta = null
+    const regras = porConta[d.Conta];
+    if (!regras) continue;                                     // conta fora do De/Para
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    for (const r of regras) {
+      linhasDRE.push({
+        Ano: d.Ano, Mes: d.Mes, Entidade: d.Entidade,
+        dre2: r.dre2, dre3: r.dre3,
+        saldo: (r.sinal === "+" ? base : -base) * -1,
+      });
+    }
+  }
+}
+
+const fmtNum = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const fmtPct = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const n = v => fmtNum.format(Math.round(v));
+const pct = v => isFinite(v) ? fmtPct.format(v * 100) + "%" : "—";
+
+function filtrosAtuais() {
+  const anos = [...document.querySelectorAll("#filtro-anos input:checked")].map(i => +i.value);
+  const campos = [...document.querySelectorAll("#filtro-campos input:checked")].map(i => i.value);
+  const mesIni = +document.getElementById("mes-ini").value || 1;
+  const mesFim = +document.getElementById("mes-fim").value || 12;
+  return { anos, campos, mesIni, mesFim };
+}
+
+function dadosFiltrados() {
+  const f = filtrosAtuais();
+  return linhasDRE.filter(d =>
+    f.anos.includes(d.Ano) &&
+    f.campos.includes(d.Entidade) &&
+    d.Mes >= f.mesIni && d.Mes <= f.mesFim
+  );
+}
+
+function calcularMedidas(linhas) {
+  let prest = 0, pessoal = 0, adm = 0, educ = 0, subv = 0, naoRec = 0, resultado = 0;
+  for (const l of linhas) {
+    resultado += l.saldo;
+    if (l.dre3 === DRE3.prest || l.dre3 === DRE3.dizimo) prest += l.saldo;
+    else if (l.dre3 === DRE3.pessoal) pessoal += l.saldo;
+    else if (l.dre3 === DRE3.adm) adm += l.saldo;
+    else if (l.dre3 === DRE3.educ) educ += l.saldo;
+    else if (l.dre3 === DRE3.subv) subv += l.saldo;
+    if (l.dre2 === DRE2_NAO_RECORRENTE) naoRec += l.saldo;
+  }
+  pessoal = -pessoal; adm = -adm; educ = -educ;
+  const resSemSubv = resultado - subv - naoRec;
+  return {
+    prest, resultado, subv, naoRec, resSemSubv, pessoal, adm, educ,
+    pResultado: resultado / prest,
+    pResSemSubv: resSemSubv / prest,
+    pPessoal: pessoal / prest,
+    pAdm: adm / prest,
+    pEduc: educ / prest,
+  };
+}
+
+function montarFiltros() {
+  const anos = [...new Set(linhasDRE.map(d => d.Ano))].sort();
+  const campos = [...new Set(linhasDRE.map(d => d.Entidade))].sort();
+  const ultimoAno = anos[anos.length - 1];
+
+  document.getElementById("filtro-anos").innerHTML = anos.map(a =>
+    `<label><input type="checkbox" value="${a}" ${a === ultimoAno ? "checked" : ""}> ${a}</label>`).join("");
+  document.getElementById("filtro-campos").innerHTML = campos.map(c =>
+    `<label><input type="checkbox" value="${c}" checked> ${nomeDe(c)}</label>`).join("");
+
+  document.querySelectorAll("aside input").forEach(el => el.addEventListener("change", render));
+}
+
+function render() {
+  const linhas = dadosFiltrados();
+  const m = calcularMedidas(linhas);
+
+  // ----- Cartões -----
+  const cartoes = [
+    ["Prestação de Serviços", n(m.prest)],
+    ["Resultado", n(m.resultado)],
+    ["%Resultado", pct(m.pResultado)],
+    ["%Resultado S/ Subv", pct(m.pResSemSubv)],
+    ["%Despesa c/ Pessoal", pct(m.pPessoal)],
+    ["%Adm e Gerais", pct(m.pAdm)],
+  ];
+  document.getElementById("cartoes").innerHTML = cartoes.map(([t, v]) =>
+    `<div class="cartao"><div class="titulo">${t}</div><div class="valor">${v}</div></div>`).join("");
+
+  // ----- Tabela -----
+  const linhaTabela = (rotulo, md, classe) => `
+    <tr class="${classe}">
+      <td>${rotulo}</td>
+      <td>${n(md.prest)}</td><td>${n(md.resultado)}</td><td>${pct(md.pResultado)}</td>
+      <td>${n(md.resSemSubv)}</td><td>${pct(md.pResSemSubv)}</td>
+      <td>${n(md.pessoal)}</td><td>${pct(md.pPessoal)}</td>
+      <td>${n(md.adm)}</td><td>${pct(md.pAdm)}</td>
+      <td>${n(md.educ)}</td><td>${pct(md.pEduc)}</td>
+    </tr>`;
+
+  const entidades = [...new Set(linhas.map(d => d.Entidade))].sort();
+  const tipos = [...new Set(entidades.map(tipoDe))].sort();
+  let html = "";
+  for (const t of tipos) {
+    const doTipo = entidades.filter(e => tipoDe(e) === t);
+    const mt = calcularMedidas(linhas.filter(d => doTipo.includes(d.Entidade)));
+    html += linhaTabela(t, mt, "grupo");
+    for (const e of doTipo) {
+      const me = calcularMedidas(linhas.filter(d => d.Entidade === e));
+      html += linhaTabela(nomeDe(e), me, "detalhe");
+    }
+  }
+  html += linhaTabela("Total", m, "total");
+  document.getElementById("corpo-tabela").innerHTML =
+    linhas.length ? html : `<tr><td colspan="12" class="vazio">Sem dados para os filtros selecionados</td></tr>`;
+
+  // ----- Gráficos -----
+  desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
+  desenharBarras("grafico-resultado", linhas, "resultado");
+}
+
+function desenharBarras(idDestino, linhas, chaveMedida) {
+  const el = document.getElementById(idDestino);
+  const meses = [...new Set(linhas.map(d => d.Mes))].sort((a, b) => a - b);
+  if (!meses.length) { el.innerHTML = `<div class="vazio">Sem dados</div>`; return; }
+
+  const valores = meses.map(mes => calcularMedidas(linhas.filter(d => d.Mes === mes))[chaveMedida]);
+  const max = Math.max(...valores.map(Math.abs), 1);
+
+  el.innerHTML = meses.map((mes, i) => {
+    const v = valores[i];
+    const altura = Math.max(2, Math.abs(v) / max * 130);
+    return `<div class="barra-item">
+      <div class="rotulo-valor">${n(v)}</div>
+      <div class="barra ${v < 0 ? "neg" : ""}" style="height:${altura}px"></div>
+      <div class="rotulo-mes">${NOMES_MESES[mes - 1] || mes}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- Leitura da planilha Excel ---------- */
+const limpaConta = v => String(v ?? "").trim().replace(/\.0$/, "");
+
+function carregarArquivo(arquivo) {
+  const leitor = new FileReader();
+  leitor.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "array" });
+
+      // Identifica as abas pelo conteúdo:
+      //  - Ano + Conta            -> dados do banco
+      //  - Sinal + Conta + DRE 3  -> De/Para DRE
+      //  - Entidade + Tipo        -> De/Para de Campos
+      let abaDados = null, abaDRE = null, abaCampos = null;
+      for (const nome of wb.SheetNames) {
+        const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
+        if (!json.length) continue;
+        const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
+        if (!abaDRE && cols.includes("sinal") && cols.includes("conta") && cols.some(c => c.startsWith("dre 3"))) abaDRE = json;
+        else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
+        else if (!abaCampos && cols.includes("entidade") && cols.includes("tipo")) abaCampos = json;
+      }
+      if (!abaDados) throw new Error("Nenhuma aba com as colunas Ano e Conta foi encontrada");
+
+      const valorDe = (l, nome) => {
+        const par = Object.entries(l).find(([k]) => k.trim().toLowerCase() === nome.toLowerCase());
+        return par ? par[1] : null;
+      };
+
+      if (abaCampos) {
+        mapaEntidades = {};
+        for (const l of abaCampos) {
+          const ent = valorDe(l, "entidade");
+          if (ent == null) continue;
+          mapaEntidades[limpaConta(ent)] = {
+            nome: String(valorDe(l, "nome") ?? ent).trim(),
+            tipo: String(valorDe(l, "tipo") ?? "Campo").trim(),
+          };
+        }
+      }
+
+      if (abaDRE) {
+        mapaDRE = abaDRE
+          .filter(l => valorDe(l, "sinal") != null && valorDe(l, "conta") != null)
+          .map(l => ({
+            sinal: String(valorDe(l, "sinal")).trim(),
+            conta: limpaConta(valorDe(l, "conta")),
+            dre2: String(valorDe(l, "dre 2") ?? "").trim(),
+            dre3: String(valorDe(l, "dre 3") ?? "").trim(),
+          }));
+      }
+
+      // Colunas da aba de dados (Mês pode vir como "Mês" ou "Mes")
+      const chaves = Object.keys(abaDados[0]);
+      const acha = nome => chaves.find(k => k.trim().toLowerCase() === nome.toLowerCase())
+                        || chaves.find(k => k.trim().toLowerCase().startsWith(nome.toLowerCase().slice(0, 3)));
+      const colMes = acha("Mês") || acha("Mes");
+      const colLegal = acha("Saldo_Legal");
+      const colAjust = acha("Saldo_Ajustado");
+      const colSub = acha("Subconta");
+      const obrigatorias = { Ano: acha("Ano"), Mes: colMes, Entidade: acha("Entidade"), Conta: acha("Conta"), Saldo_Legal: colLegal, Saldo_Ajustado: colAjust };
+      for (const [nomeCol, col] of Object.entries(obrigatorias))
+        if (!col) throw new Error("Coluna não encontrada: " + nomeCol);
+
+      dadosBrutos = abaDados.map(l => ({
+        Ano: +l[obrigatorias.Ano],
+        Mes: +l[colMes],
+        Entidade: limpaConta(l[obrigatorias.Entidade]),
+        Conta: limpaConta(l[obrigatorias.Conta]),
+        Subconta: colSub ? String(l[colSub] ?? "").trim() : "",
+        SaldoLegal: +l[colLegal] || 0,
+        SaldoAjustado: +l[colAjust] || 0,
+      })).filter(d => d.Ano && d.Mes);
+
+      processar();
+      document.getElementById("status-arquivo").textContent =
+        `✓ ${arquivo.name} — ${dadosBrutos.length.toLocaleString("pt-BR")} linhas`;
+      document.getElementById("data-atualizacao").textContent =
+        new Date(arquivo.lastModified).toLocaleString("pt-BR");
+      montarFiltros();
+      render();
+    } catch (erro) {
+      document.getElementById("status-arquivo").textContent = "✗ Erro: " + erro.message;
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+const area = document.getElementById("area-arquivo");
+const input = document.getElementById("input-arquivo");
+area.addEventListener("click", () => input.click());
+input.addEventListener("change", () => input.files[0] && carregarArquivo(input.files[0]));
+document.body.addEventListener("dragover", e => e.preventDefault());
+document.body.addEventListener("drop", e => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) carregarArquivo(e.dataTransfer.files[0]);
+});
+
+/* ---------- Carregamento automático (quando publicado em um site) ----------
+   Se a página estiver sendo servida por HTTP (GitHub Pages, servidor local),
+   busca a planilha que estiver ao lado dela, sem precisar arrastar.
+   Aberta direto do disco (file://), o navegador bloqueia — usa o arrastar. */
+async function carregarAutomatico() {
+  if (location.protocol === "file:") return;
+  for (const nome of ["dados.xlsx", "Dados%20Financeiros.xlsx"]) {
+    try {
+      const resp = await fetch(nome, { cache: "no-store" });
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      const modificado = resp.headers.get("last-modified");
+      carregarArquivo(new File([blob], decodeURIComponent(nome),
+        { lastModified: modificado ? Date.parse(modificado) : Date.now() }));
+      return;
+    } catch (e) { /* tenta o próximo nome */ }
+  }
+}
+
+/* ---------- Inicialização ---------- */
+document.getElementById("data-atualizacao").textContent = new Date().toLocaleString("pt-BR");
+processar();
+montarFiltros();
+render();
+carregarAutomatico();
+</script>
+</body>
+</html>

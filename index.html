@@ -81,8 +81,15 @@
       </div>
     </div>
 
+    <section class="dash-section mb-14">
+      <div class="flex items-center gap-3 mb-6">
+        <i data-lucide="building-2" class="w-6 h-6 text-stnr-accent"></i>
+        <h2 class="text-2xl md:text-3xl font-bold tracking-wide">FAP</h2>
+        <div class="flex-1 h-px bg-stnr-border"></div>
+      </div>
+
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="cardGrid">
-      
+
       <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="SysContábil.html">
         <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
           <i data-lucide="calculator" class="w-6 h-6"></i>
@@ -203,7 +210,28 @@
         <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Gestão, acompanhamento e controle de leituras e acervo literário.</p>
       </a>
       </div>
-    
+    </section>
+
+    <section class="dash-section mb-14">
+      <div class="flex items-center gap-3 mb-6">
+        <i data-lucide="landmark" class="w-6 h-6 text-stnr-accent"></i>
+        <h2 class="text-2xl md:text-3xl font-bold tracking-wide">ANP</h2>
+        <div class="flex-1 h-px bg-stnr-border"></div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="cardGridAnp">
+
+        <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="anp/">
+          <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+            <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+          </div>
+          <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Análise Financeira Campos</h2>
+          <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Painel financeiro da ANP: resultado, pessoal, administrativas e educação, com atualização automática dos dados.</p>
+        </a>
+
+      </div>
+    </section>
+
     <div id="noResults" class="hidden text-center py-10">
       <i data-lucide="search-x" class="w-16 h-16 mx-auto text-stnr-border mb-4"></i>
       <p class="text-xl text-stnr-textMuted">Nenhum sistema encontrado.</p>
@@ -244,6 +272,13 @@
       } else {
         noResults.classList.add('hidden');
       }
+
+      // Esconde a seção (FAP/ANP) quando nenhum card dela está visível
+      document.querySelectorAll('.dash-section').forEach(secao => {
+        const temVisivel = [...secao.getElementsByClassName('dashboard-card')]
+          .some(c => c.style.display !== 'none');
+        secao.style.display = temVisivel ? '' : 'none';
+      });
     }
 
     // Lógica do Botão Secreto (Aura Privé)
