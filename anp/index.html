@@ -107,6 +107,31 @@
   .barra-item .barra.neg { background: #c0504d; }
   .barra-item .rotulo-mes { font-size: 12px; color: #666; margin-top: 5px; }
   .vazio { color: #999; font-style: italic; padding: 30px; text-align: center; }
+
+  /* ---------- Abas ---------- */
+  .abas { display: flex; gap: 14px; }
+  .aba-btn {
+    padding: 11px 30px; font-size: 15px; font-family: inherit;
+    color: #7d9cb5; background: #f0f4f8; border: 1px solid #c9d6e2;
+    border-radius: 3px; cursor: pointer; transition: all .15s;
+  }
+  .aba-btn:hover { background: #e2ebf2; }
+  .aba-btn.ativa { background: var(--azul-tabela); color: #fff; border-color: var(--azul-tabela); }
+  .conteudo-aba { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- Tabela DRE ---------- */
+  .tabela-dre th.num, .tabela-dre td.num { text-align: right; }
+  .tabela-dre td.num.total-col { font-weight: 700; }
+  .tabela-dre tr.dre-n1 td { font-weight: 700; background: #eef3f8; }
+  .tabela-dre tr.dre-n2 td:first-child { padding-left: 30px; }
+  .tabela-dre tr.dre-n3 td { background: #fafbfd; color: #556; }
+  .tabela-dre tr.dre-n3 td:first-child { padding-left: 52px; }
+  .tabela-dre tr.dre-resultado td { font-weight: 700; background: #e8eef4; border-top: 2px solid var(--azul-tabela); }
+  .tabela-dre tr.escondida { display: none; }
+  .alternar {
+    cursor: pointer; display: inline-block; width: 16px; text-align: center;
+    color: var(--azul-claro); font-weight: 700; user-select: none;
+  }
 </style>
 </head>
 <body>
@@ -143,6 +168,12 @@
   </aside>
 
   <main>
+    <div class="abas">
+      <button class="aba-btn ativa" data-aba="visao">Visão Geral</button>
+      <button class="aba-btn" data-aba="dre">DRE por Mês</button>
+    </div>
+
+    <div id="aba-visao" class="conteudo-aba">
     <div class="cartoes" id="cartoes"></div>
 
     <div class="painel">
@@ -166,6 +197,16 @@
       <div class="painel grafico">
         <h2>Resultado do Mês</h2>
         <div class="barras" id="grafico-resultado"></div>
+      </div>
+    </div>
+    </div>
+
+    <div id="aba-dre" class="conteudo-aba" style="display:none">
+      <div class="painel" style="overflow-x:auto">
+        <table class="tabela-dre">
+          <thead id="dre-cabecalho"></thead>
+          <tbody id="dre-corpo"></tbody>
+        </table>
       </div>
     </div>
   </main>
@@ -209,77 +250,78 @@ const DRE3 = {
 const DRE2_NAO_RECORRENTE = "RESULTADO NÃO RECORRENTE";
 
 /* De/Para DRE padrão (cópia do arquivo de parâmetros do BI).
+   Campos: sinal, conta, DRE 2, ordem 2, DRE 3, ordem 3, DRE 4, ordem 4.
    É substituído automaticamente se a planilha carregada tiver uma aba
    com as colunas Sinal / Conta / DRE 2 / DRE 3. */
 const MAPA_DRE_PADRAO = [
-  ["+","3111000","RECEITAS","Dízimo Líquidos de Repasses"],
-  ["+","3131001","RECEITAS","Doações E Contribuições Recebidas"],
-  ["+","3131002","RECEITAS","Doações E Contribuições Recebidas"],
-  ["+","3131015","RECEITAS","Doações E Contribuições Recebidas"],
-  ["+","3131020","RECEITAS","Doações E Contribuições Recebidas"],
-  ["+","3135201","RECEITAS","Doações E Contribuições Recebidas"],
-  ["+","3141000","RECEITAS","Prestação de Serviços"],
-  ["+","3141100","RECEITAS","Prestação de Serviços"],
-  ["+","3141200","RECEITAS","Prestação de Serviços"],
-  ["+","3141300","RECEITAS","Prestação de Serviços"],
-  ["+","3186000","RECEITAS","Prestação de Serviços"],
-  ["+","3187000","RECEITAS","Prestação de Serviços"],
-  ["+","3187500","RECEITAS","Prestação de Serviços"],
-  ["+","3149000","RECEITAS","Prestação de Serviços"],
-  ["+","3149100","RECEITAS","Prestação de Serviços"],
-  ["+","3149200","RECEITAS","Prestação de Serviços"],
-  ["+","4126007","RECEITAS","Prestação de Serviços"],
-  ["+","3180000","RECEITAS","Outras Receitas Recorrentes"],
-  ["-","3186000","RECEITAS","Outras Receitas Recorrentes"],
-  ["-","3187000","RECEITAS","Outras Receitas Recorrentes"],
-  ["-","3187500","RECEITAS","Outras Receitas Recorrentes"],
-  ["+","3192200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
-  ["+","3193200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
-  ["+","3195100","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
-  ["+","3195200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
-  ["+","3197200","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
-  ["+","3198100","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
-  ["+","3210000","RESULTADO NÃO RECORRENTE","Receitas Não Recorrentes"],
-  ["+","4111000","DESPESAS","Despesas Com Pessoal"],
-  ["+","4112000","DESPESAS","Despesas Com Pessoal"],
-  ["+","4113000","DESPESAS","Despesas Com Pessoal"],
-  ["+","4114000","DESPESAS","Despesas Com Pessoal"],
-  ["+","4119000","DESPESAS","Despesas Com Pessoal"],
-  ["+","4119500","DESPESAS","Despesas Com Pessoal"],
-  ["+","4121052","DESPESAS","Despesas Com Pessoal"],
-  ["+","4121058","DESPESAS","Despesas Com Pessoal"],
-  ["+","4129122","DESPESAS","Despesas Com Pessoal"],
-  ["+","4195210","DESPESAS","Despesas Com Pessoal"],
-  ["+","4121000","DESPESAS","Administrativas e Gerais"],
-  ["+","4121500","DESPESAS","Administrativas e Gerais"],
-  ["+","4121800","DESPESAS","Administrativas e Gerais"],
-  ["+","4122000","DESPESAS","Administrativas e Gerais"],
-  ["+","4122500","DESPESAS","Administrativas e Gerais"],
-  ["+","4123000","DESPESAS","Administrativas e Gerais"],
-  ["+","4124000","DESPESAS","Administrativas e Gerais"],
-  ["+","4125000","DESPESAS","Administrativas e Gerais"],
-  ["+","4126000","DESPESAS","Administrativas e Gerais"],
-  ["+","4128500","DESPESAS","Administrativas e Gerais"],
-  ["+","4129000","DESPESAS","Administrativas e Gerais"],
-  ["+","4129500","DESPESAS","Administrativas e Gerais"],
-  ["+","4129600","DESPESAS","Administrativas e Gerais"],
-  ["-","4126007","DESPESAS","Administrativas e Gerais"],
-  ["-","4121052","DESPESAS","Administrativas e Gerais"],
-  ["-","4121058","DESPESAS","Administrativas e Gerais"],
-  ["-","4129122","DESPESAS","Administrativas e Gerais"],
-  ["-","4195210","DESPESAS","Outorgamentos"],
-  ["+","4141000","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4141100","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4142000","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4146500","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4146000","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4149500","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4149600","DESPESAS","Educação, Assistência E Orientação Social"],
-  ["+","4190000","DESPESAS","Outorgamentos"],
-  ["+","3191005","DESPESAS","Outorgamentos"],
-  ["+","4210000","RESULTADO NÃO RECORRENTE","Despesas Não Recorrentes"],
-  ["+","3195110","RECEITAS","Prestação de Serviços"],
-  ["-","3195110","SUBVENÇÕES RECEBIDAS","Subvenções Recebidas"],
+  ["+","3111000","RECEITAS",1,"Dízimo Líquidos de Repasses",0.5,"Dízimos Repassados da Mantenedora",1],
+  ["+","3131001","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Pessoas Físicas",2],
+  ["+","3131002","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Pessoas Jurídicas",2],
+  ["+","3131015","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações do Exterior",2],
+  ["+","3131020","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Diversas",2],
+  ["+","3135201","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Convênios de Cooperação - Não Dízimo",2],
+  ["+","3141000","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Diversas",3],
+  ["+","3141100","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Ed Básica",3],
+  ["+","3141200","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Graduação",3],
+  ["+","3141300","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Pós Graduação",3],
+  ["+","3186000","RECEITAS",1,"Prestação de Serviços",2,"Receitas Educacionais Diversas",4],
+  ["+","3187000","RECEITAS",1,"Prestação de Serviços",2,"Receitas de Pensionato",4],
+  ["+","3187500","RECEITAS",1,"Prestação de Serviços",2,"(-) Desc. E Abat S/ Outras Receitas",5],
+  ["+","3149000","RECEITAS",1,"Prestação de Serviços",2,"(-) Desc. E Abat S/ Receitas e Serviços",6],
+  ["+","3149100","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Concedidas - Educ. Básica",7],
+  ["+","3149200","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Concedidas - Graduação",7],
+  ["+","4126007","RECEITAS",1,"Prestação de Serviços",2,"(-) Descontos Condicionais Concedidos",7],
+  ["+","3195110","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Confessionais",7],
+  ["+","3180000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Outras Receitas Recorrentes",7],
+  ["-","3186000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Outras Receitas Educacionais Diversas",7],
+  ["-","3187000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Receitas de Pensionato",7],
+  ["-","3187500","RECEITAS",1,"Outras Receitas Recorrentes",4,"(-) Desc. E Abat S/ Outras Receitas Educacionais",7],
+  ["+","3192200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Internas Mesma Região - Não Dízimo",8],
+  ["+","3193200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Internas - Não Dízimo",10],
+  ["+","3195100","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Congêneres - Dízimo",10],
+  ["+","3195200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Congêneres - Não Dízimo",10],
+  ["+","3197200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"(-) Repasse Subv. Entidades Congêneres - Não Dízimo",10],
+  ["+","3198100","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Convênio de Cooperação Entidades Privadas",10],
+  ["-","3195110","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"(-) Bolsas Confessionais",10],
+  ["+","3210000","RESULTADO NÃO RECORRENTE",4,"Receitas Não Recorrentes",6,"Receitas Não Recorrentes",11],
+  ["+","4111000","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Proventos",13],
+  ["+","4112000","DESPESAS",2,"Despesas Com Pessoal",7,"Encargos Sociais",13],
+  ["+","4113000","DESPESAS",2,"Despesas Com Pessoal",7,"Reembolsos de Despesas",13],
+  ["+","4114000","DESPESAS",2,"Despesas Com Pessoal",7,"Encargos Pessoais Diversos",13],
+  ["+","4119000","DESPESAS",2,"Despesas Com Pessoal",7,"Serviços de Terceiros",13],
+  ["+","4119500","DESPESAS",2,"Despesas Com Pessoal",7,"(-)Deduções Despesas Com Pessoal",13],
+  ["+","4121052","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Moradia Empregados - Geral",13],
+  ["+","4121058","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Moradia Empregados - Contrato",13],
+  ["+","4129122","DESPESAS",2,"Despesas Com Pessoal",7,"Contribuição Associativa - Assistencial",13],
+  ["+","4195210","DESPESAS",2,"Despesas Com Pessoal",7,"Subv. Enviada Educação - Não Dízimo",13],
+  ["+","4121000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Gerais",18],
+  ["+","4121500","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Materiais",18],
+  ["+","4121800","DESPESAS",2,"Administrativas e Gerais",8,"Despesas da Operação",18],
+  ["+","4122000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas de Conservação e Manutenção",18],
+  ["+","4122500","DESPESAS",2,"Administrativas e Gerais",8,"Prestação de Serviços PJ",19],
+  ["+","4123000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Depreciações e Amortizações",20],
+  ["+","4124000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Provisões Gerais",20],
+  ["+","4125000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Tributárias",20],
+  ["+","4126000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Financeiras",20],
+  ["+","4128500","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Diversas",20],
+  ["+","4129000","DESPESAS",2,"Administrativas e Gerais",8,"Contribuições e Despesas Associativas",20],
+  ["+","4129500","DESPESAS",2,"Administrativas e Gerais",8,"(-)Deduções Despesas Administrativas",20],
+  ["+","4129600","DESPESAS",2,"Administrativas e Gerais",8,"(-)Deduções Despesas Administrativas",20],
+  ["-","4126007","DESPESAS",2,"Administrativas e Gerais",8,"Descontos Condicionais Concedidos",20],
+  ["-","4121052","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Moradia Empregados - Geral",20],
+  ["-","4121058","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Moradia Empregados - Contrato",20],
+  ["-","4129122","DESPESAS",2,"Administrativas e Gerais",8,"Contribuição Associativa - Assistencial",20],
+  ["+","4141000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Assistência e Orient. Social",21],
+  ["+","4141100","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Programas, Projetos e Orient. Social",21],
+  ["+","4142000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Promoção Treinamento e Eventos",21],
+  ["+","4146500","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Apoio ao Aluno Bolsista",22],
+  ["+","4146000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Gratuidade Assist. Social",23],
+  ["+","4149500","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"(-)Dedução Despesas Educação e Assist",24],
+  ["+","4149600","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"(-)Dedução Despesas Educação e Assist",24],
+  ["+","4190000","DESPESAS",2,"Outorgamentos",10,"Outorgamentos",25],
+  ["+","3191005","DESPESAS",2,"Outorgamentos",10,"Rateios Dpto Sede",26],
+  ["-","4195210","DESPESAS",2,"Outorgamentos",10,"Subv. Enviada Educação - Não Dízimo",26],
+  ["+","4210000","RESULTADO NÃO RECORRENTE",4,"Despesas Não Recorrentes",11,"Outras Despesas",27],
 ];
 
 const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -311,7 +353,8 @@ function dadosExemplo() {
 }
 
 /* ===================================================================== */
-let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, dre3]) => ({ sinal, conta, dre2, dre3 }));
+let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4]) =>
+  ({ sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4 }));
 let dadosBrutos = dadosExemplo();
 let linhasDRE = [];   // resultado do processamento (equivalente à tabela BD_AASI)
 
@@ -330,7 +373,8 @@ function processar() {
     for (const r of regras) {
       linhasDRE.push({
         Ano: d.Ano, Mes: d.Mes, Entidade: d.Entidade,
-        dre2: r.dre2, dre3: r.dre3,
+        dre2: r.dre2, ord2: r.ord2, dre3: r.dre3, ord3: r.ord3,
+        dre4: r.dre4, ord4: r.ord4,
         saldo: (r.sinal === "+" ? base : -base) * -1,
       });
     }
@@ -441,6 +485,78 @@ function render() {
   // ----- Gráficos -----
   desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
   desenharBarras("grafico-resultado", linhas, "resultado");
+
+  // ----- Aba DRE -----
+  renderDRE(linhas);
+}
+
+/* Matriz "DRE por Mês": hierarquia DRE 2 > DRE 3 > DRE 4, meses nas colunas.
+   Nível 2 começa aberto; níveis 3/4 expandem no clique (como no Power BI). */
+function renderDRE(linhas) {
+  const cab = document.getElementById("dre-cabecalho");
+  const corpo = document.getElementById("dre-corpo");
+  const chavesMes = [...new Set(linhas.map(d => d.Ano * 100 + d.Mes))].sort((a, b) => a - b);
+  const rotulo = c => NOMES_MESES[(c % 100) - 1] + "/" + Math.floor(c / 100);
+
+  cab.innerHTML = "<tr><th>DRE</th>" +
+    chavesMes.map(c => `<th class="num">${rotulo(c)}</th>`).join("") +
+    `<th class="num">Total</th></tr>`;
+  if (!linhas.length) {
+    corpo.innerHTML = `<tr><td colspan="${chavesMes.length + 2}" class="vazio">Sem dados para os filtros selecionados</td></tr>`;
+    return;
+  }
+
+  // Agrega nos 3 níveis
+  const novoNo = ord => ({ ord, meses: new Map(), total: 0, filhos: new Map() });
+  const pega = (mapa, chave, ord) => { if (!mapa.has(chave)) mapa.set(chave, novoNo(ord)); return mapa.get(chave); };
+  const raiz = new Map();
+  const geral = novoNo(0);
+  for (const l of linhas) {
+    const c = l.Ano * 100 + l.Mes;
+    const n1 = pega(raiz, l.dre2, l.ord2);
+    const n2 = pega(n1.filhos, l.dre3, l.ord3);
+    const n3 = pega(n2.filhos, l.dre4 || "(sem detalhe)", l.ord4);
+    for (const no of [n1, n2, n3, geral]) {
+      no.total += l.saldo;
+      no.meses.set(c, (no.meses.get(c) || 0) + l.saldo);
+    }
+  }
+
+  const celulas = no => chavesMes.map(c =>
+      `<td class="num">${no.meses.has(c) ? n(no.meses.get(c)) : ""}</td>`).join("") +
+    `<td class="num total-col">${n(no.total)}</td>`;
+  const ordenado = mapa => [...mapa.entries()].sort((a, b) =>
+    (a[1].ord ?? 99) - (b[1].ord ?? 99) || a[0].localeCompare(b[0], "pt-BR"));
+
+  let html = "", seq = 0;
+  for (const [nome2, n1] of ordenado(raiz)) {
+    const id1 = "dre" + (++seq);
+    html += `<tr class="dre-n1" data-id="${id1}"><td><span class="alternar" data-alvo="${id1}">−</span> ${nome2}</td>${celulas(n1)}</tr>`;
+    for (const [nome3, n2] of ordenado(n1.filhos)) {
+      const id2 = "dre" + (++seq);
+      const alterna = n2.filhos.size ? `<span class="alternar" data-alvo="${id2}">+</span> ` : "";
+      html += `<tr class="dre-n2" data-id="${id2}" data-pai="${id1}"><td>${alterna}${nome3}</td>${celulas(n2)}</tr>`;
+      for (const [nome4, n3] of ordenado(n2.filhos)) {
+        html += `<tr class="dre-n3 escondida" data-pai="${id2}"><td>${nome4}</td>${celulas(n3)}</tr>`;
+      }
+    }
+  }
+  html += `<tr class="dre-resultado"><td>RESULTADO</td>${celulas(geral)}</tr>`;
+  corpo.innerHTML = html;
+
+  corpo.querySelectorAll(".alternar").forEach(el => el.addEventListener("click", () => {
+    const alvo = el.dataset.alvo;
+    const abrir = el.textContent === "+";
+    el.textContent = abrir ? "−" : "+";
+    corpo.querySelectorAll(`tr[data-pai="${alvo}"]`).forEach(tr => {
+      tr.classList.toggle("escondida", !abrir);
+      if (!abrir && tr.dataset.id) {           // recolhe os netos junto
+        const t = tr.querySelector(".alternar");
+        if (t) t.textContent = "+";
+        corpo.querySelectorAll(`tr[data-pai="${tr.dataset.id}"]`).forEach(x => x.classList.add("escondida"));
+      }
+    });
+  }));
 }
 
 function desenharBarras(idDestino, linhas, chaveMedida) {
@@ -510,7 +626,11 @@ function carregarArquivo(arquivo) {
             sinal: String(valorDe(l, "sinal")).trim(),
             conta: limpaConta(valorDe(l, "conta")),
             dre2: String(valorDe(l, "dre 2") ?? "").trim(),
+            ord2: +valorDe(l, "dre 2 - ordem") || 99,
             dre3: String(valorDe(l, "dre 3") ?? "").trim(),
+            ord3: +valorDe(l, "dre 3 - ordem") || 99,
+            dre4: String(valorDe(l, "dre 4") ?? "").trim(),
+            ord4: +valorDe(l, "dre 4 - ordem") || 99,
           }));
       }
 
@@ -578,6 +698,13 @@ async function carregarAutomatico() {
     } catch (e) { /* tenta o próximo nome */ }
   }
 }
+
+/* ---------- Troca de abas ---------- */
+document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
+  document.getElementById("aba-visao").style.display = btn.dataset.aba === "visao" ? "" : "none";
+  document.getElementById("aba-dre").style.display = btn.dataset.aba === "dre" ? "" : "none";
+}));
 
 /* ---------- Inicialização ---------- */
 document.getElementById("data-atualizacao").textContent = new Date().toLocaleString("pt-BR");
