@@ -166,6 +166,16 @@
   .explica h3 { color: var(--azul-escuro); font-size: 15px; margin-bottom: 8px; }
   .explica p { margin: 6px 0; }
   .explica b { color: var(--azul-escuro); }
+
+  /* ---------- Dica flutuante (tooltip) ---------- */
+  #dica {
+    position: fixed; display: none; z-index: 99; pointer-events: none;
+    background: rgba(26, 32, 44, .94); color: #fff;
+    padding: 8px 12px; border-radius: 6px;
+    font-size: 12.5px; line-height: 1.5; max-width: 280px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  #dica b { color: #9fd1ff; }
 </style>
 </head>
 <body>
@@ -611,6 +621,23 @@ function animaValor(el) {
 const fmtCompacto = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
 const nc = v => fmtCompacto.format(Math.round(v));
 
+/* ---------- Dica flutuante: qualquer elemento com data-dica ganha tooltip ---------- */
+const dica = document.createElement("div");
+dica.id = "dica";
+document.body.appendChild(dica);
+function ligarDicas(container) {
+  container.querySelectorAll("[data-dica]").forEach(el => {
+    el.addEventListener("mousemove", e => {
+      dica.innerHTML = el.dataset.dica;
+      dica.style.display = "block";
+      const larg = dica.offsetWidth;
+      dica.style.left = Math.min(e.clientX + 14, window.innerWidth - larg - 8) + "px";
+      dica.style.top = (e.clientY - 12) + "px";
+    });
+    el.addEventListener("mouseleave", () => { dica.style.display = "none"; });
+  });
+}
+
 /* =====================================================================
    ABA COMPARATIVO ANUAL: cascata do resultado, barras ano x ano e
    linhas de resultado acumulado. Compara o maior ano selecionado com
@@ -669,7 +696,10 @@ function desenharCascata(linhas) {
     const yTopo = y(Math.max(b.ini, b.fim));
     const h = Math.max(2, Math.abs(b.fim - b.ini) * escala);
     const cor = b.final ? "#2c5f7c" : (b.v >= 0 ? "#4a9d6e" : "#c0504d");
-    svg += `<rect x="${x}" y="${yTopo}" width="${w}" height="${h}" rx="3" fill="${cor}">
+    const texto = b.final
+      ? `<b>${b.nome}</b><br>${n(b.v)}`
+      : `<b>${b.nome}</b><br>Valor: ${n(b.v)}<br>Acumulado até aqui: ${n(b.fim)}`;
+    svg += `<rect x="${x}" y="${yTopo}" width="${w}" height="${h}" rx="3" fill="${cor}" data-dica="${texto}">
       <animate attributeName="height" from="0" to="${h}" dur="0.5s" fill="freeze"/>
       <animate attributeName="y" from="${yTopo + h}" to="${yTopo}" dur="0.5s" fill="freeze"/>
     </rect>`;
@@ -682,6 +712,7 @@ function desenharCascata(linhas) {
   });
   svg += `<line x1="${margem - 10}" y1="${y(0)}" x2="${L - margem + 10}" y2="${y(0)}" stroke="#889"/>`;
   alvo.innerHTML = `<svg class="cascata-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(alvo);
 }
 
 function desenharCompMeses(atual, anterior, anoAtual, anoAnterior, temAnterior) {
@@ -746,7 +777,18 @@ function desenharAcumulado(atual, anterior, anoAtual, anoAnterior, temAnterior) 
   svg += meses.map((mes, i) => `<text x="${x(i)}" y="${baseY + 24}" text-anchor="middle" font-size="11" fill="#667">${NOMES_MESES[mes - 1]}</text>`).join("");
   if (temAnterior) svg += linhaSvg(sAnt, "#9db8cc");
   svg += linhaSvg(sAtual, "#2c5f7c");
+  // captura do mouse por mês, mostrando os dois anos juntos
+  svg += meses.map((mes, i) => {
+    const partes = [`<b>Acumulado até ${NOMES_MESES[mes - 1]}</b>`];
+    if (sAtual[i] != null) partes.push(`${anoAtual}: ${n(sAtual[i])}`);
+    if (temAnterior && sAnt[i] != null) {
+      partes.push(`${anoAnterior}: ${n(sAnt[i])}`);
+      if (sAtual[i] != null && sAnt[i]) partes.push(`Diferença: ${n(sAtual[i] - sAnt[i])}`);
+    }
+    return `<rect x="${x(i) - (L - esq - dir) / (2 * Math.max(meses.length - 1, 1))}" y="${topoY}" width="${(L - esq - dir) / Math.max(meses.length - 1, 1)}" height="${baseY - topoY}" fill="#000" fill-opacity="0" pointer-events="all" data-dica="${partes.join("<br>")}"/>`;
+  }).join("");
   el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(el);
 }
 
 /* Matriz "DRE por Mês": hierarquia DRE 2 > DRE 3 > DRE 4, meses nas colunas.
@@ -1149,8 +1191,14 @@ function desenharProjMeses(real, previsto, mesesFut, margemMes) {
         `<line x1="${cx - 5}" y1="${y(d.v + margemMes)}" x2="${cx + 5}" y2="${y(d.v + margemMes)}" stroke="#445" stroke-width="1.4"/>` +
         `<line x1="${cx - 5}" y1="${y(d.v - margemMes)}" x2="${cx + 5}" y2="${y(d.v - margemMes)}" stroke="#445" stroke-width="1.4"/>`;
     svg += `<text x="${cx}" y="${baseY + 18}" text-anchor="middle" font-size="10.5" fill="#667">${NOMES_MESES[d.m - 1]}</text>`;
+    // camada invisível que captura o mouse na coluna inteira do mês
+    const texto = d.realizado
+      ? `<b>${NOMES_MESES[d.m - 1]} — Realizado</b><br>Resultado: ${n(d.v)}`
+      : `<b>${NOMES_MESES[d.m - 1]} — Projetado</b><br>Resultado: ${n(d.v)}<br>Faixa (~90%): ${n(d.v - margemMes)} a ${n(d.v + margemMes)}`;
+    svg += `<rect x="${esq + i * larg}" y="${topoY}" width="${larg}" height="${baseY - topoY}" fill="#000" fill-opacity="0" pointer-events="all" data-dica="${texto}"/>`;
   });
   el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(el);
 }
 
 function desenharProjAcumulado(real, previsto, mesesReal, mesesFut, sigma) {
@@ -1195,7 +1243,15 @@ function desenharProjAcumulado(real, previsto, mesesReal, mesesFut, sigma) {
     svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.inf) + 4}" font-size="10" fill="#889">${nc(fim.inf)}</text>`;
   }
   svg += pontos.map((p, i) => `<text x="${x(i)}" y="${baseY + 18}" text-anchor="middle" font-size="10.5" fill="#667">${NOMES_MESES[p.m - 1]}</text>`).join("");
+  // pontos invisíveis maiores para capturar o mouse
+  svg += pontos.map((p, i) => {
+    const texto = p.realizado
+      ? `<b>Acumulado até ${NOMES_MESES[p.m - 1]}</b><br>${n(p.v)} (realizado)`
+      : `<b>Acumulado até ${NOMES_MESES[p.m - 1]}</b><br>Projeção: ${n(p.v)}<br>Faixa (~90%): ${n(p.inf)} a ${n(p.sup)}`;
+    return `<circle cx="${x(i)}" cy="${y(p.v)}" r="11" fill="#000" fill-opacity="0" pointer-events="all" data-dica="${texto}"/>`;
+  }).join("");
   el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(el);
 }
 
 document.getElementById("proj-metodo").addEventListener("change", renderProjecao);
