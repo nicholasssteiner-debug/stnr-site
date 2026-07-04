@@ -987,8 +987,12 @@ function renderProjecao() {
   };
 
   const real = porMes(ano);
-  // O mês corrente ainda está em aberto: não conta como realizado
-  // (senão os poucos dias lançados distorcem a projeção e a margem)
+  // Meses realizados = SOMENTE o intervalo selecionado na barra lateral.
+  // Se maio/junho ainda não foram contabilizados por completo, basta
+  // deixar o intervalo em 1-4: eles viram meses projetados.
+  for (const m of [...real.keys()])
+    if (m < f.mesIni || m > f.mesFim) real.delete(m);
+  // O mês corrente do calendário também fica de fora (está em aberto)
   const hoje = new Date();
   if (ano === hoje.getFullYear())
     for (const m of [...real.keys()]) if (m >= hoje.getMonth() + 1) real.delete(m);
@@ -1041,12 +1045,27 @@ function renderProjecao() {
     nomeAlt = outroSazonal ? "sazonal" : "média do ano atual";
   }
 
-  // ----- Cartões-resumo -----
+  // ----- Cartões-resumo (com destaque para o próximo mês) -----
   const ultimoReal = mesesReal.length ? NOMES_MESES[mesesReal[mesesReal.length - 1] - 1] : "—";
-  document.getElementById("proj-cartoes").innerHTML = `
+  const proxMes = mesesFut.length ? mesesFut[0] : null;
+  const proxValor = proxMes != null ? previsto.get(proxMes) : null;
+  let proxRef = "";
+  if (proxMes != null && anteriores.length) {
+    const ultAnt = anteriores[anteriores.length - 1];
+    if (ultAnt.mapa.has(proxMes))
+      proxRef = ` · ${NOMES_MESES[proxMes - 1]}/${ultAnt.a}: ${n(ultAnt.mapa.get(proxMes))}`;
+  }
+  const cartaoProx = proxMes == null ? "" : `
+    <div class="cartao"><div class="titulo">Próximo mês (${NOMES_MESES[proxMes - 1]}/${ano})</div>
+      <div class="valor" data-tipo="num" data-valor="${proxValor}"></div>
+      <div class="faixa">faixa: ${n(proxValor - margemMes)} a ${n(proxValor + margemMes)}${proxRef}</div></div>`;
+  const elCartoes = document.getElementById("proj-cartoes");
+  elCartoes.style.gridTemplateColumns = `repeat(${proxMes == null ? 3 : 4}, 1fr)`;
+  elCartoes.innerHTML = `
     <div class="cartao"><div class="titulo">Realizado (até ${ultimoReal}/${ano})</div>
       <div class="valor" data-tipo="num" data-valor="${somaReal}"></div>
       <div class="faixa">${mesesReal.length} meses fechados</div></div>
+    ${cartaoProx}
     <div class="cartao"><div class="titulo">Projeção meses restantes</div>
       <div class="valor" data-tipo="num" data-valor="${somaProj}"></div>
       <div class="faixa">${mesesFut.length} meses a realizar</div></div>
@@ -1086,6 +1105,10 @@ function renderProjecao() {
     : "";
   document.getElementById("proj-explica").innerHTML = `
     <h3>Como esta projeção é calculada — e qual é a margem de erro</h3>
+    <p><b>Meses considerados fechados:</b> somente o intervalo selecionado na barra lateral
+      (${NOMES_MESES[Math.max(1, Math.min(12, f.mesIni)) - 1]}–${NOMES_MESES[Math.max(1, Math.min(12, f.mesFim)) - 1]}).
+      Meses com lançamentos parciais — despesa contabilizada, receita ainda não — devem ficar
+      <b>fora do intervalo</b>: eles entram como meses projetados e não contaminam o cálculo.</p>
     <p><b>Valor central:</b> ${comoCentral}</p>
     <p><b>Margem de erro (±${n(margemMes)} por mês):</b> medimos o quanto os meses já realizados de ${ano}
       variaram em relação ao próprio padrão (desvio típico de ${n(sigma)}) e aplicamos um fator de ~90% de
