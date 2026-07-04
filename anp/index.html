@@ -159,6 +159,13 @@
   .par-mes .b.atu { background: var(--azul-tabela); }
   .par-mes .b.negativo { background: #c0504d; }
   .par-mes .rotulo-mes { font-size: 12px; color: #666; margin-top: 5px; }
+
+  /* ---------- Projeção ---------- */
+  .cartao .faixa { font-size: 12px; color: #778; margin-top: 5px; }
+  .explica { font-size: 13.5px; color: #445; line-height: 1.6; padding: 16px 20px; }
+  .explica h3 { color: var(--azul-escuro); font-size: 15px; margin-bottom: 8px; }
+  .explica p { margin: 6px 0; }
+  .explica b { color: var(--azul-escuro); }
 </style>
 </head>
 <body>
@@ -199,6 +206,7 @@
       <button class="aba-btn ativa" data-aba="visao">Visão Geral</button>
       <button class="aba-btn" data-aba="dre">DRE por Mês</button>
       <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
+      <button class="aba-btn" data-aba="proj">Projeção</button>
     </div>
 
     <div id="aba-visao" class="conteudo-aba">
@@ -255,6 +263,29 @@
           <div id="grafico-acumulado"></div>
         </div>
       </div>
+    </div>
+
+    <div id="aba-proj" class="conteudo-aba" style="display:none">
+      <div class="legenda" style="justify-content:flex-start; margin-bottom:0">
+        <label for="proj-metodo" style="align-self:center">Método da projeção:&nbsp;</label>
+        <select id="proj-metodo" style="padding:6px 10px; border:1px solid #c9d6e2; border-radius:3px; font-family:inherit; color:#345">
+          <option value="media" selected>Média do ano atual</option>
+          <option value="sazonal">Sazonal (padrão dos anos anteriores × ritmo atual)</option>
+        </select>
+      </div>
+      <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="proj-cartoes"></div>
+      <div class="graficos">
+        <div class="painel grafico">
+          <h2 id="titulo-proj-meses">Resultado Mensal — Realizado e Projetado</h2>
+          <div id="legenda-proj" class="legenda"></div>
+          <div id="grafico-proj-meses"></div>
+        </div>
+        <div class="painel grafico">
+          <h2 id="titulo-proj-acum">Acumulado com Cone de Incerteza</h2>
+          <div id="grafico-proj-acum"></div>
+        </div>
+      </div>
+      <div class="painel explica" id="proj-explica"></div>
     </div>
   </main>
 </div>
@@ -417,6 +448,7 @@ function processar() {
     const regras = porConta[d.Conta];
     if (!regras) continue;                                     // conta fora do De/Para
     const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;  // ignora linhas zeradas (meses futuros vêm no balancete com saldo 0)
     for (const r of regras) {
       linhasDRE.push({
         Ano: d.Ano, Mes: d.Mes, Entidade: d.Entidade,
@@ -556,9 +588,10 @@ function render() {
   desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
   desenharBarras("grafico-resultado", linhas, "resultado");
 
-  // ----- Abas DRE e Comparativo -----
+  // ----- Abas DRE, Comparativo e Projeção -----
   renderDRE(linhas);
   renderComparativo();
+  renderProjecao();
 }
 
 /* Contagem animada dos cartões */
@@ -925,10 +958,229 @@ async function carregarAutomatico() {
   }
 }
 
+/* =====================================================================
+   ABA PROJEÇÃO
+   Projeta os meses ainda sem lançamento do maior ano selecionado.
+   Método: se houver ano(s) anterior(es) quase completo(s), usa o valor
+   do MESMO mês neles, ajustado pelo ritmo do ano atual (sazonalidade);
+   senão, usa a média dos meses realizados.
+   Margem de erro: ±1,64 × desvio típico dos meses realizados em relação
+   ao padrão (~90% dos cenários dentro da faixa). Para o acumulado, a
+   margem cresce com a raiz do nº de meses projetados (cone).
+   ===================================================================== */
+const FATOR_CONFIANCA = 1.64; // ~90%
+
+function renderProjecao() {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisp.length) return;
+  const ano = f.anos.length ? Math.max(...f.anos) : anosDisp[anosDisp.length - 1];
+
+  // resultado por mês de um ano (só meses com lançamentos)
+  const porMes = a => {
+    const mapa = new Map();
+    for (let mes = 1; mes <= 12; mes++) {
+      const ls = linhasDRE.filter(d => d.Ano === a && d.Mes === mes && f.campos.includes(d.Entidade));
+      if (ls.length) mapa.set(mes, calcularMedidas(ls).resultado);
+    }
+    return mapa;
+  };
+
+  const real = porMes(ano);
+  // O mês corrente ainda está em aberto: não conta como realizado
+  // (senão os poucos dias lançados distorcem a projeção e a margem)
+  const hoje = new Date();
+  if (ano === hoje.getFullYear())
+    for (const m of [...real.keys()]) if (m >= hoje.getMonth() + 1) real.delete(m);
+  const mesesReal = [...real.keys()].sort((a, b) => a - b);
+  const mesesFut = []; for (let m = 1; m <= 12; m++) if (!real.has(m)) mesesFut.push(m);
+  const anteriores = anosDisp.filter(a => a < ano).map(a => ({ a, mapa: porMes(a) }))
+    .filter(x => x.mapa.size >= 10);
+
+  const somaReal = mesesReal.reduce((s, m) => s + real.get(m), 0);
+  const mediaReal = mesesReal.length ? somaReal / mesesReal.length : 0;
+
+  // Projeção central por mês — dois métodos à escolha
+  const prevSazonal = new Map();
+  if (anteriores.length && mesesReal.length >= 2) {
+    for (let m = 1; m <= 12; m++) {
+      const estimativas = [];
+      for (const { mapa } of anteriores) {
+        if (!mapa.has(m)) continue;
+        const somaAntPeriodo = mesesReal.reduce((s, mm) => s + (mapa.get(mm) ?? 0), 0);
+        let fator = somaAntPeriodo ? somaReal / somaAntPeriodo : 1;
+        if (!isFinite(fator) || fator <= 0) fator = 1;
+        estimativas.push(mapa.get(m) * fator);
+      }
+      if (estimativas.length) prevSazonal.set(m, estimativas.reduce((s, v) => s + v, 0) / estimativas.length);
+    }
+  }
+  const escolhido = (document.getElementById("proj-metodo") || {}).value || "media";
+  const metodo = escolhido === "sazonal" && prevSazonal.size ? "sazonal" : "media";
+  const previsto = new Map();
+  for (let m = 1; m <= 12; m++)
+    previsto.set(m, metodo === "sazonal" ? (prevSazonal.get(m) ?? mediaReal) : mediaReal);
+
+  // Margem de erro: desvio típico entre realizado e padrão
+  const desvios = mesesReal.map(m => real.get(m) - (metodo === "sazonal" ? previsto.get(m) : mediaReal));
+  const sigma = desvios.length >= 2
+    ? Math.sqrt(desvios.reduce((s, r) => s + r * r, 0) / (desvios.length - 1))
+    : Math.abs(mediaReal) * 0.25;
+  const margemMes = FATOR_CONFIANCA * sigma;
+
+  const somaProj = mesesFut.reduce((s, m) => s + previsto.get(m), 0);
+  const fechamento = somaReal + somaProj;
+  const margemFech = margemMes * Math.sqrt(mesesFut.length);
+
+  // Fechamento pelo método alternativo (vira referência na explicação)
+  let fechamentoAlt = null, nomeAlt = "";
+  if (prevSazonal.size) {
+    const outroSazonal = metodo !== "sazonal";
+    const somaAlt = mesesFut.reduce((s, m) => s + (outroSazonal ? (prevSazonal.get(m) ?? mediaReal) : mediaReal), 0);
+    fechamentoAlt = somaReal + somaAlt;
+    nomeAlt = outroSazonal ? "sazonal" : "média do ano atual";
+  }
+
+  // ----- Cartões-resumo -----
+  const ultimoReal = mesesReal.length ? NOMES_MESES[mesesReal[mesesReal.length - 1] - 1] : "—";
+  document.getElementById("proj-cartoes").innerHTML = `
+    <div class="cartao"><div class="titulo">Realizado (até ${ultimoReal}/${ano})</div>
+      <div class="valor" data-tipo="num" data-valor="${somaReal}"></div>
+      <div class="faixa">${mesesReal.length} meses fechados</div></div>
+    <div class="cartao"><div class="titulo">Projeção meses restantes</div>
+      <div class="valor" data-tipo="num" data-valor="${somaProj}"></div>
+      <div class="faixa">${mesesFut.length} meses a realizar</div></div>
+    <div class="cartao"><div class="titulo">Fechamento projetado ${ano}</div>
+      <div class="valor" data-tipo="num" data-valor="${fechamento}"></div>
+      <div class="faixa">faixa provável: ${n(fechamento - margemFech)} a ${n(fechamento + margemFech)}</div></div>`;
+  document.querySelectorAll("#proj-cartoes .valor").forEach(animaValor);
+
+  document.getElementById("legenda-proj").innerHTML =
+    `<span class="chip" style="--c:#2c5f7c">Realizado</span><span class="chip" style="--c:#a9c9e0">Projetado (± margem)</span>`;
+
+  desenharProjMeses(real, previsto, mesesFut, margemMes);
+  desenharProjAcumulado(real, previsto, mesesReal, mesesFut, sigma);
+
+  // ----- Explicação do método e da margem -----
+  const listaAnt = anteriores.map(x => x.a).join(" e ");
+  const comoCentral = metodo === "sazonal"
+    ? `usamos o resultado do <b>mesmo mês</b> em ${listaAnt}, ajustado pelo <b>ritmo de ${ano}</b> (comparando os ${mesesReal.length} meses já realizados com os mesmos meses do(s) ano(s) anterior(es)). Atenção: esse método assume que o calendário de receitas e subvenções se repete — se ele mudou de um ano para o outro, a projeção distorce.`
+    : (anteriores.length
+      ? `usamos a <b>média dos ${mesesReal.length} meses já realizados</b> de ${ano} (${n(mediaReal)}/mês). Existe também o método sazonal no seletor acima, mas aqui o calendário mudou entre os anos (em ${listaAnt} as subvenções se concentraram no 2º semestre; em ${ano} vêm entrando mês a mês), então a média do próprio ano tende a ser mais realista.`
+      : `sem ano anterior completo para comparar, usamos a <b>média dos ${mesesReal.length} meses já realizados</b> (${n(mediaReal)}/mês).`);
+
+  // mês mais fora do padrão (ajuda a entender o tamanho da margem)
+  let atipico = "";
+  if (desvios.length >= 3 && sigma > 0) {
+    let iMax = 0;
+    desvios.forEach((d, i) => { if (Math.abs(d) > Math.abs(desvios[iMax])) iMax = i; });
+    if (Math.abs(desvios[iMax]) > sigma) {
+      const mesA = mesesReal[iMax];
+      atipico = ` O mês que mais fugiu do padrão foi <b>${NOMES_MESES[mesA - 1]}/${ano}</b> (${n(real.get(mesA))}) — ele é o principal responsável pelo tamanho da margem.`;
+    }
+  }
+  const alternativo = fechamentoAlt != null
+    ? `<p><b>Cenário alternativo:</b> pelo método <b>${nomeAlt}</b>, o fechamento seria <b>${n(fechamentoAlt)}</b>.
+       A distância entre os dois métodos é, por si só, um termômetro da incerteza — quando eles divergem muito,
+       trate a projeção com cautela redobrada.</p>`
+    : "";
+  document.getElementById("proj-explica").innerHTML = `
+    <h3>Como esta projeção é calculada — e qual é a margem de erro</h3>
+    <p><b>Valor central:</b> ${comoCentral}</p>
+    <p><b>Margem de erro (±${n(margemMes)} por mês):</b> medimos o quanto os meses já realizados de ${ano}
+      variaram em relação ao próprio padrão (desvio típico de ${n(sigma)}) e aplicamos um fator de ~90% de
+      confiança (1,64×). Ou seja: em cerca de <b>9 de cada 10 cenários</b>, o resultado de um mês projetado
+      deve cair dentro da haste mostrada no gráfico.${atipico}</p>
+    <p><b>Por que o cone alarga:</b> para o acumulado, as incertezas de cada mês se somam — a margem cresce com a
+      raiz do número de meses projetados. Para o fechamento de ${ano}, com ${mesesFut.length} meses a realizar,
+      ela chega a <b>±${n(margemFech)}</b> (faixa de ${n(fechamento - margemFech)} a ${n(fechamento + margemFech)}).</p>
+    ${alternativo}
+    <p><b>Atenção:</b> projeção é referência, não promessa. Eventos fora do padrão — reajuste de mensalidades,
+      subvenções extraordinárias, 13º salário, matrículas — podem levar o resultado para fora da faixa.
+      O mês corrente, ainda em aberto, fica de fora do cálculo justamente para não distorcê-lo.</p>`;
+}
+
+function desenharProjMeses(real, previsto, mesesFut, margemMes) {
+  const el = document.getElementById("grafico-proj-meses");
+  const valores = [];
+  for (let m = 1; m <= 12; m++) {
+    const realizado = real.has(m);
+    const v = realizado ? real.get(m) : previsto.get(m);
+    valores.push({ m, v, realizado });
+  }
+  const maxV = Math.max(...valores.map(d => d.v + (d.realizado ? 0 : margemMes)), 1);
+  const minV = Math.min(...valores.map(d => d.v - (d.realizado ? 0 : margemMes)), 0);
+  const L = 480, A = 260, esq = 8, topoY = 16, baseY = 222;
+  const esc = (baseY - topoY) / (maxV - minV || 1);
+  const y = v => baseY - (v - minV) * esc;
+  const larg = (L - 2 * esq) / 12;
+
+  let svg = `<line x1="${esq}" y1="${y(0)}" x2="${L - esq}" y2="${y(0)}" stroke="#ccd"/>`;
+  valores.forEach((d, i) => {
+    const x = esq + i * larg + larg * 0.18, w = larg * 0.64, cx = x + w / 2;
+    const yT = y(Math.max(d.v, 0)), h = Math.max(2, Math.abs(d.v) * esc);
+    svg += d.realizado
+      ? `<rect x="${x}" y="${yT}" width="${w}" height="${h}" rx="2" fill="#2c5f7c"/>`
+      : `<rect x="${x}" y="${yT}" width="${w}" height="${h}" rx="2" fill="#a9c9e0" stroke="#5b9bd5" stroke-dasharray="4 3"/>` +
+        `<line x1="${cx}" y1="${y(d.v + margemMes)}" x2="${cx}" y2="${y(d.v - margemMes)}" stroke="#445" stroke-width="1.4"/>` +
+        `<line x1="${cx - 5}" y1="${y(d.v + margemMes)}" x2="${cx + 5}" y2="${y(d.v + margemMes)}" stroke="#445" stroke-width="1.4"/>` +
+        `<line x1="${cx - 5}" y1="${y(d.v - margemMes)}" x2="${cx + 5}" y2="${y(d.v - margemMes)}" stroke="#445" stroke-width="1.4"/>`;
+    svg += `<text x="${cx}" y="${baseY + 18}" text-anchor="middle" font-size="10.5" fill="#667">${NOMES_MESES[d.m - 1]}</text>`;
+  });
+  el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function desenharProjAcumulado(real, previsto, mesesReal, mesesFut, sigma) {
+  const el = document.getElementById("grafico-proj-acum");
+  const meses = [...mesesReal, ...mesesFut].sort((a, b) => a - b);
+  let s = 0, k = 0;
+  const pontos = meses.map(m => {
+    const realizado = real.has(m);
+    s += realizado ? real.get(m) : previsto.get(m);
+    if (!realizado) k++;
+    const margem = realizado ? 0 : FATOR_CONFIANCA * sigma * Math.sqrt(k);
+    return { m, v: s, realizado, sup: s + margem, inf: s - margem };
+  });
+  const maxV = Math.max(...pontos.map(p => p.sup), 0), minV = Math.min(...pontos.map(p => p.inf), 0);
+  const L = 480, A = 260, esq = 14, dir = 52, topoY = 16, baseY = 222;
+  const x = i => esq + (pontos.length === 1 ? (L - esq - dir) / 2 : i * (L - esq - dir) / (pontos.length - 1));
+  const y = v => baseY - (v - minV) / (maxV - minV || 1) * (baseY - topoY);
+
+  const idxUltReal = pontos.reduce((r, p, i) => p.realizado ? i : r, -1);
+  // cone de incerteza
+  const futuros = pontos.map((p, i) => ({ p, i })).filter(o => !o.p.realizado);
+  let cone = "";
+  if (futuros.length) {
+    const inicio = idxUltReal >= 0 ? [`${x(idxUltReal)},${y(pontos[idxUltReal].v)}`] : [];
+    const sup = futuros.map(o => `${x(o.i)},${y(o.p.sup)}`);
+    const inf = futuros.map(o => `${x(o.i)},${y(o.p.inf)}`).reverse();
+    cone = `<polygon points="${[...inicio, ...sup, ...inf].join(" ")}" fill="#2c5f7c" opacity="0.13"/>`;
+  }
+  const linhaDe = idxs => idxs.map(i => `${x(i)},${y(pontos[i].v)}`).join(" ");
+  const idxReais = pontos.map((p, i) => p.realizado ? i : -1).filter(i => i >= 0);
+  const idxProj = idxUltReal >= 0 ? [idxUltReal, ...futuros.map(o => o.i)] : futuros.map(o => o.i);
+
+  let svg = `<line x1="${esq}" y1="${y(0)}" x2="${L - dir}" y2="${y(0)}" stroke="#ccd"/>` + cone;
+  svg += `<polyline points="${linhaDe(idxReais)}" fill="none" stroke="#2c5f7c" stroke-width="2.5"/>`;
+  if (idxProj.length > 1)
+    svg += `<polyline points="${linhaDe(idxProj)}" fill="none" stroke="#5b9bd5" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  svg += pontos.map((p, i) => p.realizado ? `<circle cx="${x(i)}" cy="${y(p.v)}" r="3.2" fill="#2c5f7c"/>` : "").join("");
+  const fim = pontos[pontos.length - 1];
+  svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.v) + 4}" font-size="12" font-weight="600" fill="#2c5f7c">${nc(fim.v)}</text>`;
+  if (!fim.realizado) {
+    svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.sup) + 4}" font-size="10" fill="#889">${nc(fim.sup)}</text>`;
+    svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.inf) + 4}" font-size="10" fill="#889">${nc(fim.inf)}</text>`;
+  }
+  svg += pontos.map((p, i) => `<text x="${x(i)}" y="${baseY + 18}" text-anchor="middle" font-size="10.5" fill="#667">${NOMES_MESES[p.m - 1]}</text>`).join("");
+  el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+document.getElementById("proj-metodo").addEventListener("change", renderProjecao);
+
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
   document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  for (const aba of ["visao", "dre", "comp"])
+  for (const aba of ["visao", "dre", "comp", "proj"])
     document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
 }));
 
