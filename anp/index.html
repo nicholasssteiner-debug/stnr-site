@@ -176,6 +176,15 @@
     box-shadow: 0 4px 14px rgba(0,0,0,.25);
   }
   #dica b { color: #9fd1ff; }
+
+  /* ---------- Ferramentas ---------- */
+  .fer-desc { font-size: 12.5px; color: #778; margin: -4px 6px 10px; }
+  .fer-tabela { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .fer-tabela th { background: #eef3f8; color: #345; padding: 6px 9px; text-align: left; }
+  .fer-tabela td { padding: 5px 9px; border-bottom: 1px solid #e4e9ee; }
+  .fer-tabela td.num { text-align: right; white-space: nowrap; }
+  .selo-ok { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #e2f3e8; color: #2e7d4f; }
+  .selo-alerta { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #fbe4e2; color: #b3423a; }
 </style>
 </head>
 <body>
@@ -217,6 +226,7 @@
       <button class="aba-btn" data-aba="dre">DRE por Mês</button>
       <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
       <button class="aba-btn" data-aba="proj">Projeção</button>
+      <button class="aba-btn" data-aba="fer">Ferramentas</button>
     </div>
 
     <div id="aba-visao" class="conteudo-aba">
@@ -296,6 +306,43 @@
         </div>
       </div>
       <div class="painel explica" id="proj-explica"></div>
+    </div>
+
+    <div id="aba-fer" class="conteudo-aba" style="display:none">
+      <div class="painel explica" id="fer-aviso" style="display:none">
+        <h3>🔒 Ferramenta de uso interno</h3>
+        <p>Esta aba analisa também as contas de <b>ativo e passivo</b>, que não são publicadas no site.
+           Para usar tudo, abra o painel e carregue a planilha completa
+           (<b>Dados Financeiros.xlsx</b>) na área "Carregar planilha".</p>
+      </div>
+
+      <div class="painel grafico">
+        <h2>🔎 Busca rápida de conta</h2>
+        <input type="text" id="fer-busca" placeholder="Digite parte do nome ou do código da conta (ex.: banco, 1136, convênio...)"
+          style="width:100%; padding:10px 14px; border:1px solid #c9d6e2; border-radius:4px; font-size:14px; font-family:inherit; margin-bottom:10px">
+        <div id="fer-busca-resultado"></div>
+      </div>
+
+      <div class="painel grafico">
+        <h2>⚠️ Contas fora de natureza</h2>
+        <p class="fer-desc">Contas analíticas com saldo contrário à natureza — ativo devedor, passivo credor, receita credora, despesa devedora.
+          Balanço: saldo acumulado até o mês final selecionado; resultado: soma do intervalo selecionado. Sinais como no razão (devedor +, credor −).</p>
+        <div id="fer-natureza"></div>
+      </div>
+
+      <div class="painel grafico">
+        <h2>🔁 Espelhos Ativo × Passivo</h2>
+        <p class="fer-desc">Famílias de contas que se resolvem entre si (ex.: 1136 Entidades a Receber × 2136 Entidades a Pagar).
+          O que importa é o líquido — dois lados "inchados" ao mesmo tempo merecem conciliação.</p>
+        <div id="fer-espelhos"></div>
+      </div>
+
+      <div class="painel grafico">
+        <h2>♻️ Transferências internas (TI) não zeradas</h2>
+        <p class="fer-desc">As contas "TI-" transitam valores entre centros de custos e devem se anular no total da entidade.
+          Resíduo diferente de zero indica lançamento sem contrapartida no intervalo selecionado.</p>
+        <div id="fer-ti"></div>
+      </div>
     </div>
   </main>
 </div>
@@ -443,6 +490,7 @@ function dadosExemplo() {
 /* ===================================================================== */
 let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4]) =>
   ({ sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4 }));
+let infoContas = { ehAnalitica: () => true };
 let dadosBrutos = dadosExemplo();
 let linhasDRE = [];   // resultado do processamento (equivalente à tabela BD_AASI)
 
@@ -452,9 +500,11 @@ function processar() {
   const porConta = {};
   for (const m of mapaDRE) (porConta[m.conta] = porConta[m.conta] || []).push(m);
 
+  infoContas = classificarContas();
   linhasDRE = [];
   for (const d of dadosBrutos) {
     if (d.Subconta) continue;                                  // Subconta = null
+    if (!d.Mes) continue;                                      // mês 0 (abertura) não entra na DRE
     const regras = porConta[d.Conta];
     if (!regras) continue;                                     // conta fora do De/Para
     const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
@@ -598,10 +648,26 @@ function render() {
   desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
   desenharBarras("grafico-resultado", linhas, "resultado");
 
-  // ----- Abas DRE, Comparativo e Projeção -----
+  // ----- Abas DRE, Comparativo, Projeção e Ferramentas -----
   renderDRE(linhas);
   renderComparativo();
   renderProjecao();
+  renderFerramentas();
+}
+
+/* Identifica contas sintéticas: existe outra conta que começa com o seu
+   "tronco" (código sem os zeros finais). Ex.: 3141100 é pai de 3141101. */
+function classificarContas() {
+  const codigos = [...new Set(dadosBrutos.map(d => d.Conta))];
+  const sinteticas = new Set();
+  for (const c of codigos) {
+    if (!/00$/.test(c)) continue;          // sintéticas terminam em "00" (nível de grupo);
+    const tronco = c.replace(/0+$/, "");   // contas como 4119530 são analíticas
+    if (!tronco) continue;
+    for (const outro of codigos)
+      if (outro !== c && outro.startsWith(tronco)) { sinteticas.add(c); break; }
+  }
+  return { ehAnalitica: c => !sinteticas.has(c) };
 }
 
 /* Contagem animada dos cartões */
@@ -947,15 +1013,17 @@ function carregarArquivo(arquivo) {
       for (const [nomeCol, col] of Object.entries(obrigatorias))
         if (!col) throw new Error("Coluna não encontrada: " + nomeCol);
 
+      const colNome = acha("Nome_Conta");
       dadosBrutos = abaDados.map(l => ({
         Ano: +l[obrigatorias.Ano],
-        Mes: +l[colMes],
+        Mes: l[colMes] == null ? null : +l[colMes],   // mês 0 = saldo de abertura (balanço)
         Entidade: limpaConta(l[obrigatorias.Entidade]),
         Conta: limpaConta(l[obrigatorias.Conta]),
+        NomeConta: colNome ? String(l[colNome] ?? "").trim() : "",
         Subconta: colSub ? String(l[colSub] ?? "").trim() : "",
         SaldoLegal: +l[colLegal] || 0,
         SaldoAjustado: +l[colAjust] || 0,
-      })).filter(d => d.Ano && d.Mes);
+      })).filter(d => d.Ano && d.Mes != null && isFinite(d.Mes));
 
       processar();
       document.getElementById("status-arquivo").textContent =
@@ -1256,10 +1324,141 @@ function desenharProjAcumulado(real, previsto, mesesReal, mesesFut, sigma) {
 
 document.getElementById("proj-metodo").addEventListener("change", renderProjecao);
 
+/* =====================================================================
+   ABA FERRAMENTAS — utilitários diários do contador (uso interno).
+   Trabalha com os saldos "de razão" (devedor +, credor −), sem o
+   tratamento da DRE. Balanço (contas 1/2): saldo acumulado da abertura
+   até o mês final selecionado; resultado (3/4): soma do intervalo.
+   ===================================================================== */
+let ferPorConta = new Map();   // conta -> { nome, saldo } no recorte atual
+let ferNomes = new Map();      // conta -> nome (todas, p/ rótulos de família)
+
+function renderFerramentas() {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(dadosBrutos.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisp.length) return;
+  const ano = f.anos.length ? Math.max(...f.anos) : anosDisp[anosDisp.length - 1];
+  const mIni = Math.max(1, Math.min(12, f.mesIni)), mFim = Math.max(1, Math.min(12, f.mesFim));
+
+  const temBP = dadosBrutos.some(d => d.Conta[0] === "1" || d.Conta[0] === "2");
+  document.getElementById("fer-aviso").style.display = temBP ? "none" : "";
+
+  // saldo por conta numa passada só
+  ferPorConta = new Map();
+  ferNomes = new Map();
+  for (const d of dadosBrutos) {
+    if (d.NomeConta && !ferNomes.has(d.Conta)) ferNomes.set(d.Conta, d.NomeConta);
+    if (d.Subconta || d.Ano !== ano || !f.campos.includes(d.Entidade)) continue;
+    const g = d.Conta[0];
+    const dentro = (g === "1" || g === "2") ? d.Mes <= mFim : (d.Mes >= mIni && d.Mes <= mFim);
+    if (!dentro) continue;
+    const v = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!v) continue;
+    const reg = ferPorConta.get(d.Conta) || { nome: d.NomeConta || "", saldo: 0 };
+    reg.saldo += v;
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    ferPorConta.set(d.Conta, reg);
+  }
+
+  // ----- 1) Contas fora de natureza -----
+  const temNomes = [...ferPorConta.values()].some(r => r.nome);
+  const esperado = { "1": 1, "4": 1, "2": -1, "3": -1 };  // devedora +1, credora −1
+  const fora = [];
+  if (temNomes) for (const [conta, r] of ferPorConta) {
+    if (!infoContas.ehAnalitica(conta)) continue;
+    let e = esperado[conta[0]];
+    if (!e || Math.abs(r.saldo) <= 1) continue;
+    if (/\(-\)/.test(r.nome)) e = -e;   // retificadora/redutora: natureza invertida
+    if (Math.sign(r.saldo) !== e)
+      fora.push({ conta, nome: r.nome, saldo: r.saldo, nat: e === 1 ? "devedora" : "credora" });
+  }
+  fora.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+  document.getElementById("fer-natureza").innerHTML = !temNomes
+    ? `<p class="fer-desc">Requer a planilha completa (os nomes das contas identificam as retificadoras).</p>`
+    : (fora.length
+      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome</th><th>Natureza esperada</th><th style="text-align:right">Saldo</th></tr>` +
+        fora.map(x => `<tr><td>${x.conta}</td><td>${x.nome || "—"}</td><td>${x.nat}</td>
+          <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
+        `</table><p class="fer-desc" style="margin-top:8px">${fora.length} conta(s) para conferir. Contas com "(-)" no nome já são tratadas como retificadoras.</p>`
+      : `<span class="selo-ok">✓ Nenhuma conta fora de natureza no recorte atual</span>`);
+
+  // ----- 2) Espelhos Ativo × Passivo -----
+  const familias = new Map();  // chave = 3 dígitos após o grupo (ex.: "136")
+  for (const [conta, r] of ferPorConta) {
+    if (!infoContas.ehAnalitica(conta)) continue;
+    const g = conta[0];
+    if (g !== "1" && g !== "2") continue;
+    const chave = conta.slice(1, 4);
+    const fam = familias.get(chave) || { ativo: 0, passivo: 0 };
+    if (g === "1") fam.ativo += r.saldo; else fam.passivo += r.saldo;
+    familias.set(chave, fam);
+  }
+  const nomeFam = (g, k) => ferNomes.get(g + k + "000") || ferNomes.get(g + k + "0000".slice(0, 7 - 1 - k.length)) || "";
+  const espelhos = [...familias.entries()]
+    .filter(([k, fam]) => fam.ativo && fam.passivo)
+    .map(([k, fam]) => ({ k, ...fam, liq: fam.ativo + fam.passivo }))
+    .sort((a, b) => (Math.abs(b.ativo) + Math.abs(b.passivo)) - (Math.abs(a.ativo) + Math.abs(a.passivo)));
+  document.getElementById("fer-espelhos").innerHTML = espelhos.length
+    ? `<table class="fer-tabela"><tr><th>Família</th><th>Ativo (1${"…"})</th><th>Passivo (2${"…"})</th>
+        <th style="text-align:right">Saldo Ativo</th><th style="text-align:right">Saldo Passivo</th><th style="text-align:right">Líquido</th></tr>` +
+      espelhos.map(x => `<tr><td><b>${x.k}</b></td><td>${nomeFam("1", x.k) || "1" + x.k + "xxx"}</td><td>${nomeFam("2", x.k) || "2" + x.k + "xxx"}</td>
+        <td class="num">${n(x.ativo)}</td><td class="num">${n(x.passivo)}</td>
+        <td class="num" style="font-weight:700">${n(x.liq)}</td></tr>`).join("") + `</table>`
+    : (temBP ? `<span class="selo-ok">Nenhuma família com saldo dos dois lados no recorte atual</span>`
+             : `<p class="fer-desc">Requer a planilha completa (contas de ativo e passivo).</p>`);
+
+  // ----- 3) Transferências internas por família (agrupadas pelo nome-base) -----
+  const famTI = new Map();
+  for (const [conta, r] of ferPorConta) {
+    if (!infoContas.ehAnalitica(conta) || !/TI-/i.test(r.nome)) continue;
+    const chave = r.nome.replace(/\(-\)\s*/g, "").trim().toLowerCase();
+    const fam = famTI.get(chave) || { nome: r.nome.replace(/\(-\)\s*/g, "").trim(), contas: [], saldo: 0 };
+    fam.contas.push(conta);
+    fam.saldo += r.saldo;
+    famTI.set(chave, fam);
+  }
+  const residuos = [...famTI.values()].filter(x => Math.abs(x.saldo) > 1)
+    .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+  const zeradas = famTI.size - residuos.length;
+  document.getElementById("fer-ti").innerHTML = !temNomes
+    ? `<p class="fer-desc">Requer a planilha completa (com os nomes das contas).</p>`
+    : (!famTI.size
+      ? `<p class="fer-desc">Nenhuma conta TI no recorte atual.</p>`
+      : `<p>${zeradas ? `<span class="selo-ok">✓ ${zeradas} família(s) TI zeradas</span>&nbsp;` : ""}` +
+        `${residuos.length ? `<span class="selo-alerta">⚠ ${residuos.length} família(s) com resíduo</span>` : ""}</p>` +
+        (residuos.length
+          ? `<table class="fer-tabela"><tr><th>Família TI</th><th>Contas</th><th style="text-align:right">Resíduo</th><th>Leitura</th></tr>` +
+            residuos.map(x => `<tr><td>${x.nome}</td><td>${x.contas.join(", ")}</td>
+              <td class="num" style="font-weight:600">${n(x.saldo)}</td>
+              <td>${/centro de custos/i.test(x.nome)
+                ? '<span class="selo-alerta">deve zerar — conferir contrapartida</span>'
+                : 'fluxo entre entidades (resíduo pode ser normal)'}</td></tr>`).join("") + `</table>`
+          : ""));
+
+  renderBusca();
+}
+
+// ----- 4) Busca rápida de conta -----
+function renderBusca() {
+  const alvo = document.getElementById("fer-busca-resultado");
+  const termo = document.getElementById("fer-busca").value.trim().toLowerCase();
+  if (termo.length < 2) { alvo.innerHTML = `<p class="fer-desc">Digite ao menos 2 caracteres. O saldo mostrado respeita os filtros da barra lateral.</p>`; return; }
+  const achados = [...ferPorConta.entries()]
+    .filter(([c, r]) => c.includes(termo) || (r.nome && r.nome.toLowerCase().includes(termo)))
+    .sort((a, b) => Math.abs(b[1].saldo) - Math.abs(a[1].saldo))
+    .slice(0, 30);
+  alvo.innerHTML = achados.length
+    ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome</th><th>Tipo</th><th style="text-align:right">Saldo no recorte</th></tr>` +
+      achados.map(([c, r]) => `<tr><td>${c}</td><td>${r.nome || "—"}</td>
+        <td>${infoContas.ehAnalitica(c) ? "analítica" : "Σ sintética"}</td><td class="num">${n(r.saldo)}</td></tr>`).join("") + `</table>`
+    : `<p class="fer-desc">Nenhuma conta encontrada para "${termo}".</p>`;
+}
+document.getElementById("fer-busca").addEventListener("input", renderBusca);
+
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
   document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  for (const aba of ["visao", "dre", "comp", "proj"])
+  for (const aba of ["visao", "dre", "comp", "proj", "fer"])
     document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
 }));
 
