@@ -324,9 +324,9 @@
       </div>
 
       <div class="painel grafico">
-        <h2>⚠️ Contas fora de natureza</h2>
-        <p class="fer-desc">Contas analíticas com saldo contrário à natureza — ativo devedor, passivo credor, receita credora, despesa devedora.
-          Balanço: saldo acumulado até o mês final selecionado; resultado: soma do intervalo selecionado. Sinais como no razão (devedor +, credor −).</p>
+        <h2>⚠️ Contas fora de natureza (ativo e passivo)</h2>
+        <p class="fer-desc">Contas analíticas do balanço com saldo contrário à natureza — ativo (devedor) com saldo credor, passivo (credor) com saldo devedor.
+          Saldo acumulado da abertura até o mês final selecionado. Sinais como no razão (devedor +, credor −).</p>
         <div id="fer-natureza"></div>
       </div>
 
@@ -1362,7 +1362,7 @@ function renderFerramentas() {
 
   // ----- 1) Contas fora de natureza -----
   const temNomes = [...ferPorConta.values()].some(r => r.nome);
-  const esperado = { "1": 1, "4": 1, "2": -1, "3": -1 };  // devedora +1, credora −1
+  const esperado = { "1": 1, "2": -1 };  // só balanço: ativo devedor +1, passivo credor −1
   const fora = [];
   if (temNomes) for (const [conta, r] of ferPorConta) {
     if (!infoContas.ehAnalitica(conta)) continue;
