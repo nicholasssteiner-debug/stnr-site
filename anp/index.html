@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Análise Financeira Campos</title>
+<script>
+  // Trava simples: no site (http/https), exige login. Local (file://) abre direto.
+  if (location.protocol !== "file:" && sessionStorage.getItem("anp_ok") !== "1") {
+    location.replace("login.html");
+  }
+</script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
   :root {

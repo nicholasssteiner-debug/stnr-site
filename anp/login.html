@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acesso — Análise Financeira Campos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #2c5f7c;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .caixa {
+    background: #fff; border-radius: 8px; padding: 34px 30px;
+    width: 100%; max-width: 340px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.3);
+    text-align: center;
+  }
+  h1 { color: #2c5f7c; font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  p.sub { color: #8aa8bd; font-size: 13px; margin-bottom: 22px; }
+  label { display: block; text-align: left; font-size: 13px; color: #556; margin: 12px 0 4px; }
+  input {
+    width: 100%; padding: 10px 12px; font-size: 14px;
+    border: 1px solid #c9d6e2; border-radius: 4px; font-family: inherit;
+  }
+  input:focus { outline: none; border-color: #5b9bd5; }
+  button {
+    width: 100%; margin-top: 20px; padding: 11px;
+    background: #2c5f7c; color: #fff; border: none; border-radius: 4px;
+    font-size: 15px; font-family: inherit; cursor: pointer;
+  }
+  button:hover { background: #24506a; }
+  .erro { color: #b3423a; font-size: 13px; margin-top: 12px; min-height: 18px; }
+</style>
+</head>
+<body>
+  <div class="caixa">
+    <h1>Análise Financeira Campos</h1>
+    <p class="sub">Acesso restrito</p>
+    <form id="form">
+      <label for="usuario">Usuário</label>
+      <input type="text" id="usuario" autocomplete="username" autofocus>
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" autocomplete="current-password">
+      <button type="submit">Entrar</button>
+      <div class="erro" id="erro"></div>
+    </form>
+  </div>
+
+<script>
+  var USUARIO = "ANP@IASD";
+  var SENHA = "Anp1622";
+  document.getElementById("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var u = document.getElementById("usuario").value.trim();
+    var s = document.getElementById("senha").value;
+    if (u === USUARIO && s === SENHA) {
+      sessionStorage.setItem("anp_ok", "1");
+      location.replace("index.html");
+    } else {
+      document.getElementById("erro").textContent = "Usuário ou senha incorretos.";
+      document.getElementById("senha").value = "";
+    }
+  });
+</script>
+</body>
+</html>
