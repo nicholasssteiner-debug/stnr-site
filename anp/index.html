@@ -232,6 +232,7 @@
       <button class="aba-btn" data-aba="dre">DRE por Mês</button>
       <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
       <button class="aba-btn" data-aba="proj">Projeção</button>
+      <button class="aba-btn" data-aba="subv">Subvenções</button>
       <button class="aba-btn" data-aba="fer">Ferramentas</button>
     </div>
 
@@ -312,6 +313,20 @@
         </div>
       </div>
       <div class="painel explica" id="proj-explica"></div>
+    </div>
+
+    <div id="aba-subv" class="conteudo-aba" style="display:none">
+      <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="subv-cartoes"></div>
+      <div class="painel grafico">
+        <h2>Subvenções Recebidas — por conta</h2>
+        <p class="fer-desc">Detalhamento das subvenções que a ANP recebeu, por conta contábil, no intervalo de meses selecionado.</p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="subv-recebidas"></table></div>
+      </div>
+      <div class="painel grafico">
+        <h2>Subvenções / Repasses Enviados (Outorgamentos) — por conta</h2>
+        <p class="fer-desc">O outro lado: subvenções e rateios que a ANP enviou a outras entidades ou centros de custo.</p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="subv-enviadas"></table></div>
+      </div>
     </div>
 
     <div id="aba-fer" class="conteudo-aba" style="display:none">
@@ -517,6 +532,7 @@ function processar() {
     for (const r of regras) {
       linhasDRE.push({
         Ano: d.Ano, Mes: d.Mes, Entidade: d.Entidade,
+        conta: d.Conta, nome: d.NomeConta,
         dre2: r.dre2, ord2: r.ord2, dre3: r.dre3, ord3: r.ord3,
         dre4: r.dre4, ord4: r.ord4,
         saldo: (r.sinal === "+" ? base : -base) * -1,
@@ -653,11 +669,78 @@ function render() {
   desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
   desenharBarras("grafico-resultado", linhas, "resultado");
 
-  // ----- Abas DRE, Comparativo, Projeção e Ferramentas -----
+  // ----- Abas DRE, Comparativo, Projeção, Subvenções e Ferramentas -----
   renderDRE(linhas);
   renderComparativo();
   renderProjecao();
+  renderSubvencoes(linhas);
   renderFerramentas();
+}
+
+/* =====================================================================
+   ABA SUBVENÇÕES — detalha por conta as subvenções recebidas e enviadas
+   (outorgamentos), com os meses do intervalo nas colunas.
+   ===================================================================== */
+function renderSubvencoes(linhas) {
+  // cartões-resumo
+  const recebidas = linhas.filter(l => l.dre3 === "Subvenções Recebidas");
+  const enviadas = linhas.filter(l => l.dre2 === "DESPESAS" && l.dre3 === "Outorgamentos");
+  const somaR = recebidas.reduce((s, l) => s + l.saldo, 0);
+  const somaE = -enviadas.reduce((s, l) => s + l.saldo, 0);  // despesa: mostra positivo
+  document.getElementById("subv-cartoes").innerHTML = `
+    <div class="cartao"><div class="titulo">Subvenções Recebidas</div>
+      <div class="valor" data-tipo="num" data-valor="${somaR}"></div></div>
+    <div class="cartao"><div class="titulo">Repasses Enviados (Outorgamentos)</div>
+      <div class="valor" data-tipo="num" data-valor="${somaE}"></div></div>
+    <div class="cartao"><div class="titulo">Líquido (recebido − enviado)</div>
+      <div class="valor" data-tipo="num" data-valor="${somaR - somaE}"></div></div>`;
+  document.querySelectorAll("#subv-cartoes .valor").forEach(animaValor);
+
+  tabelaPorConta("subv-recebidas", recebidas, false);
+  tabelaPorConta("subv-enviadas", enviadas, true);
+}
+
+/* Monta uma tabela conta × meses (com Total) a partir de linhas da DRE. */
+function tabelaPorConta(idTabela, linhas, inverterSinal) {
+  const el = document.getElementById(idTabela);
+  const chavesMes = [...new Set(linhas.map(d => d.Ano * 100 + d.Mes))].sort((a, b) => a - b);
+  const rotuloMes = c => NOMES_MESES[(c % 100) - 1] + "/" + Math.floor(c / 100);
+  const sinal = inverterSinal ? -1 : 1;
+
+  if (!linhas.length) {
+    el.innerHTML = `<tbody><tr><td class="vazio">Nenhuma subvenção neste recorte</td></tr></tbody>`;
+    return;
+  }
+
+  // agrega por conta
+  const contas = new Map();  // conta -> { nome, meses:Map, total }
+  for (const l of linhas) {
+    const reg = contas.get(l.conta) || { nome: l.nome || "", meses: new Map(), total: 0 };
+    const c = l.Ano * 100 + l.Mes, v = l.saldo * sinal;
+    reg.meses.set(c, (reg.meses.get(c) || 0) + v);
+    reg.total += v;
+    if (!reg.nome && l.nome) reg.nome = l.nome;
+    contas.set(l.conta, reg);
+  }
+  const ordenadas = [...contas.entries()].sort((a, b) => Math.abs(b[1].total) - Math.abs(a[1].total));
+
+  const cel = reg => chavesMes.map(c =>
+    `<td class="num">${reg.meses.has(c) ? n(reg.meses.get(c)) : ""}</td>`).join("") +
+    `<td class="num total-col">${n(reg.total)}</td>`;
+
+  const totalGeral = { meses: new Map(), total: 0 };
+  for (const [, reg] of ordenadas) {
+    totalGeral.total += reg.total;
+    for (const [c, v] of reg.meses) totalGeral.meses.set(c, (totalGeral.meses.get(c) || 0) + v);
+  }
+
+  let html = `<thead><tr><th>Conta</th><th>Descrição</th>` +
+    chavesMes.map(c => `<th class="num">${rotuloMes(c)}</th>`).join("") +
+    `<th class="num">Total</th></tr></thead><tbody>`;
+  for (const [conta, reg] of ordenadas)
+    html += `<tr><td>${conta}</td><td>${reg.nome || "—"}</td>${cel(reg)}</tr>`;
+  html += `<tr class="dre-resultado"><td></td><td>TOTAL</td>${cel(totalGeral)}</tr></tbody>`;
+  el.innerHTML = html;
 }
 
 /* Identifica contas sintéticas: existe outra conta que começa com o seu
@@ -1463,7 +1546,7 @@ document.getElementById("fer-busca").addEventListener("input", renderBusca);
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
   document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  for (const aba of ["visao", "dre", "comp", "proj", "fer"])
+  for (const aba of ["visao", "dre", "comp", "proj", "subv", "fer"])
     document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
 }));
 
