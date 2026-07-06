@@ -700,7 +700,27 @@ function renderSubvencoes(linhas) {
   tabelaPorConta("subv-enviadas", enviadas, true);
 }
 
-/* Monta uma tabela conta × meses (com Total) a partir de linhas da DRE. */
+/* Saldo bruto (de razão) por conta e mês, no recorte atual — usado para
+   abrir as contas analíticas dentro de cada conta da DRE. */
+function saldoBrutoPorConta() {
+  const f = filtrosAtuais();
+  const mapa = new Map();  // conta -> { nome, meses:Map(chaveMes->base) }
+  for (const d of dadosBrutos) {
+    if (d.Subconta) continue;
+    if (!f.campos.includes(d.Entidade) || d.Mes < f.mesIni || d.Mes > f.mesFim) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;
+    const reg = mapa.get(d.Conta) || { nome: d.NomeConta || "", meses: new Map() };
+    const c = d.Ano * 100 + d.Mes;
+    reg.meses.set(c, (reg.meses.get(c) || 0) + base);
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    mapa.set(d.Conta, reg);
+  }
+  return mapa;
+}
+
+/* Monta uma tabela conta × meses (com Total). Cada conta da DRE que tenha
+   contas analíticas por baixo vira expansível (+/-). */
 function tabelaPorConta(idTabela, linhas, inverterSinal) {
   const el = document.getElementById(idTabela);
   const chavesMes = [...new Set(linhas.map(d => d.Ano * 100 + d.Mes))].sort((a, b) => a - b);
@@ -712,7 +732,7 @@ function tabelaPorConta(idTabela, linhas, inverterSinal) {
     return;
   }
 
-  // agrega por conta
+  // agrega por conta da DRE (nível sintético mapeado)
   const contas = new Map();  // conta -> { nome, meses:Map, total }
   for (const l of linhas) {
     const reg = contas.get(l.conta) || { nome: l.nome || "", meses: new Map(), total: 0 };
@@ -724,9 +744,17 @@ function tabelaPorConta(idTabela, linhas, inverterSinal) {
   }
   const ordenadas = [...contas.entries()].sort((a, b) => Math.abs(b[1].total) - Math.abs(a[1].total));
 
-  const cel = reg => chavesMes.map(c =>
-    `<td class="num">${reg.meses.has(c) ? n(reg.meses.get(c)) : ""}</td>`).join("") +
-    `<td class="num total-col">${n(reg.total)}</td>`;
+  const bruto = saldoBrutoPorConta();
+  const contasBruto = [...bruto.keys()];
+  const cel = m => chavesMes.map(c =>
+    `<td class="num">${m.has(c) ? n(m.get(c)) : ""}</td>`).join("");
+
+  // filhas analíticas de uma conta sintética (mesmo tronco, folhas, com saldo)
+  function filhasDe(conta) {
+    if (infoContas.ehAnalitica(conta)) return [];   // já é analítica: sem detalhe
+    const tronco = conta.replace(/0+$/, "");
+    return contasBruto.filter(c => c !== conta && c.startsWith(tronco) && infoContas.ehAnalitica(c));
+  }
 
   const totalGeral = { meses: new Map(), total: 0 };
   for (const [, reg] of ordenadas) {
@@ -737,10 +765,37 @@ function tabelaPorConta(idTabela, linhas, inverterSinal) {
   let html = `<thead><tr><th>Conta</th><th>Descrição</th>` +
     chavesMes.map(c => `<th class="num">${rotuloMes(c)}</th>`).join("") +
     `<th class="num">Total</th></tr></thead><tbody>`;
-  for (const [conta, reg] of ordenadas)
-    html += `<tr><td>${conta}</td><td>${reg.nome || "—"}</td>${cel(reg)}</tr>`;
-  html += `<tr class="dre-resultado"><td></td><td>TOTAL</td>${cel(totalGeral)}</tr></tbody>`;
+
+  let seq = 0;
+  for (const [conta, reg] of ordenadas) {
+    const filhas = filhasDe(conta);
+    // fator que converte saldo bruto -> valor exibido (aplica sinal da DRE e a inversão da tabela)
+    const brutoPai = bruto.get(conta);
+    const totalBrutoPai = brutoPai ? [...brutoPai.meses.values()].reduce((s, v) => s + v, 0) : 0;
+    const fator = totalBrutoPai ? reg.total / totalBrutoPai : 0;
+    const temDetalhe = filhas.length && fator;
+    const id = idTabela + "-g" + (++seq);
+    const seta = temDetalhe ? `<span class="alternar" data-alvo="${id}">+</span> ` : "";
+    html += `<tr class="dre-n1-lite"><td>${seta}${conta}</td><td>${reg.nome || "—"}</td>${cel(reg.meses)}<td class="num total-col">${n(reg.total)}</td></tr>`;
+    if (temDetalhe) {
+      const detalhe = filhas.map(fc => {
+        const b = bruto.get(fc);
+        const meses = new Map([...b.meses].map(([c, v]) => [c, v * fator]));
+        const total = [...meses.values()].reduce((s, v) => s + v, 0);
+        return { conta: fc, nome: b.nome, meses, total };
+      }).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+      for (const f of detalhe)
+        html += `<tr class="dre-n3 escondida" data-pai="${id}"><td>${f.conta}</td><td>${f.nome || "—"}</td>${cel(f.meses)}<td class="num total-col">${n(f.total)}</td></tr>`;
+    }
+  }
+  html += `<tr class="dre-resultado"><td></td><td>TOTAL</td>${cel(totalGeral.meses)}<td class="num total-col">${n(totalGeral.total)}</td></tr></tbody>`;
   el.innerHTML = html;
+
+  el.querySelectorAll(".alternar").forEach(sp => sp.addEventListener("click", () => {
+    const abrir = sp.textContent === "+";
+    sp.textContent = abrir ? "−" : "+";
+    el.querySelectorAll(`tr[data-pai="${sp.dataset.alvo}"]`).forEach(tr => tr.classList.toggle("escondida", !abrir));
+  }));
 }
 
 /* Identifica contas sintéticas: existe outra conta que começa com o seu
