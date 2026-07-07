@@ -233,6 +233,7 @@
       <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
       <button class="aba-btn" data-aba="proj">Projeção</button>
       <button class="aba-btn" data-aba="subv">Subvenções</button>
+      <button class="aba-btn" data-aba="bp">Balanço</button>
       <button class="aba-btn" data-aba="fer">Ferramentas</button>
     </div>
 
@@ -326,6 +327,26 @@
         <h2>Subvenções / Repasses Enviados (Outorgamentos) — por conta</h2>
         <p class="fer-desc">O outro lado: subvenções e rateios que a ANP enviou a outras entidades ou centros de custo.</p>
         <div style="overflow-x:auto"><table class="tabela-dre" id="subv-enviadas"></table></div>
+      </div>
+    </div>
+
+    <div id="aba-bp" class="conteudo-aba" style="display:none">
+      <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="bp-cartoes"></div>
+      <div class="painel explica" id="bp-check" style="padding:14px 18px"></div>
+      <div class="painel explica" id="bp-aviso" style="display:none">
+        <h3>Carregue a planilha para ver o balanço</h3>
+        <p>O Balanço usa as contas de <b>ativo e passivo</b>. Se a tabela estiver vazia, carregue a
+           <b>Dados Financeiros.xlsx</b> na área "Carregar planilha".</p>
+      </div>
+      <div class="graficos" style="grid-template-columns:1fr 1fr">
+        <div class="painel grafico">
+          <h2>ATIVO</h2>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="bp-ativo"></table></div>
+        </div>
+        <div class="painel grafico">
+          <h2>PASSIVO + PATRIMÔNIO LÍQUIDO</h2>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="bp-passivo"></table></div>
+        </div>
       </div>
     </div>
 
@@ -480,6 +501,63 @@ const MAPA_DRE_PADRAO = [
 ];
 
 const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+/* De/Para Balanço Patrimonial (aba "Contas BP" dos parâmetros): apenas
+   para dar nomes/estrutura bonitos às contas sintéticas. O balanço em si
+   usa TODAS as contas analíticas de ativo/passivo para fechar exato.
+   [conta, grupo, ordemGrupo, subgrupo, ordemSub] */
+const MAPA_BP = [
+  ["1112001","ATIVO CIRCULANTE",1,"Disponível",1],
+  ["1113001","ATIVO CIRCULANTE",1,"Disponível",1],
+  ["1131000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1132000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1135000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1136000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1137000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1138500","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1139000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1160000","ATIVO CIRCULANTE",1,"Despesas Antecipadas",3],
+  ["1211000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1215000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1216000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1219000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1230000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
+  ["1240000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
+  ["2130100","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130300","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130500","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130600","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130800","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2131000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2135000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2136000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2137000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2139000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2141000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2142000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2143000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2150000","PASSIVO CIRCULANTE",3,"Fundos em Confiança",8],
+  ["2311000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+  ["2320000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+];
+// grupo/subgrupo por prefixo de conta (para classificar QUALQUER conta 1/2)
+const GRUPOS_BP = (() => {
+  const porPrefixo = [];
+  for (const [conta, grupo, og, sub, os] of MAPA_BP)
+    porPrefixo.push({ prefixo: conta.replace(/0+$/, ""), grupo, og, sub, os });
+  porPrefixo.sort((a, b) => b.prefixo.length - a.prefixo.length);  // mais específico primeiro
+  return porPrefixo;
+})();
+function classificaBP(conta) {
+  for (const g of GRUPOS_BP) if (conta.startsWith(g.prefixo)) return g;
+  // fallback por grupo contábil
+  if (conta[0] === "1") return { grupo: "ATIVO", og: 1, sub: "Outras Contas do Ativo", os: 90 };
+  if (conta[0] === "2") {
+    if (conta.startsWith("23")) return { grupo: "PATRIMÔNIO LÍQUIDO", og: 4, sub: "Patrimônio Líquido", os: 91 };
+    return { grupo: "PASSIVO CIRCULANTE", og: 3, sub: "Outras Contas do Passivo", os: 92 };
+  }
+  return null;
+}
 
 /* De/Para Entidade (aba "Campos" da planilha: Entidade / Nome / Tipo) */
 let mapaEntidades = { "1622": { nome: "ANP", tipo: "Campo" } };
@@ -674,7 +752,113 @@ function render() {
   renderComparativo();
   renderProjecao();
   renderSubvencoes(linhas);
+  renderBalanco();
   renderFerramentas();
+}
+
+/* =====================================================================
+   ABA BALANÇO PATRIMONIAL — posição em uma data (saldo acumulado da
+   abertura até o mês final selecionado). Usa TODAS as contas analíticas
+   de ativo (grupo 1) e passivo/PL (grupo 2), agrupadas pela estrutura BP.
+   Ativo mostrado como devedor (+); passivo/PL como credor exibido (+).
+   Fecha quando Ativo = Passivo + PL + Resultado do exercício.
+   ===================================================================== */
+function renderBalanco() {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(dadosBrutos.map(d => d.Ano))].sort((a, b) => a - b);
+  const ano = f.anos.length ? Math.max(...f.anos) : (anosDisp[anosDisp.length - 1] || 0);
+  const mFim = Math.max(1, Math.min(12, f.mesFim));
+
+  const temBP = dadosBrutos.some(d => d.Conta[0] === "1" || d.Conta[0] === "2");
+  document.getElementById("bp-aviso").style.display = temBP ? "none" : "";
+
+  // saldo acumulado (abertura..mFim) por conta analítica de ativo/passivo
+  const ativo = new Map();    // conta -> { nome, sub, os, total }
+  const passivo = new Map();
+  let totAtivo = 0, totPassPL = 0;
+  for (const d of dadosBrutos) {
+    if (d.Subconta) continue;
+    const g = d.Conta[0];
+    if (g !== "1" && g !== "2") continue;
+    if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
+    if (!infoContas.ehAnalitica(d.Conta)) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;
+    const cls = classificaBP(d.Conta);
+    const ativoLado = cls.grupo.startsWith("ATIVO");
+    const valor = ativoLado ? base : -base;   // passivo/PL: credor -> exibe positivo
+    const alvo = ativoLado ? ativo : passivo;
+    const reg = alvo.get(d.Conta) || { nome: d.NomeConta || "", grupo: cls.grupo, og: cls.og, sub: cls.sub, os: cls.os, total: 0 };
+    reg.total += valor;
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    alvo.set(d.Conta, reg);
+    if (ativoLado) totAtivo += valor; else totPassPL += valor;
+  }
+
+  // resultado acumulado do exercício (conta 98), jan..mFim
+  let resultado = 0;
+  for (const l of linhasDRE)
+    if (l.Ano === ano && l.Mes <= mFim && f.campos.includes(l.Entidade)) resultado += l.saldo;
+
+  // ----- Cartões -----
+  document.getElementById("bp-cartoes").innerHTML = `
+    <div class="cartao"><div class="titulo">Ativo Total</div>
+      <div class="valor" data-tipo="num" data-valor="${totAtivo}"></div></div>
+    <div class="cartao"><div class="titulo">Passivo + PL</div>
+      <div class="valor" data-tipo="num" data-valor="${totPassPL}"></div></div>
+    <div class="cartao"><div class="titulo">Resultado do Exercício</div>
+      <div class="valor" data-tipo="num" data-valor="${resultado}"></div></div>`;
+  document.querySelectorAll("#bp-cartoes .valor").forEach(animaValor);
+
+  // ----- Teste de fechamento -----
+  const diferenca = totAtivo - (totPassPL + resultado);
+  const fecha = Math.abs(diferenca) < 1;
+  document.getElementById("bp-check").innerHTML = temBP
+    ? `<h3>Conferência do Balanço — posição em ${NOMES_MESES[mFim - 1]}/${ano}</h3>
+       <p>Ativo (${n(totAtivo)}) = Passivo + PL (${n(totPassPL)}) + Resultado do Exercício (${n(resultado)})</p>
+       <p>${fecha
+         ? `<span class="selo-ok">✓ Balanço fechado — diferença de ${n(diferenca)}</span>`
+         : `<span class="selo-alerta">⚠ Diferença de ${n(diferenca)} — o balanço NÃO fechou; há lançamento sem contrapartida</span>`}</p>`
+    : `<p class="fer-desc">Carregue a planilha completa para conferir o balanço.</p>`;
+
+  tabelaBalanco("bp-ativo", ativo, totAtivo, "ATIVO");
+  tabelaBalanco("bp-passivo", passivo, totPassPL, "PASSIVO + PL");
+}
+
+/* Tabela hierárquica do balanço: subgrupo -> contas, com Total. */
+function tabelaBalanco(idTabela, contas, totalLado, rotuloTotal) {
+  const el = document.getElementById(idTabela);
+  if (!contas.size) {
+    el.innerHTML = `<tbody><tr><td class="vazio">Sem dados no recorte</td></tr></tbody>`;
+    return;
+  }
+  // agrupa por subgrupo
+  const subgrupos = new Map();  // sub -> { os, contas:[], total }
+  for (const [conta, reg] of contas) {
+    if (Math.abs(reg.total) < 0.5) continue;
+    const sg = subgrupos.get(reg.sub) || { os: reg.os, contas: [], total: 0 };
+    sg.contas.push({ conta, nome: reg.nome, total: reg.total });
+    sg.total += reg.total;
+    subgrupos.set(reg.sub, sg);
+  }
+  const ordenados = [...subgrupos.entries()].sort((a, b) => a[1].os - b[1].os);
+
+  let html = `<thead><tr><th>Conta</th><th>Descrição</th><th class="num">Saldo</th></tr></thead><tbody>`;
+  let seq = 0;
+  for (const [sub, sg] of ordenados) {
+    const id = idTabela + "-s" + (++seq);
+    html += `<tr class="dre-n1"><td><span class="alternar" data-alvo="${id}">+</span> </td><td>${sub}</td><td class="num total-col">${n(sg.total)}</td></tr>`;
+    for (const c of sg.contas.sort((a, b) => Math.abs(b.total) - Math.abs(a.total)))
+      html += `<tr class="dre-n3 escondida" data-pai="${id}"><td>${c.conta}</td><td>${c.nome || "—"}</td><td class="num">${n(c.total)}</td></tr>`;
+  }
+  html += `<tr class="dre-resultado"><td></td><td>TOTAL ${rotuloTotal}</td><td class="num total-col">${n(totalLado)}</td></tr></tbody>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll(".alternar").forEach(sp => sp.addEventListener("click", () => {
+    const abrir = sp.textContent === "+";
+    sp.textContent = abrir ? "−" : "+";
+    el.querySelectorAll(`tr[data-pai="${sp.dataset.alvo}"]`).forEach(tr => tr.classList.toggle("escondida", !abrir));
+  }));
 }
 
 /* =====================================================================
@@ -1601,7 +1785,7 @@ document.getElementById("fer-busca").addEventListener("input", renderBusca);
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
   document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  for (const aba of ["visao", "dre", "comp", "proj", "subv", "fer"])
+  for (const aba of ["visao", "dre", "comp", "proj", "subv", "bp", "fer"])
     document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
 }));
 
