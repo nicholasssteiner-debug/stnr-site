@@ -371,8 +371,9 @@
         <div id="fer-natureza"></div>
 
         <h2 style="margin-top:22px">🔬 Contas e subcontas fora de natureza</h2>
-        <p class="fer-desc">Um nível abaixo: cada subconta (fornecedor, funcionário, projeto...) dentro de uma conta de balanço,
-          cujo saldo está contrário à natureza da conta. Ex.: um fornecedor com saldo devedor em "Fornecedores a Pagar" (adiantamento).</p>
+        <p class="fer-desc">Um nível abaixo: cada subconta (identificada pelo código) dentro de uma conta de balanço,
+          cujo saldo está contrário à natureza da conta. Ex.: um fornecedor com saldo devedor em "Fornecedores a Pagar" (adiantamento).
+          No site, mostra só o código; carregando a planilha completa localmente, mostra também o nome.</p>
         <div id="fer-natureza-sub"></div>
       </div>
 
@@ -1346,7 +1347,8 @@ function carregarArquivo(arquivo) {
         if (!col) throw new Error("Coluna não encontrada: " + nomeCol);
 
       const colNome = acha("Nome_Conta");
-      const colNomeSub = acha("Nome_Subconta");
+      // exato (sem fuzzy): senão "Nome_Subconta" casaria por engano com "Nome_Conta"
+      const colNomeSub = chaves.find(k => k.trim().toLowerCase() === "nome_subconta");
       dadosBrutos = abaDados.map(l => ({
         Ano: +l[obrigatorias.Ano],
         Mes: l[colMes] == null ? null : +l[colMes],   // mês 0 = saldo de abertura (balanço)
@@ -1722,7 +1724,7 @@ function renderFerramentas() {
   const temSub = dadosBrutos.some(d => d.Subconta);
   if (!temSub) {
     document.getElementById("fer-natureza-sub").innerHTML =
-      `<p class="fer-desc">🔒 Disponível apenas com a planilha completa carregada (as subcontas trazem nomes de fornecedores e funcionários e não são publicadas no site). Carregue a <b>Dados Financeiros.xlsx</b> na barra lateral.</p>`;
+      `<p class="fer-desc">Sem dados de subconta no arquivo carregado.</p>`;
   } else {
     const porSub = new Map();  // conta|subconta -> { conta, nomeConta, sub, nomeSub, saldo }
     for (const d of dadosBrutos) {
@@ -1748,9 +1750,11 @@ function renderFerramentas() {
         foraSub.push({ ...r, nat: e === 1 ? "devedora" : "credora" });
     }
     foraSub.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+    const temNomeSub = foraSub.some(x => x.nomeSub);   // site publica só o código
+    const colNomeSub = temNomeSub ? "<th>Nome da Subconta</th>" : "";
     document.getElementById("fer-natureza-sub").innerHTML = foraSub.length
-      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome da Conta</th><th>Subconta</th><th>Nome da Subconta</th><th>Natureza</th><th style="text-align:right">Saldo</th></tr>` +
-        foraSub.slice(0, 200).map(x => `<tr><td>${x.conta}</td><td>${x.nomeConta || "—"}</td><td>${x.sub}</td><td>${x.nomeSub || "—"}</td><td>${x.nat}</td>
+      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome da Conta</th><th>Subconta</th>${colNomeSub}<th>Natureza</th><th style="text-align:right">Saldo</th></tr>` +
+        foraSub.slice(0, 200).map(x => `<tr><td>${x.conta}</td><td>${x.nomeConta || "—"}</td><td>${x.sub}</td>${temNomeSub ? `<td>${x.nomeSub || "—"}</td>` : ""}<td>${x.nat}</td>
           <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
         `</table><p class="fer-desc" style="margin-top:8px">${foraSub.length} subconta(s) para conferir${foraSub.length > 200 ? " (mostrando as 200 maiores)" : ""}.</p>`
       : `<span class="selo-ok">✓ Nenhuma subconta fora de natureza no recorte atual</span>`;
