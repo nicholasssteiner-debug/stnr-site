@@ -378,20 +378,6 @@
       </div>
 
       <div class="painel grafico">
-        <h2>🔁 Espelhos Ativo × Passivo</h2>
-        <p class="fer-desc">Famílias de contas que se resolvem entre si (ex.: 1136 Entidades a Receber × 2136 Entidades a Pagar).
-          O que importa é o líquido — dois lados "inchados" ao mesmo tempo merecem conciliação.</p>
-        <div id="fer-espelhos"></div>
-      </div>
-
-      <div class="painel grafico">
-        <h2>♻️ Transferências internas (TI) não zeradas</h2>
-        <p class="fer-desc">As contas "TI-" transitam valores entre centros de custos e devem se anular no total da entidade.
-          Resíduo diferente de zero indica lançamento sem contrapartida no intervalo selecionado.</p>
-        <div id="fer-ti"></div>
-      </div>
-
-      <div class="painel grafico">
         <h2>💸 Movimentação Adto Salário — gerar CSV</h2>
         <p class="fer-desc">Reclassificação do adiantamento de salário (contas 1135001/1135005, dept 3310000).
           <b>OP 1</b>: zera o saldo residual de cada subconta da 1135001 (devedor → 1135005; credor → 2135005).
@@ -822,10 +808,55 @@ function gerarMovto(mes) {
 
 let MOVTO_ANO = new Date().getFullYear();
 
+// Botão próprio de carregar planilha (torna a ferramenta autônoma)
+function movtoLoader(msg, cor) {
+  const el = document.getElementById("fer-movto");
+  el.innerHTML =
+    `<p class="fer-desc"${cor ? ` style="color:${cor}"` : ""}>${msg}</p>
+     <button id="movto-carregar" class="aba-btn ativa" style="padding:9px 20px">📂 Carregar Dados Financeiros.xlsx</button>
+     <input type="file" id="movto-input" accept=".xlsx,.xls" style="display:none">`;
+  const inp = document.getElementById("movto-input");
+  document.getElementById("movto-carregar").addEventListener("click", () => inp.click());
+  inp.addEventListener("change", () => inp.files[0] && carregarMovto(inp.files[0]));
+}
+
+// Lê a aba Movto1135 de um arquivo (independente do resto do painel)
+function carregarMovto(arquivo) {
+  const leitor = new FileReader();
+  leitor.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "array" });
+      let aba = null;
+      for (const nome of wb.SheetNames) {
+        const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
+        if (!json.length) continue;
+        const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
+        if (cols.includes("mescomp") && cols.includes("historico")) { aba = json; break; }
+      }
+      if (!aba) throw new Error("A planilha não tem a aba Movto1135. Rode o Atualizar Dados.bat e use a Dados Financeiros.xlsx completa.");
+      const val = (l, nm) => { const p = Object.entries(l).find(([k]) => k.trim().toLowerCase() === nm); return p ? p[1] : null; };
+      movtoDados = aba.map(l => ({
+        conta: String(val(l, "conta") ?? "").trim().replace(/\.0$/, ""),
+        sub: String(val(l, "subconta") ?? "").trim(),
+        nome: String(val(l, "nome") ?? "").trim(),
+        mes: +val(l, "mescomp") || 0,
+        venc: String(val(l, "venc") ?? "").trim(),
+        valor: +val(l, "valor") || 0,
+        hist: String(val(l, "historico") ?? "").trim(),
+      })).filter(d => d.conta && d.mes);
+      window.__movtoMes = null;
+      renderMovto();
+    } catch (err) {
+      movtoLoader("✗ " + err.message, "#b3423a");
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
 function renderMovto() {
   const el = document.getElementById("fer-movto");
   if (!movtoDados.length) {
-    el.innerHTML = `<p class="fer-desc">🔒 Disponível apenas com a planilha completa carregada (aba Movto1135). Carregue a <b>Dados Financeiros.xlsx</b> na barra lateral.</p>`;
+    movtoLoader('Selecione a planilha <b>Dados Financeiros.xlsx</b> (a completa, local). Os dados de funcionários não são publicados no site — ficam só no seu navegador.');
     return;
   }
   const meses = [...new Set(movtoDados.map(d => d.mes))].sort((a, b) => a - b);
@@ -845,13 +876,18 @@ function renderMovto() {
     <td>${l.hist}</td></tr>`).join("");
 
   el.innerHTML = `
-    <div class="abas" style="margin-bottom:10px">${abas}</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
-      <button id="movto-baixar" class="aba-btn ativa" style="padding:8px 18px">⬇ Baixar CSV — ${NOMES_MESES[mesAtivo - 1]}/${MOVTO_ANO}</button>
-      <span class="fer-desc">OP1: ${nOp1 / 2} subcontas · OP2: ${nOp2 / 2} lançamentos · ${linhas.length} linhas ·
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <button id="movto-trocar" class="aba-btn" style="padding:6px 12px;font-size:12px">📂 Trocar planilha</button>
+      <span class="fer-desc" style="margin:0">Ferramenta carregada localmente. Selecione o mês (período contábil):</span>
+    </div>
+    <div style="font-weight:600;color:#556;margin-bottom:4px">Mês:</div>
+    <div class="abas" style="margin-bottom:12px;flex-wrap:wrap">${abas}</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <button id="movto-baixar" class="aba-btn ativa" style="padding:10px 22px;font-size:15px">⬇ Baixar CSV — ${NOMES_MESES[mesAtivo - 1]}/${MOVTO_ANO}</button>
+      <span class="fer-desc" style="margin:0">OP1: ${nOp1 / 2} subcontas · OP2: ${nOp2 / 2} lançamentos · ${linhas.length} linhas ·
         ${soma === 0 ? '<span class="selo-ok">✓ balanceado</span>' : '<span class="selo-alerta">⚠ diferença ' + n(soma) + '</span>'}</span>
     </div>
-    <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+    <div style="overflow-x:auto;max-height:440px;overflow-y:auto;border:1px solid #e4e9ee;border-radius:4px">
       <table class="fer-tabela"><thead><tr><th>Op</th><th>Conta</th><th>Subconta</th><th>Nome</th><th class="num">Valor</th><th>Histórico</th></tr></thead>
       <tbody>${corpo || '<tr><td colspan="6" class="vazio">Sem movimentação neste mês</td></tr>'}</tbody></table>
     </div>`;
@@ -859,8 +895,8 @@ function renderMovto() {
   el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
     window.__movtoMes = +b.dataset.movtomes; renderMovto();
   }));
-  const btn = document.getElementById("movto-baixar");
-  if (btn) btn.addEventListener("click", () => baixarMovtoCSV(mesAtivo, linhas));
+  document.getElementById("movto-baixar").addEventListener("click", () => baixarMovtoCSV(mesAtivo, linhas));
+  document.getElementById("movto-trocar").addEventListener("click", () => { movtoDados = []; renderMovto(); });
 }
 
 function baixarMovtoCSV(mes, linhas) {
@@ -1885,59 +1921,6 @@ function renderFerramentas() {
         `</table><p class="fer-desc" style="margin-top:8px">${foraSub.length} subconta(s) para conferir${foraSub.length > 200 ? " (mostrando as 200 maiores)" : ""}.</p>`
       : `<span class="selo-ok">✓ Nenhuma subconta fora de natureza no recorte atual</span>`;
   }
-
-  // ----- 2) Espelhos Ativo × Passivo -----
-  const familias = new Map();  // chave = 3 dígitos após o grupo (ex.: "136")
-  for (const [conta, r] of ferPorConta) {
-    if (!infoContas.ehAnalitica(conta)) continue;
-    const g = conta[0];
-    if (g !== "1" && g !== "2") continue;
-    const chave = conta.slice(1, 4);
-    const fam = familias.get(chave) || { ativo: 0, passivo: 0 };
-    if (g === "1") fam.ativo += r.saldo; else fam.passivo += r.saldo;
-    familias.set(chave, fam);
-  }
-  const nomeFam = (g, k) => ferNomes.get(g + k + "000") || ferNomes.get(g + k + "0000".slice(0, 7 - 1 - k.length)) || "";
-  const espelhos = [...familias.entries()]
-    .filter(([k, fam]) => fam.ativo && fam.passivo)
-    .map(([k, fam]) => ({ k, ...fam, liq: fam.ativo + fam.passivo }))
-    .sort((a, b) => (Math.abs(b.ativo) + Math.abs(b.passivo)) - (Math.abs(a.ativo) + Math.abs(a.passivo)));
-  document.getElementById("fer-espelhos").innerHTML = espelhos.length
-    ? `<table class="fer-tabela"><tr><th>Família</th><th>Ativo (1${"…"})</th><th>Passivo (2${"…"})</th>
-        <th style="text-align:right">Saldo Ativo</th><th style="text-align:right">Saldo Passivo</th><th style="text-align:right">Líquido</th></tr>` +
-      espelhos.map(x => `<tr><td><b>${x.k}</b></td><td>${nomeFam("1", x.k) || "1" + x.k + "xxx"}</td><td>${nomeFam("2", x.k) || "2" + x.k + "xxx"}</td>
-        <td class="num">${n(x.ativo)}</td><td class="num">${n(x.passivo)}</td>
-        <td class="num" style="font-weight:700">${n(x.liq)}</td></tr>`).join("") + `</table>`
-    : (temBP ? `<span class="selo-ok">Nenhuma família com saldo dos dois lados no recorte atual</span>`
-             : `<p class="fer-desc">Requer a planilha completa (contas de ativo e passivo).</p>`);
-
-  // ----- 3) Transferências internas por família (agrupadas pelo nome-base) -----
-  const famTI = new Map();
-  for (const [conta, r] of ferPorConta) {
-    if (!infoContas.ehAnalitica(conta) || !/TI-/i.test(r.nome)) continue;
-    const chave = r.nome.replace(/\(-\)\s*/g, "").trim().toLowerCase();
-    const fam = famTI.get(chave) || { nome: r.nome.replace(/\(-\)\s*/g, "").trim(), contas: [], saldo: 0 };
-    fam.contas.push(conta);
-    fam.saldo += r.saldo;
-    famTI.set(chave, fam);
-  }
-  const residuos = [...famTI.values()].filter(x => Math.abs(x.saldo) > 1)
-    .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
-  const zeradas = famTI.size - residuos.length;
-  document.getElementById("fer-ti").innerHTML = !temNomes
-    ? `<p class="fer-desc">Requer a planilha completa (com os nomes das contas).</p>`
-    : (!famTI.size
-      ? `<p class="fer-desc">Nenhuma conta TI no recorte atual.</p>`
-      : `<p>${zeradas ? `<span class="selo-ok">✓ ${zeradas} família(s) TI zeradas</span>&nbsp;` : ""}` +
-        `${residuos.length ? `<span class="selo-alerta">⚠ ${residuos.length} família(s) com resíduo</span>` : ""}</p>` +
-        (residuos.length
-          ? `<table class="fer-tabela"><tr><th>Família TI</th><th>Contas</th><th style="text-align:right">Resíduo</th><th>Leitura</th></tr>` +
-            residuos.map(x => `<tr><td>${x.nome}</td><td>${x.contas.join(", ")}</td>
-              <td class="num" style="font-weight:600">${n(x.saldo)}</td>
-              <td>${/centro de custos/i.test(x.nome)
-                ? '<span class="selo-alerta">deve zerar — conferir contrapartida</span>'
-                : 'fluxo entre entidades (resíduo pode ser normal)'}</td></tr>`).join("") + `</table>`
-          : ""));
 
   renderBusca();
 }
