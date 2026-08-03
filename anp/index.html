@@ -795,14 +795,17 @@ function gerarMovto(mes) {
     }
   }
 
-  // ---- OP 2: pendente da 1135005 por subconta (FIFO, acumulado até o mês) ----
-  // Só lançamentos com vencimento. Os créditos dão baixa nos débitos mais
-  // antigos (por vencimento); o que sobra (total ou parcial) é o pendente,
-  // mantendo o histórico do lançamento que não foi resolvido. Subconta
-  // totalmente quitada (net 0) não gera nada.
+  // ---- OP 2: pendente da 1135005 por subconta, pelo VENCIMENTO ----
+  // Cada lançamento entra pelo mês do seu VENCIMENTO (datetime_0), não pela
+  // competência. Considera os vencimentos ATÉ o mês selecionado — o pendente
+  // não resolvido de um mês acumula para os seguintes. Os créditos dão baixa
+  // nos débitos mais antigos (por vencimento); o que sobra (total ou parcial)
+  // é o pendente, com o histórico do lançamento não resolvido. Sem vencimento
+  // ou subconta quitada (net 0) = não gera nada.
+  const mesVenc = d => d.venc ? +d.venc.slice(5, 7) : 0;
   const porSub = new Map();
   for (const d of movtoDados) {
-    if (d.conta !== "1135005" || d.mes > mes || !d.venc) continue;
+    if (d.conta !== "1135005" || !d.venc || mesVenc(d) > mes) continue;
     if (!porSub.has(d.sub)) porSub.set(d.sub, { nome: d.nome, lancs: [] });
     porSub.get(d.sub).lancs.push(d);
   }
@@ -925,7 +928,7 @@ function renderMovto() {
     <div style="font-weight:600;color:#556;margin-bottom:4px">Mês:</div>
     <div class="abas" style="margin-bottom:6px;flex-wrap:wrap">${abas}</div>
     ${bloco("op1", "OP 1 — Resíduo (zerar 1135001)", "1135001 → 1135005 / 2135005", "Zera o saldo residual de cada subconta da 1135001. Saldo devedor vai para a 1135005; saldo credor vai para a 2135005.", op1, "OP1")}
-    ${bloco("op2", "OP 2 — Transferência do adiantamento", "1135005 → 1135001", "Só o pendente: os créditos dão baixa nos débitos mais antigos (por vencimento) e transfere-se o que sobrou (acumulado até o mês), com o histórico do lançamento não resolvido. Subconta quitada não aparece.", op2, "OP2")}`;
+    ${bloco("op2", "OP 2 — Transferência do adiantamento", "1135005 → 1135001", "Entra pelo VENCIMENTO (não pela competência), considerando os vencimentos até o mês — o pendente não resolvido acumula para os meses seguintes. Os créditos dão baixa nos débitos e transfere-se só o que sobrou, com o histórico do lançamento não resolvido. Sem vencimento, ou subconta quitada, não aparece.", op2, "OP2")}`;
 
   el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
     window.__movtoMes = +b.dataset.movtomes; renderMovto();
