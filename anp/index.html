@@ -892,7 +892,7 @@ function renderMovto() {
   const op1 = linhas.filter(l => l.op === "OP1"), op2 = linhas.filter(l => l.op === "OP2");
 
   // Bloco de uma operação (título, resumo, botão de CSV próprio e tabela)
-  const bloco = (id, titulo, desc, ls, sufixo) => {
+  const bloco = (id, titulo, fluxo, desc, ls, sufixo) => {
     const soma = ls.reduce((s, l) => s + l.valor, 0);
     const corpo = ls.map(l => `<tr>
       <td>${l.conta}</td><td>${l.sub}</td><td>${l.nome || "—"}</td>
@@ -900,7 +900,10 @@ function renderMovto() {
       <td>${l.hist}</td></tr>`).join("");
     return `
       <div style="margin-top:16px;padding:12px;border:1px solid #d7e0e8;border-radius:6px;background:#fafcfe">
-        <h3 style="color:var(--azul-escuro);font-size:15px;margin-bottom:2px">${titulo}</h3>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <h3 style="color:var(--azul-escuro);font-size:15px;margin:0">${titulo}</h3>
+          <span style="background:var(--azul-tabela);color:#fff;font-size:13px;font-weight:600;padding:3px 12px;border-radius:12px">${fluxo}</span>
+        </div>
         <p class="fer-desc" style="margin:0 0 8px">${desc}</p>
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
           <button data-baixar="${id}" class="aba-btn ativa" style="padding:9px 20px">⬇ Baixar CSV — ${titulo.split("—")[0].trim()}</button>
@@ -921,8 +924,8 @@ function renderMovto() {
     </div>
     <div style="font-weight:600;color:#556;margin-bottom:4px">Mês:</div>
     <div class="abas" style="margin-bottom:6px;flex-wrap:wrap">${abas}</div>
-    ${bloco("op1", "OP 1 — Resíduo da 1135001 (zerar)", "Zera o saldo residual de cada subconta da 1135001 (devedor → 1135005; credor → 2135005).", op1, "OP1")}
-    ${bloco("op2", "OP 2 — Transferência da 1135005 → 1135001", "Só o pendente: os créditos dão baixa nos débitos mais antigos (por vencimento) e transfere-se o que sobrou (acumulado até o mês), com o histórico do lançamento não resolvido. Subconta quitada não aparece.", op2, "OP2")}`;
+    ${bloco("op1", "OP 1 — Resíduo (zerar 1135001)", "1135001 → 1135005 / 2135005", "Zera o saldo residual de cada subconta da 1135001. Saldo devedor vai para a 1135005; saldo credor vai para a 2135005.", op1, "OP1")}
+    ${bloco("op2", "OP 2 — Transferência do adiantamento", "1135005 → 1135001", "Só o pendente: os créditos dão baixa nos débitos mais antigos (por vencimento) e transfere-se o que sobrou (acumulado até o mês), com o histórico do lançamento não resolvido. Subconta quitada não aparece.", op2, "OP2")}`;
 
   el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
     window.__movtoMes = +b.dataset.movtomes; renderMovto();
