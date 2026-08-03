@@ -795,13 +795,35 @@ function gerarMovto(mes) {
     }
   }
 
-  // ---- OP 2: lançamentos da 1135005 (competência no mês) COM vencimento ----
+  // ---- OP 2: pendente da 1135005 por subconta (FIFO, acumulado até o mês) ----
+  // Só lançamentos com vencimento. Os créditos dão baixa nos débitos mais
+  // antigos (por vencimento); o que sobra (total ou parcial) é o pendente,
+  // mantendo o histórico do lançamento que não foi resolvido. Subconta
+  // totalmente quitada (net 0) não gera nada.
+  const porSub = new Map();
   for (const d of movtoDados) {
-    if (d.conta !== "1135005" || d.mes !== mes || !d.venc) continue;
-    const c = centavos(d.valor);
-    if (c === 0) continue;
-    linhas.push({ op: "OP2", conta: "1135001", sub: d.sub, nome: d.nome, valor: c, hist: d.hist });
-    linhas.push({ op: "OP2", conta: "1135005", sub: d.sub, nome: d.nome, valor: -c, hist: d.hist });
+    if (d.conta !== "1135005" || d.mes > mes || !d.venc) continue;
+    if (!porSub.has(d.sub)) porSub.set(d.sub, { nome: d.nome, lancs: [] });
+    porSub.get(d.sub).lancs.push(d);
+  }
+  for (const [sub, info] of porSub) {
+    const ls = info.lancs.slice().sort((a, b) => a.venc.localeCompare(b.venc) || b.valor - a.valor);
+    const fila = [];   // débitos ainda pendentes { valor, hist }
+    for (const l of ls) {
+      if (l.valor > 0) { fila.push({ valor: l.valor, hist: l.hist }); continue; }
+      let cred = -l.valor;                         // crédito dá baixa nos mais antigos
+      while (cred > 0.005 && fila.length) {
+        if (fila[0].valor <= cred + 0.005) { cred -= fila[0].valor; fila.shift(); }
+        else { fila[0].valor -= cred; cred = 0; }
+      }
+      if (cred > 0.005) fila.push({ valor: -cred, hist: l.hist });   // crédito sobrando
+    }
+    for (const p of fila) {
+      const c = centavos(p.valor);
+      if (c === 0) continue;
+      linhas.push({ op: "OP2", conta: "1135001", sub, nome: info.nome, valor: c, hist: p.hist });
+      linhas.push({ op: "OP2", conta: "1135005", sub, nome: info.nome, valor: -c, hist: p.hist });
+    }
   }
   return linhas;
 }
@@ -867,13 +889,30 @@ function renderMovto() {
     `<button class="aba-btn${m === mesAtivo ? " ativa" : ""}" data-movtomes="${m}" style="padding:6px 16px;font-size:13px">${NOMES_MESES[m - 1]}</button>`).join("");
 
   const linhas = gerarMovto(mesAtivo);
-  const soma = linhas.reduce((s, l) => s + l.valor, 0);
-  const nOp1 = linhas.filter(l => l.op === "OP1").length, nOp2 = linhas.filter(l => l.op === "OP2").length;
+  const op1 = linhas.filter(l => l.op === "OP1"), op2 = linhas.filter(l => l.op === "OP2");
 
-  const corpo = linhas.map(l => `<tr>
-    <td>${l.op}</td><td>${l.conta}</td><td>${l.sub}</td><td>${l.nome || "—"}</td>
-    <td class="num" style="color:${l.valor < 0 ? "#b3423a" : "#2e7d4f"}">${(l.valor / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-    <td>${l.hist}</td></tr>`).join("");
+  // Bloco de uma operação (título, resumo, botão de CSV próprio e tabela)
+  const bloco = (id, titulo, desc, ls, sufixo) => {
+    const soma = ls.reduce((s, l) => s + l.valor, 0);
+    const corpo = ls.map(l => `<tr>
+      <td>${l.conta}</td><td>${l.sub}</td><td>${l.nome || "—"}</td>
+      <td class="num" style="color:${l.valor < 0 ? "#b3423a" : "#2e7d4f"}">${(l.valor / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+      <td>${l.hist}</td></tr>`).join("");
+    return `
+      <div style="margin-top:16px;padding:12px;border:1px solid #d7e0e8;border-radius:6px;background:#fafcfe">
+        <h3 style="color:var(--azul-escuro);font-size:15px;margin-bottom:2px">${titulo}</h3>
+        <p class="fer-desc" style="margin:0 0 8px">${desc}</p>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <button data-baixar="${id}" class="aba-btn ativa" style="padding:9px 20px">⬇ Baixar CSV — ${titulo.split("—")[0].trim()}</button>
+          <span class="fer-desc" style="margin:0">${ls.length / 2} par(es) · ${ls.length} linhas ·
+            ${soma === 0 ? '<span class="selo-ok">✓ balanceado</span>' : '<span class="selo-alerta">⚠ diferença ' + n(soma) + '</span>'}</span>
+        </div>
+        <div style="overflow-x:auto;max-height:340px;overflow-y:auto;border:1px solid #e4e9ee;border-radius:4px">
+          <table class="fer-tabela"><thead><tr><th>Conta</th><th>Subconta</th><th>Nome</th><th class="num">Valor</th><th>Histórico</th></tr></thead>
+          <tbody>${corpo || '<tr><td colspan="5" class="vazio">Nada neste mês</td></tr>'}</tbody></table>
+        </div>
+      </div>`;
+  };
 
   el.innerHTML = `
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
@@ -881,25 +920,19 @@ function renderMovto() {
       <span class="fer-desc" style="margin:0">Ferramenta carregada localmente. Selecione o mês (período contábil):</span>
     </div>
     <div style="font-weight:600;color:#556;margin-bottom:4px">Mês:</div>
-    <div class="abas" style="margin-bottom:12px;flex-wrap:wrap">${abas}</div>
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-      <button id="movto-baixar" class="aba-btn ativa" style="padding:10px 22px;font-size:15px">⬇ Baixar CSV — ${NOMES_MESES[mesAtivo - 1]}/${MOVTO_ANO}</button>
-      <span class="fer-desc" style="margin:0">OP1: ${nOp1 / 2} subcontas · OP2: ${nOp2 / 2} lançamentos · ${linhas.length} linhas ·
-        ${soma === 0 ? '<span class="selo-ok">✓ balanceado</span>' : '<span class="selo-alerta">⚠ diferença ' + n(soma) + '</span>'}</span>
-    </div>
-    <div style="overflow-x:auto;max-height:440px;overflow-y:auto;border:1px solid #e4e9ee;border-radius:4px">
-      <table class="fer-tabela"><thead><tr><th>Op</th><th>Conta</th><th>Subconta</th><th>Nome</th><th class="num">Valor</th><th>Histórico</th></tr></thead>
-      <tbody>${corpo || '<tr><td colspan="6" class="vazio">Sem movimentação neste mês</td></tr>'}</tbody></table>
-    </div>`;
+    <div class="abas" style="margin-bottom:6px;flex-wrap:wrap">${abas}</div>
+    ${bloco("op1", "OP 1 — Resíduo da 1135001 (zerar)", "Zera o saldo residual de cada subconta da 1135001 (devedor → 1135005; credor → 2135005).", op1, "OP1")}
+    ${bloco("op2", "OP 2 — Transferência da 1135005 → 1135001", "Só o pendente: os créditos dão baixa nos débitos mais antigos (por vencimento) e transfere-se o que sobrou (acumulado até o mês), com o histórico do lançamento não resolvido. Subconta quitada não aparece.", op2, "OP2")}`;
 
   el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
     window.__movtoMes = +b.dataset.movtomes; renderMovto();
   }));
-  document.getElementById("movto-baixar").addEventListener("click", () => baixarMovtoCSV(mesAtivo, linhas));
+  el.querySelector('[data-baixar="op1"]').addEventListener("click", () => baixarMovtoCSV(mesAtivo, op1, "OP1"));
+  el.querySelector('[data-baixar="op2"]').addEventListener("click", () => baixarMovtoCSV(mesAtivo, op2, "OP2"));
   document.getElementById("movto-trocar").addEventListener("click", () => { movtoDados = []; renderMovto(); });
 }
 
-function baixarMovtoCSV(mes, linhas) {
+function baixarMovtoCSV(mes, linhas, sufixo) {
   const cab = "Conta;Subconta;Fundo;Departamento;Restrição;Valor;Aviso;Histórico";
   const corpo = linhas.map(l =>
     `${l.conta};${l.sub};${MOVTO_FUNDO};${MOVTO_DEP};${MOVTO_REST};${l.valor};N;${l.hist}`).join("\r\n");
@@ -907,7 +940,7 @@ function baixarMovtoCSV(mes, linhas) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `Movimentacao_Adto_Salario_${String(mes).padStart(2, "0")}_${MOVTO_ANO}.csv`;
+  a.download = `Movto_Adto_Salario_${sufixo}_${String(mes).padStart(2, "0")}_${MOVTO_ANO}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(a.href);
 }
