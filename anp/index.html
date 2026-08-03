@@ -390,6 +390,15 @@
           Resíduo diferente de zero indica lançamento sem contrapartida no intervalo selecionado.</p>
         <div id="fer-ti"></div>
       </div>
+
+      <div class="painel grafico">
+        <h2>💸 Movimentação Adto Salário — gerar CSV</h2>
+        <p class="fer-desc">Reclassificação do adiantamento de salário (contas 1135001/1135005, dept 3310000).
+          <b>OP 1</b>: zera o saldo residual de cada subconta da 1135001 (devedor → 1135005; credor → 2135005).
+          <b>OP 2</b>: transfere para a 1135001 os lançamentos da 1135005 que têm vencimento, um a um, com o histórico de cada linha.
+          Ferramenta local (usa nomes de funcionários); o CSV exporta só o código da subconta.</p>
+        <div id="fer-movto"></div>
+      </div>
     </div>
   </main>
 </div>
@@ -596,6 +605,7 @@ let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, ord2, dre3, ord3, dre4, 
   ({ sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4 }));
 let infoContas = { ehAnalitica: () => true };
 let dadosBrutos = dadosExemplo();
+let movtoDados = [];   // lançamentos da aba Movto1135 (ferramenta Adto Salário)
 let linhasDRE = [];   // resultado do processamento (equivalente à tabela BD_AASI)
 
 // Replica a query BD_AASI: filtro de subconta, saldo por mês, join com o
@@ -760,6 +770,110 @@ function render() {
   renderSubvencoes(linhas);
   renderBalanco();
   renderFerramentas();
+  renderMovto();
+}
+
+/* =====================================================================
+   MOVIMENTAÇÃO ADTO SALÁRIO — gera o CSV de reclassificação.
+   Fonte: aba local Movto1135 (lançamentos de 1135001/1135005, dept 3310000).
+   OP 1: zera o saldo residual acumulado de cada subconta da 1135001 no mês.
+   OP 2: transfere lançamento a lançamento a 1135005 (com vencimento) → 1135001.
+   Valor em centavos; crédito negativo; débito/crédito um embaixo do outro.
+   ===================================================================== */
+const MOVTO_DEP = "3310000", MOVTO_FUNDO = "10", MOVTO_REST = "0A";
+const centavos = v => Math.round(v * 100);
+
+// Gera as linhas do CSV (e a prévia com nomes) para um mês.
+function gerarMovto(mes) {
+  const linhas = [];  // { op, conta, sub, nome, valor(centavos), hist }
+  const histResidual = `Adto Salário - Valor Residual Conta Corrente - ${String(mes).padStart(2, "0")}/${MOVTO_ANO}`;
+
+  // ---- OP 1: saldo residual acumulado das subcontas da 1135001 (até o mês) ----
+  const saldos = new Map();  // sub -> { nome, saldo }
+  for (const d of movtoDados) {
+    if (d.conta !== "1135001" || d.mes > mes) continue;
+    const reg = saldos.get(d.sub) || { nome: d.nome, saldo: 0 };
+    reg.saldo += d.valor;
+    if (!reg.nome && d.nome) reg.nome = d.nome;
+    saldos.set(d.sub, reg);
+  }
+  for (const [sub, reg] of saldos) {
+    const c = centavos(Math.abs(reg.saldo));
+    if (c === 0) continue;
+    if (reg.saldo > 0) {           // devedor: sai da 1135001 → 1135005
+      linhas.push({ op: "OP1", conta: "1135005", sub, nome: reg.nome, valor: c, hist: histResidual });
+      linhas.push({ op: "OP1", conta: "1135001", sub, nome: reg.nome, valor: -c, hist: histResidual });
+    } else {                        // credor: sai da 1135001 → 2135005
+      linhas.push({ op: "OP1", conta: "2135005", sub, nome: reg.nome, valor: -c, hist: histResidual });
+      linhas.push({ op: "OP1", conta: "1135001", sub, nome: reg.nome, valor: c, hist: histResidual });
+    }
+  }
+
+  // ---- OP 2: lançamentos da 1135005 (competência no mês) COM vencimento ----
+  for (const d of movtoDados) {
+    if (d.conta !== "1135005" || d.mes !== mes || !d.venc) continue;
+    const c = centavos(d.valor);
+    if (c === 0) continue;
+    linhas.push({ op: "OP2", conta: "1135001", sub: d.sub, nome: d.nome, valor: c, hist: d.hist });
+    linhas.push({ op: "OP2", conta: "1135005", sub: d.sub, nome: d.nome, valor: -c, hist: d.hist });
+  }
+  return linhas;
+}
+
+let MOVTO_ANO = new Date().getFullYear();
+
+function renderMovto() {
+  const el = document.getElementById("fer-movto");
+  if (!movtoDados.length) {
+    el.innerHTML = `<p class="fer-desc">🔒 Disponível apenas com a planilha completa carregada (aba Movto1135). Carregue a <b>Dados Financeiros.xlsx</b> na barra lateral.</p>`;
+    return;
+  }
+  const meses = [...new Set(movtoDados.map(d => d.mes))].sort((a, b) => a - b);
+  const mesAtivo = window.__movtoMes && meses.includes(window.__movtoMes) ? window.__movtoMes : meses[meses.length - 1];
+  window.__movtoMes = mesAtivo;
+
+  const abas = meses.map(m =>
+    `<button class="aba-btn${m === mesAtivo ? " ativa" : ""}" data-movtomes="${m}" style="padding:6px 16px;font-size:13px">${NOMES_MESES[m - 1]}</button>`).join("");
+
+  const linhas = gerarMovto(mesAtivo);
+  const soma = linhas.reduce((s, l) => s + l.valor, 0);
+  const nOp1 = linhas.filter(l => l.op === "OP1").length, nOp2 = linhas.filter(l => l.op === "OP2").length;
+
+  const corpo = linhas.map(l => `<tr>
+    <td>${l.op}</td><td>${l.conta}</td><td>${l.sub}</td><td>${l.nome || "—"}</td>
+    <td class="num" style="color:${l.valor < 0 ? "#b3423a" : "#2e7d4f"}">${(l.valor / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+    <td>${l.hist}</td></tr>`).join("");
+
+  el.innerHTML = `
+    <div class="abas" style="margin-bottom:10px">${abas}</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+      <button id="movto-baixar" class="aba-btn ativa" style="padding:8px 18px">⬇ Baixar CSV — ${NOMES_MESES[mesAtivo - 1]}/${MOVTO_ANO}</button>
+      <span class="fer-desc">OP1: ${nOp1 / 2} subcontas · OP2: ${nOp2 / 2} lançamentos · ${linhas.length} linhas ·
+        ${soma === 0 ? '<span class="selo-ok">✓ balanceado</span>' : '<span class="selo-alerta">⚠ diferença ' + n(soma) + '</span>'}</span>
+    </div>
+    <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+      <table class="fer-tabela"><thead><tr><th>Op</th><th>Conta</th><th>Subconta</th><th>Nome</th><th class="num">Valor</th><th>Histórico</th></tr></thead>
+      <tbody>${corpo || '<tr><td colspan="6" class="vazio">Sem movimentação neste mês</td></tr>'}</tbody></table>
+    </div>`;
+
+  el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
+    window.__movtoMes = +b.dataset.movtomes; renderMovto();
+  }));
+  const btn = document.getElementById("movto-baixar");
+  if (btn) btn.addEventListener("click", () => baixarMovtoCSV(mesAtivo, linhas));
+}
+
+function baixarMovtoCSV(mes, linhas) {
+  const cab = "Conta;Subconta;Fundo;Departamento;Restrição;Valor;Aviso;Histórico";
+  const corpo = linhas.map(l =>
+    `${l.conta};${l.sub};${MOVTO_FUNDO};${MOVTO_DEP};${MOVTO_REST};${l.valor};N;${l.hist}`).join("\r\n");
+  const csv = "﻿" + cab + "\r\n" + corpo + "\r\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Movimentacao_Adto_Salario_${String(mes).padStart(2, "0")}_${MOVTO_ANO}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
 }
 
 /* =====================================================================
@@ -1291,12 +1405,13 @@ function carregarArquivo(arquivo) {
       //  - Ano + Conta            -> dados do banco
       //  - Sinal + Conta + DRE 3  -> De/Para DRE
       //  - Entidade + Tipo        -> De/Para de Campos
-      let abaDados = null, abaDRE = null, abaCampos = null;
+      let abaDados = null, abaDRE = null, abaCampos = null, abaMovto = null;
       for (const nome of wb.SheetNames) {
         const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
         if (!json.length) continue;
         const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
-        if (!abaDRE && cols.includes("sinal") && cols.includes("conta") && cols.some(c => c.startsWith("dre 3"))) abaDRE = json;
+        if (!abaMovto && cols.includes("mescomp") && cols.includes("historico")) abaMovto = json;
+        else if (!abaDRE && cols.includes("sinal") && cols.includes("conta") && cols.some(c => c.startsWith("dre 3"))) abaDRE = json;
         else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
         else if (!abaCampos && cols.includes("entidade") && cols.includes("tipo")) abaCampos = json;
       }
@@ -1360,6 +1475,17 @@ function carregarArquivo(arquivo) {
         SaldoLegal: +l[colLegal] || 0,
         SaldoAjustado: +l[colAjust] || 0,
       })).filter(d => d.Ano && d.Mes != null && isFinite(d.Mes));
+
+      // Movimentação Adto Salário (aba local Movto1135)
+      movtoDados = abaMovto ? abaMovto.map(l => ({
+        conta: limpaConta(valorDe(l, "conta")),
+        sub: String(valorDe(l, "subconta") ?? "").trim(),
+        nome: String(valorDe(l, "nome") ?? "").trim(),
+        mes: +valorDe(l, "mescomp") || 0,
+        venc: String(valorDe(l, "venc") ?? "").trim(),
+        valor: +valorDe(l, "valor") || 0,
+        hist: String(valorDe(l, "historico") ?? "").trim(),
+      })).filter(d => d.conta && d.mes) : [];
 
       processar();
       document.getElementById("status-arquivo").textContent =
