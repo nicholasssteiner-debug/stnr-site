@@ -797,31 +797,34 @@ function gerarMovto(mes) {
 
   // ---- OP 2: pendente da 1135005 por subconta, pelo VENCIMENTO ----
   // Cada lançamento entra pelo mês do seu VENCIMENTO (datetime_0), não pela
-  // competência. Considera os vencimentos ATÉ o mês selecionado — o pendente
-  // não resolvido de um mês acumula para os seguintes. Os créditos dão baixa
-  // nos débitos mais antigos (por vencimento); o que sobra (total ou parcial)
-  // é o pendente, com o histórico do lançamento não resolvido. Sem vencimento
-  // ou subconta quitada (net 0) = não gera nada.
+  // competência. A baixa é acumulada: um crédito quita um débito de qualquer
+  // vencimento anterior (estorno de valor igual primeiro; senão os mais
+  // antigos). MAS cada pendente é mostrado no mês do SEU vencimento — então
+  // a subconta só aparece no mês em que ela realmente vence. Sem vencimento,
+  // ou subconta já quitada, não gera nada.
   const mesVenc = d => d.venc ? +d.venc.slice(5, 7) : 0;
   const porSub = new Map();
   for (const d of movtoDados) {
-    if (d.conta !== "1135005" || !d.venc || mesVenc(d) > mes) continue;
+    const vm = mesVenc(d);
+    if (d.conta !== "1135005" || !vm || vm > mes) continue;   // vencimento até o mês
     if (!porSub.has(d.sub)) porSub.set(d.sub, { nome: d.nome, lancs: [] });
-    porSub.get(d.sub).lancs.push(d);
+    porSub.get(d.sub).lancs.push({ ...d, vm });
   }
   for (const [sub, info] of porSub) {
     const ls = info.lancs.slice().sort((a, b) => a.venc.localeCompare(b.venc) || b.valor - a.valor);
-    const fila = [];   // débitos ainda pendentes { valor, hist }
+    const fila = [];   // débitos pendentes { valor, hist, vm }
     for (const l of ls) {
-      if (l.valor > 0) { fila.push({ valor: l.valor, hist: l.hist }); continue; }
-      let cred = -l.valor;                         // crédito dá baixa nos mais antigos
-      while (cred > 0.005 && fila.length) {
+      if (l.valor > 0) { fila.push({ valor: l.valor, hist: l.hist, vm: l.vm }); continue; }
+      let cred = -l.valor;
+      const iEx = fila.findIndex(p => Math.abs(p.valor - cred) < 0.005);   // estorno exato
+      if (iEx >= 0) { fila.splice(iEx, 1); continue; }
+      while (cred > 0.005 && fila.length) {                                // senão, FIFO
         if (fila[0].valor <= cred + 0.005) { cred -= fila[0].valor; fila.shift(); }
         else { fila[0].valor -= cred; cred = 0; }
       }
-      if (cred > 0.005) fila.push({ valor: -cred, hist: l.hist });   // crédito sobrando
     }
     for (const p of fila) {
+      if (p.vm !== mes) continue;   // só o pendente que vence no mês selecionado
       const c = centavos(p.valor);
       if (c === 0) continue;
       linhas.push({ op: "OP2", conta: "1135001", sub, nome: info.nome, valor: c, hist: p.hist });
@@ -928,7 +931,7 @@ function renderMovto() {
     <div style="font-weight:600;color:#556;margin-bottom:4px">Mês:</div>
     <div class="abas" style="margin-bottom:6px;flex-wrap:wrap">${abas}</div>
     ${bloco("op1", "OP 1 — Resíduo (zerar 1135001)", "1135001 → 1135005 / 2135005", "Zera o saldo residual de cada subconta da 1135001. Saldo devedor vai para a 1135005; saldo credor vai para a 2135005.", op1, "OP1")}
-    ${bloco("op2", "OP 2 — Transferência do adiantamento", "1135005 → 1135001", "Entra pelo VENCIMENTO (não pela competência), considerando os vencimentos até o mês — o pendente não resolvido acumula para os meses seguintes. Os créditos dão baixa nos débitos e transfere-se só o que sobrou, com o histórico do lançamento não resolvido. Sem vencimento, ou subconta quitada, não aparece.", op2, "OP2")}`;
+    ${bloco("op2", "OP 2 — Transferência do adiantamento", "1135005 → 1135001", "Mostra o pendente que VENCE no mês selecionado (não a competência). A baixa é acumulada (um crédito quita um débito de qualquer vencimento anterior; estorno de valor igual primeiro). Transfere-se só o que ficou pendente, com o histórico do lançamento não resolvido. Sem vencimento, ou subconta já quitada, não aparece.", op2, "OP2")}`;
 
   el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
     window.__movtoMes = +b.dataset.movtomes; renderMovto();
