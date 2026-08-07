@@ -774,39 +774,39 @@ function gerarMovto(mes) {
   const linhas = [];  // { op, conta, sub, nome, valor(centavos), hist }
   const histResidual = `Adto Salário - Valor Residual Conta Corrente - ${String(mes).padStart(2, "0")}/${MOVTO_ANO}`;
 
-  // ---- OP 1: saldo residual acumulado das subcontas da 1135001 (até o mês) ----
-  const saldos = new Map();  // sub -> { nome, saldo }
+  // CONVENÇÃO DE SINAL do banco (campo value): DÉBITO é NEGATIVO, CRÉDITO é
+  // POSITIVO. No CSV é o contrário (débito positivo, crédito negativo), então
+  // o valor exportado é o próprio residual em centavos, com os papéis abaixo.
+
+  // ---- OP 1: resíduo NÃO ALOCADO das subcontas da 1135001 (até o mês) ----
+  const saldos = new Map();  // sub -> { nome, saldo(residual, DB: neg=devedor) }
   for (const d of movtoDados) {
     if (d.conta !== "1135001" || d.mes > mes) continue;
     const reg = saldos.get(d.sub) || { nome: d.nome, saldo: 0 };
-    reg.saldo += d.valor;
+    reg.saldo += d.valor + d.aloc;   // residual = valor + alocado (0 = quitado)
     if (!reg.nome && d.nome) reg.nome = d.nome;
     saldos.set(d.sub, reg);
   }
   for (const [sub, reg] of saldos) {
-    const c = centavos(Math.abs(reg.saldo));
-    if (c === 0) continue;
-    if (reg.saldo > 0) {           // devedor: sai da 1135001 → 1135005
-      linhas.push({ op: "OP1", conta: "1135005", sub, nome: reg.nome, valor: c, hist: histResidual });
-      linhas.push({ op: "OP1", conta: "1135001", sub, nome: reg.nome, valor: -c, hist: histResidual });
-    } else {                        // credor: sai da 1135001 → 2135005
-      linhas.push({ op: "OP1", conta: "2135005", sub, nome: reg.nome, valor: -c, hist: histResidual });
-      linhas.push({ op: "OP1", conta: "1135001", sub, nome: reg.nome, valor: c, hist: histResidual });
-    }
+    const rc = centavos(reg.saldo);
+    if (rc === 0) continue;
+    // saldo < 0 = DEVEDOR → vai para 1135005 ; saldo > 0 = CREDOR → vai para 2135005
+    const contra = reg.saldo < 0 ? "1135005" : "2135005";
+    linhas.push({ op: "OP1", conta: contra, sub, nome: reg.nome, valor: -rc, hist: histResidual });
+    linhas.push({ op: "OP1", conta: "1135001", sub, nome: reg.nome, valor: rc, hist: histResidual });
   }
 
   // ---- OP 2: itens NÃO ALOCADOS da 1135005 que vencem no mês ----
   // Usa a baixa real do sistema (tabela Allocation): o pendente de cada item
   // é valor + alocado (0 = quitado). Cada item não alocado que VENCE no mês
-  // selecionado é transferido para a 1135001, com o histórico do próprio item.
-  // Bate com a tela de Alocação. Sem vencimento no mês, ou item quitado, não sai.
+  // é transferido para a 1135001, com o histórico do próprio item.
   const mesVenc = d => d.venc ? +d.venc.slice(5, 7) : 0;
   for (const d of movtoDados) {
     if (d.conta !== "1135005" || mesVenc(d) !== mes) continue;
-    const c = centavos(d.valor + d.aloc);   // não alocado (pendente)
-    if (c === 0) continue;                   // item já alocado (quitado)
-    linhas.push({ op: "OP2", conta: "1135001", sub: d.sub, nome: d.nome, valor: c, hist: d.hist });
-    linhas.push({ op: "OP2", conta: "1135005", sub: d.sub, nome: d.nome, valor: -c, hist: d.hist });
+    const rc = centavos(d.valor + d.aloc);   // residual não alocado (DB: neg=devedor)
+    if (rc === 0) continue;                   // item já alocado (quitado)
+    linhas.push({ op: "OP2", conta: "1135001", sub: d.sub, nome: d.nome, valor: -rc, hist: d.hist });
+    linhas.push({ op: "OP2", conta: "1135005", sub: d.sub, nome: d.nome, valor: rc, hist: d.hist });
   }
   return linhas;
 }
