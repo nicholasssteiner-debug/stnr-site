@@ -198,7 +198,7 @@
 <header>
   <div style="min-width:160px; font-weight:600;">Adventista</div>
   <h1>Análise Financeira Campos</h1>
-  <div class="info">Contabilidade CTec<br><span id="data-atualizacao">—</span></div>
+  <div class="info">Contabilidade CTec<br>Atualizado em <span id="data-atualizacao">—</span></div>
 </header>
 
 <div class="container">
@@ -1461,12 +1461,13 @@ function carregarArquivo(arquivo) {
       //  - Ano + Conta            -> dados do banco
       //  - Sinal + Conta + DRE 3  -> De/Para DRE
       //  - Entidade + Tipo        -> De/Para de Campos
-      let abaDados = null, abaDRE = null, abaCampos = null, abaMovto = null;
+      let abaDados = null, abaDRE = null, abaCampos = null, abaMovto = null, abaMeta = null;
       for (const nome of wb.SheetNames) {
         const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
         if (!json.length) continue;
         const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
         if (!abaMovto && cols.includes("mescomp") && cols.includes("historico")) abaMovto = json;
+        else if (!abaMeta && cols.includes("chave") && cols.includes("valor")) abaMeta = json;
         else if (!abaDRE && cols.includes("sinal") && cols.includes("conta") && cols.some(c => c.startsWith("dre 3"))) abaDRE = json;
         else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
         else if (!abaCampos && cols.includes("entidade") && cols.includes("tipo")) abaCampos = json;
@@ -1547,8 +1548,13 @@ function carregarArquivo(arquivo) {
       processar();
       document.getElementById("status-arquivo").textContent =
         `✓ ${arquivo.name} — ${dadosBrutos.length.toLocaleString("pt-BR")} linhas`;
+      let carimbo = null;
+      if (abaMeta) {
+        const linha = abaMeta.find(l => String(valorDe(l, "chave") ?? "").trim().toLowerCase() === "atualizado");
+        if (linha) carimbo = String(valorDe(linha, "valor") ?? "").trim();
+      }
       document.getElementById("data-atualizacao").textContent =
-        new Date(arquivo.lastModified).toLocaleString("pt-BR");
+        carimbo || new Date(arquivo.lastModified).toLocaleString("pt-BR");
       montarFiltros();
       render();
     } catch (erro) {
