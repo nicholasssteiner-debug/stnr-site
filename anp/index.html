@@ -1067,7 +1067,7 @@ function saldoBrutoPorConta() {
   const mapa = new Map();  // conta -> { nome, meses:Map(chaveMes->base) }
   for (const d of dadosBrutos) {
     if (d.Subconta) continue;
-    if (!f.campos.includes(d.Entidade) || d.Mes < f.mesIni || d.Mes > f.mesFim) continue;
+    if (!f.anos.includes(d.Ano) || !f.campos.includes(d.Entidade) || d.Mes < f.mesIni || d.Mes > f.mesFim) continue;
     const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
     if (!base) continue;
     const reg = mapa.get(d.Conta) || { nome: d.NomeConta || "", meses: new Map() };
