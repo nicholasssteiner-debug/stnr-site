@@ -319,6 +319,11 @@
           <div id="grafico-proj-acum"></div>
         </div>
       </div>
+      <div class="painel" id="proj-painel-comp" style="display:none">
+        <h2 id="proj-comp-titulo">Composição da previsão</h2>
+        <p class="fer-desc" id="proj-comp-desc"></p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="proj-composicao"></table></div>
+      </div>
       <div class="painel explica" id="proj-explica"></div>
     </div>
 
@@ -1616,6 +1621,7 @@ async function carregarAutomatico() {
    ===================================================================== */
 const FATOR_CONFIANCA = 1.64;   // ~90%
 const PISO_INCERTEZA = 0.25;    // mês em andamento nunca vira "quase certo"
+const LIMIAR_LANCADA = 0.6;     // conta com >=60% do seu padrão já foi lançada no mês
 
 let projFechados = new Map();   // ano -> Set dos meses encerrados
 let projManual = new Set();     // anos cuja marcação veio do usuário (ou do storage)
@@ -1633,6 +1639,45 @@ function componentesAno(ano, campos) {
   }
   for (const c of mapa.values()) c.outros = c.resultado - (c.receita - c.despesa);
   return mapa;
+}
+
+/* Saldo de cada CONTA em cada mês — base da estimativa conta a conta. */
+function contasPorMes(ano, campos) {
+  const mapa = new Map();   // conta -> { nome, grupo, meses: Map(mes -> saldo) }
+  for (const d of linhasDRE) {
+    if (d.Ano !== ano || !campos.includes(d.Entidade)) continue;
+    const reg = mapa.get(d.conta) || { nome: d.nome || "", grupo: d.dre3 || d.dre2 || "Outros", meses: new Map() };
+    reg.meses.set(d.Mes, (reg.meses.get(d.Mes) || 0) + d.saldo);
+    mapa.set(d.conta, reg);
+  }
+  return mapa;
+}
+
+/* Estimativa de um mês EM ANDAMENTO, conta a conta.
+   Cada conta é classificada como "já lançada" (o mês dela já entrou — usa o
+   valor real, que pode estar acima OU abaixo do normal) ou "a lançar" (usa o
+   padrão). É isso que faz a previsão enxergar a movimentação do próprio mês,
+   em vez de repetir a média. */
+function estimarMesConta(mes, mesesFech, porConta, padraoResultado) {
+  const linhas = [];
+  let total = 0, pesoLancado = 0, pesoTotal = 0;
+  for (const [conta, reg] of porConta) {
+    const base = mesesFech.map(mm => reg.meses.get(mm) || 0);
+    const med = base.length ? base.reduce((s, v) => s + v, 0) / base.length : 0;
+    const atual = reg.meses.get(mes) || 0;
+    if (!med && !atual) continue;
+    const razao = med ? atual / med : (atual ? Infinity : 0);
+    // conta nova (sem histórico) com lançamento também conta como lançada
+    const lancada = med === 0 ? atual !== 0 : razao >= LIMIAR_LANCADA;
+    // a lançar: usa o padrão, mas nunca abaixo do que já entrou (piso)
+    const usado = lancada ? atual : (Math.abs(atual) > Math.abs(med) ? atual : med);
+    total += usado;
+    pesoTotal += Math.abs(usado);
+    if (lancada) pesoLancado += Math.abs(usado);
+    linhas.push({ conta, nome: reg.nome, grupo: reg.grupo, med, atual, usado, lancada });
+  }
+  if (!porConta.size) total = padraoResultado;
+  return { total, linhas, completude: pesoTotal ? pesoLancado / pesoTotal : 0 };
 }
 
 /* Palpite inicial: mês com receita compatível com a mediana está encerrado.
@@ -1699,6 +1744,7 @@ function renderProjecao() {
   const ano = f.anos.length ? Math.max(...f.anos) : anosDisp[anosDisp.length - 1];
 
   const comps = componentesAno(ano, f.campos);
+  const porConta = contasPorMes(ano, f.campos);
   // Enquanto o usuário não marcar nada, a detecção é refeita a cada render —
   // assim ela acompanha a planilha que acabou de ser carregada.
   if (!projManual.has(ano)) {
@@ -1769,13 +1815,15 @@ function renderProjecao() {
       if (fechados.has(m)) {
         e.set(m, { tipo: "fechado", receita: c.receita, despesa: c.despesa, resultado: c.resultado, completude: 1 });
       } else if (c) {
-        // já tem lançamento: o contabilizado é PISO — receita e despesa em separado
-        const receita = Math.max(c.receita, p.receita);
-        const despesa = Math.max(c.despesa, p.despesa);
-        const alvo = Math.abs(p.receita) + Math.abs(p.despesa);
-        const feito = Math.abs(c.receita) + Math.abs(c.despesa);
-        const completude = alvo ? Math.max(0, Math.min(1, feito / alvo)) : 0;
-        e.set(m, { tipo: "andamento", receita, despesa, resultado: receita - despesa + (c.outros || 0), feito: c, completude });
+        // mês em andamento: estimativa CONTA A CONTA (usa a movimentação do
+        // próprio mês onde ela já existe; o padrão só onde ainda não entrou)
+        const r = estimarMesConta(m, mesesFech, porConta, p.resultado);
+        e.set(m, {
+          tipo: "andamento", resultado: r.total, feito: c, completude: r.completude,
+          linhas: r.linhas,
+          receita: r.linhas.filter(l => l.conta[0] === "3").reduce((s, l) => s + l.usado, 0),
+          despesa: -r.linhas.filter(l => l.conta[0] === "4").reduce((s, l) => s + l.usado, 0),
+        });
       } else {
         e.set(m, { tipo: "futuro", receita: p.receita, despesa: p.despesa, resultado: p.resultado, completude: 0 });
       }
@@ -1845,6 +1893,7 @@ function renderProjecao() {
 
   desenharProjMeses(estim, margemDe);
   desenharProjAcumulado(estim, margemDe);
+  renderComposicao(proxMes, eProx, ano, mesesFech);
 
   // ----- explicação -----
   const emAndamento = mesesAbertos.filter(m => estim.get(m).tipo === "andamento");
@@ -1858,10 +1907,13 @@ function renderProjecao() {
   const explicaAndamento = emAndamento.length ? `
     <p><b>Meses em andamento (${emAndamento.map(m => NOMES_MESES[m - 1]).join(", ")}):</b> já têm lançamentos, mas não foram encerrados.
       Para esses, o painel <b>não usa o valor parcial como se fosse o mês inteiro</b> (isso jogaria o resultado para baixo, porque a
-      despesa já entrou e a receita ainda não). Em vez disso, compara o que já está contabilizado com o padrão, <b>separando receita de
-      despesa</b>, e fica com o <b>maior dos dois</b> em cada lado — lançamento só acumula, então o que já está lá é piso, nunca teto.
-      Na prática: se a despesa de um mês já passou do padrão, a projeção dele <b>piora automaticamente</b>; se ainda está abaixo, ele
-      espera o restante entrar. Como parte do mês já é fato, a margem de erro dele também é <b>menor</b> que a de um mês totalmente futuro
+      despesa já entrou e a receita ainda não) — mas também <b>não ignora a movimentação do mês</b>. Ele vai <b>conta a conta</b>:
+      compara cada conta com o padrão dela nos meses encerrados e pergunta se o lançamento daquele mês <b>já entrou</b>. Se já entrou
+      (a conta está em ${pct(LIMIAR_LANCADA)} ou mais do seu normal), vale o <b>valor real</b> — inclusive se vier acima ou abaixo do
+      normal, que é justamente a informação nova. Se ainda não entrou, usa o padrão, nunca abaixo do que já foi lançado.
+      Na prática: se a folha de julho já foi lançada 8% acima do usual, a previsão de julho <b>já nasce com esses 8%</b>.
+      A tabela "Composição da previsão" acima mostra linha a linha o que é fato e o que é estimativa.
+      Como parte do mês já é fato, a margem de erro dele também é <b>menor</b> que a de um mês totalmente futuro
       ${emAndamento.map(m => `(${NOMES_MESES[m - 1]}: ${pct(estim.get(m).completude)} contabilizado, margem ±${n(margemDe(m))})`).join(", ")}.</p>` : "";
 
   let atipico = "";
@@ -1894,6 +1946,49 @@ function renderProjecao() {
     ${alternativo}
     <p><b>Atenção:</b> projeção é referência, não promessa. Eventos fora do padrão — reajuste de mensalidades, subvenções
       extraordinárias, 13º salário, matrículas — podem levar o resultado para fora da faixa.</p>`;
+}
+
+/* Abre a previsão do próximo mês por grupo da DRE, mostrando o que já foi
+   lançado (fato) e o que ainda é padrão (estimativa). É a justificativa do
+   número — útil quando a previsão vai para a diretoria. */
+function renderComposicao(mes, e, ano, mesesFech) {
+  const painel = document.getElementById("proj-painel-comp");
+  if (mes == null || !e || e.tipo !== "andamento" || !e.linhas) { painel.style.display = "none"; return; }
+  painel.style.display = "";
+  document.getElementById("proj-comp-titulo").textContent =
+    `Composição da previsão de ${NOMES_MESES[mes - 1]}/${ano}`;
+  document.getElementById("proj-comp-desc").innerHTML =
+    `Conta a conta: as que <b>já foram lançadas</b> em ${NOMES_MESES[mes - 1]} entram pelo <b>valor real</b> — ` +
+    `é a movimentação do próprio mês, não a média. As que <b>ainda não entraram</b> usam o padrão dos ` +
+    `${mesesFech.length} meses encerrados. Agrupado pelos blocos da DRE.`;
+
+  const grupos = new Map();
+  for (const l of e.linhas) {
+    const g = grupos.get(l.grupo) || { med: 0, atual: 0, usado: 0, nLanc: 0, nTotal: 0, contas: [] };
+    g.med += l.med; g.atual += l.atual; g.usado += l.usado;
+    g.nTotal++; if (l.lancada) g.nLanc++;
+    g.contas.push(l);
+    grupos.set(l.grupo, g);
+  }
+  const ord = [...grupos.entries()].sort((a, b) => Math.abs(b[1].usado) - Math.abs(a[1].usado));
+
+  let html = `<thead><tr><th>Bloco da DRE</th><th class="num">Padrão (média)</th>` +
+    `<th class="num">Já lançado</th><th class="num">Usado na previsão</th><th>Situação</th></tr></thead><tbody>`;
+  let tMed = 0, tAtual = 0, tUsado = 0;
+  for (const [nome, g] of ord) {
+    tMed += g.med; tAtual += g.atual; tUsado += g.usado;
+    const todas = g.nLanc === g.nTotal, nenhuma = g.nLanc === 0;
+    const sit = todas ? `<span style="color:#2c5f7c; font-weight:600">✓ lançado</span>`
+      : nenhuma ? `<span style="color:#96a">aguardando lançamento</span>`
+        : `<span style="color:#a67">parcial — ${g.nLanc} de ${g.nTotal} contas</span>`;
+    const marca = todas ? "" : ` style="color:#96a"`;
+    html += `<tr class="dre-n1-lite"><td>${nome}</td><td class="num">${n(g.med)}</td>` +
+      `<td class="num"${marca}>${n(g.atual)}</td><td class="num total-col">${n(g.usado)}</td><td>${sit}</td></tr>`;
+  }
+  html += `<tr class="dre-resultado"><td>RESULTADO PREVISTO</td><td class="num">${n(tMed)}</td>` +
+    `<td class="num">${n(tAtual)}</td><td class="num total-col">${n(tUsado)}</td>` +
+    `<td>${pct(e.completude)} do mês já é fato</td></tr></tbody>`;
+  document.getElementById("proj-composicao").innerHTML = html;
 }
 
 const COR_PROJ = { fechado: "#2c5f7c", andamento: "#6f9fc4", futuro: "#a9c9e0" };
