@@ -1641,14 +1641,19 @@ function componentesAno(ano, campos) {
   return mapa;
 }
 
-/* Saldo de cada CONTA em cada mês — base da estimativa conta a conta. */
+/* Saldo de cada LINHA DA DRE (conta + bloco) em cada mês — base da estimativa
+   conta a conta. A chave inclui o bloco porque 9 contas aparecem duas vezes no
+   De/Para, com sinais opostos (reclassificação entre blocos da DRE); agrupar só
+   por conta faria as duas linhas se anularem. */
 function contasPorMes(ano, campos) {
-  const mapa = new Map();   // conta -> { nome, grupo, meses: Map(mes -> saldo) }
+  const mapa = new Map();   // "conta|bloco" -> { conta, nome, grupo, meses: Map(mes -> saldo) }
   for (const d of linhasDRE) {
     if (d.Ano !== ano || !campos.includes(d.Entidade)) continue;
-    const reg = mapa.get(d.conta) || { nome: d.nome || "", grupo: d.dre3 || d.dre2 || "Outros", meses: new Map() };
+    const grupo = d.dre3 || d.dre2 || "Outros";
+    const chave = d.conta + "|" + grupo;
+    const reg = mapa.get(chave) || { conta: d.conta, nome: d.nome || "", grupo, meses: new Map() };
     reg.meses.set(d.Mes, (reg.meses.get(d.Mes) || 0) + d.saldo);
-    mapa.set(d.conta, reg);
+    mapa.set(chave, reg);
   }
   return mapa;
 }
@@ -1661,7 +1666,8 @@ function contasPorMes(ano, campos) {
 function estimarMesConta(mes, mesesFech, porConta, padraoResultado) {
   const linhas = [];
   let total = 0, pesoLancado = 0, pesoTotal = 0;
-  for (const [conta, reg] of porConta) {
+  for (const reg of porConta.values()) {
+    const conta = reg.conta;
     const base = mesesFech.map(mm => reg.meses.get(mm) || 0);
     const med = base.length ? base.reduce((s, v) => s + v, 0) / base.length : 0;
     const atual = reg.meses.get(mes) || 0;
@@ -1753,12 +1759,16 @@ function renderProjecao() {
     else projFechados.set(ano, detectarFechados(comps, ano));
   }
   const fechados = projFechados.get(ano);
-  for (const m of [...fechados]) if (!comps.has(m)) fechados.delete(m);  // mês sem lançamento não fecha
   montarSeletorFechados(ano, comps, fechados);
 
-  const mesesFech = [...fechados].sort((a, b) => a - b);
+  // A marcação do usuário NUNCA é alterada aqui — se ela fosse podada pelos
+  // meses ausentes, a primeira renderização (que roda com os dados de exemplo,
+  // só 4 meses) apagaria os meses marcados e a seleção se perderia a cada F5.
+  // Mês marcado mas ainda sem lançamento simplesmente entra como projetado.
+  const mesesFech = [...fechados].filter(m => comps.has(m)).sort((a, b) => a - b);
+  const encerrado = new Set(mesesFech);
   const mesesAbertos = [];
-  for (let m = 1; m <= 12; m++) if (!fechados.has(m)) mesesAbertos.push(m);
+  for (let m = 1; m <= 12; m++) if (!encerrado.has(m)) mesesAbertos.push(m);
 
   // ----- padrão por mês, separando receita e despesa -----
   const soma = { receita: 0, despesa: 0, resultado: 0 };
@@ -1812,7 +1822,7 @@ function renderProjecao() {
     const e = new Map();
     for (let m = 1; m <= 12; m++) {
       const p = padraoFn(m), c = comps.get(m);
-      if (fechados.has(m)) {
+      if (encerrado.has(m)) {
         e.set(m, { tipo: "fechado", receita: c.receita, despesa: c.despesa, resultado: c.resultado, completude: 1 });
       } else if (c) {
         // mês em andamento: estimativa CONTA A CONTA (usa a movimentação do
