@@ -207,6 +207,34 @@
                         <div id="student-wing-badge" class="hidden items-center gap-2 bg-slate-950 border border-slate-800 px-4 py-2 rounded-xl text-slate-300 font-bold">
                             <!-- Injetado por JS -->
                         </div>
+                        <button id="btn-toggle-vazio" class="hidden relative z-10 items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all">
+                            <!-- Injetado por JS -->
+                        </button>
+                    </div>
+
+                    <!-- PAINEL DE INCONSISTÊNCIAS (só monitor/preceptoria) -->
+                    <div id="painel-inconsistencias" class="hidden bg-slate-900 rounded-2xl border border-amber-500/40 p-5 shadow-[0_0_20px_rgba(245,158,11,0.07)]">
+                        <h3 class="text-sm font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                            <span>Inconsistências</span>
+                            <span id="incons-contador" class="ml-auto text-[10px] bg-amber-500/15 border border-amber-500/40 px-2 py-0.5 rounded-full"></span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 mb-4 leading-relaxed" id="incons-data-ref"></p>
+                        <div id="incons-corpo" class="space-y-4"></div>
+                    </div>
+
+                    <!-- QUARTOS VAZIOS (só monitor/preceptoria) -->
+                    <div id="painel-vazios" class="hidden bg-slate-900 rounded-2xl border border-slate-800 p-5">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                            <i data-lucide="door-closed" class="w-4 h-4 text-slate-500"></i>
+                            <span>Quartos vazios</span>
+                            <span id="vazios-contador" class="ml-auto text-[10px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full text-slate-400"></span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 mb-4 leading-relaxed">
+                            Quarto sem ninguém morando. Fica <b>fora do ranking</b> (não ganha nem perde posição) e o sistema
+                            <b>para de cobrar</b> avaliação dele. Clique para marcar ou desmarcar.
+                        </p>
+                        <div id="grade-vazios" class="flex flex-wrap gap-1.5"></div>
                     </div>
 
                     <!-- Bloco 1: Nota Geral -->
@@ -397,9 +425,14 @@
             selectedRoomId: null,
             dashSelectedRoomId: null,
             raceSelectedWingId: 'w1',
-            currentDate: '', 
-            evaluations: {} 
+            currentDate: '',
+            evaluations: {},
+            vazios: {}          // roomId -> true (quarto sem ninguem morando)
         };
+
+        // Dias seguidos em que a ala foi avaliada e o quarto foi pulado para o
+        // sistema parar de cobrar e sugerir que o quarto esta vazio.
+        const DIAS_PARA_SUGERIR_VAZIO = 4;
 
         WINGS.forEach(wing => {
             wing.rooms.forEach(roomId => {
@@ -507,12 +540,14 @@
                     }
 
                     state.evaluations = serverData;
+                    state.vazios = docSnap.data().vazios || {};
                 } else {
                     if (activeUser && activeUser.role === 'admin') {
                         // Criação inicial do banco, se não existir
                         setDoc(docRef, { evaluations: {} }); 
                     }
                     state.evaluations = {};
+                    state.vazios = {};
                 }
                 updateUI();
             });
@@ -683,6 +718,82 @@
             }
         };
 
+        // --- ESTADO DO DIA, QUARTOS VAZIOS E INCONSISTÊNCIAS ---
+
+        // "sem avaliação" = o monitor registrou algo (critério ou observação) mas
+        // NÃO deu a nota. O dia nao pode sumir do calculo: os criterios daquele
+        // dia continuam contando no desempate (ver universalSortFn), so a media
+        // de notas fica intacta — nao prejudica, mas tambem nao premia.
+        const temConteudo = (ev) =>
+            !!(ev && ((ev.criteria && ev.criteria.length) || (ev.obs && String(ev.obs).trim())));
+
+        const estadoDoDia = (roomId, date) => {
+            const ev = (state.evaluations[roomId] || {})[date];
+            if (scoreOf(ev) !== null) return 'avaliado';
+            if (temConteudo(ev)) return 'sem-nota';      // inconsistencia: falta a nota
+            return 'sem-registro';                       // ninguem passou por ali
+        };
+
+        const quartoVazio = (roomId) => !!state.vazios[roomId];
+        const quartosAtivos = () => state.rooms.filter(r => !quartoVazio(r.id));
+
+        const setQuartoVazio = async (roomId, vazio) => {
+            if (!activeUser || activeUser.role !== 'admin') return;
+            if (vazio) state.vazios[roomId] = true; else delete state.vazios[roomId];
+            updateUI();
+            if (!auth.currentUser) return;
+            try {
+                const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                await updateDoc(docRef, { [`vazios.${roomId}`]: vazio ? true : deleteField() });
+            } catch (error) {
+                if (error.code === 'not-found') {
+                    const docRef = doc(db, 'artifacts', appNamespace, 'public', 'data', 'appState', 'shared_v2');
+                    await setDoc(docRef, { vazios: { [roomId]: true } }, { merge: true });
+                } else {
+                    console.error("Erro ao marcar quarto vazio:", error);
+                }
+            }
+        };
+
+        // A ala foi visitada nesse dia? Se ninguem da ala foi avaliado, o dia nao
+        // conta contra o quarto (foi folga/feriado, nao ausencia do morador).
+        const alaFoiAvaliada = (wing, date) =>
+            wing.rooms.some(rid => (state.evaluations[rid] || {})[date]);
+
+        // Dias SEGUIDOS em que a ala foi avaliada e este quarto foi pulado.
+        const diasPulados = (roomId, ateData) => {
+            const wing = WINGS.find(w => w.rooms.includes(roomId));
+            if (!wing) return 0;
+            let n = 0, d = ateData, olhados = 0;
+            while (olhados < 90) {
+                olhados++;
+                if (alaFoiAvaliada(wing, d)) {
+                    if (estadoDoDia(roomId, d) === 'sem-registro') n++;
+                    else break;
+                }
+                d = addDays(d, -1);
+            }
+            return n;
+        };
+
+        /* Levanta as pendencias do dia selecionado, ja separando o que o monitor
+           precisa corrigir do que provavelmente e quarto vazio. */
+        const levantarInconsistencias = (date) => {
+            const semNota = [], naoAvaliados = [], sugestaoVazio = [];
+            for (const room of state.rooms) {
+                if (quartoVazio(room.id)) continue;
+                const estado = estadoDoDia(room.id, date);
+                if (estado === 'avaliado') continue;
+                if (estado === 'sem-nota') { semNota.push(room); continue; }
+                const wing = WINGS.find(w => w.id === room.wingId);
+                if (!wing || !alaFoiAvaliada(wing, date)) continue;   // ala nao foi visitada
+                const pulados = diasPulados(room.id, date);
+                if (pulados >= DIAS_PARA_SUGERIR_VAZIO) sugestaoVazio.push({ room, pulados });
+                else naoAvaliados.push(room);
+            }
+            return { semNota, naoAvaliados, sugestaoVazio };
+        };
+
         const getScoreColor = (score, isBorder = false) => {
             if (score === null || score === undefined || isNaN(score)) return isBorder ? 'border-slate-700' : 'text-slate-500 bg-slate-800 border-slate-700';
             if (score >= 8) return isBorder ? 'border-emerald-500/50' : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30';
@@ -720,16 +831,40 @@
             return streak;
         };
 
+        /* Acumula um periodo de um quarto. Os criterios contam em TODOS os dias
+           com registro — inclusive nos que ficaram sem nota. Assim o quarto nao
+           some com um dia ruim deixando de receber a nota: a media de notas nao
+           e tocada (nao prejudica), mas os problemas anotados pesam no desempate. */
+        const acumularPeriodo = (roomId, prefix) => {
+            const evals = state.evaluations[roomId] || {};
+            let totalSc = 0, countSc = 0, totalCrit = 0, semNota = 0;
+            Object.keys(evals).forEach(date => {
+                if (!date.startsWith(prefix)) return;
+                const ev = evals[date];
+                const sc = scoreOf(ev);
+                totalCrit += (ev && ev.criteria) ? ev.criteria.length : 0;
+                if (sc !== null) { totalSc += sc; countSc++; }
+                else if (temConteudo(ev)) semNota++;
+            });
+            return {
+                score: countSc > 0 ? parseFloat((totalSc / countSc).toFixed(1)) : null,
+                soma: totalSc, dias: countSc, criteriaCount: totalCrit, semNota
+            };
+        };
+
         const universalSortFn = (a, b) => {
             if (a.score === null && b.score === null) return 0;
             if (a.score === null) return 1;
             if (b.score === null) return -1;
-            
+
             if (b.score !== a.score) return b.score - a.score;
             if (a.criteriaCount !== b.criteriaCount) return a.criteriaCount - b.criteriaCount;
+            // Desempate novo: quem tem a avaliacao mais completa fica na frente.
+            const aSem = a.semNota || 0, bSem = b.semNota || 0;
+            if (aSem !== bSem) return aSem - bSem;
             if (b.avgToUse !== a.avgToUse) return b.avgToUse - a.avgToUse;
             if (b.streak !== a.streak) return b.streak - a.streak;
-            return a.name.localeCompare(b.name); 
+            return a.name.localeCompare(b.name);
         };
         // --- FIM DAS FUNÇÕES AUXILIARES DE RANKING ---
 
@@ -777,7 +912,13 @@
                     const todayEval = getRoomEval(room.id, state.currentDate);
                     const scDot = scoreOf(todayEval);
                     const hasEval = scDot !== null;
-                    const evalDot = hasEval ? `<div class="w-1.5 h-1.5 rounded-full ${scDot >= 8 ? 'bg-emerald-500' : (scDot >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>` : '';
+                    const est = estadoDoDia(room.id, state.currentDate);
+                    // vazio = cinza; sem nota = anel vermelho vazado; avaliado = bolinha da cor da nota
+                    const evalDot = quartoVazio(room.id)
+                        ? `<span class="text-[9px] font-bold text-slate-600 uppercase tracking-wider">vazio</span>`
+                        : hasEval
+                            ? `<div class="w-1.5 h-1.5 rounded-full ${scDot >= 8 ? 'bg-emerald-500' : (scDot >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>`
+                            : (est === 'sem-nota' ? `<div class="w-2 h-2 rounded-full border-2 border-rose-500" title="sem nota"></div>` : '');
 
                     const roomEl = document.createElement('div');
                     roomEl.className = `group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all duration-300 ${
@@ -814,8 +955,17 @@
             const room = state.rooms.find(r => r.id === state.selectedRoomId);
             if (!room) return;
 
-            document.getElementById('summary-room-name').textContent = room.name;
-            document.getElementById('summary-date').textContent = `Avaliação referente ao dia ${displayDate(state.currentDate)}`;
+            renderInconsistencias();
+
+            const estado = estadoDoDia(room.id, state.currentDate);
+            const marcaVazio = quartoVazio(room.id) ? ' · <span class="text-slate-500">VAZIO — fora do ranking</span>' : '';
+            document.getElementById('summary-room-name').innerHTML = room.name + (quartoVazio(room.id)
+                ? ' <span class="text-[10px] align-middle bg-slate-800 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full">vazio</span>' : '');
+            document.getElementById('summary-date').innerHTML =
+                `Avaliação referente ao dia ${displayDate(state.currentDate)}` +
+                (estado === 'sem-nota'
+                    ? ` · <span class="text-rose-400 font-bold">SEM AVALIAÇÃO — falta a nota</span>`
+                    : marcaVazio);
 
             const badgeEl = document.getElementById('student-wing-badge');
             if (activeUser && activeUser.role === 'student') {
@@ -830,6 +980,21 @@
 
             const currentEval = getRoomEval(state.selectedRoomId, state.currentDate);
             const isAdmin = activeUser && activeUser.role === 'admin';
+
+            // Botão para marcar/desmarcar ESTE quarto como vazio (só admin)
+            const btnVazio = document.getElementById('btn-toggle-vazio');
+            const jaVazio = quartoVazio(room.id);
+            btnVazio.classList.toggle('hidden', !isAdmin);
+            btnVazio.classList.toggle('flex', !!isAdmin);
+            if (isAdmin) {
+                btnVazio.className = 'relative z-10 flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ' +
+                    (jaVazio ? 'bg-cyan-600/15 border-cyan-500/50 text-cyan-300 hover:bg-cyan-600/25'
+                             : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300');
+                btnVazio.innerHTML = jaVazio
+                    ? `<i data-lucide="user-plus" class="w-4 h-4"></i> Voltar a ocupado`
+                    : `<i data-lucide="door-open" class="w-4 h-4"></i> Marcar como vazio`;
+                btnVazio.onclick = () => setQuartoVazio(room.id, !jaVazio);
+            }
 
             const scoreContainer = document.getElementById('score-buttons');
             scoreContainer.innerHTML = '';
@@ -953,6 +1118,97 @@
             }
         };
 
+        /* Painel de inconsistências + gestão de quartos vazios (só admin). */
+        const renderInconsistencias = () => {
+            const painel = document.getElementById('painel-inconsistencias');
+            const painelVazios = document.getElementById('painel-vazios');
+            const isAdmin = activeUser && activeUser.role === 'admin';
+
+            if (!isAdmin) { painel.classList.add('hidden'); painelVazios.classList.add('hidden'); return; }
+            painelVazios.classList.remove('hidden');
+
+            const { semNota, naoAvaliados, sugestaoVazio } = levantarInconsistencias(state.currentDate);
+            const total = semNota.length + naoAvaliados.length + sugestaoVazio.length;
+
+            document.getElementById('incons-data-ref').innerHTML =
+                `Situação de <b>${displayDate(state.currentDate)}</b>. Dias em que a ala inteira não foi visitada não são cobrados.`;
+            document.getElementById('incons-contador').textContent = total === 0 ? 'tudo certo' : `${total} pendência${total > 1 ? 's' : ''}`;
+
+            const corpo = document.getElementById('incons-corpo');
+            if (total === 0) {
+                painel.classList.remove('hidden');
+                painel.className = 'bg-slate-900 rounded-2xl border border-emerald-500/30 p-5';
+                corpo.innerHTML = `<p class="text-xs text-emerald-400/80 flex items-center gap-2">
+                    <i data-lucide="check-circle-2" class="w-4 h-4"></i> Nenhuma pendência neste dia.</p>`;
+                lucide.createIcons();
+                renderGradeVazios();
+                return;
+            }
+            painel.classList.remove('hidden');
+            painel.className = 'bg-slate-900 rounded-2xl border border-amber-500/40 p-5 shadow-[0_0_20px_rgba(245,158,11,0.07)]';
+
+            const chip = (room, cor, extra = '') => `
+                <button data-ir="${room.id}" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${cor}">
+                    ${room.name.replace('Quarto ', 'Q.')}${extra}
+                </button>`;
+
+            let html = '';
+            if (semNota.length) {
+                html += `<div>
+                    <div class="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <i data-lucide="file-warning" class="w-3.5 h-3.5"></i> Sem avaliação — falta a nota (${semNota.length})</div>
+                    <p class="text-[11px] text-slate-500 mb-2">Tem critério ou observação lançados, mas ninguém deu a nota.
+                       Os critérios já contam no desempate; a nota ainda precisa entrar.</p>
+                    <div class="flex flex-wrap gap-1.5">${semNota.map(r => chip(r, 'bg-rose-500/10 border-rose-500/40 text-rose-300 hover:bg-rose-500/20')).join('')}</div>
+                </div>`;
+            }
+            if (naoAvaliados.length) {
+                html += `<div>
+                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <i data-lucide="circle-dashed" class="w-3.5 h-3.5"></i> Não avaliados (${naoAvaliados.length})</div>
+                    <p class="text-[11px] text-slate-500 mb-2">A ala foi visitada neste dia, mas estes quartos ficaram sem registro.</p>
+                    <div class="flex flex-wrap gap-1.5">${naoAvaliados.map(r => chip(r, 'bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20')).join('')}</div>
+                </div>`;
+            }
+            if (sugestaoVazio.length) {
+                html += `<div class="border-t border-slate-800 pt-3">
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Provavelmente vazios (${sugestaoVazio.length})</div>
+                    <p class="text-[11px] text-slate-500 mb-2">Pulados há ${DIAS_PARA_SUGERIR_VAZIO}+ visitas seguidas — o sistema parou de cobrar.
+                       Se não mora ninguém, marque como vazio para sair do ranking.</p>
+                    <div class="flex flex-wrap gap-1.5">${sugestaoVazio.map(s =>
+                        `<button data-vazio="${s.room.id}" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:border-cyan-500/50 hover:text-cyan-300 transition-all">
+                            ${s.room.name.replace('Quarto ', 'Q.')} · ${s.pulados}x <i data-lucide="plus" class="w-3 h-3 inline"></i></button>`).join('')}</div>
+                </div>`;
+            }
+            corpo.innerHTML = html;
+
+            corpo.querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => {
+                state.selectedRoomId = b.dataset.ir;
+                updateUI();
+                document.querySelector('.flex-1.overflow-y-auto').scrollTo({ top: 0, behavior: 'smooth' });
+            }));
+            corpo.querySelectorAll('[data-vazio]').forEach(b => b.addEventListener('click', () => setQuartoVazio(b.dataset.vazio, true)));
+            lucide.createIcons();
+            renderGradeVazios();
+        };
+
+        const renderGradeVazios = () => {
+            const grade = document.getElementById('grade-vazios');
+            const vazios = state.rooms.filter(r => quartoVazio(r.id));
+            document.getElementById('vazios-contador').textContent =
+                vazios.length ? `${vazios.length} marcado${vazios.length > 1 ? 's' : ''}` : 'nenhum';
+
+            grade.innerHTML = vazios.length
+                ? vazios.map(r => `<button data-desmarcar="${r.id}" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-slate-800 border-slate-600 text-slate-300 hover:border-rose-500/50 hover:text-rose-300 transition-all">
+                        ${r.name.replace('Quarto ', 'Q.')} <i data-lucide="x" class="w-3 h-3 inline"></i></button>`).join('')
+                : `<p class="text-[11px] text-slate-600">Nenhum quarto marcado como vazio.</p>`;
+
+            grade.querySelectorAll('[data-desmarcar]').forEach(b =>
+                b.addEventListener('click', () => setQuartoVazio(b.dataset.desmarcar, false)));
+            lucide.createIcons();
+        };
+
         const renderPodium = (elementId, validData) => {
             const el = document.getElementById(elementId);
             if (validData.length === 0) {
@@ -1003,22 +1259,19 @@
                 let wTotalCrit = 0, wTotalStreak = 0;
                 let wTotalHist = 0, wCountHist = 0;
 
+                let wSemNota = 0, wAtivos = 0;
+                const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
                 wing.rooms.forEach(roomId => {
-                    const roomEvals = state.evaluations[roomId] || {};
+                    if (quartoVazio(roomId)) return;          // quarto vazio fica fora do ranking
+                    wAtivos++;
                     wTotalStreak += getStreak(roomId, state.currentDate);
-                    
-                    const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
-                    
-                    Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentYear) && scoreOf(roomEvals[date]) !== null) {
-                            wTotalHist += scoreOf(roomEvals[date]);
-                            wCountHist++;
-                        }
-                        if (date.startsWith(periodPrefix) && scoreOf(roomEvals[date]) !== null) {
-                            wTotalSc += scoreOf(roomEvals[date]); wCountSc++;
-                            wTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                        }
-                    });
+
+                    const per = acumularPeriodo(roomId, periodPrefix);
+                    wTotalSc += per.soma; wCountSc += per.dias;
+                    wTotalCrit += per.criteriaCount; wSemNota += per.semNota;
+
+                    const hist = acumularPeriodo(roomId, currentYear);
+                    wTotalHist += hist.soma; wCountHist += hist.dias;
                 });
 
                 wingsData.push({
@@ -1032,8 +1285,9 @@
                     // streak (ganhava), enquanto a nota já era média. Agora as três
                     // medidas estão na mesma escala.
                     criteriaCount: wCountSc > 0 ? (wTotalCrit / wCountSc) : 0,
+                    semNota: wAtivos > 0 ? (wSemNota / wAtivos) : 0,
                     avgToUse: wCountHist > 0 ? (wTotalHist/wCountHist) : 0,
-                    streak: wing.rooms.length > 0 ? (wTotalStreak / wing.rooms.length) : 0
+                    streak: wAtivos > 0 ? (wTotalStreak / wAtivos) : 0
                 });
             });
 
@@ -1086,27 +1340,17 @@
 
             const roomsData = [];
             currentWing.rooms.forEach(roomId => {
+                if (quartoVazio(roomId)) return;              // quarto vazio fica fora do ranking
                 const rNum = roomId.split('-')[1];
-                const roomEvals = state.evaluations[roomId] || {};
-                const streak = getStreak(roomId, state.currentDate);
-                const annualAvg = getAverage(roomId, currentYear);
+                const per = acumularPeriodo(roomId, isAnnual ? currentYear : currentMonthPrefix);
 
-                let rTotalSc = 0, rCountSc = 0, rTotalCrit = 0;
-                const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
-
-                Object.keys(roomEvals).forEach(date => {
-                    if (date.startsWith(periodPrefix) && scoreOf(roomEvals[date]) !== null) {
-                        rTotalSc += scoreOf(roomEvals[date]); rCountSc++;
-                        rTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                    }
-                });
-                
                 roomsData.push({
                     name: `Q.${rNum}`,
-                    score: rCountSc > 0 ? parseFloat((rTotalSc/rCountSc).toFixed(1)) : null,
-                    criteriaCount: rTotalCrit,
-                    avgToUse: annualAvg,
-                    streak: streak
+                    score: per.score,
+                    criteriaCount: per.criteriaCount,
+                    semNota: per.semNota,
+                    avgToUse: getAverage(roomId, currentYear),
+                    streak: getStreak(roomId, state.currentDate)
                 });
             });
 
@@ -1157,6 +1401,7 @@
             
             state.rooms.forEach(r => {
                 if (activeUser && activeUser.role === 'student' && activeUser.roomId !== r.id) return;
+                if (quartoVazio(r.id) && (!activeUser || activeUser.role !== 'student')) return;
                 
                 const opt = document.createElement('option');
                 opt.value = r.id;
@@ -1187,71 +1432,39 @@
             let data2 = []; 
 
             state.rooms.forEach(room => {
+                if (quartoVazio(room.id)) return;         // quarto vazio fica fora do ranking
                 const roomEvals = state.evaluations[room.id] || {};
                 const streak = getStreak(room.id, state.currentDate);
                 const monthlyAvg = getAverage(room.id, currentMonthPrefix);
                 const annualAvg = getAverage(room.id, currentYear);
 
-                // --- DATA 1 (Ranking Principal) ---
-                if (!isAnnual) {
-                    const todayEval = roomEvals[state.currentDate] || { score: null, criteria: [] };
-                    data1.push({ 
-                        name: room.name, 
-                        score: scoreOf(todayEval),
-                        criteriaCount: todayEval.criteria ? todayEval.criteria.length : 0,
-                        avgToUse: monthlyAvg, 
-                        streak: streak
-                    });
-                } else {
-                    let totalSc = 0, countSc = 0, totalCrit = 0;
-                    Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentMonthPrefix) && scoreOf(roomEvals[date]) !== null) {
-                            totalSc += scoreOf(roomEvals[date]); 
-                            countSc++;
-                            totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                        }
-                    });
-                    data1.push({ 
-                        name: room.name, 
-                        score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
-                        criteriaCount: totalCrit,
-                        avgToUse: annualAvg, 
-                        streak: streak 
-                    });
-                }
+                const doMes = acumularPeriodo(room.id, currentMonthPrefix);
+                const doAno = acumularPeriodo(room.id, currentYear);
 
-                // --- DATA 2 (Ranking Secundário) ---
                 if (!isAnnual) {
-                    let totalSc = 0, countSc = 0, totalCrit = 0;
-                    Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentMonthPrefix) && scoreOf(roomEvals[date]) !== null) {
-                            totalSc += scoreOf(roomEvals[date]); 
-                            countSc++;
-                            totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                        }
-                    });
-                    data2.push({ 
-                        name: room.name, 
-                        score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
-                        criteriaCount: totalCrit,
-                        avgToUse: annualAvg, 
+                    // Ranking 1 = HOJE; Ranking 2 = media do mes
+                    const hoje = roomEvals[state.currentDate];
+                    data1.push({
+                        name: room.name,
+                        score: scoreOf(hoje),
+                        criteriaCount: (hoje && hoje.criteria) ? hoje.criteria.length : 0,
+                        semNota: (scoreOf(hoje) === null && temConteudo(hoje)) ? 1 : 0,
+                        avgToUse: monthlyAvg,
                         streak: streak
+                    });
+                    data2.push({
+                        name: room.name, score: doMes.score, criteriaCount: doMes.criteriaCount,
+                        semNota: doMes.semNota, avgToUse: annualAvg, streak: streak
                     });
                 } else {
-                    let totalSc = 0, countSc = 0, totalCrit = 0;
-                    Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentYear) && scoreOf(roomEvals[date]) !== null) {
-                            totalSc += scoreOf(roomEvals[date]); 
-                            countSc++;
-                            totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
-                        }
+                    // Ranking 1 = media do mes; Ranking 2 = media do ano
+                    data1.push({
+                        name: room.name, score: doMes.score, criteriaCount: doMes.criteriaCount,
+                        semNota: doMes.semNota, avgToUse: annualAvg, streak: streak
                     });
-                    data2.push({ 
-                        name: room.name, 
-                        score: countSc > 0 ? parseFloat((totalSc/countSc).toFixed(1)) : null,
-                        criteriaCount: totalCrit,
-                        avgToUse: annualAvg,
-                        streak: streak
+                    data2.push({
+                        name: room.name, score: doAno.score, criteriaCount: doAno.criteriaCount,
+                        semNota: doAno.semNota, avgToUse: annualAvg, streak: streak
                     });
                 }
             });
@@ -1323,6 +1536,7 @@
                     let total = 0, count = 0;
                     
                     state.rooms.forEach(room => {
+                        if (quartoVazio(room.id)) return;
                         const sc = scoreOf(getRoomEval(room.id, dayStr));
                         if (sc !== null) { total += sc; count++; }
                     });
@@ -1340,6 +1554,7 @@
                     let tInd = 0, cInd = 0;
 
                     state.rooms.forEach(room => {
+                        if (quartoVazio(room.id) && room.id !== state.dashSelectedRoomId) return;
                         const evals = state.evaluations[room.id] || {};
                         Object.keys(evals).forEach(date => {
                             if (date.startsWith(monthPrefix) && scoreOf(evals[date]) !== null) {
