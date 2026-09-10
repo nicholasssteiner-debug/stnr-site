@@ -10,8 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@0.545.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
 
     <style>
         body {
@@ -23,6 +23,14 @@
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
         
+        /* A unidade dvh so existe no iOS 15.4+/Chrome 108+. Em celular mais antigo
+           o h-[100dvh] era ignorado e o app ficava sem altura depois do login.
+           O 100vh entra como reserva; quem suporta dvh usa a linha de baixo. */
+        #app-layout {
+            height: 100vh;
+            height: 100dvh;
+        }
+
         .score-btn.active {
             background-color: #0891b2; 
             color: white;
@@ -50,11 +58,14 @@
 <body class="bg-slate-950 text-slate-200 min-h-screen overflow-hidden selection:bg-cyan-500/30">
 
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="fixed inset-0 z-50 bg-[#0a0f1c] flex items-center justify-center p-4">
+    <!-- overflow-y-auto: no celular, com o teclado aberto a area visivel encolhe e
+         o botao Autenticar saia da tela sem como rolar ate ele. Com rolagem + my-auto
+         o card continua centralizado quando cabe e rola quando nao cabe. -->
+    <div id="login-screen" class="fixed inset-0 z-50 bg-[#0a0f1c] flex items-center justify-center p-4 overflow-y-auto">
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none"></div>
         <div class="absolute top-1/4 right-1/4 w-[300px] h-[300px] bg-purple-500/10 blur-[80px] rounded-full pointer-events-none"></div>
 
-        <div class="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] w-full max-w-md relative z-10">
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] w-full max-w-md relative z-10 my-auto shrink-0">
             <div class="text-center mb-8">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-950 border border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.3)] mb-4">
                     <i data-lucide="clipboard-check" class="w-8 h-8 text-cyan-400"></i>
@@ -76,7 +87,7 @@
                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Login</label>
                     <div class="relative">
                         <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"></i>
-                        <input type="text" id="login-username" required class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-slate-200 placeholder-slate-600 transition-all shadow-inner" placeholder="Login (ex: 101 ou monitor)">
+                        <input type="text" id="login-username" required autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false" class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-slate-200 placeholder-slate-600 transition-all shadow-inner" placeholder="Login (ex: 101 ou monitor)">
                     </div>
                 </div>
 
@@ -84,7 +95,7 @@
                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Senha</label>
                     <div class="relative">
                         <i data-lucide="key" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"></i>
-                        <input type="password" id="login-password" required class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-slate-200 placeholder-slate-600 transition-all shadow-inner" placeholder="••••••••">
+                        <input type="password" id="login-password" required autocapitalize="none" autocorrect="off" autocomplete="current-password" spellcheck="false" class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-slate-200 placeholder-slate-600 transition-all shadow-inner" placeholder="••••••••">
                     </div>
                 </div>
 
@@ -336,8 +347,8 @@
     </div>
 
     <!-- Modal Limpeza Diária (Secreto) -->
-    <div id="modal-clear-day" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-rose-500/50 p-6 rounded-2xl shadow-[0_0_40px_rgba(244,63,94,0.2)] w-full max-w-sm relative">
+    <div id="modal-clear-day" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-rose-500/50 p-6 rounded-2xl shadow-[0_0_40px_rgba(244,63,94,0.2)] w-full max-w-sm relative my-auto shrink-0">
             <div class="text-center mb-6">
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/50 mb-4 text-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
                     <i data-lucide="alert-triangle" class="w-6 h-6"></i>
@@ -349,7 +360,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Senha de Autorização</label>
-                    <input type="password" id="clear-password" class="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 text-slate-200 placeholder-slate-600" placeholder="Sua senha">
+                    <input type="password" id="clear-password" autocapitalize="none" autocorrect="off" spellcheck="false" class="w-full px-4 py-2 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 text-slate-200 placeholder-slate-600" placeholder="Sua senha">
                     <p id="clear-error" class="text-rose-400 text-xs mt-2 hidden flex items-center gap-1"><i data-lucide="x-circle" class="w-3 h-3"></i> Senha incorreta.</p>
                 </div>
                 
@@ -523,7 +534,9 @@
         const handleLogin = async (e) => {
             e.preventDefault();
             const userIn = document.getElementById('login-username').value.trim().toLowerCase();
-            const passIn = document.getElementById('login-password').value;
+            // .trim() tambem na senha: o teclado do celular e o autopreenchimento
+            // costumam deixar um espaco no fim, e o login falhava sem explicacao.
+            const passIn = document.getElementById('login-password').value.trim();
             const errorEl = document.getElementById('login-error');
 
             const userFound = USERS[userIn];
@@ -557,7 +570,17 @@
                 try {
                     await signInAnonymously(auth);
                     loadStateFromFirebase();
-                } catch (error) {}
+                } catch (error) {
+                    // Antes o erro era engolido: o usuário entrava e via o sistema
+                    // vazio, sem saber que era falta de conexão.
+                    console.error("Falha ao conectar ao servidor:", error);
+                    errorEl.querySelector('span').textContent =
+                        'Não foi possível conectar ao servidor. Verifique a internet e tente novamente.';
+                    errorEl.classList.remove('hidden');
+                    activeUser = null;
+                    document.getElementById('btn-toggle-view').classList.add('hidden');
+                    return;
+                }
 
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-layout').classList.remove('hidden');
@@ -565,6 +588,7 @@
                 
                 updateUI();
             } else {
+                errorEl.querySelector('span').textContent = 'Credenciais inválidas.';
                 errorEl.classList.remove('hidden');
             }
         };
@@ -610,9 +634,19 @@
         });
 
         // UTILITÁRIOS
+        // A gravacao e parcial (dot-notation): marcar um criterio ou escrever a
+        // observacao ANTES de dar a nota cria o dia sem a chave "score". Nesse
+        // caso score vem UNDEFINED, que passa no teste "!== null" e contamina as
+        // somas com NaN. scoreOf() e a unica porta de entrada da nota.
+        const scoreOf = (ev) => {
+            const s = ev ? ev.score : null;
+            return (typeof s === 'number' && isFinite(s)) ? s : null;
+        };
+
         const getRoomEval = (roomId, date) => {
-            if (!state.evaluations[roomId]) return { score: null, criteria: [], obs: "" };
-            return state.evaluations[roomId][date] || { score: null, criteria: [], obs: "" };
+            const bruto = (state.evaluations[roomId] || {})[date];
+            if (!bruto) return { score: null, criteria: [], obs: "" };
+            return { ...bruto, score: scoreOf(bruto), criteria: bruto.criteria || [], obs: bruto.obs || "" };
         };
 
         // BLINDAGEM MÁXIMA DE UPDATE PROFUNDO (Dot-Notation)
@@ -661,8 +695,8 @@
             const evals = state.evaluations[roomId] || {};
             let total = 0, count = 0;
             Object.keys(evals).forEach(date => {
-                if (date.startsWith(prefix) && evals[date].score !== null) {
-                    total += evals[date].score;
+                if (date.startsWith(prefix) && scoreOf(evals[date]) !== null) {
+                    total += scoreOf(evals[date]);
                     count++;
                 }
             });
@@ -741,8 +775,9 @@
                 filteredRooms.forEach(room => {
                     const isSelected = state.selectedRoomId === room.id && state.view === 'evaluation';
                     const todayEval = getRoomEval(room.id, state.currentDate);
-                    const hasEval = todayEval.score !== null;
-                    const evalDot = hasEval ? `<div class="w-1.5 h-1.5 rounded-full ${todayEval.score >= 8 ? 'bg-emerald-500' : (todayEval.score >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>` : '';
+                    const scDot = scoreOf(todayEval);
+                    const hasEval = scDot !== null;
+                    const evalDot = hasEval ? `<div class="w-1.5 h-1.5 rounded-full ${scDot >= 8 ? 'bg-emerald-500' : (scDot >= 5 ? 'bg-amber-500' : 'bg-rose-500')}"></div>` : '';
 
                     const roomEl = document.createElement('div');
                     roomEl.className = `group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all duration-300 ${
@@ -975,12 +1010,12 @@
                     const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
                     
                     Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentYear) && roomEvals[date].score !== null) {
-                            wTotalHist += roomEvals[date].score;
+                        if (date.startsWith(currentYear) && scoreOf(roomEvals[date]) !== null) {
+                            wTotalHist += scoreOf(roomEvals[date]);
                             wCountHist++;
                         }
-                        if (date.startsWith(periodPrefix) && roomEvals[date].score !== null) {
-                            wTotalSc += roomEvals[date].score; wCountSc++;
+                        if (date.startsWith(periodPrefix) && scoreOf(roomEvals[date]) !== null) {
+                            wTotalSc += scoreOf(roomEvals[date]); wCountSc++;
                             wTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
                     });
@@ -991,9 +1026,14 @@
                     icon: wing.icon,
                     color: wing.color,
                     score: wCountSc > 0 ? parseFloat((wTotalSc/wCountSc).toFixed(1)) : null,
-                    criteriaCount: wTotalCrit,
+                    // Critérios e streak precisam ser MÉDIA, não soma: as alas têm
+                    // números diferentes de quartos (8 a 13). Somando, a ala maior
+                    // sempre acumulava mais critérios (perdia o desempate) e mais
+                    // streak (ganhava), enquanto a nota já era média. Agora as três
+                    // medidas estão na mesma escala.
+                    criteriaCount: wCountSc > 0 ? (wTotalCrit / wCountSc) : 0,
                     avgToUse: wCountHist > 0 ? (wTotalHist/wCountHist) : 0,
-                    streak: wTotalStreak
+                    streak: wing.rooms.length > 0 ? (wTotalStreak / wing.rooms.length) : 0
                 });
             });
 
@@ -1055,8 +1095,8 @@
                 const periodPrefix = isAnnual ? currentYear : currentMonthPrefix;
 
                 Object.keys(roomEvals).forEach(date => {
-                    if (date.startsWith(periodPrefix) && roomEvals[date].score !== null) {
-                        rTotalSc += roomEvals[date].score; rCountSc++;
+                    if (date.startsWith(periodPrefix) && scoreOf(roomEvals[date]) !== null) {
+                        rTotalSc += scoreOf(roomEvals[date]); rCountSc++;
                         rTotalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                     }
                 });
@@ -1133,11 +1173,14 @@
             }
             roomSelect.value = state.dashSelectedRoomId;
 
-            roomSelect.addEventListener('change', (e) => {
+            // onchange (e não addEventListener): renderDashboardContent roda a cada
+            // updateUI — inclusive a cada mudança vinda do Firestore — e com
+            // addEventListener os handlers iam se acumulando no mesmo <select>.
+            roomSelect.onchange = (e) => {
                 state.dashSelectedRoomId = e.target.value;
                 renderCharts();
-                renderRaces(isAnnual, currentMonthPrefix, currentYear); 
-            });
+                renderRaces(isAnnual, currentMonthPrefix, currentYear);
+            };
 
             // Preparando Dados das Listas de Ranking
             let data1 = []; 
@@ -1154,7 +1197,7 @@
                     const todayEval = roomEvals[state.currentDate] || { score: null, criteria: [] };
                     data1.push({ 
                         name: room.name, 
-                        score: todayEval.score,
+                        score: scoreOf(todayEval),
                         criteriaCount: todayEval.criteria ? todayEval.criteria.length : 0,
                         avgToUse: monthlyAvg, 
                         streak: streak
@@ -1162,8 +1205,8 @@
                 } else {
                     let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
-                            totalSc += roomEvals[date].score; 
+                        if (date.startsWith(currentMonthPrefix) && scoreOf(roomEvals[date]) !== null) {
+                            totalSc += scoreOf(roomEvals[date]); 
                             countSc++;
                             totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
@@ -1181,8 +1224,8 @@
                 if (!isAnnual) {
                     let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentMonthPrefix) && roomEvals[date].score !== null) {
-                            totalSc += roomEvals[date].score; 
+                        if (date.startsWith(currentMonthPrefix) && scoreOf(roomEvals[date]) !== null) {
+                            totalSc += scoreOf(roomEvals[date]); 
                             countSc++;
                             totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
@@ -1197,8 +1240,8 @@
                 } else {
                     let totalSc = 0, countSc = 0, totalCrit = 0;
                     Object.keys(roomEvals).forEach(date => {
-                        if (date.startsWith(currentYear) && roomEvals[date].score !== null) {
-                            totalSc += roomEvals[date].score; 
+                        if (date.startsWith(currentYear) && scoreOf(roomEvals[date]) !== null) {
+                            totalSc += scoreOf(roomEvals[date]); 
                             countSc++;
                             totalCrit += roomEvals[date].criteria ? roomEvals[date].criteria.length : 0;
                         }
@@ -1280,12 +1323,12 @@
                     let total = 0, count = 0;
                     
                     state.rooms.forEach(room => {
-                        const sc = getRoomEval(room.id, dayStr).score;
+                        const sc = scoreOf(getRoomEval(room.id, dayStr));
                         if (sc !== null) { total += sc; count++; }
                     });
                     overallAverages.push(count > 0 ? (total/count).toFixed(1) : null);
                     
-                    const indSc = getRoomEval(state.dashSelectedRoomId, dayStr).score;
+                    const indSc = scoreOf(getRoomEval(state.dashSelectedRoomId, dayStr));
                     indScores.push(indSc !== null ? indSc : null);
                 }
             } else {
@@ -1299,10 +1342,10 @@
                     state.rooms.forEach(room => {
                         const evals = state.evaluations[room.id] || {};
                         Object.keys(evals).forEach(date => {
-                            if (date.startsWith(monthPrefix) && evals[date].score !== null) {
-                                tOverall += evals[date].score; cOverall++;
+                            if (date.startsWith(monthPrefix) && scoreOf(evals[date]) !== null) {
+                                tOverall += scoreOf(evals[date]); cOverall++;
                                 if (room.id === state.dashSelectedRoomId) {
-                                    tInd += evals[date].score; cInd++;
+                                    tInd += scoreOf(evals[date]); cInd++;
                                 }
                             }
                         });
@@ -1419,7 +1462,9 @@
             });
 
             document.getElementById('btn-next-day').addEventListener('click', () => {
-                if (state.currentDate < getTodayStr() || state.view === 'dashboard') {
+                // O limite é hoje nas DUAS telas. Antes, em Relatórios dava para
+                // avançar sem fim para o futuro e ver meses/anos vazios.
+                if (state.currentDate < getTodayStr()) {
                     state.currentDate = addDays(state.currentDate, 1);
                     updateUI();
                 }
@@ -1491,7 +1536,7 @@
 
         // Apagar diário usa caminhos profundos atômicos com deleteField
         document.getElementById('btn-confirm-clear').addEventListener('click', async () => {
-            const passInput = document.getElementById('clear-password').value;
+            const passInput = document.getElementById('clear-password').value.trim();
             if (passInput === activeUser.pass) {
                 let modificationsMade = false;
                 const updates = {};
