@@ -1,0 +1,2269 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gerador de Extratos e Despesas — Material Didático</title>
+<link rel="icon" href="https://i.imgur.com/eryYX21.png">
+<style>
+  :root{
+    --bg:#eef1f5;
+    --panel:#ffffff;
+    --ink:#1c2430;
+    --muted:#5d6b7d;
+    --line:#d8dee7;
+    --brand:#12457a;
+    --brand-soft:#e7eef7;
+    --credito:#0f6b3f;
+    --debito:#a4232b;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    font-size:14px;
+    line-height:1.45;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+
+  /* ---------- topo ---------- */
+  .topbar{
+    background:var(--brand);
+    color:#fff;
+    border-radius:var(--radius);
+    padding:16px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .topbar h1{margin:0;font-size:19px;letter-spacing:.2px}
+  .topbar p{margin:3px 0 0;font-size:12.5px;opacity:.85}
+  .selo{
+    background:#ffd24d;color:#3d2c00;font-weight:700;font-size:11px;
+    letter-spacing:.6px;padding:6px 11px;border-radius:999px;white-space:nowrap;
+  }
+
+  /* ---------- abas ---------- */
+  .abas{display:flex;gap:4px;margin-top:14px;border-bottom:2px solid var(--line);flex-wrap:wrap}
+  .abas button{
+    border:none;background:none;border-radius:8px 8px 0 0;padding:11px 20px;
+    font-size:13.5px;font-weight:700;color:var(--muted);position:relative;bottom:-2px;
+  }
+  .abas button:hover{background:#e3e9f1;color:var(--ink)}
+  .abas button.ativa{background:var(--panel);color:var(--brand);border:2px solid var(--line);border-bottom-color:var(--panel)}
+  .subabas{display:flex;gap:8px;margin-top:16px}
+  .subabas button{border-radius:999px;padding:7px 18px;font-size:12.5px}
+  .subabas button.ativa{background:var(--brand);border-color:var(--brand);color:#fff}
+
+  /* ---------- painéis ---------- */
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    margin-top:16px;
+  }
+  .card > h2{
+    margin:0 0 14px;font-size:13px;text-transform:uppercase;letter-spacing:.9px;
+    color:var(--muted);font-weight:700;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card > h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .grid{display:grid;gap:12px 14px;grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
+  input,select{
+    font:inherit;color:var(--ink);background:#fff;
+    border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;
+  }
+  input:focus,select:focus{outline:2px solid #9dc0e6;outline-offset:-1px;border-color:var(--brand)}
+  label.f.check{flex-direction:row;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);font-weight:500}
+  label.f.check input{width:auto;flex:0 0 auto}
+
+  .acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  button{
+    font:inherit;font-weight:600;cursor:pointer;border-radius:7px;padding:9px 16px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);transition:.12s;
+  }
+  button:hover{background:#f3f6fa}
+  button.primario{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.primario:hover{background:#0e3862}
+  button.perigo{color:var(--debito);border-color:#e8c4c6}
+  button.perigo:hover{background:#fdf2f2}
+  button.mini{padding:6px 10px;font-size:12.5px}
+
+  /* ---------- lançamento manual ---------- */
+  .manual{display:grid;gap:10px;grid-template-columns:120px 1fr 130px 140px auto;align-items:end}
+  @media(max-width:820px){.manual{grid-template-columns:1fr 1fr}}
+
+  /* ---------- seleção de tipos ---------- */
+  .barra-tipos{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .barra-tipos .contador{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
+  .tipos{display:grid;gap:20px;grid-template-columns:1fr 1fr}
+  @media(max-width:820px){.tipos{grid-template-columns:1fr}}
+  .tipos h3{
+    margin:0 0 6px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;
+    padding-bottom:5px;border-bottom:1px solid var(--line);
+  }
+  .tipos h3.c{color:var(--credito)}
+  .tipos h3.d{color:var(--debito)}
+  .tipo-item{
+    display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:5px;
+    font-size:12.5px;cursor:pointer;
+  }
+  .tipo-item:hover{background:#f3f6fa}
+  .tipo-item input{width:auto;flex:0 0 auto;cursor:pointer}
+  .tipo-item span.txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tipo-item input:not(:checked) ~ span.txt{color:#9aa5b1}
+  .nivel{font-size:9.5px;font-weight:800;letter-spacing:.4px;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .nivel.n1{background:#e3f3e9;color:#0f6b3f}
+  .nivel.n2{background:#fff2d9;color:#7a5a06}
+  .nivel.n3{background:#ece5fa;color:#4b2f86}
+
+  /* ---------- extrato ---------- */
+  .folha{
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    margin-top:16px;padding:26px 28px;position:relative;overflow:hidden;
+  }
+  .marca{
+    position:absolute;inset:0;pointer-events:none;z-index:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .marca span{
+    transform:rotate(-28deg);font-size:52px;font-weight:800;letter-spacing:4px;
+    color:rgba(164,35,43,.07);white-space:nowrap;text-align:center;
+  }
+  .folha > *:not(.marca){position:relative;z-index:1}
+
+  .cab{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+       border-bottom:2px solid var(--brand);padding-bottom:14px}
+  .cab .banco{font-size:20px;font-weight:800;color:var(--brand);letter-spacing:.3px;
+              display:flex;align-items:center;gap:13px}
+  .logo-banco{height:52px;width:auto;flex:0 0 auto}
+  .cab .banco small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-top:2px}
+  .cab .doc{text-align:right;font-size:12px;color:var(--muted)}
+  .cab .doc strong{display:block;font-size:14px;color:var(--ink);letter-spacing:.5px}
+
+  .aviso{
+    margin:12px 0 0;background:#fff7e0;border:1px solid #f0d894;color:#6b5107;
+    border-radius:6px;padding:8px 12px;font-size:11.5px;font-weight:600;letter-spacing:.3px;
+  }
+
+  .dados{display:grid;gap:4px 26px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin:16px 0 4px;font-size:12.5px}
+  .dados div{display:flex;gap:6px}
+  .dados span{color:var(--muted);min-width:88px}
+  .dados b{font-weight:600}
+
+  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12.5px}
+  thead th{
+    background:var(--brand-soft);color:var(--brand);text-align:left;
+    font-size:11px;letter-spacing:.6px;text-transform:uppercase;
+    padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  tbody td{padding:3px 6px;border-bottom:1px solid #eef1f5;vertical-align:middle}
+  tbody tr:hover{background:#fafcfe}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tbody td input,tbody td select{border:1px solid transparent;background:transparent;padding:4px 5px;font-size:12.5px}
+  tbody td input:hover,tbody td select:hover{border-color:var(--line);background:#fff}
+  tbody td input.num{text-align:right;font-variant-numeric:tabular-nums}
+  .cred{color:var(--credito);font-weight:600}
+  .deb{color:var(--debito);font-weight:600}
+  .saldo-neg{color:var(--debito)}
+  .vazio{text-align:center;color:var(--muted);padding:26px 0;font-style:italic}
+  .lixo{border:none;background:none;color:#b9c2cd;font-size:16px;line-height:1;padding:2px 6px;cursor:pointer}
+  .lixo:hover{color:var(--debito);background:#fdf2f2}
+
+  tfoot td{padding:9px 8px;font-weight:700;border-top:2px solid var(--brand);font-variant-numeric:tabular-nums}
+
+  .resumo{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:18px}
+  .resumo div{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fbfcfe}
+  .resumo span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700}
+  .resumo b{font-size:16px;font-variant-numeric:tabular-nums}
+
+  .rodape{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);
+          font-size:10.5px;color:var(--muted);line-height:1.6}
+
+  /* ---------- barra global (modo conjunto + nuvem) ---------- */
+  .barra-global{display:grid;gap:16px;grid-template-columns:minmax(280px,1.15fr) minmax(300px,1fr);
+                align-items:start;margin-top:16px}
+  @media(max-width:900px){.barra-global{grid-template-columns:1fr}}
+  .conjunto{display:flex;gap:10px;align-items:flex-start;cursor:pointer;
+            background:var(--brand-soft);border:1px solid #c9dcf0;border-radius:8px;padding:12px 14px}
+  .conjunto input{width:auto;flex:0 0 auto;margin-top:2px;cursor:pointer}
+  .conjunto span{font-size:12px;color:var(--muted);line-height:1.5}
+  .conjunto b{display:block;font-size:13.5px;color:var(--brand);margin-bottom:3px}
+  .nuvem-linha{display:flex;gap:8px;flex-wrap:wrap}
+  .nuvem-linha input{flex:1;min-width:170px}
+  .nuvem-status{font-size:11.5px;color:var(--muted);margin-top:8px;min-height:16px}
+  .nuvem-status.erro{color:var(--debito);font-weight:600}
+  .nuvem-status.ok{color:var(--credito);font-weight:600}
+  .nuvem-lista{margin-top:8px;max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+  .nuvem-item{display:flex;align-items:center;gap:8px;font-size:12px;
+              border:1px solid var(--line);border-radius:6px;padding:5px 9px}
+  .nuvem-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .nuvem-item .dt{color:var(--muted);font-size:10.5px;white-space:nowrap}
+  .nuvem-item button{padding:3px 9px;font-size:11.5px}
+
+  /* ---------- despesas: seleção de documentos ---------- */
+  .dica{margin:12px 0 0;font-size:12.5px;color:var(--muted);background:#f7f9fc;
+        border-left:3px solid var(--brand);border-radius:0 6px 6px 0;padding:9px 12px}
+  .docs-grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+  .doc-cat h3{
+    margin:0 0 6px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--brand);padding-bottom:5px;border-bottom:1px solid var(--line);
+  }
+  .doc-item{display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:5px;font-size:12.5px;cursor:pointer}
+  .doc-item:hover{background:#f3f6fa}
+  .doc-item input{width:auto;flex:0 0 auto;cursor:pointer}
+  .doc-item b{font-weight:700;white-space:nowrap}
+  .doc-item span.nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+  .doc-item input:not(:checked) ~ b,
+  .doc-item input:not(:checked) ~ span{color:#9aa5b1}
+  .mod{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:999px;background:#e7eef7;color:var(--brand);white-space:nowrap}
+  .mod.sem{background:#f0eef7;color:#5a4a86}
+
+  .manual-desp{display:grid;gap:10px;grid-template-columns:120px 150px 1fr 1fr 130px auto;align-items:end}
+  @media(max-width:960px){.manual-desp{grid-template-columns:1fr 1fr}}
+
+  /* ---------- despesas: tabela ---------- */
+  .tab-desp tbody td{font-size:12px}
+  /* campos que precisam quebrar linha: <div contenteditable> em vez de <input> */
+  .tab-desp .edit{padding:4px 6px;border:1px solid transparent;border-radius:4px;min-height:19px;
+                  overflow-wrap:anywhere}
+  .tab-desp .edit:hover{border-color:var(--line);background:#fff}
+  .tab-desp .edit:focus{outline:2px solid #9dc0e6;outline-offset:-1px;background:#fff}
+  .tab-desp .sub{font-size:9.5px;color:var(--muted);letter-spacing:.2px;padding:0 6px 3px;
+                 word-break:break-all;line-height:1.35}
+  .tab-desp .sub.pg{color:var(--brand);font-weight:600;word-break:normal}
+  .tab-desp .tributo{font-size:10.5px;color:var(--muted);line-height:1.3;padding:4px 6px}
+  .tab-desp .tributo b{display:block;color:var(--ink);font-size:11px}
+
+  /* ---------- documento individual ---------- */
+  .dv-cab{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;
+          border:1px solid var(--ink);border-radius:6px;padding:12px 14px}
+  .dv-tipo{font-size:16px;font-weight:800;letter-spacing:.3px;color:var(--brand);line-height:1.25}
+  .dv-tipo small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-top:3px}
+  .dv-chave{text-align:right;font-size:10px;color:var(--muted);letter-spacing:.6px;font-weight:700}
+  .dv-chave code{display:block;font-size:12.5px;color:var(--ink);letter-spacing:1.1px;margin-top:3px;
+                 font-family:Consolas,"Courier New",monospace;word-break:break-all;max-width:290px}
+  .dv-sec{margin-top:14px;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .dv-sec > h4{
+    margin:0;background:var(--brand-soft);color:var(--brand);font-size:10.5px;
+    letter-spacing:.8px;text-transform:uppercase;padding:6px 12px;border-bottom:1px solid var(--line);
+  }
+  .dv-campos{display:grid;gap:2px 22px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));padding:10px 12px;font-size:12px}
+  .dv-campos div{display:flex;gap:6px;min-width:0}
+  .dv-campos div.larga{grid-column:1/-1}
+  .dv-campos span{color:var(--muted);flex:0 0 auto}
+  .dv-campos b{font-weight:600;min-width:0;overflow-wrap:anywhere}
+  .dv-sec table{margin:0;font-size:11.5px}
+  .dv-sec thead th{padding:6px 10px}
+  .dv-sec tbody td{padding:5px 10px}
+  .dv-total{display:flex;justify-content:flex-end;gap:14px;align-items:baseline;
+            padding:10px 12px;border-top:2px solid var(--brand);background:#fbfcfe}
+  .dv-total span{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700}
+  .dv-total b{font-size:19px;font-variant-numeric:tabular-nums}
+  .dv-legenda{margin-top:14px;text-align:center;font-size:11px;font-weight:800;letter-spacing:1.2px;
+              color:var(--debito);border:1px dashed var(--debito);border-radius:6px;padding:9px}
+
+  /* ---------- impressão ---------- */
+  @page{size:A4 portrait;margin:12mm}
+  @media print{
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    .no-print{display:none !important}
+    .folha{border:none;border-radius:0;padding:0;margin:0}
+    .marca span{color:rgba(164,35,43,.10) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    thead th{background:var(--brand-soft) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .aviso{background:#fff7e0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tbody td input,tbody td select{border:none !important;background:transparent !important;-webkit-appearance:none;appearance:none}
+    tbody td input::-webkit-calendar-picker-indicator{display:none}
+    tbody td input::-webkit-inner-spin-button,
+    tbody td input::-webkit-outer-spin-button{-webkit-appearance:none;display:none}
+    table{font-size:11px}
+    .tab-desp tbody td{font-size:9.5px}
+    .tab-desp .sub{font-size:8px}
+    .tab-desp .tributo{font-size:8.5px}
+    .tab-desp .tributo b{font-size:9px}
+    tbody tr{page-break-inside:avoid}
+    thead{display:table-header-group}
+    .lixo{display:none}
+    .dv-sec,.dv-cab{page-break-inside:avoid}
+    .dv-sec > h4{background:var(--brand-soft) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar no-print">
+    <div>
+      <h1>Gerador de Extratos e Despesas</h1>
+      <p>Ferramenta de apoio para aulas de contabilidade — recebimentos bancários e documentos fiscais</p>
+    </div>
+    <div class="selo">MATERIAL DIDÁTICO · DADOS FICTÍCIOS</div>
+  </header>
+
+  <nav class="abas no-print">
+    <button class="ativa" data-aba="extrato">🏦 Extrato Bancário</button>
+    <button data-aba="despesas">🧾 Despesas / Documentos Fiscais</button>
+  </nav>
+
+  <section class="card no-print barra-global">
+    <label class="conjunto">
+      <input type="checkbox" id="modoConjunto" checked>
+      <span>
+        <b>Criar extrato em conjunto</b>
+        Cada despesa gera uma saída de mesmo valor no extrato, com forma de pagamento coerente com o
+        documento — e o extrato deixa de sortear pagamentos avulsos, para não duplicar. Gerar por
+        qualquer um dos dois lados refaz o par inteiro.
+      </span>
+    </label>
+
+    <div class="nuvem">
+      <div class="nuvem-linha">
+        <input type="text" id="nvNome" placeholder="Nome do conjunto (ex.: Prova N2 - Turma A)">
+        <button class="primario" id="nvSalvar">☁ Salvar na nuvem</button>
+        <button id="nvListar">Atualizar lista</button>
+      </div>
+      <div id="nvStatus" class="nuvem-status">—</div>
+      <div id="nvLista" class="nuvem-lista"></div>
+    </div>
+  </section>
+
+<div id="aba-extrato">
+
+  <!-- ================= PARÂMETROS ================= -->
+  <section class="card no-print">
+    <h2>1. Parâmetros de geração</h2>
+    <div class="grid">
+      <label class="f">Data inicial
+        <input type="date" id="dtIni">
+      </label>
+      <label class="f">Data final
+        <input type="date" id="dtFim">
+      </label>
+      <label class="f">Saldo anterior (R$)
+        <input type="number" id="saldoIni" step="0.01" value="5000.00">
+      </label>
+      <label class="f">Qtde. de lançamentos
+        <input type="number" id="qtde" min="1" max="400" value="30">
+      </label>
+      <label class="f">Perfil da conta
+        <select id="perfil">
+          <option value="pf">Pessoa Física</option>
+          <option value="pj">Pessoa Jurídica</option>
+        </select>
+      </label>
+      <label class="f">Semente (mesma semente = mesmo extrato)
+        <input type="text" id="seed" placeholder="ex.: turma-a-01">
+      </label>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <label class="f check"><input type="checkbox" id="soUteis" checked> Somente dias úteis</label>
+      <label class="f check"><input type="checkbox" id="permNeg"> Permitir saldo negativo</label>
+    </div>
+    <div class="acoes">
+      <button class="primario" id="btGerar">Gerar extrato aleatório</button>
+      <button id="btSeed">Nova semente</button>
+      <button class="perigo" id="btLimpar">Limpar lançamentos</button>
+    </div>
+  </section>
+
+  <!-- ================= TIPOS DE LANÇAMENTO ================= -->
+  <section class="card no-print">
+    <h2>2. Tipos de lançamento no extrato</h2>
+    <div class="barra-tipos">
+      <button class="mini" data-nivel="1">Nível 1 · Básico</button>
+      <button class="mini" data-nivel="2">Nível 2 · + Intermediário</button>
+      <button class="mini" data-nivel="3">Nível 3 · Completo</button>
+      <button class="mini" id="btTodos">Marcar todos</button>
+      <button class="mini" id="btNenhum">Desmarcar todos</button>
+      <span class="contador" id="contTipos">—</span>
+    </div>
+    <div class="tipos">
+      <div>
+        <h3 class="c">Créditos (entradas)</h3>
+        <div id="tiposC"></div>
+      </div>
+      <div>
+        <h3 class="d">Débitos (saídas)</h3>
+        <div id="tiposD"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DADOS DA CONTA ================= -->
+  <section class="card no-print">
+    <h2>3. Dados da conta</h2>
+    <div class="grid">
+      <label class="f">Titular
+        <input type="text" id="titular" value="MARIA APARECIDA DOS SANTOS">
+      </label>
+      <label class="f">CPF / CNPJ
+        <input type="text" id="cpf" value="123.456.789-00">
+      </label>
+      <label class="f">Agência
+        <input type="text" id="agencia" value="0427">
+      </label>
+      <label class="f">Conta corrente
+        <input type="text" id="conta" value="18.943-2">
+      </label>
+    </div>
+  </section>
+
+  <!-- ================= LANÇAMENTO MANUAL ================= -->
+  <section class="card no-print">
+    <h2>4. Lançamento manual</h2>
+    <form class="manual" id="formManual">
+      <label class="f">Data
+        <input type="date" id="mData" required>
+      </label>
+      <label class="f">Histórico
+        <input type="text" id="mHist" list="historicos" placeholder="Ex.: PIX RECEBIDO - CLIENTE" required>
+        <datalist id="historicos"></datalist>
+      </label>
+      <label class="f">Tipo
+        <select id="mTipo">
+          <option value="C">Crédito</option>
+          <option value="D">Débito</option>
+        </select>
+      </label>
+      <label class="f">Valor (R$)
+        <input type="number" id="mValor" step="0.01" min="0.01" placeholder="0,00" required>
+      </label>
+      <button class="primario" type="submit">Adicionar</button>
+    </form>
+  </section>
+
+  <!-- ================= AÇÕES ================= -->
+  <div class="acoes no-print" style="margin-top:16px">
+    <button class="primario" id="btImprimir">🖨 Imprimir / Salvar em PDF</button>
+    <span style="align-self:center;color:var(--muted);font-size:12px">
+      Clique em qualquer célula da tabela abaixo para editar o lançamento.
+    </span>
+  </div>
+
+  <!-- ================= EXTRATO ================= -->
+  <section class="folha" id="folha">
+    <div class="marca" aria-hidden="true"><span>DOCUMENTO FICTÍCIO<br>USO DIDÁTICO</span></div>
+
+    <div class="cab">
+      <div class="banco">
+        <img class="logo-banco" src="https://i.imgur.com/eryYX21.png" alt="" onerror="this.remove()">
+        <div>BANCO DIDÁTICO S/A
+          <small>INSTITUIÇÃO FICTÍCIA · BANCO 999 · SIMULAÇÃO ACADÊMICA</small>
+        </div>
+      </div>
+      <div class="doc">
+        <strong>EXTRATO DE CONTA CORRENTE</strong>
+        Período: <b id="lbPeriodo">—</b><br>
+        Emissão: <b id="lbEmissao">—</b>
+      </div>
+    </div>
+
+    <p class="aviso">⚠ DOCUMENTO SEM VALOR LEGAL — gerado automaticamente com dados aleatórios para fins exclusivamente didáticos.</p>
+
+    <div class="dados">
+      <div><span>Titular:</span><b id="lbTitular">—</b></div>
+      <div><span>CPF/CNPJ:</span><b id="lbCpf">—</b></div>
+      <div><span>Agência:</span><b id="lbAg">—</b></div>
+      <div><span>Conta:</span><b id="lbConta">—</b></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:118px">Data</th>
+          <th style="width:92px">Documento</th>
+          <th>Histórico</th>
+          <th style="width:96px">Tipo</th>
+          <th class="num" style="width:118px">Valor (R$)</th>
+          <th class="num" style="width:126px">Saldo (R$)</th>
+          <th class="no-print" style="width:34px"></th>
+        </tr>
+      </thead>
+      <tbody id="corpo"></tbody>
+      <tfoot id="rodapeTab"></tfoot>
+    </table>
+
+    <div class="resumo">
+      <div><span>Saldo anterior</span><b id="rsAnterior">R$ 0,00</b></div>
+      <div><span>Total de créditos</span><b id="rsCred" class="cred">R$ 0,00</b></div>
+      <div><span>Total de débitos</span><b id="rsDeb" class="deb">R$ 0,00</b></div>
+      <div><span>Saldo final</span><b id="rsFinal">R$ 0,00</b></div>
+      <div><span>Lançamentos</span><b id="rsQtde">0</b></div>
+    </div>
+
+    <p class="rodape">
+      <b>Banco Didático S/A</b> é uma instituição financeira fictícia criada para exercícios acadêmicos.
+      Este extrato não representa movimentação bancária real, não possui validade jurídica, fiscal ou probatória
+      e destina-se unicamente à prática de lançamentos contábeis em ambiente de ensino.
+      <span id="lbSeed"></span>
+    </p>
+  </section>
+
+</div><!-- /aba-extrato -->
+
+<!-- ======================================================================
+     ABA 2 — DESPESAS / DOCUMENTOS FISCAIS
+     ====================================================================== -->
+<div id="aba-despesas" hidden>
+
+  <div class="subabas no-print">
+    <button class="ativa" data-sub="lista">📋 Lista de despesas</button>
+    <button data-sub="individual">📄 Documento individual</button>
+  </div>
+
+  <!-- ---------------- LISTA DE DESPESAS ---------------- -->
+  <div id="sub-lista">
+
+    <section class="card no-print">
+      <h2>1. Parâmetros da lista</h2>
+      <div class="grid">
+        <label class="f">Data inicial
+          <input type="date" id="dIni">
+        </label>
+        <label class="f">Data final
+          <input type="date" id="dFim">
+        </label>
+        <label class="f">Qtde. de despesas
+          <input type="number" id="dQtde" min="1" max="300" value="20">
+        </label>
+        <label class="f">Porte do contribuinte
+          <select id="dPorte">
+            <option value="mei">MEI / Autônomo</option>
+            <option value="pequena" selected>Pequena empresa</option>
+            <option value="media">Média empresa</option>
+          </select>
+        </label>
+        <label class="f">UF do emitente
+          <select id="dUf"></select>
+        </label>
+        <label class="f">Semente
+          <input type="text" id="dSeed" placeholder="ex.: despesas-turma-a">
+        </label>
+      </div>
+      <div class="acoes">
+        <button class="primario" id="dBtGerar">Gerar lista de despesas</button>
+        <button id="dBtSeed">Nova semente</button>
+        <button class="perigo" id="dBtLimpar">Limpar lista</button>
+      </div>
+      <p id="dAviso" class="dica" style="display:none"></p>
+    </section>
+
+    <section class="card no-print">
+      <h2>2. Documentos fiscais a incluir</h2>
+      <div class="barra-tipos">
+        <button class="mini" data-cat="todas">Marcar todos</button>
+        <button class="mini" data-cat="nenhuma">Desmarcar todos</button>
+        <button class="mini" data-cat="mercadoria">Só mercadorias</button>
+        <button class="mini" data-cat="servico">Só serviços</button>
+        <button class="mini" data-cat="transporte">Só transporte</button>
+        <button class="mini" data-cat="utilidade">Só concessionárias</button>
+        <button class="mini" data-cat="arrecadacao">Só tributos/guias</button>
+        <span class="contador" id="dContador">—</span>
+      </div>
+      <div id="dDocs" class="docs-grid"></div>
+    </section>
+
+    <section class="card no-print">
+      <h2>3. Lançamento manual de despesa</h2>
+      <form class="manual-desp" id="dFormManual">
+        <label class="f">Data
+          <input type="date" id="dmData" required>
+        </label>
+        <label class="f">Documento
+          <select id="dmTipo"></select>
+        </label>
+        <label class="f">Fornecedor
+          <input type="text" id="dmForn" placeholder="Razão social" required>
+        </label>
+        <label class="f">Descrição
+          <input type="text" id="dmDesc" placeholder="Natureza da despesa" required>
+        </label>
+        <label class="f">Valor (R$)
+          <input type="number" id="dmValor" step="0.01" min="0.01" required>
+        </label>
+        <button class="primario" type="submit">Adicionar</button>
+      </form>
+    </section>
+
+    <div class="acoes no-print" style="margin-top:16px">
+      <button class="primario" id="dBtImprimir">🖨 Imprimir / Salvar em PDF</button>
+      <span style="align-self:center;color:var(--muted);font-size:12px">
+        Clique em qualquer célula para editar a despesa.
+      </span>
+    </div>
+
+    <section class="folha" id="folhaDesp">
+      <div class="marca" aria-hidden="true"><span>DOCUMENTO FICTÍCIO<br>USO DIDÁTICO</span></div>
+
+      <div class="cab">
+        <div class="banco">RELAÇÃO DE DESPESAS
+          <small>DOCUMENTOS FISCAIS SIMULADOS · EXERCÍCIO ACADÊMICO</small>
+        </div>
+        <div class="doc">
+          <strong>DEMONSTRATIVO DE DESPESAS</strong>
+          Período: <b id="dLbPeriodo">—</b><br>
+          Emissão: <b id="dLbEmissao">—</b>
+        </div>
+      </div>
+
+      <p class="aviso">⚠ SEM VALOR FISCAL — documentos gerados aleatoriamente em ambiente de simulação (homologação), para fins exclusivamente didáticos.</p>
+
+      <table class="tab-desp">
+        <thead>
+          <tr>
+            <th style="width:104px">Data</th>
+            <th style="width:118px">Documento</th>
+            <th style="width:100px">Número/Série</th>
+            <th style="width:205px">Fornecedor / Emitente</th>
+            <th>Descrição</th>
+            <th style="width:132px">Tributo destacado</th>
+            <th class="num" style="width:108px">Valor (R$)</th>
+            <th class="no-print" style="width:34px"></th>
+          </tr>
+        </thead>
+        <tbody id="dCorpo"></tbody>
+        <tfoot id="dRodape"></tfoot>
+      </table>
+
+      <div class="resumo" id="dResumo"></div>
+
+      <p class="rodape">
+        Documentos fiscais simulados. Números, séries, chaves de acesso, CNPJ/CPF e valores são gerados
+        aleatoriamente e não correspondem a operações, contribuintes ou documentos reais. Nenhum destes
+        documentos foi transmitido a qualquer SEFAZ ou prefeitura e nenhum possui validade fiscal, jurídica
+        ou probatória. <span id="dLbSeed"></span>
+      </p>
+    </section>
+  </div><!-- /sub-lista -->
+
+  <!-- ---------------- DOCUMENTO INDIVIDUAL ---------------- -->
+  <div id="sub-individual" hidden>
+
+    <section class="card no-print">
+      <h2>Gerador de documento individual</h2>
+      <div class="grid">
+        <label class="f">Tipo de documento
+          <select id="iTipo"></select>
+        </label>
+        <label class="f">Data de emissão
+          <input type="date" id="iData">
+        </label>
+        <label class="f">Valor total (R$) — vazio = aleatório
+          <input type="number" id="iValor" step="0.01" min="0" placeholder="aleatório">
+        </label>
+        <label class="f">UF do emitente
+          <select id="iUf"></select>
+        </label>
+        <label class="f">Semente
+          <input type="text" id="iSeed">
+        </label>
+      </div>
+      <p id="iDescricao" class="dica"></p>
+      <div class="acoes">
+        <button class="primario" id="iBtGerar">Gerar e lançar na lista</button>
+        <button id="iBtPrever">Só pré-visualizar</button>
+        <button id="iBtSeed">Nova semente</button>
+        <button id="iBtImprimir">🖨 Imprimir / Salvar em PDF</button>
+      </div>
+      <p id="iAviso" class="dica" style="display:none"></p>
+    </section>
+
+    <section class="folha" id="folhaDoc">
+      <div class="marca" aria-hidden="true"><span>SEM VALOR FISCAL<br>USO DIDÁTICO</span></div>
+      <div id="iCorpo"></div>
+    </section>
+  </div><!-- /sub-individual -->
+
+</div><!-- /aba-despesas -->
+
+</div><!-- /wrap -->
+
+<!-- SDK do Firebase (versão "compat": scripts clássicos, funcionam abrindo o arquivo direto do disco) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- utilidades ---------------- */
+  const $ = id => document.getElementById(id);
+  const brl = n => n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const isoParaBr = iso => { const [a,m,d] = (iso||'').split('-'); return d ? `${d}/${m}/${a}` : ''; };
+  const hojeIso = () => new Date().toISOString().slice(0,10);
+
+  // PRNG determinístico (mulberry32) a partir de uma semente textual
+  function criarRandom(semente){
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < semente.length; i++){
+      h ^= semente.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return function(){
+      h |= 0; h = h + 0x6D2B79F5 | 0;
+      let t = Math.imul(h ^ h >>> 15, 1 | h);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------------- catálogo de históricos ---------------- */
+  // n = nível didático: 1 básico · 2 intermediário · 3 avançado
+  const CATALOGO = {
+    pf: [
+      {h:'SALARIO - CREDITO EM CONTA',      t:'C', min:2200, max:9000, p:1, n:1},
+      {h:'PIX RECEBIDO',                    t:'C', min:20,   max:1500, p:4, n:1},
+      {h:'DEPOSITO EM DINHEIRO',            t:'C', min:50,   max:1200, p:2, n:1},
+      {h:'TED RECEBIDA',                    t:'C', min:200,  max:5000, p:2, n:2},
+      {h:'ESTORNO DE COMPRA',               t:'C', min:10,   max:300,  p:1, n:2},
+      {h:'RENDIMENTO POUPANCA',             t:'C', min:1,    max:80,   p:1, n:3},
+      {h:'RESGATE APLIC. AUTOMATICA',       t:'C', min:100,  max:3000, p:2, n:3},
+      {h:'PIX ENVIADO',                     t:'D', min:10,   max:1200, p:5, n:1, pg:1},
+      {h:'COMPRA CARTAO DE DEBITO',         t:'D', min:8,    max:450,  p:5, n:1, pg:1},
+      {h:'PAGAMENTO DE BOLETO',             t:'D', min:30,   max:1800, p:4, n:1, pg:1},
+      {h:'SAQUE ATM',                       t:'D', min:20,   max:800,  p:2, n:1},
+      {h:'TED ENVIADA',                     t:'D', min:100,  max:3000, p:2, n:2, pg:1},
+      {h:'TARIFA PACOTE DE SERVICOS',       t:'D', min:9.9,  max:49.9, p:1, n:2},
+      {h:'DEB. AUTOMATICO - ENERGIA',       t:'D', min:60,   max:400,  p:1, n:2, pg:1},
+      {h:'DEB. AUTOMATICO - AGUA',          t:'D', min:30,   max:180,  p:1, n:2, pg:1},
+      {h:'DEB. AUTOMATICO - TELEFONIA',     t:'D', min:40,   max:250,  p:1, n:2, pg:1},
+      {h:'PAGTO FATURA CARTAO DE CREDITO',  t:'D', min:150,  max:4000, p:2, n:2, pg:1},
+      {h:'APLICACAO AUTOMATICA',            t:'D', min:100,  max:2000, p:2, n:3},
+      {h:'IOF',                             t:'D', min:0.5,  max:15,   p:1, n:3}
+    ],
+    pj: [
+      {h:'PIX RECEBIDO - CLIENTE',          t:'C', min:50,   max:5000,  p:5, n:1},
+      {h:'CREDITO VENDAS CARTAO',           t:'C', min:200,  max:8000,  p:3, n:1},
+      {h:'COBRANCA - LIQUIDACAO DE TITULO', t:'C', min:300,  max:15000, p:5, n:2},
+      {h:'TED RECEBIDA - CLIENTE',          t:'C', min:500,  max:20000, p:3, n:2},
+      {h:'ESTORNO DE TARIFA',               t:'C', min:5,    max:80,    p:1, n:2},
+      {h:'RESGATE CDB',                     t:'C', min:1000, max:30000, p:1, n:3},
+      {h:'PAGAMENTO A FORNECEDOR',          t:'D', min:200,  max:12000, p:5, n:1, pg:1},
+      {h:'PAGAMENTO DE BOLETO',             t:'D', min:100,  max:8000,  p:4, n:1, pg:1},
+      {h:'PIX ENVIADO - FORNECEDOR',        t:'D', min:50,   max:4000,  p:4, n:1, pg:1},
+      {h:'ENERGIA ELETRICA',                t:'D', min:200,  max:3000,  p:1, n:1, pg:1},
+      {h:'ALUGUEL',                         t:'D', min:800,  max:9000,  p:1, n:1, pg:1},
+      {h:'FOLHA DE PAGAMENTO',              t:'D', min:2000, max:40000, p:1, n:2},
+      {h:'TARIFA COBRANCA DE TITULO',       t:'D', min:2.5,  max:9.9,   p:3, n:2},
+      {h:'TARIFA MANUTENCAO DE CONTA',      t:'D', min:35,   max:190,   p:1, n:2},
+      {h:'DARF - RECEITA FEDERAL',          t:'D', min:100,  max:6000,  p:2, n:3, pg:1},
+      {h:'GPS - INSS',                      t:'D', min:200,  max:5000,  p:1, n:3, pg:1},
+      {h:'FGTS',                            t:'D', min:100,  max:3000,  p:1, n:3, pg:1},
+      {h:'APLICACAO CDB',                   t:'D', min:1000, max:25000, p:1, n:3},
+      {h:'IOF',                             t:'D', min:1,    max:90,    p:1, n:3}
+    ]
+  };
+
+  // seleção de tipos, memorizada por perfil
+  const selecionados = {
+    pf: new Set(CATALOGO.pf.map(i => i.h)),
+    pj: new Set(CATALOGO.pj.map(i => i.h))
+  };
+
+  const NOMES_PF = ['MARIA APARECIDA DOS SANTOS','JOAO CARLOS PEREIRA','ANA BEATRIZ RODRIGUES LIMA',
+    'CARLOS EDUARDO MARTINS','FERNANDA SOUZA ALVES','RICARDO NUNES BARBOSA',
+    'JULIANA CAMPOS FERREIRA','PAULO ROBERTO DE OLIVEIRA','LUCIANA MENDES ROCHA','ANDRE LUIZ GOMES'];
+  const NOMES_PJ = ['COMERCIAL HORIZONTE LTDA','INDUSTRIA ALFA PRODUTOS S/A','TRANSPORTES BOA VISTA LTDA',
+    'PAPELARIA CENTRAL EIRELI','METALURGICA SAO PEDRO LTDA','DISTRIBUIDORA VALE VERDE LTDA',
+    'CONSTRUTORA PILAR LTDA','AGRO SEMENTES DO OESTE S/A'];
+
+  /* ---------------- estado ---------------- */
+  let lancamentos = [];   // {id, data, doc, hist, tipo, valor}
+  let proximoId = 1;
+
+  /* ---------------- geração aleatória ---------------- */
+  function diasDoPeriodo(ini, fim, soUteis){
+    const dias = [];
+    const d = new Date(ini + 'T12:00:00');
+    const f = new Date(fim + 'T12:00:00');
+    while (d <= f){
+      const dow = d.getDay();
+      if (!soUteis || (dow !== 0 && dow !== 6)) dias.push(d.toISOString().slice(0,10));
+      d.setDate(d.getDate() + 1);
+    }
+    return dias;
+  }
+
+  function sorteiaItem(pool, rnd){
+    const total = pool.reduce((s,i)=>s+i.p, 0);
+    let alvo = rnd() * total;
+    for (const item of pool){ alvo -= item.p; if (alvo <= 0) return item; }
+    return pool[pool.length-1];
+  }
+
+  // opts.semPagto    → não sorteia débitos de pagamento a terceiros (vêm das despesas)
+  // opts.vinculados   → lançamentos já prontos, originados de documentos fiscais
+  // opts.ajustarSaldo → eleva o saldo anterior se a conta ficaria negativa
+  function gerar(opts){
+    opts = (!opts || opts instanceof Event) ? {} : opts;
+    const ini = $('dtIni').value, fim = $('dtFim').value;
+    if (!ini || !fim){ alert('Informe a data inicial e a data final do período.'); return; }
+    if (ini > fim){ alert('A data inicial não pode ser posterior à data final.'); return; }
+
+    const qtde   = Math.max(1, Math.min(400, parseInt($('qtde').value,10) || 30));
+    const perfil = $('perfil').value;
+    let   permNeg= $('permNeg').checked;
+    const dias   = diasDoPeriodo(ini, fim, $('soUteis').checked);
+    if (!dias.length){ alert('O período selecionado não contém dias válidos. Desmarque "somente dias úteis".'); return; }
+
+    const pool = opts.semPagto ? poolAtual().filter(i => !i.pg) : poolAtual();
+    if (!pool.length){
+      alert(opts.semPagto
+        ? 'No modo conjunto, os pagamentos a terceiros vêm das despesas. Selecione também algum lançamento próprio da conta (entradas, tarifas, saques ou aplicações) na seção 2.'
+        : 'Selecione ao menos um tipo de lançamento na seção 2.');
+      return;
+    }
+    if (!pool.some(i => i.t === 'C') && !permNeg){
+      alert('Só há tipos de DÉBITO selecionados — o saldo vai ficar negativo nesta geração.');
+      permNeg = true;
+    }
+
+    if (!$('seed').value.trim()) novaSemente();
+    const rnd  = criarRandom($('seed').value.trim());
+
+    // titular coerente com o perfil, se ainda for o padrão do outro perfil
+    const nomes = perfil === 'pj' ? NOMES_PJ : NOMES_PF;
+    $('titular').value = nomes[Math.floor(rnd()*nomes.length)];
+    $('cpf').value = perfil === 'pj'
+      ? `${num(rnd,2)}.${num(rnd,3)}.${num(rnd,3)}/0001-${num(rnd,2)}`
+      : `${num(rnd,3)}.${num(rnd,3)}.${num(rnd,3)}-${num(rnd,2)}`;
+    $('agencia').value = num(rnd,4);
+    $('conta').value   = `${num(rnd,2)}.${num(rnd,3)}-${num(rnd,1)}`;
+
+    let saldo = parseFloat($('saldoIni').value) || 0;
+    lancamentos = [];
+    proximoId = 1;
+
+    const datas = Array.from({length:qtde}, () => dias[Math.floor(rnd()*dias.length)]).sort();
+
+    for (const data of datas){
+      const item = sorteiaItem(pool, rnd);
+      let valor = Math.round((item.min + rnd()*(item.max-item.min)) * 100) / 100;
+      let tipo  = item.t;
+      let hist  = item.h;
+
+      // evita estourar o saldo quando o negativo não é permitido
+      if (!permNeg && tipo === 'D' && valor > saldo){
+        const creditos = pool.filter(i => i.t === 'C');
+        if (saldo > 20){
+          valor = Math.round(saldo * (0.15 + rnd()*0.5) * 100) / 100;
+        } else if (creditos.length){
+          const c = sorteiaItem(creditos, rnd);
+          tipo = 'C'; hist = c.h; valor = Math.round((c.min + rnd()*(c.max-c.min))*100)/100;
+        }
+      }
+
+      saldo += (tipo === 'C' ? valor : -valor);
+      lancamentos.push({ id: proximoId++, data, doc: num(rnd,6), hist, tipo, valor });
+    }
+
+    // pagamentos originados de documentos fiscais (modo conjunto)
+    (opts.vinculados || []).forEach(v => {
+      lancamentos.push(Object.assign({ id: proximoId++ }, v));
+    });
+
+    if (opts.ajustarSaldo && !$('permNeg').checked) ajustaSaldoAnterior();
+    render();
+    return lancamentos;
+  }
+
+  // Eleva o saldo anterior o suficiente para a conta nunca ficar negativa.
+  // Necessário no modo conjunto: as despesas entram depois do sorteio e podem estourar o saldo.
+  function ajustaSaldoAnterior(){
+    ordenar();
+    const inicial = parseFloat($('saldoIni').value) || 0;
+    let saldo = inicial, minimo = inicial;
+    for (const l of lancamentos){
+      saldo += (l.tipo === 'C' ? l.valor : -l.valor);
+      if (saldo < minimo) minimo = saldo;
+    }
+    if (minimo < 0){
+      const novo = Math.ceil((inicial - minimo) / 100) * 100;
+      $('saldoIni').value = novo.toFixed(2);
+      return novo;
+    }
+    return null;
+  }
+
+  function num(rnd, casas){
+    return String(Math.floor(rnd() * Math.pow(10, casas))).padStart(casas, '0');
+  }
+
+  function novaSemente(){
+    $('seed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+  }
+
+  /* ---------------- renderização ---------------- */
+  function ordenar(){
+    lancamentos.sort((a,b) => a.data < b.data ? -1 : a.data > b.data ? 1 : a.id - b.id);
+  }
+
+  function render(){
+    ordenar();
+    const corpo = $('corpo');
+    corpo.innerHTML = '';
+
+    if (!lancamentos.length){
+      corpo.innerHTML = '<tr><td colspan="7" class="vazio">Nenhum lançamento. Gere um extrato aleatório ou inclua manualmente.</td></tr>';
+    } else {
+      const frag = document.createDocumentFragment();
+      for (const l of lancamentos){
+        const tr = document.createElement('tr');
+        tr.dataset.id = l.id;
+        tr.innerHTML = `
+          <td><input type="date" data-campo="data" value="${l.data}"></td>
+          <td><input type="text" data-campo="doc" value="${escapa(l.doc)}"></td>
+          <td><input type="text" data-campo="hist" value="${escapa(l.hist)}"></td>
+          <td>
+            <select data-campo="tipo">
+              <option value="C"${l.tipo==='C'?' selected':''}>Crédito</option>
+              <option value="D"${l.tipo==='D'?' selected':''}>Débito</option>
+            </select>
+          </td>
+          <td class="num"><input class="num ${l.tipo==='C'?'cred':'deb'}" type="number" step="0.01" data-campo="valor" value="${l.valor.toFixed(2)}"></td>
+          <td class="num saldo">—</td>
+          <td class="no-print"><button class="lixo" title="Excluir lançamento" data-excluir="${l.id}">×</button></td>`;
+        frag.appendChild(tr);
+      }
+      corpo.appendChild(frag);
+    }
+    atualizarSaldos();
+    atualizarCabecalho();
+  }
+
+  function escapa(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+  function atualizarSaldos(){
+    const inicial = parseFloat($('saldoIni').value) || 0;
+    let saldo = inicial, totC = 0, totD = 0;
+
+    const linhas = $('corpo').querySelectorAll('tr[data-id]');
+    linhas.forEach((tr, i) => {
+      const l = lancamentos[i];
+      if (!l) return;
+      if (l.tipo === 'C'){ saldo += l.valor; totC += l.valor; }
+      else { saldo -= l.valor; totD += l.valor; }
+      const cel = tr.querySelector('.saldo');
+      cel.textContent = brl(saldo);
+      cel.classList.toggle('saldo-neg', saldo < 0);
+      const inp = tr.querySelector('input[data-campo="valor"]');
+      inp.classList.toggle('cred', l.tipo === 'C');
+      inp.classList.toggle('deb',  l.tipo === 'D');
+    });
+
+    $('rodapeTab').innerHTML = lancamentos.length ? `
+      <tr>
+        <td colspan="4">TOTAIS DO PERÍODO — ${lancamentos.length} lançamento(s)</td>
+        <td class="num"><span class="cred">${brl(totC)}</span> / <span class="deb">${brl(totD)}</span></td>
+        <td class="num${saldo<0?' saldo-neg':''}">${brl(saldo)}</td>
+        <td class="no-print"></td>
+      </tr>` : '';
+
+    $('rsAnterior').textContent = 'R$ ' + brl(inicial);
+    $('rsCred').textContent     = 'R$ ' + brl(totC);
+    $('rsDeb').textContent      = 'R$ ' + brl(totD);
+    $('rsFinal').textContent    = 'R$ ' + brl(saldo);
+    $('rsFinal').classList.toggle('saldo-neg', saldo < 0);
+    $('rsQtde').textContent     = lancamentos.length;
+  }
+
+  function atualizarCabecalho(){
+    const ini = $('dtIni').value, fim = $('dtFim').value;
+    $('lbPeriodo').textContent = (ini && fim) ? `${isoParaBr(ini)} a ${isoParaBr(fim)}` : '—';
+    $('lbEmissao').textContent = isoParaBr(hojeIso());
+    $('lbTitular').textContent = $('titular').value || '—';
+    $('lbCpf').textContent     = $('cpf').value || '—';
+    $('lbAg').textContent      = $('agencia').value || '—';
+    $('lbConta').textContent   = $('conta').value || '—';
+    const s = $('seed').value.trim();
+    $('lbSeed').textContent = s ? ` Semente de geração: ${s}.` : '';
+  }
+
+  /* ---------------- edição na tabela ---------------- */
+  $('corpo').addEventListener('input', e => {
+    const campo = e.target.dataset.campo;
+    if (!campo) return;
+    const tr = e.target.closest('tr');
+    const l  = lancamentos.find(x => x.id === Number(tr.dataset.id));
+    if (!l) return;
+    if (campo === 'valor') l.valor = Math.abs(parseFloat(e.target.value) || 0);
+    else if (campo === 'data') return;          // tratado no change (reordena)
+    else l[campo] = e.target.value;
+    if (campo === 'valor' || campo === 'tipo') atualizarSaldos();
+  });
+
+  $('corpo').addEventListener('change', e => {
+    const campo = e.target.dataset.campo;
+    if (!campo) return;
+    const tr = e.target.closest('tr');
+    const l  = lancamentos.find(x => x.id === Number(tr.dataset.id));
+    if (!l) return;
+    if (campo === 'tipo'){ l.tipo = e.target.value; atualizarSaldos(); }
+    if (campo === 'data'){ l.data = e.target.value; render(); }
+  });
+
+  $('corpo').addEventListener('click', e => {
+    const id = e.target.dataset.excluir;
+    if (!id) return;
+    lancamentos = lancamentos.filter(l => l.id !== Number(id));
+    render();
+  });
+
+  /* ---------------- lançamento manual ---------------- */
+  $('formManual').addEventListener('submit', e => {
+    e.preventDefault();
+    const data  = $('mData').value;
+    const hist  = $('mHist').value.trim();
+    const valor = Math.abs(parseFloat($('mValor').value) || 0);
+    if (!data || !hist || !valor){ alert('Preencha data, histórico e valor.'); return; }
+    lancamentos.push({ id: proximoId++, data, doc: String(Math.floor(Math.random()*1e6)).padStart(6,'0'),
+                       hist: hist.toUpperCase(), tipo: $('mTipo').value, valor });
+    $('mHist').value = ''; $('mValor').value = '';
+    render();
+    $('mHist').focus();
+  });
+
+  function preencherDatalist(){
+    const lista = poolAtual();
+    const base  = lista.length ? lista : CATALOGO[$('perfil').value];
+    $('historicos').innerHTML = base.map(i => `<option value="${escapa(i.h)}">`).join('');
+  }
+
+  /* ---------------- seleção de tipos de lançamento ---------------- */
+  function poolAtual(){
+    const perfil = $('perfil').value;
+    return CATALOGO[perfil].filter(i => selecionados[perfil].has(i.h));
+  }
+
+  function renderTipos(){
+    const perfil = $('perfil').value;
+    const sel    = selecionados[perfil];
+    const monta = (tipo, alvo) => {
+      $(alvo).innerHTML = CATALOGO[perfil].filter(i => i.t === tipo).map(i => `
+        <label class="tipo-item">
+          <input type="checkbox" data-tipo="${escapa(i.h)}"${sel.has(i.h) ? ' checked' : ''}>
+          <span class="txt">${escapa(i.h)}</span>
+          <span class="nivel n${i.n}">NÍVEL ${i.n}</span>
+        </label>`).join('');
+    };
+    monta('C', 'tiposC');
+    monta('D', 'tiposD');
+    atualizarContador();
+    preencherDatalist();
+  }
+
+  function atualizarContador(){
+    const perfil = $('perfil').value;
+    const sel    = selecionados[perfil];
+    const marc   = CATALOGO[perfil].filter(i => sel.has(i.h));
+    const c = marc.filter(i => i.t === 'C').length;
+    const d = marc.filter(i => i.t === 'D').length;
+    $('contTipos').textContent =
+      `${marc.length} de ${CATALOGO[perfil].length} tipos · ${c} crédito(s) / ${d} débito(s)`;
+  }
+
+  document.querySelector('.tipos').addEventListener('change', e => {
+    const h = e.target.dataset.tipo;
+    if (!h) return;
+    const sel = selecionados[$('perfil').value];
+    if (e.target.checked) sel.add(h); else sel.delete(h);
+    atualizarContador();
+    preencherDatalist();
+  });
+
+  document.querySelector('.barra-tipos').addEventListener('click', e => {
+    const bt = e.target.closest('button');
+    if (!bt) return;
+    const perfil = $('perfil').value;
+    const sel    = selecionados[perfil];
+    if (bt.id === 'btTodos')       CATALOGO[perfil].forEach(i => sel.add(i.h));
+    else if (bt.id === 'btNenhum') sel.clear();
+    else if (bt.dataset.nivel){
+      const n = Number(bt.dataset.nivel);
+      sel.clear();
+      CATALOGO[perfil].forEach(i => { if (i.n <= n) sel.add(i.h); });
+    }
+    renderTipos();
+  });
+
+  /* ---------------- ligações ---------------- */
+  $('btGerar').addEventListener('click', () => {
+    // no modo conjunto quem comanda é o par despesas+extrato, para os dois nascerem casados
+    if ($('modoConjunto').checked && window.__despesas) window.__despesas.gerarConjunto('extrato');
+    else gerar();
+  });
+  $('btSeed').addEventListener('click', novaSemente);
+  $('btImprimir').addEventListener('click', () => window.print());
+  $('btLimpar').addEventListener('click', () => {
+    if (lancamentos.length && !confirm('Excluir todos os lançamentos do extrato?')) return;
+    lancamentos = []; render();
+  });
+  $('saldoIni').addEventListener('input', atualizarSaldos);
+  ['dtIni','dtFim','titular','cpf','agencia','conta','seed'].forEach(id =>
+    $(id).addEventListener('input', atualizarCabecalho));
+  $('perfil').addEventListener('change', renderTipos);
+
+  // utilidades compartilhadas com o módulo de despesas
+  window.__util = { brl, isoParaBr, hojeIso, criarRandom, escapa, num };
+
+  // API usada pelo módulo de despesas no modo conjunto
+  window.__extrato = {
+    gerar,
+    adicionar: l => {
+      lancamentos.push(Object.assign({ id: proximoId++ }, l));
+      if (!$('permNeg').checked) ajustaSaldoAnterior();
+      render();
+    },
+    // remove saídas que vieram de despesas — evita lançamento órfão quando a lista muda
+    removerVinculados: idDespesa => {
+      lancamentos = lancamentos.filter(l =>
+        l.vinc == null || (idDespesa != null && l.vinc !== idDespesa));
+      render();
+    },
+    periodo:    () => ({ ini: $('dtIni').value, fim: $('dtFim').value }),
+    setPeriodo: (ini, fim) => { $('dtIni').value = ini; $('dtFim').value = fim; },
+    estado: () => ({
+      params: ['dtIni','dtFim','saldoIni','qtde','perfil','seed','titular','cpf','agencia','conta']
+        .reduce((o,id) => (o[id] = $(id).value, o), {
+          soUteis: $('soUteis').checked, permNeg: $('permNeg').checked
+        }),
+      tipos: { pf: [...selecionados.pf], pj: [...selecionados.pj] },
+      lancamentos
+    }),
+    carregar: est => {
+      if (!est) return;
+      Object.keys(est.params || {}).forEach(id => {
+        const el = $(id);
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = est.params[id];
+        else el.value = est.params[id];
+      });
+      if (est.tipos){
+        selecionados.pf = new Set(est.tipos.pf || []);
+        selecionados.pj = new Set(est.tipos.pj || []);
+      }
+      lancamentos = (est.lancamentos || []).map(l => Object.assign({}, l));
+      proximoId = lancamentos.reduce((m,l) => Math.max(m, l.id), 0) + 1;
+      renderTipos();
+      render();
+    }
+  };
+
+  /* ---------------- inicialização ---------------- */
+  (function iniciar(){
+    const hoje = new Date();
+    const ini  = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fim  = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+    const fmt  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    $('dtIni').value = fmt(ini);
+    $('dtFim').value = fmt(fim);
+    $('mData').value = fmt(hoje);
+    novaSemente();
+    renderTipos();
+    gerar();
+  })();
+})();
+
+/* ======================================================================
+   MÓDULO 2 — DESPESAS E DOCUMENTOS FISCAIS
+   ====================================================================== */
+(function(){
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const U = window.__util;
+  const { brl, isoParaBr, hojeIso, criarRandom, escapa } = U;
+
+  /* ---------------- unidades da federação (código IBGE = cUF da chave) ---------------- */
+  const UFS = [
+    ['AC',12,'RIO BRANCO'],   ['AL',27,'MACEIO'],        ['AM',13,'MANAUS'],
+    ['AP',16,'MACAPA'],       ['BA',29,'SALVADOR'],      ['CE',23,'FORTALEZA'],
+    ['DF',53,'BRASILIA'],     ['ES',32,'VITORIA'],       ['GO',52,'GOIANIA'],
+    ['MA',21,'SAO LUIS'],     ['MG',31,'BELO HORIZONTE'],['MS',50,'CAMPO GRANDE'],
+    ['MT',51,'CUIABA'],       ['PA',15,'BELEM'],         ['PB',25,'JOAO PESSOA'],
+    ['PE',26,'RECIFE'],       ['PI',22,'TERESINA'],      ['PR',41,'CURITIBA'],
+    ['RJ',33,'RIO DE JANEIRO'],['RN',24,'NATAL'],        ['RO',11,'PORTO VELHO'],
+    ['RR',14,'BOA VISTA'],    ['RS',43,'PORTO ALEGRE'],  ['SC',42,'FLORIANOPOLIS'],
+    ['SE',28,'ARACAJU'],      ['SP',35,'SAO PAULO'],     ['TO',17,'PALMAS']
+  ];
+
+  /* ---------------- fornecedores por natureza ---------------- */
+  const FORNECEDORES = {
+    mercadoria: ['DISTRIBUIDORA VALE VERDE LTDA','ATACADO SAO JORGE COMERCIO LTDA',
+                 'INDUSTRIA ALFA PRODUTOS S/A','COMERCIAL HORIZONTE LTDA',
+                 'PAPELARIA CENTRAL EIRELI','METALURGICA SAO PEDRO LTDA',
+                 'SUPERMERCADO BOM PRECO LTDA','DEPOSITO SANTA RITA MATERIAIS LTDA'],
+    servico:    ['CONTABIL PRECISAO SERVICOS LTDA','ADVOCACIA MARTINS E ASSOCIADOS',
+                 'TECH SOLUCOES EM TI LTDA','LIMPEZA TOTAL SERVICOS LTDA',
+                 'GRAFICA IMPRIME BEM LTDA','MANUTENCAO PREDIAL FORTE LTDA',
+                 'VIGILANCIA SENTINELA LTDA','MARKETING CRIATIVO LTDA'],
+    transporte: ['TRANSPORTES BOA VISTA LTDA','EXPRESSO RODOVIARIO SUL LTDA',
+                 'LOGISTICA RAPIDA CARGAS S/A','VIACAO PLANALTO LTDA',
+                 'TRANSPORTADORA UNIAO LTDA'],
+    utilidade:  ['COMPANHIA ENERGETICA REGIONAL S/A','TELECOM CONECTA BRASIL S/A',
+                 'SANEAMENTO AGUAS DO VALE S/A','DISTRIBUIDORA DE GAS CANALIZADO S/A'],
+    arrecadacao:['UNIAO - TRIBUTOS FEDERAIS','ESTADO - ICMS','MUNICIPIO - ISS',
+                 'PREVIDENCIA SOCIAL','FGTS - CONTA VINCULADA']
+  };
+
+  const CATEGORIAS = {
+    mercadoria:  'Mercadorias e varejo',
+    servico:     'Serviços',
+    transporte:  'Transporte',
+    utilidade:   'Concessionárias e utilidades',
+    arrecadacao: 'Tributos e guias de arrecadação'
+  };
+
+  /* ---------------- catálogo de documentos fiscais brasileiros ----------------
+     mod    = modelo do documento fiscal (tabela nacional de modelos)
+     chave  = possui chave de acesso de 44 posições
+     despesa= entra na geração da lista de despesas
+  ---------------------------------------------------------------------------- */
+  const DOCS = [
+    /* ---- mercadorias e varejo ---- */
+    {id:'nfe', sigla:'NF-e', mod:'55', cat:'mercadoria', chave:true, despesa:true, itens:true,
+     nome:'Nota Fiscal Eletrônica',
+     desc:'Ampara a circulação de mercadorias entre empresas (compras para revenda, matéria-prima, imobilizado).',
+     trib:{nome:'ICMS', aliq:[0.07,0.12,0.18]}, min:180, max:24000,
+     descricoes:['Compra de mercadorias para revenda','Aquisição de matéria-prima',
+                 'Material de embalagem','Material de uso e consumo','Aquisição de imobilizado']},
+
+    {id:'nfce', sigla:'NFC-e', mod:'65', cat:'mercadoria', chave:true, despesa:true, itens:true,
+     nome:'Nota Fiscal de Consumidor Eletrônica',
+     desc:'Venda no varejo a consumidor final. Substitui o cupom fiscal do ECF.',
+     trib:{nome:'ICMS', aliq:[0.12,0.18]}, min:15, max:1400,
+     descricoes:['Compra no varejo - material de escritório','Gêneros alimentícios - copa e cozinha',
+                 'Material de limpeza','Peças e ferramentas de reposição']},
+
+    {id:'cfe', sigla:'CF-e-SAT', mod:'59', cat:'mercadoria', chave:true, despesa:true, itens:true,
+     nome:'Cupom Fiscal Eletrônico (SAT)',
+     desc:'Emitido pelo equipamento SAT no ponto de venda; alternativa à NFC-e em alguns estados.',
+     trib:{nome:'ICMS', aliq:[0.12,0.18]}, min:12, max:900,
+     descricoes:['Despesa de pronto pagamento','Material de consumo imediato','Refeição e lanches']},
+
+    {id:'nfae', sigla:'NFA-e', mod:'55', cat:'mercadoria', chave:true, despesa:true, itens:true,
+     nome:'Nota Fiscal Avulsa Eletrônica',
+     desc:'Emitida pelo fisco para quem não é emitente regular: produtor rural, pessoa física e MEI.',
+     trib:{nome:'ICMS', aliq:[0.07,0.12]}, min:90, max:6000,
+     descricoes:['Aquisição de produtor rural','Compra de pessoa física','Remessa avulsa de mercadoria']},
+
+    {id:'nfeabi', sigla:'NF-e ABI', mod:'77', cat:'mercadoria', chave:true, despesa:true, itens:false,
+     nome:'NF-e de Alienação de Bens Imóveis',
+     desc:'Modelo criado pela Reforma Tributária para operações de alienação de bens imóveis.',
+     trib:{nome:'IBS/CBS', aliq:[0.005,0.01]}, min:120000, max:900000,
+     descricoes:['Aquisição de imóvel para a atividade','Alienação de bem imóvel do ativo']},
+
+    /* ---- serviços ---- */
+    {id:'nfse', sigla:'NFS-e', mod:null, cat:'servico', chave:false, despesa:true, itens:false,
+     nome:'Nota Fiscal de Serviço Eletrônica',
+     desc:'Documento municipal da prestação de serviços; base do ISS (LC 116/2003). Identificada por código de verificação.',
+     trib:{nome:'ISS', aliq:[0.02,0.03,0.05]}, min:150, max:18000,
+     descricoes:[['17.19','Contabilidade, auditoria e escrituração'],
+                 ['01.07','Suporte técnico e manutenção de sistemas'],
+                 ['07.02','Execução de obras e serviços de engenharia'],
+                 ['13.05','Serviços gráficos e de impressão'],
+                 ['14.01','Manutenção e conservação de máquinas'],
+                 ['11.02','Vigilância e segurança patrimonial'],
+                 ['07.10','Limpeza e conservação predial'],
+                 ['17.01','Assessoria e consultoria empresarial']]},
+
+    {id:'rpa', sigla:'RPA', mod:null, cat:'servico', chave:false, despesa:true, itens:false, pf:true,
+     nome:'Recibo de Pagamento a Autônomo',
+     desc:'Pagamento a prestador pessoa física, com retenção de INSS, IRRF e ISS.',
+     trib:{nome:'INSS+IRRF', aliq:[0.11]}, min:200, max:5000,
+     descricoes:['Serviço prestado por autônomo','Mão de obra eventual','Consultoria pessoa física']},
+
+    {id:'recibo', sigla:'Recibo', mod:null, cat:'servico', chave:false, despesa:true, itens:false,
+     nome:'Recibo simples',
+     desc:'Comprovante sem destaque de tributo; usado em aluguel e reembolsos. Não é documento fiscal em sentido estrito.',
+     trib:null, min:300, max:9000,
+     descricoes:['Aluguel do imóvel comercial','Reembolso de despesas','Condomínio','Adiantamento a fornecedor']},
+
+    /* ---- transporte ---- */
+    {id:'cte', sigla:'CT-e', mod:'57', cat:'transporte', chave:true, despesa:true, itens:false,
+     nome:'Conhecimento de Transporte Eletrônico',
+     desc:'Ampara a prestação de serviço de transporte de cargas.',
+     trib:{nome:'ICMS', aliq:[0.07,0.12]}, min:80, max:7000,
+     forn:['TRANSPORTES BOA VISTA LTDA','LOGISTICA RAPIDA CARGAS S/A','TRANSPORTADORA UNIAO LTDA'],
+     descricoes:['Frete sobre compras','Frete sobre vendas','Transporte de carga fracionada']},
+
+    {id:'cteos', sigla:'CT-e OS', mod:'67', cat:'transporte', chave:true, despesa:true, itens:false,
+     nome:'CT-e para Outros Serviços',
+     desc:'Transporte de pessoas, excesso de bagagem e agenciamento de viagem.',
+     trib:{nome:'ICMS', aliq:[0.12]}, min:150, max:9000,
+     forn:['VIACAO PLANALTO LTDA','EXPRESSO RODOVIARIO SUL LTDA'],
+     descricoes:['Fretamento de ônibus','Transporte de pessoal','Agenciamento de viagem']},
+
+    {id:'bpe', sigla:'BP-e', mod:'63', cat:'transporte', chave:true, despesa:true, itens:false,
+     nome:'Bilhete de Passagem Eletrônico',
+     desc:'Transporte de passageiros rodoviário, ferroviário e aquaviário.',
+     trib:{nome:'ICMS', aliq:[0.12]}, min:35, max:600,
+     forn:['VIACAO PLANALTO LTDA','EXPRESSO RODOVIARIO SUL LTDA'],
+     descricoes:['Passagem rodoviária - viagem a serviço','Deslocamento de colaborador']},
+
+    {id:'mdfe', sigla:'MDF-e', mod:'58', cat:'transporte', chave:true, despesa:false, itens:false,
+     nome:'Manifesto Eletrônico de Documentos Fiscais',
+     desc:'Reúne os documentos da carga transportada. Não gera despesa própria — por isso não entra na lista.',
+     trib:null, min:5000, max:180000,
+     forn:['TRANSPORTES BOA VISTA LTDA','LOGISTICA RAPIDA CARGAS S/A','TRANSPORTADORA UNIAO LTDA'],
+     descricoes:['Manifesto de carga rodoviária']},
+
+    {id:'gtve', sigla:'GTV-e', mod:'64', cat:'transporte', chave:true, despesa:false, itens:false,
+     nome:'Guia de Transporte de Valores Eletrônica',
+     desc:'Acompanha o transporte de valores. Documento de controle, não de despesa.',
+     trib:null, min:10000, max:400000,
+     forn:['TRANSPORTADORA UNIAO LTDA','LOGISTICA RAPIDA CARGAS S/A'],
+     descricoes:['Transporte de numerário']},
+
+    /* ---- concessionárias e utilidades ---- */
+    {id:'nf3e', sigla:'NF3-e', mod:'66', cat:'utilidade', chave:true, despesa:true, itens:false,
+     nome:'Nota Fiscal de Energia Elétrica Eletrônica',
+     desc:'Fatura de energia elétrica; substitui a nota fiscal/conta modelo 6.',
+     trib:{nome:'ICMS', aliq:[0.18,0.25]}, min:180, max:6500, consumo:'kWh',
+     forn:'COMPANHIA ENERGETICA REGIONAL S/A',
+     descricoes:['Energia elétrica - unidade consumidora']},
+
+    {id:'nfcom', sigla:'NFCom', mod:'62', cat:'utilidade', chave:true, despesa:true, itens:false,
+     nome:'Nota Fiscal Fatura de Serviço de Comunicação',
+     desc:'Telefonia, internet, TV por assinatura e demais serviços de comunicação.',
+     trib:{nome:'ICMS', aliq:[0.18,0.25]}, min:90, max:2800,
+     forn:'TELECOM CONECTA BRASIL S/A',
+     descricoes:['Link de internet dedicado','Telefonia fixa e móvel','TV por assinatura corporativa']},
+
+    {id:'nfag', sigla:'NFAg', mod:'75', cat:'utilidade', chave:true, despesa:true, itens:false,
+     nome:'Nota Fiscal de Água e Saneamento',
+     desc:'Fornecimento de água tratada e coleta de esgoto.',
+     trib:{isento:'Não incide ICMS'}, min:60, max:1800, consumo:'m³',
+     forn:'SANEAMENTO AGUAS DO VALE S/A',
+     descricoes:['Água e esgoto - unidade consumidora']},
+
+    {id:'nfgas', sigla:'NFGas', mod:'76', cat:'utilidade', chave:true, despesa:true, itens:false,
+     nome:'Nota Fiscal Eletrônica do Gás',
+     desc:'Distribuição de gás canalizado.',
+     trib:{nome:'ICMS', aliq:[0.12,0.18]}, min:70, max:3200, consumo:'m³',
+     forn:'DISTRIBUIDORA DE GAS CANALIZADO S/A',
+     descricoes:['Gás canalizado - consumo do período']},
+
+    /* ---- tributos e guias ---- */
+    {id:'darf', sigla:'DARF', mod:null, cat:'arrecadacao', chave:false, despesa:true, itens:false,
+     nome:'Documento de Arrecadação de Receitas Federais',
+     desc:'Recolhimento de tributos federais (IRPJ, CSLL, PIS, COFINS, IRRF).',
+     trib:{integral:'Tributo federal'}, min:150, max:22000,
+     forn:'UNIAO - TRIBUTOS FEDERAIS',
+     descricoes:[['0220','IRPJ - Lucro Presumido'],['2372','CSLL - Lucro Presumido'],
+                 ['8109','PIS/PASEP - Faturamento'],['2172','COFINS - Faturamento'],
+                 ['1708','IRRF - Serviços prestados por PJ']]},
+
+    {id:'das', sigla:'DAS', mod:null, cat:'arrecadacao', chave:false, despesa:true, itens:false,
+     nome:'Documento de Arrecadação do Simples Nacional',
+     desc:'Guia única do Simples Nacional, que reúne tributos federais, ICMS e ISS.',
+     trib:{integral:'Simples Nacional'}, min:80, max:14000,
+     forn:'UNIAO - SIMPLES NACIONAL',
+     descricoes:[['—','Simples Nacional - competência do período']]},
+
+    {id:'gps', sigla:'GPS', mod:null, cat:'arrecadacao', chave:false, despesa:true, itens:false,
+     nome:'Guia da Previdência Social',
+     desc:'Recolhimento das contribuições previdenciárias.',
+     trib:{integral:'Contribuição previdenciária'}, min:200, max:16000,
+     forn:'PREVIDENCIA SOCIAL',
+     descricoes:[['2100','Empresas em geral - CNPJ'],['2003','Simples Nacional - CNPJ'],
+                 ['1007','Contribuinte individual']]},
+
+    {id:'fgts', sigla:'FGTS', mod:null, cat:'arrecadacao', chave:false, despesa:true, itens:false,
+     nome:'Guia de Recolhimento do FGTS',
+     desc:'Depósito mensal de 8% sobre a remuneração na conta vinculada do trabalhador.',
+     trib:{integral:'FGTS'}, min:120, max:9000,
+     forn:'FGTS - CONTA VINCULADA',
+     descricoes:[['—','FGTS mensal sobre a folha']]},
+
+    {id:'gnre', sigla:'GNRE', mod:null, cat:'arrecadacao', chave:false, despesa:true, itens:false,
+     nome:'Guia Nacional de Recolhimento de Tributos Estaduais',
+     desc:'Recolhimento de ICMS devido a outra unidade da federação (substituição tributária, DIFAL).',
+     trib:{integral:'ICMS-ST / DIFAL'}, min:60, max:8000,
+     forn:'ESTADO - ICMS',
+     descricoes:[['100102','ICMS - Substituição tributária'],['100099','ICMS - Diferencial de alíquota']]}
+  ];
+
+  const PORTES = { mei:0.35, pequena:1, media:3.5 };
+
+  /* ---------------- formas de pagamento coerentes com cada documento ----------------
+     Um cupom de varejo não se paga por boleto; uma conta de concessionária não se paga
+     no cartão de débito da loja; tributo se recolhe por guia. Cada documento só aceita
+     as formas que fazem sentido para ele.
+  ---------------------------------------------------------------------------------- */
+  const FORMAS = {
+    boleto:{ hist:'PAGAMENTO DE BOLETO',        prazo:[3,10], rotulo:'Boleto bancário' },
+    pix:   { hist:'PIX ENVIADO',                prazo:[0,0],  rotulo:'PIX' },
+    ted:   { hist:'TED ENVIADA',                prazo:[0,1],  rotulo:'TED' },
+    debito:{ hist:'COMPRA CARTAO DE DEBITO',    prazo:[0,0],  rotulo:'Cartão de débito' },
+    debaut:{ hist:'DEB. AUTOMATICO',            prazo:[4,9],  rotulo:'Débito automático' },
+    guia:  { hist:'PAGAMENTO DE TRIBUTO/GUIA',  prazo:[0,6],  rotulo:'Guia recolhida no banco' }
+  };
+
+  const PAGAMENTO = {
+    nfe:['boleto','ted','pix'],   nfce:['debito','pix'],      cfe:['debito','pix'],
+    nfae:['pix','ted'],           nfeabi:['ted'],
+    nfse:['boleto','pix','ted'],  rpa:['pix','ted'],          recibo:['boleto','pix','ted'],
+    cte:['boleto','pix','ted'],   cteos:['boleto','pix','ted'], bpe:['debito','pix'],
+    mdfe:[],                      gtve:[],   // documentos de controle: não se pagam
+    nf3e:['debaut','boleto'],     nfcom:['debaut','boleto'],
+    nfag:['debaut','boleto'],     nfgas:['debaut','boleto'],
+    darf:['guia'], das:['guia'],  gps:['guia'], fgts:['guia'], gnre:['guia']
+  };
+
+  // no débito automático o extrato mostra a concessionária, não um "débito automático" genérico
+  const HIST_DEBAUT = {
+    nf3e:'DEB. AUTOMATICO - ENERGIA', nfcom:'DEB. AUTOMATICO - TELECOM',
+    nfag:'DEB. AUTOMATICO - AGUA',    nfgas:'DEB. AUTOMATICO - GAS'
+  };
+
+  function defineFormaPagamento(d, rnd, limiteFim){
+    const formas = PAGAMENTO[d.doc.id];
+    if (!formas || !formas.length) return null;
+    const f   = escolhe(formas, rnd);
+    const cfg = FORMAS[f];
+    const dias = cfg.prazo[0] + Math.floor(rnd() * (cfg.prazo[1] - cfg.prazo[0] + 1));
+    const dt = new Date(d.data + 'T12:00:00');
+    dt.setDate(dt.getDate() + dias);
+    let quando = dt.toISOString().slice(0,10);
+    if (limiteFim && quando > limiteFim) quando = limiteFim;   // pagamento não escapa do período
+    const base = f === 'debaut' ? (HIST_DEBAUT[d.doc.id] || cfg.hist) : cfg.hist;
+    return {
+      forma: f, rotulo: cfg.rotulo, data: quando,
+      hist: `${base} - ${d.doc.sigla.toUpperCase()} ${String(d.numero).padStart(6,'0')}`
+    };
+  }
+
+  // converte uma despesa no lançamento de saída correspondente
+  function lancamentoDaDespesa(d){
+    if (!d.pagamento) return null;
+    return {
+      data: d.pagamento.data, doc: String(d.numero).padStart(6,'0'),
+      hist: d.pagamento.hist, tipo: 'D', valor: d.valor, vinc: d.id
+    };
+  }
+
+  const modoConjunto = () => document.getElementById('modoConjunto').checked;
+
+  const NCMS  = ['4820.10.00','3926.90.90','8471.30.19','9403.30.00','4802.56.99',
+                 '2201.10.00','3402.20.00','7318.15.00','8544.49.00','4911.10.90'];
+  const CFOPS = ['1102','2102','1101','2101','1556','2556','1407','2407'];
+  const UNID  = ['UN','CX','PC','KG','L','MT','RL','FD'];
+  const RUAS  = ['AV. BRASIL','RUA DAS ACACIAS','AV. GETULIO VARGAS','RUA XV DE NOVEMBRO',
+                 'AV. SETE DE SETEMBRO','RUA DOS PINHEIROS','AV. INDUSTRIAL','RUA JOAO PESSOA'];
+
+  /* ---------------- geradores com dígito verificador ---------------- */
+  function digitos(rnd, n){
+    let s = '';
+    for (let i = 0; i < n; i++) s += Math.floor(rnd() * 10);
+    return s;
+  }
+
+  // CNPJ com os dois dígitos verificadores corretos (módulo 11)
+  function geraCnpj(rnd){
+    const base = digitos(rnd, 8) + '0001';
+    const dv = b => {
+      const pesos = b.length === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+      const soma = b.split('').reduce((s,d,i) => s + d * pesos[i], 0);
+      const r = soma % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    const d1 = dv(base), d2 = dv(base + d1);
+    return base + d1 + d2;
+  }
+  const fmtCnpj = c => `${c.slice(0,2)}.${c.slice(2,5)}.${c.slice(5,8)}/${c.slice(8,12)}-${c.slice(12)}`;
+
+  // CPF com os dois dígitos verificadores corretos (módulo 11)
+  function geraCpf(rnd){
+    const base = digitos(rnd, 9);
+    const dv = b => {
+      const soma = b.split('').reduce((s,d,i) => s + d * (b.length + 1 - i), 0);
+      const r = (soma * 10) % 11;
+      return r === 10 ? 0 : r;
+    };
+    const d1 = dv(base), d2 = dv(base + d1);
+    return `${base.slice(0,3)}.${base.slice(3,6)}.${base.slice(6,9)}-${d1}${d2}`;
+  }
+
+  // Chave de acesso de 44 posições:
+  // cUF(2) AAMM(4) CNPJ(14) mod(2) série(3) nNF(9) tpEmis(1) cNF(8) cDV(1)
+  function geraChave(cUF, dataIso, cnpj, mod, serie, numero, rnd){
+    const [ano, mes] = dataIso.split('-');
+    const corpo =
+      String(cUF).padStart(2,'0') +
+      ano.slice(2) + mes +
+      cnpj +
+      String(mod).padStart(2,'0') +
+      String(serie).padStart(3,'0') +
+      String(numero).padStart(9,'0') +
+      '1' +                       // tpEmis: emissão normal
+      digitos(rnd, 8);            // cNF
+    let peso = 2, soma = 0;
+    for (let i = corpo.length - 1; i >= 0; i--){
+      soma += Number(corpo[i]) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    const resto = soma % 11;
+    const dv = (resto === 0 || resto === 1) ? 0 : 11 - resto;
+    return corpo + dv;
+  }
+  const fmtChave = c => c.replace(/(.{4})/g, '$1 ').trim();
+
+  function escolhe(arr, rnd){ return arr[Math.floor(rnd() * arr.length)]; }
+
+  function diasUteis(ini, fim){
+    const out = [], d = new Date(ini + 'T12:00:00'), f = new Date(fim + 'T12:00:00');
+    while (d <= f){
+      const w = d.getDay();
+      if (w !== 0 && w !== 6) out.push(d.toISOString().slice(0,10));
+      d.setDate(d.getDate() + 1);
+    }
+    return out.length ? out : [ini];
+  }
+
+  /* ---------------- monta um documento completo ---------------- */
+  function montaDoc(doc, dataIso, rnd, ctx, valorForcado){
+    const uf = ctx.uf;
+    const mult = PORTES[ctx.porte] || 1;
+    const valor = valorForcado != null && valorForcado > 0
+      ? Math.round(valorForcado * 100) / 100
+      : Math.round((doc.min + rnd() * (doc.max - doc.min)) * mult * 100) / 100;
+
+    const bruto  = escolhe(doc.descricoes, rnd);
+    const codigo = Array.isArray(bruto) ? bruto[0] : null;
+    const descr  = Array.isArray(bruto) ? bruto[1] : bruto;
+
+    const pf     = !!doc.pf;
+    const cnpj   = geraCnpj(rnd);
+    const numero = Math.floor(rnd() * 999999) + 1;
+    const serie  = doc.chave ? Math.floor(rnd() * 4) + 1 : null;  // série só existe nos DF-e
+
+    const d = {
+      doc, data: dataIso, valor, descr, codigo,
+      fornecedor: pf ? escolhe(['JOSE CARLOS ALMEIDA','MARCOS VINICIUS SILVA','PATRICIA LOPES RAMOS',
+                                'ROBERTO CARVALHO DIAS','SANDRA REGINA PINTO'], rnd)
+                     : escolhe(doc.forn
+                         ? (Array.isArray(doc.forn) ? doc.forn : [doc.forn])
+                         : FORNECEDORES[doc.cat], rnd),
+      pf, cnpj, cnpjFmt: pf ? geraCpf(rnd) : fmtCnpj(cnpj),
+      ie: pf ? 'ISENTO' : digitos(rnd, 3) + '.' + digitos(rnd, 3) + '.' + digitos(rnd, 3) + '.' + digitos(rnd, 3),
+      numero, serie,
+      endereco: `${escolhe(RUAS, rnd)}, ${Math.floor(rnd()*3000)+1}`,
+      municipio: uf[2], uf: uf[0],
+      cep: digitos(rnd, 5) + '-' + digitos(rnd, 3)
+    };
+
+    d.chave = doc.chave ? geraChave(uf[1], dataIso, cnpj, doc.mod || '55', serie, numero, rnd) : null;
+    d.verificacao = doc.chave ? null : (digitos(rnd,4) + '-' + digitos(rnd,4)).toUpperCase();
+
+    // tributo destacado
+    if (doc.trib && doc.trib.aliq){
+      d.aliq = escolhe(doc.trib.aliq, rnd);
+      d.tribNome = doc.trib.nome;
+      d.tribValor = Math.round(valor * d.aliq * 100) / 100;
+    } else if (doc.trib && doc.trib.integral){
+      d.tribNome = doc.trib.integral;
+      d.tribValor = valor;
+      d.integral = true;
+    } else if (doc.trib && doc.trib.isento){
+      d.tribNome = doc.trib.isento;
+      d.tribValor = null;
+    }
+
+    // consumo das concessionárias
+    if (doc.consumo){
+      d.unidadeConsumo = doc.consumo;
+      d.leituraAnt = Math.floor(rnd() * 90000) + 1000;
+      d.consumo    = Math.floor(valor / (doc.consumo === 'kWh' ? 0.9 : 7));
+      d.leituraAtu = d.leituraAnt + d.consumo;
+      d.refMes     = dataIso.slice(0,7).split('-').reverse().join('/');
+    }
+
+    // itens da nota
+    if (doc.itens){
+      const n = Math.floor(rnd() * 4) + 1;
+      const pesos = Array.from({length:n}, () => 0.3 + rnd());
+      const soma = pesos.reduce((s,p) => s + p, 0);
+      let acumulado = 0;
+      d.itens = pesos.map((p, i) => {
+        const total = i === n - 1
+          ? Math.round((valor - acumulado) * 100) / 100
+          : Math.round(valor * p / soma * 100) / 100;
+        acumulado += total;
+        const qtd = Math.floor(rnd() * 20) + 1;
+        return {
+          desc: escolhe(['PAPEL SULFITE A4 75G','CAIXA ORGANIZADORA 20L','CABO DE REDE CAT6 305M',
+                         'CADEIRA GIRATORIA OPERACIONAL','TONER COMPATIVEL PRETO','DETERGENTE NEUTRO 5L',
+                         'PARAFUSO SEXTAVADO 3/8','AGUA MINERAL 20L','LUMINARIA LED 36W',
+                         'FORMULARIO CONTINUO 80 COL'], rnd),
+          ncm: escolhe(NCMS, rnd), cfop: escolhe(CFOPS, rnd), un: escolhe(UNID, rnd),
+          qtd, unit: Math.round(total / qtd * 100) / 100, total
+        };
+      });
+    }
+
+    // dados próprios das guias de arrecadação
+    if (doc.cat === 'arrecadacao'){
+      const dt = new Date(dataIso + 'T12:00:00');
+      const comp = new Date(dt.getFullYear(), dt.getMonth() - 1, 1);
+      d.competencia = `${String(comp.getMonth()+1).padStart(2,'0')}/${comp.getFullYear()}`;
+      d.vencimento  = dataIso;
+      d.autenticacao = (digitos(rnd,8) + '.' + digitos(rnd,8) + '.' + digitos(rnd,8)).trim();
+    }
+
+    return d;
+  }
+
+  const rotuloDoc = d => d.doc.mod ? `${d.doc.sigla} (mod. ${d.doc.mod})` : d.doc.sigla;
+  const numeroDoc = d => d.serie
+    ? `${String(d.numero).padStart(6,'0')} / ${String(d.serie).padStart(3,'0')}`
+    : String(d.numero).padStart(6,'0');
+
+  function textoTributo(d){
+    if (d.tribValor == null) return `<div class="tributo">${escapa(d.tribNome || '—')}</div>`;
+    if (d.integral)          return `<div class="tributo">${escapa(d.tribNome)}<b>R$ ${brl(d.tribValor)}</b></div>`;
+    return `<div class="tributo">${escapa(d.tribNome)} ${(d.aliq*100).toFixed(2).replace('.',',')}%<b>R$ ${brl(d.tribValor)}</b></div>`;
+  }
+
+  /* ======================= LISTA DE DESPESAS ======================= */
+  let despesas = [], proxId = 1;
+  // a NF-e ABI movimenta valores de imóvel e dominaria a lista inteira: começa desmarcada
+  const selDocs = new Set(DOCS.filter(d => d.despesa && d.id !== 'nfeabi').map(d => d.id));
+
+  function ufAtual(sel){ return UFS.find(u => u[0] === sel.value) || UFS[25]; }
+
+  function renderSelecaoDocs(){
+    const porCat = {};
+    DOCS.filter(d => d.despesa).forEach(d => (porCat[d.cat] = porCat[d.cat] || []).push(d));
+    $('dDocs').innerHTML = Object.keys(CATEGORIAS).filter(c => porCat[c]).map(cat => `
+      <div class="doc-cat">
+        <h3>${CATEGORIAS[cat]}</h3>
+        ${porCat[cat].map(d => `
+          <label class="doc-item" title="${escapa(d.desc)}">
+            <input type="checkbox" data-doc="${d.id}"${selDocs.has(d.id) ? ' checked' : ''}>
+            <b>${escapa(d.sigla)}</b>
+            <span class="nome">${escapa(d.nome)}</span>
+            <span class="mod${d.mod ? '' : ' sem'}">${d.mod ? 'MOD. ' + d.mod : 'S/ MODELO'}</span>
+          </label>`).join('')}
+      </div>`).join('');
+    atualizaContador();
+    preencheSelectManual();
+  }
+
+  function atualizaContador(){
+    const total = DOCS.filter(d => d.despesa).length;
+    $('dContador').textContent = `${selDocs.size} de ${total} documentos selecionados`;
+  }
+
+  function preencheSelectManual(){
+    const ativos = DOCS.filter(d => d.despesa && selDocs.has(d.id));
+    const base = ativos.length ? ativos : DOCS.filter(d => d.despesa);
+    $('dmTipo').innerHTML = base.map(d =>
+      `<option value="${d.id}">${escapa(d.sigla)}${d.mod ? ' · mod. ' + d.mod : ''}</option>`).join('');
+  }
+
+  function gerarDespesas(){
+    const ini = $('dIni').value, fim = $('dFim').value;
+    if (!ini || !fim){ alert('Informe a data inicial e a data final.'); return; }
+    if (ini > fim){ alert('A data inicial não pode ser posterior à data final.'); return; }
+
+    const ativos = DOCS.filter(d => d.despesa && selDocs.has(d.id));
+    if (!ativos.length){ alert('Selecione ao menos um documento fiscal na seção 2.'); return; }
+
+    if (!$('dSeed').value.trim()) $('dSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+    const rnd  = criarRandom($('dSeed').value.trim());
+    const qtde = Math.max(1, Math.min(300, parseInt($('dQtde').value,10) || 20));
+    const dias = diasUteis(ini, fim);
+    const ctx  = { uf: ufAtual($('dUf')), porte: $('dPorte').value };
+
+    despesas = [];
+    proxId = 1;
+    const datas = Array.from({length:qtde}, () => escolhe(dias, rnd)).sort();
+    for (const data of datas){
+      const d = montaDoc(escolhe(ativos, rnd), data, rnd, ctx);
+      d.id = proxId++;
+      d.pagamento = defineFormaPagamento(d, rnd, fim);
+      despesas.push(d);
+    }
+    renderDespesas();
+    return despesas;
+  }
+
+  /* ---------------- geração conjunta: despesas + extrato pareados ----------------
+     As despesas são a fonte da verdade. Cada uma vira uma saída de igual valor no
+     extrato, na data e na forma de pagamento compatíveis com o documento. O extrato
+     sorteia apenas o que é dele — entradas, tarifas, saques e aplicações — para que
+     nenhum pagamento apareça duas vezes.
+  ------------------------------------------------------------------------------- */
+  function gerarConjunto(origem){
+    const ext = window.__extrato;
+    const per = origem === 'despesas'
+      ? { ini: $('dIni').value, fim: $('dFim').value }
+      : ext.periodo();
+    if (!per.ini || !per.fim){ alert('Informe a data inicial e a data final.'); return; }
+
+    $('dIni').value = per.ini;
+    $('dFim').value = per.fim;
+    ext.setPeriodo(per.ini, per.fim);
+
+    if (!gerarDespesas()) return;
+
+    const vinculados = despesas.map(lancamentoDaDespesa).filter(Boolean);
+    const saldoAntes = document.getElementById('saldoIni').value;
+    ext.gerar({ semPagto: true, vinculados, ajustarSaldo: true });
+
+    const saldoDepois = document.getElementById('saldoIni').value;
+    const semPagamento = despesas.length - vinculados.length;
+    const partes = [`${vinculados.length} despesa(s) pareada(s) com o extrato`];
+    if (semPagamento) partes.push(`${semPagamento} documento(s) de controle sem pagamento (MDF-e / GTV-e)`);
+    if (saldoAntes !== saldoDepois) partes.push(`saldo anterior elevado para R$ ${brl(parseFloat(saldoDepois))} para a conta não ficar negativa`);
+    $('dAviso').textContent = partes.join(' · ');
+    $('dAviso').style.display = '';
+  }
+
+  function renderDespesas(){
+    despesas.sort((a,b) => a.data < b.data ? -1 : a.data > b.data ? 1 : a.id - b.id);
+    const corpo = $('dCorpo');
+
+    if (!despesas.length){
+      corpo.innerHTML = '<tr><td colspan="8" class="vazio">Nenhuma despesa. Gere a lista ou inclua manualmente.</td></tr>';
+    } else {
+      corpo.innerHTML = despesas.map(d => `
+        <tr data-id="${d.id}">
+          <td><input type="date" data-campo="data" value="${d.data}"></td>
+          <td>${escapa(rotuloDoc(d))}</td>
+          <td>${escapa(numeroDoc(d))}</td>
+          <td>
+            <div class="edit" contenteditable data-campo="fornecedor">${escapa(d.fornecedor)}</div>
+            <div class="sub">${d.pf ? 'CPF' : 'CNPJ'} ${escapa(d.cnpjFmt)}${
+              d.chave ? '<br>Chave ' + escapa(fmtChave(d.chave))
+                      : (d.verificacao ? '<br>Cód. verificação ' + escapa(d.verificacao) : '')}</div>
+          </td>
+          <td>
+            <div class="edit" contenteditable data-campo="descr">${escapa(d.descr)}</div>
+            ${d.codigo && d.codigo !== '—' ? `<div class="sub">Código ${escapa(d.codigo)}</div>` : ''}
+            <div class="sub pg">${d.pagamento
+              ? `Pago por ${escapa(d.pagamento.rotulo)} em ${isoParaBr(d.pagamento.data)}`
+              : 'Documento de controle — não gera pagamento'}</div>
+          </td>
+          <td>${textoTributo(d)}</td>
+          <td class="num"><input class="num deb" type="number" step="0.01" data-campo="valor" value="${d.valor.toFixed(2)}"></td>
+          <td class="no-print"><button class="lixo" title="Excluir despesa" data-excluir="${d.id}">×</button></td>
+        </tr>`).join('');
+    }
+    atualizaTotais();
+
+    $('dLbPeriodo').textContent = ($('dIni').value && $('dFim').value)
+      ? `${isoParaBr($('dIni').value)} a ${isoParaBr($('dFim').value)}` : '—';
+    $('dLbEmissao').textContent = isoParaBr(hojeIso());
+    const s = $('dSeed').value.trim();
+    $('dLbSeed').textContent = s ? `Semente de geração: ${s}.` : '';
+  }
+
+  function atualizaTotais(){
+    const total = despesas.reduce((s,d) => s + d.valor, 0);
+    const trib  = despesas.reduce((s,d) => s + (d.integral ? 0 : (d.tribValor || 0)), 0);
+    const guias = despesas.reduce((s,d) => s + (d.integral ? d.valor : 0), 0);
+
+    $('dRodape').innerHTML = despesas.length ? `
+      <tr>
+        <td colspan="6">TOTAL DAS DESPESAS — ${despesas.length} documento(s)</td>
+        <td class="num">${brl(total)}</td>
+        <td class="no-print"></td>
+      </tr>` : '';
+
+    const porCat = {};
+    despesas.forEach(d => porCat[d.doc.cat] = (porCat[d.doc.cat] || 0) + d.valor);
+    $('dResumo').innerHTML = despesas.length ? `
+      <div><span>Total de despesas</span><b>R$ ${brl(total)}</b></div>
+      <div><span>Tributos destacados</span><b>R$ ${brl(trib)}</b></div>
+      <div><span>Guias de arrecadação</span><b>R$ ${brl(guias)}</b></div>
+      <div><span>Documentos</span><b>${despesas.length}</b></div>
+      ${Object.keys(porCat).map(c =>
+        `<div><span>${CATEGORIAS[c]}</span><b>R$ ${brl(porCat[c])}</b></div>`).join('')}` : '';
+  }
+
+  $('dCorpo').addEventListener('input', e => {
+    const campo = e.target.dataset.campo;
+    if (!campo || campo === 'data') return;
+    const d = despesas.find(x => x.id === Number(e.target.closest('tr').dataset.id));
+    if (!d) return;
+    if (campo === 'valor'){
+      d.valor = Math.abs(parseFloat(e.target.value) || 0);
+      if (d.integral) d.tribValor = d.valor;
+      else if (d.aliq) d.tribValor = Math.round(d.valor * d.aliq * 100) / 100;
+      const cel = e.target.closest('tr').children[5];
+      cel.innerHTML = textoTributo(d);
+      atualizaTotais();
+    } else {
+      d[campo] = e.target.isContentEditable ? e.target.textContent : e.target.value;
+    }
+  });
+
+  $('dCorpo').addEventListener('change', e => {
+    if (e.target.dataset.campo !== 'data') return;
+    const d = despesas.find(x => x.id === Number(e.target.closest('tr').dataset.id));
+    if (d){ d.data = e.target.value; renderDespesas(); }
+  });
+
+  $('dCorpo').addEventListener('click', e => {
+    const id = e.target.dataset.excluir;
+    if (!id) return;
+    despesas = despesas.filter(d => d.id !== Number(id));
+    window.__extrato.removerVinculados(Number(id));   // tira também a saída correspondente
+    renderDespesas();
+  });
+
+  $('dDocs').addEventListener('change', e => {
+    const id = e.target.dataset.doc;
+    if (!id) return;
+    if (e.target.checked) selDocs.add(id); else selDocs.delete(id);
+    atualizaContador();
+    preencheSelectManual();
+  });
+
+  document.querySelector('#sub-lista .barra-tipos').addEventListener('click', e => {
+    const bt = e.target.closest('button');
+    if (!bt || !bt.dataset.cat) return;
+    const cat = bt.dataset.cat;
+    selDocs.clear();
+    if (cat === 'todas') DOCS.filter(d => d.despesa).forEach(d => selDocs.add(d.id));
+    else if (cat !== 'nenhuma') DOCS.filter(d => d.despesa && d.cat === cat).forEach(d => selDocs.add(d.id));
+    renderSelecaoDocs();
+  });
+
+  $('dFormManual').addEventListener('submit', e => {
+    e.preventDefault();
+    const doc = DOCS.find(d => d.id === $('dmTipo').value);
+    const valor = Math.abs(parseFloat($('dmValor').value) || 0);
+    if (!doc || !$('dmData').value || !valor){ alert('Preencha data, documento e valor.'); return; }
+    const rnd = criarRandom('manual-' + Date.now() + '-' + proxId);
+    const d = montaDoc(doc, $('dmData').value, rnd, { uf: ufAtual($('dUf')), porte: $('dPorte').value }, valor);
+    d.fornecedor = $('dmForn').value.trim().toUpperCase() || d.fornecedor;
+    d.descr      = $('dmDesc').value.trim() || d.descr;
+    d.id = proxId++;
+    despesas.push(d);
+    $('dmForn').value = ''; $('dmDesc').value = ''; $('dmValor').value = '';
+    renderDespesas();
+    $('dmForn').focus();
+  });
+
+  /* ======================= DOCUMENTO INDIVIDUAL ======================= */
+  function linha(rot, val){ return `<div><span>${rot}:</span><b>${escapa(String(val))}</b></div>`; }
+  function larga(rot, val){ return `<div class="larga"><span>${rot}:</span><b>${escapa(String(val))}</b></div>`; }
+
+  let docAtual = null;   // último documento montado na aba individual
+
+  function renderDocIndividual(){
+    const doc = DOCS.find(x => x.id === $('iTipo').value);
+    if (!doc) return;
+    if (!$('iSeed').value.trim()) $('iSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+
+    const rnd = criarRandom($('iSeed').value.trim() + doc.id);
+    const data = $('iData').value || hojeIso();
+    const forcado = parseFloat($('iValor').value);
+    const d = montaDoc(doc, data, rnd, { uf: ufAtual($('iUf')), porte: 'pequena' },
+                       isNaN(forcado) ? null : forcado);
+    d.pagamento = defineFormaPagamento(d, rnd, null);
+    docAtual = d;
+
+    const secoes = [];
+
+    // --- emitente ---
+    secoes.push(`<div class="dv-sec"><h4>${doc.cat === 'arrecadacao' ? 'Beneficiário / Órgão arrecadador' : 'Emitente'}</h4>
+      <div class="dv-campos">
+        ${larga('Nome / Razão social', d.fornecedor)}
+        ${linha(d.pf ? 'CPF' : 'CNPJ', d.cnpjFmt)}
+        ${doc.cat === 'arrecadacao' ? '' : linha('Inscrição estadual', d.ie)}
+        ${larga('Endereço', `${d.endereco} — ${d.municipio}/${d.uf} — CEP ${d.cep}`)}
+      </div></div>`);
+
+    // --- destinatário / contribuinte ---
+    if (doc.cat !== 'arrecadacao'){
+      secoes.push(`<div class="dv-sec"><h4>${doc.cat === 'servico' ? 'Tomador do serviço' : 'Destinatário'}</h4>
+        <div class="dv-campos">
+          ${larga('Nome / Razão social', 'EMPRESA MODELO DIDATICA LTDA')}
+          ${linha('CNPJ', fmtCnpj(geraCnpj(rnd)))}
+          ${larga('Endereço', `${escolhe(RUAS, rnd)}, ${Math.floor(rnd()*2000)+1} — ${d.municipio}/${d.uf}`)}
+        </div></div>`);
+    } else {
+      secoes.push(`<div class="dv-sec"><h4>Contribuinte</h4>
+        <div class="dv-campos">
+          ${larga('Nome / Razão social', 'EMPRESA MODELO DIDATICA LTDA')}
+          ${linha('CNPJ', fmtCnpj(geraCnpj(rnd)))}
+          ${linha('Competência', d.competencia)}
+          ${linha('Vencimento', isoParaBr(d.vencimento))}
+        </div></div>`);
+    }
+
+    // --- corpo específico ---
+    if (d.itens){
+      secoes.push(`<div class="dv-sec"><h4>Discriminação dos produtos</h4>
+        <table>
+          <thead><tr>
+            <th>Descrição</th><th style="width:88px">NCM</th><th style="width:56px">CFOP</th>
+            <th style="width:44px">Un</th><th class="num" style="width:56px">Qtd</th>
+            <th class="num" style="width:88px">Vl. unit.</th><th class="num" style="width:96px">Vl. total</th>
+          </tr></thead>
+          <tbody>${d.itens.map(i => `<tr>
+            <td>${escapa(i.desc)}</td><td>${i.ncm}</td><td>${i.cfop}</td><td>${i.un}</td>
+            <td class="num">${i.qtd}</td><td class="num">${brl(i.unit)}</td><td class="num">${brl(i.total)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`);
+    } else if (doc.cat === 'servico'){
+      secoes.push(`<div class="dv-sec"><h4>Discriminação do serviço</h4>
+        <div class="dv-campos">
+          ${larga('Serviço prestado', d.descr)}
+          ${d.codigo ? linha('Item da lista LC 116/2003', d.codigo) : ''}
+          ${linha('Município da prestação', `${d.municipio}/${d.uf}`)}
+          ${linha('ISS retido na fonte', escolhe(['Sim','Não'], rnd))}
+        </div></div>`);
+    } else if (doc.cat === 'transporte'){
+      const outra = escolhe(UFS.filter(u => u[0] !== d.uf), rnd);
+      secoes.push(`<div class="dv-sec"><h4>Dados da prestação</h4>
+        <div class="dv-campos">
+          ${larga('Natureza da prestação', d.descr)}
+          ${linha('Origem', `${d.municipio}/${d.uf}`)}
+          ${linha('Destino', `${outra[2]}/${outra[0]}`)}
+          ${linha('CFOP', escolhe(['5352','6352','5932','6932'], rnd))}
+          ${doc.id === 'bpe' ? linha('Poltrona', Math.floor(rnd()*44)+1) : linha('Peso da carga', `${(rnd()*8000+50).toFixed(1)} kg`)}
+          ${doc.id === 'mdfe' ? linha('Documentos vinculados', Math.floor(rnd()*40)+2) : ''}
+        </div></div>`);
+    } else if (doc.consumo){
+      secoes.push(`<div class="dv-sec"><h4>Medição e consumo</h4>
+        <div class="dv-campos">
+          ${larga('Descrição', d.descr)}
+          ${linha('Mês de referência', d.refMes)}
+          ${linha('Leitura anterior', d.leituraAnt)}
+          ${linha('Leitura atual', d.leituraAtu)}
+          ${linha('Consumo do período', `${d.consumo} ${d.unidadeConsumo}`)}
+          ${linha('Unidade consumidora', digitos(rnd, 10))}
+        </div></div>`);
+    } else if (doc.cat === 'arrecadacao'){
+      secoes.push(`<div class="dv-sec"><h4>Dados da arrecadação</h4>
+        <div class="dv-campos">
+          ${larga('Denominação da receita', d.descr)}
+          ${d.codigo && d.codigo !== '—' ? linha('Código da receita', d.codigo) : ''}
+          ${linha('Período de apuração', d.competencia)}
+          ${linha('Nº do documento', String(d.numero).padStart(9,'0'))}
+          ${larga('Autenticação bancária', d.autenticacao)}
+        </div></div>`);
+    } else {
+      secoes.push(`<div class="dv-sec"><h4>Descrição da operação</h4>
+        <div class="dv-campos">${larga('Descrição', d.descr)}</div></div>`);
+    }
+
+    // --- tributos ---
+    if (d.tribNome){
+      secoes.push(`<div class="dv-sec"><h4>Cálculo do tributo</h4>
+        <div class="dv-campos">
+          ${d.tribValor == null
+            ? larga('Situação tributária', d.tribNome)
+            : d.integral
+              ? linha('Natureza', d.tribNome) + linha('Valor recolhido', 'R$ ' + brl(d.tribValor))
+              : linha('Base de cálculo', 'R$ ' + brl(d.valor)) +
+                linha('Alíquota', (d.aliq*100).toFixed(2).replace('.',',') + '%') +
+                linha(`Valor do ${d.tribNome}`, 'R$ ' + brl(d.tribValor))}
+        </div></div>`);
+    }
+
+    // --- liquidação: como este documento aparece no extrato ---
+    secoes.push(`<div class="dv-sec"><h4>Liquidação</h4>
+      <div class="dv-campos">
+        ${d.pagamento
+          ? linha('Forma de pagamento', d.pagamento.rotulo) +
+            linha('Data do pagamento', isoParaBr(d.pagamento.data)) +
+            larga('Histórico no extrato', d.pagamento.hist)
+          : larga('Situação', 'Documento de controle — não gera pagamento no extrato')}
+      </div></div>`);
+
+    $('iCorpo').innerHTML = `
+      <div class="dv-cab">
+        <div class="dv-tipo">${escapa(doc.nome.toUpperCase())}
+          <small>${escapa(doc.sigla)}${doc.mod ? ' · MODELO ' + doc.mod : ' · SEM MODELO NACIONAL'}
+                 · Nº ${String(d.numero).padStart(6,'0')}${d.serie ? ' · SÉRIE ' + String(d.serie).padStart(3,'0') : ''}
+                 · EMISSÃO ${isoParaBr(d.data)}</small>
+        </div>
+        <div class="dv-chave">${d.chave ? 'CHAVE DE ACESSO (44)' : 'CÓDIGO DE VERIFICAÇÃO'}
+          <code>${escapa(d.chave ? fmtChave(d.chave) : d.verificacao)}</code>
+        </div>
+      </div>
+      <p class="aviso">⚠ tpAmb = 2 · AMBIENTE DE HOMOLOGAÇÃO — DOCUMENTO SEM VALOR FISCAL, gerado para fins didáticos.</p>
+      ${secoes.join('')}
+      <div class="dv-total"><span>Valor total do documento</span><b>R$ ${brl(d.valor)}</b></div>
+      <div class="dv-legenda">DOCUMENTO FICTÍCIO · SEM VALOR FISCAL · NÃO TRANSMITIDO A NENHUM FISCO</div>
+      <p class="rodape">${escapa(doc.desc)}
+        Emitente, destinatário, números, ${d.chave ? 'chave de acesso' : 'código de verificação'} e valores
+        são gerados aleatoriamente e não correspondem a contribuintes ou operações reais.
+        Semente: ${escapa($('iSeed').value.trim())}.</p>`;
+
+    $('iDescricao').textContent = doc.desc;
+  }
+
+  /* ---------------- lança o documento individual na lista (e no extrato) ---------------- */
+  function lancarIndividual(){
+    renderDocIndividual();               // monta o documento com a semente do campo
+    if (!docAtual) return;
+
+    const d = Object.assign({}, docAtual, { id: proxId++ });
+    despesas.push(d);
+    renderDespesas();
+
+    const partes = [`Documento lançado na lista de despesas (agora com ${despesas.length}).`];
+    if (modoConjunto()){
+      const l = lancamentoDaDespesa(d);
+      if (l){
+        window.__extrato.adicionar(l);
+        partes.push(`Saída de R$ ${brl(d.valor)} incluída no extrato como "${l.hist}" em ${isoParaBr(l.data)}.`);
+        const per = window.__extrato.periodo();
+        if (per.ini && per.fim && (l.data < per.ini || l.data > per.fim))
+          partes.push(`Atenção: essa data está fora do período do extrato (${isoParaBr(per.ini)} a ${isoParaBr(per.fim)}).`);
+      } else {
+        partes.push('Documento de controle: não gera saída no extrato.');
+      }
+    } else {
+      partes.push('Modo conjunto desligado — nenhuma saída foi criada no extrato.');
+    }
+    $('iAviso').textContent = partes.join(' ');
+    $('iAviso').style.display = '';
+
+    // a tela continua mostrando o documento lançado; o próximo clique já usa outra semente
+    $('iSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+  }
+
+  /* ======================= ABAS E INICIALIZAÇÃO ======================= */
+  document.querySelector('.abas').addEventListener('click', e => {
+    const bt = e.target.closest('button');
+    if (!bt) return;
+    document.querySelectorAll('.abas button').forEach(b => b.classList.toggle('ativa', b === bt));
+    $('aba-extrato').hidden  = bt.dataset.aba !== 'extrato';
+    $('aba-despesas').hidden = bt.dataset.aba !== 'despesas';
+    window.scrollTo(0, 0);
+  });
+
+  document.querySelector('.subabas').addEventListener('click', e => {
+    const bt = e.target.closest('button');
+    if (!bt) return;
+    document.querySelectorAll('.subabas button').forEach(b => b.classList.toggle('ativa', b === bt));
+    $('sub-lista').hidden      = bt.dataset.sub !== 'lista';
+    $('sub-individual').hidden = bt.dataset.sub !== 'individual';
+  });
+
+  $('dBtGerar').addEventListener('click', () => {
+    if (modoConjunto()) gerarConjunto('despesas');
+    else { $('dAviso').style.display = 'none'; window.__extrato.removerVinculados(); gerarDespesas(); }
+  });
+  $('dBtSeed').addEventListener('click', () => {
+    $('dSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+  });
+  $('dBtLimpar').addEventListener('click', () => {
+    if (despesas.length && !confirm('Excluir todas as despesas da lista? As saídas correspondentes também saem do extrato.')) return;
+    despesas = [];
+    window.__extrato.removerVinculados();
+    renderDespesas();
+    $('dAviso').style.display = 'none';
+  });
+  $('dBtImprimir').addEventListener('click', () => window.print());
+  $('iBtGerar').addEventListener('click', lancarIndividual);
+  $('iBtPrever').addEventListener('click', () => {
+    $('iAviso').style.display = 'none';
+    renderDocIndividual();
+  });
+  $('iBtImprimir').addEventListener('click', () => window.print());
+  $('iBtSeed').addEventListener('click', () => {
+    $('iSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+    renderDocIndividual();
+  });
+  $('iTipo').addEventListener('change', renderDocIndividual);
+  ['dIni','dFim'].forEach(id => $(id).addEventListener('input', renderDespesas));
+
+  // API usada pelo extrato e pelo módulo de nuvem
+  window.__despesas = {
+    gerarConjunto,
+    estado: () => ({
+      params: ['dIni','dFim','dQtde','dPorte','dUf','dSeed'].reduce((o,id) => (o[id] = $(id).value, o), {}),
+      conjunto: modoConjunto(),
+      selecionados: [...selDocs],
+      // o objeto do catálogo não vai para a nuvem (tem arrays aninhados); guarda-se só o id
+      lista: despesas.map(d => {
+        const copia = Object.assign({}, d);
+        delete copia.doc;
+        copia.docId = d.doc.id;
+        return copia;
+      })
+    }),
+    carregar: est => {
+      if (!est) return;
+      Object.keys(est.params || {}).forEach(id => { if ($(id)) $(id).value = est.params[id]; });
+      if (typeof est.conjunto === 'boolean') document.getElementById('modoConjunto').checked = est.conjunto;
+      if (est.selecionados){
+        selDocs.clear();
+        est.selecionados.forEach(id => selDocs.add(id));
+      }
+      despesas = (est.lista || []).map(r => {
+        const d = Object.assign({}, r);
+        d.doc = DOCS.find(x => x.id === r.docId) || DOCS[0];
+        delete d.docId;
+        return d;
+      });
+      proxId = despesas.reduce((m,d) => Math.max(m, d.id || 0), 0) + 1;
+      renderSelecaoDocs();
+      renderDespesas();
+    }
+  };
+
+  (function iniciar(){
+    const opcoes = UFS.map(u => `<option value="${u[0]}"${u[0]==='SP'?' selected':''}>${u[0]} — ${u[2]}</option>`).join('');
+    $('dUf').innerHTML = opcoes;
+    $('iUf').innerHTML = opcoes;
+
+    $('iTipo').innerHTML = Object.keys(CATEGORIAS).map(cat => `
+      <optgroup label="${CATEGORIAS[cat]}">
+        ${DOCS.filter(d => d.cat === cat).map(d =>
+          `<option value="${d.id}">${escapa(d.sigla)}${d.mod ? ' · mod. ' + d.mod : ''} — ${escapa(d.nome)}</option>`).join('')}
+      </optgroup>`).join('');
+
+    const hoje = new Date();
+    const fmt  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    $('dIni').value  = fmt(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    $('dFim').value  = fmt(new Date(hoje.getFullYear(), hoje.getMonth()+1, 0));
+    $('dmData').value = fmt(hoje);
+    $('iData').value  = fmt(hoje);
+    $('dSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+    $('iSeed').value = Math.random().toString(36).slice(2,8).toUpperCase();
+
+    renderSelecaoDocs();
+    if (modoConjunto()) gerarConjunto('despesas'); else gerarDespesas();
+    renderDocIndividual();
+  })();
+
+  // ligar/desligar o modo conjunto refaz os dois lados, para nunca ficarem incoerentes
+  document.getElementById('modoConjunto').addEventListener('change', () => {
+    if (modoConjunto()) gerarConjunto('despesas');
+    else { $('dAviso').style.display = 'none'; window.__extrato.removerVinculados(); gerarDespesas(); }
+  });
+})();
+
+/* ======================================================================
+   MÓDULO 3 — SALVAR / CARREGAR NA NUVEM (Firestore)
+   ====================================================================== */
+(function(){
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const status = (txt, cls) => {
+    const el = $('nvStatus');
+    el.textContent = txt;
+    el.className = 'nuvem-status' + (cls ? ' ' + cls : '');
+  };
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD1X4SsLtWWKTX_O7OzWEpIzA0E8Bm1CBw",
+    authDomain: "faturas-e-extratos.firebaseapp.com",
+    projectId: "faturas-e-extratos",
+    storageBucket: "faturas-e-extratos.firebasestorage.app",
+    messagingSenderId: "461188792473",
+    appId: "1:461188792473:web:f09bae1f7ddc5698dab808",
+    measurementId: "G-XJFVH7JYPQ"
+  };
+
+  // Sem internet (ou com o CDN bloqueado) o gerador continua funcionando normalmente:
+  // apenas a parte de nuvem fica desligada.
+  if (typeof firebase === 'undefined' || !firebase.firestore){
+    status('SDK do Firebase não carregou — o gerador funciona offline, só o salvamento na nuvem está indisponível.', 'erro');
+    ['nvSalvar','nvListar'].forEach(id => $(id).disabled = true);
+    return;
+  }
+
+  let col;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    col = firebase.firestore().collection('conjuntos');
+  } catch (e) {
+    status('Falha ao iniciar o Firebase: ' + e.message, 'erro');
+    return;
+  }
+
+  function explica(e){
+    if (e && e.code === 'permission-denied')
+      return 'Acesso negado pelas regras do Firestore. Publique a regra da coleção "conjuntos" no console do Firebase.';
+    if (e && (e.code === 'unavailable' || e.code === 'failed-precondition'))
+      return 'Firestore indisponível. Verifique a conexão e se o Firestore foi criado no projeto.';
+    return (e && (e.message || e.code)) || 'erro desconhecido';
+  }
+
+  function salvar(){
+    const nome = $('nvNome').value.trim();
+    if (!nome){ status('Dê um nome ao conjunto antes de salvar.', 'erro'); $('nvNome').focus(); return; }
+    status('Salvando…');
+    col.add({
+      nome,
+      criadoEm: new Date().toISOString(),
+      extrato:  window.__extrato.estado(),
+      despesas: window.__despesas.estado()
+    })
+    .then(() => { status(`"${nome}" salvo na nuvem.`, 'ok'); $('nvNome').value = ''; listar(); })
+    .catch(e => status('Não foi possível salvar: ' + explica(e), 'erro'));
+  }
+
+  function listar(){
+    status('Carregando lista…');
+    col.orderBy('criadoEm', 'desc').limit(30).get()
+      .then(snap => {
+        if (snap.empty){ $('nvLista').innerHTML = ''; status('Nenhum conjunto salvo ainda.'); return; }
+        $('nvLista').innerHTML = snap.docs.map(doc => {
+          const d = doc.data();
+          const qtd = ((d.despesas || {}).lista || []).length;
+          const lan = ((d.extrato  || {}).lancamentos || []).length;
+          return `<div class="nuvem-item">
+            <span class="nm">${window.__util.escapa(d.nome || '(sem nome)')}</span>
+            <span class="dt">${lan} lanç. · ${qtd} desp. · ${(d.criadoEm || '').slice(0,10).split('-').reverse().join('/')}</span>
+            <button data-carregar="${doc.id}">Carregar</button>
+            <button class="perigo" data-excluir="${doc.id}">Excluir</button>
+          </div>`;
+        }).join('');
+        status(`${snap.size} conjunto(s) na nuvem.`, 'ok');
+      })
+      .catch(e => status('Não foi possível listar: ' + explica(e), 'erro'));
+  }
+
+  $('nvLista').addEventListener('click', e => {
+    const bt = e.target.closest('button');
+    if (!bt) return;
+
+    if (bt.dataset.carregar){
+      status('Carregando conjunto…');
+      col.doc(bt.dataset.carregar).get()
+        .then(doc => {
+          if (!doc.exists){ status('Conjunto não encontrado — talvez tenha sido excluído.', 'erro'); return; }
+          const d = doc.data();
+          window.__extrato.carregar(d.extrato);
+          window.__despesas.carregar(d.despesas);
+          status(`"${d.nome}" carregado.`, 'ok');
+        })
+        .catch(e => status('Não foi possível carregar: ' + explica(e), 'erro'));
+
+    } else if (bt.dataset.excluir){
+      if (!confirm('Excluir este conjunto da nuvem? A ação não pode ser desfeita.')) return;
+      col.doc(bt.dataset.excluir).delete()
+        .then(() => { status('Conjunto excluído.', 'ok'); listar(); })
+        .catch(e => status('Não foi possível excluir: ' + explica(e), 'erro'));
+    }
+  });
+
+  $('nvSalvar').addEventListener('click', salvar);
+  $('nvListar').addEventListener('click', listar);
+  listar();
+})();
+</script>
+</body>
+</html>
