@@ -59,7 +59,11 @@
     var s = document.getElementById("senha").value;
     if (u === USUARIO && s === SENHA) {
       sessionStorage.setItem("anp_ok", "1");
-      location.replace("index.html");
+      // Volta para a página que pediu o login (?de=/anp/fluxo/), só se for um
+      // caminho interno da seção ANP; senão vai para o painel principal.
+      var de = new URLSearchParams(location.search).get("de") || "";
+      var interno = /^\/anp\/[A-Za-z0-9_\-\/.%]*$/.test(de) && de.indexOf("//") === -1;
+      location.replace(interno ? de : "index.html");
     } else {
       document.getElementById("erro").textContent = "Usuário ou senha incorretos.";
       document.getElementById("senha").value = "";
