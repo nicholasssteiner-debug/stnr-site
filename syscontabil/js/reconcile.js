@@ -4,9 +4,9 @@ import { state } from './state.js';
 import { toCents, formatCents, formatDateBR, escapeHtml, applyMoneyMask } from './utils.js';
 import { showToast, refreshIcons } from './ui.js';
 import { persistBatch } from './workspaces.js';
-import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput, sortedAccounts } from './accounts.js';
+import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput, getStandardAccounts, STANDARD_DEPTH } from './accounts.js';
 import { getCostCenterName } from './costCenters.js';
-import { period, periodLabel, entryInScope, refreshCcSelectors } from './reports.js';
+import { period, periodLabel, entryInScope, refreshCcSelectors, fillSubAccountSelect } from './reports.js';
 
 const view = { accountCode: '', filter: 'todas', statementCents: 0 };
 
@@ -25,34 +25,60 @@ const collectEntries = (acc) => {
 
 const inPeriod = (date) => (!period.from || date >= period.from) && (!period.to || date <= period.to);
 
-// Só contas do último nível (analíticas) com lançamentos podem ser conciliadas
-const reconcilableAccounts = () => {
+// Seleção em dois níveis: Conta (padrão 0.0.00.000) → Subconta (último nível).
+// A conciliação acontece sempre na conta do último nível que tem lançamentos:
+// se a conta do padrão for analítica, ela mesma; se tiver subcontas, uma delas.
+const sel = { conta: '', sub: '' };
+
+const usedCodes = () => {
     const used = new Set();
     for (const b of state.batches) for (const e of b.entries) used.add(e.accountCode);
-    return sortedAccounts().filter(a => used.has(a.code) && !hasChildren(a.code) && a.role !== 'result');
+    return used;
+};
+
+// Contas do padrão que têm lançamentos (nelas ou nas suas subcontas)
+const reconcilableContas = () => {
+    const used = usedCodes();
+    // Analíticas, ou contas do 4º nível que contêm subcontas (grupos como "1.1" não entram)
+    return getStandardAccounts().filter(a => a.role !== 'result'
+        && (!hasChildren(a.code) || a.code.split('.').length === STANDARD_DEPTH)
+        && [...used].some(c => isSelfOrDescendant(c, a.code)));
 };
 
 export const initConciliacao = () => {
     refreshCcSelectors();
     document.getElementById('conc-period-label').innerText = periodLabel();
-    document.getElementById('dl-contas-conc').innerHTML = reconcilableAccounts()
-        .map(a => `<option value="${escapeHtml(`${a.code} - ${a.name}`)}"></option>`).join('');
+    document.getElementById('dl-contas-conc').innerHTML = reconcilableContas()
+        .map(a => `<option value="${escapeHtml(`${a.code} - ${a.name}`)}${hasChildren(a.code) ? ' (sintética)' : ''}"></option>`).join('');
+    renderConciliacao();
+};
+
+const applySelection = () => {
+    const conta = getAccount(sel.conta);
+    const target = sel.sub ? getAccount(sel.sub) : conta;
+    view.accountCode = target && !hasChildren(target.code) ? target.code : '';
+    if (conta && hasChildren(conta.code) && !sel.sub) {
+        showToast(`${conta.code} é sintética: escolha a subconta (último nível) para conciliar.`, 'error');
+    }
     renderConciliacao();
 };
 
 export const setConciliacaoAccount = (text) => {
     const acc = getAccount(codeFromInput(text));
-    if (acc && hasChildren(acc.code)) {
-        showToast(`${acc.code} é sintética. Escolha a conta do último nível (ex.: a subconta do cliente ou fornecedor).`, 'error');
-        view.accountCode = '';
-        renderConciliacao();
-        return;
-    }
-    view.accountCode = acc ? acc.code : '';
-    if (!acc && text.trim()) showToast('Conta não encontrada. Selecione uma conta analítica com lançamentos.', 'error');
-    renderConciliacao();
+    sel.conta = acc ? acc.code : '';
+    sel.sub = '';
+    if (acc) document.getElementById('conc-acc-select').value = `${acc.code} - ${acc.name}`;
+    else if (text.trim()) showToast('Conta não encontrada. Selecione uma conta com lançamentos.', 'error');
+    const subSel = document.getElementById('conc-sub-select');
+    const n = fillSubAccountSelect(subSel, sel.conta, { onlyWithEntries: true, allLabel: 'Selecione a subconta...' });
+    if (acc && n === 0 && hasChildren(acc.code)) subSel.innerHTML = '<option value="">Nenhuma subconta com lançamentos</option>';
+    applySelection();
 };
 
+export const setConciliacaoSub = (value) => {
+    sel.sub = value || '';
+    applySelection();
+};
 export const setConciliacaoFilter = (value) => {
     view.filter = value;
     renderConciliacao();

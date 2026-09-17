@@ -178,3 +178,4 @@ label.lbl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--mu
 .edit-banner > span { flex: 1 1 18rem; }
 .edit-banner .btn { flex-shrink: 0; }
 .tbl .row-dept td { font-size: 0.8rem; background: rgba(255, 255, 255, 0.015); }
+.tbl .row-sub td:first-child { color: var(--accent-hover); }

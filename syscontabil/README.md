@@ -74,6 +74,9 @@ workspaces ─► firebase, state, utils, ui
   atividade existente só as contas que faltam, sem tocar nas atuais.
 - Botão "+" (cabeçalho e Configurações) cria uma atividade nova do zero ou uma cópia
   da atual; a atividade anterior permanece na lista.
+- Definições: "conta" = código do padrão, até 4 níveis (0.0.00.000); "subconta" = qualquer
+  conta criada abaixo disso (ex.: 1.1.02.001.01 Fulano). Razão e Conciliação selecionam em
+  dois campos (Conta → Subconta); o Balancete marca as subcontas.
 - Níveis de análise: conta → subconta → departamento (centro de custo). Razão, Balancete,
   DRE e Conciliação têm o seletor "Departamento"; o departamento 0 é o totalizador. No
   Balancete, com o depto 0 selecionado e mais de um centro de custo, cada conta analítica

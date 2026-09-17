@@ -57,6 +57,7 @@
     <datalist id="dl-contas-lancamento"></datalist>
     <datalist id="dl-cc"></datalist>
     <datalist id="dl-contas-conc"></datalist>
+    <datalist id="dl-contas-padrao"></datalist>
     <datalist id="dl-contas-pl"></datalist>
 
     <!-- ===================== Menu lateral ===================== -->
@@ -266,10 +267,14 @@
                         </div>
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="lbl" for="conc-acc-select">Conta a conciliar (último nível: banco, caixa, cliente, fornecedor...)</label>
-                            <input type="text" list="dl-contas-conc" id="conc-acc-select" onchange="setConciliacaoAccount(this.value)" placeholder="Somente contas do último nível com lançamentos" class="input" autocomplete="off">
+                        <div>
+                            <label class="lbl" for="conc-acc-select">Conta (padrão 0.0.00.000)</label>
+                            <input type="text" list="dl-contas-conc" id="conc-acc-select" onchange="setConciliacaoAccount(this.value)" placeholder="Contas com lançamentos" class="input" autocomplete="off">
                             <p id="conc-period-label" class="text-xs muted mt-2"></p>
+                        </div>
+                        <div>
+                            <label class="lbl" for="conc-sub-select">Subconta (último nível)</label>
+                            <select id="conc-sub-select" class="input" onchange="setConciliacaoSub(this.value)" disabled><option value="">Selecione a conta primeiro</option></select>
                         </div>
                         <div>
                             <label class="lbl" for="conc-extrato">Saldo do extrato na data final (R$)</label>
@@ -337,8 +342,16 @@
                         </div>
                     </div>
                     <div class="p-6">
-                        <label class="lbl" for="razao-acc-select">Conta ou subconta (pesquise pelo código ou nome)</label>
-                        <input type="text" list="dl-contas" id="razao-acc-select" onchange="renderRazaoContent()" placeholder="Ex.: 1.1.01" class="input max-w-xl" autocomplete="off">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="lbl" for="razao-acc-select">Conta (padrão 0.0.00.000 — pesquise pelo código ou nome)</label>
+                                <input type="text" list="dl-contas-padrao" id="razao-acc-select" onchange="onRazaoContaChange(this.value)" placeholder="Ex.: 1.1.02.001" class="input" autocomplete="off">
+                            </div>
+                            <div>
+                                <label class="lbl" for="razao-sub-select">Subconta</label>
+                                <select id="razao-sub-select" class="input" onchange="onRazaoSubChange(this.value)" disabled><option value="">Selecione a conta primeiro</option></select>
+                            </div>
+                        </div>
                         <p id="razao-period-label" class="text-xs muted mt-2"></p>
                     </div>
                 </div>
@@ -397,7 +410,7 @@
                         <table class="tbl min-w-[900px]" id="balancete-table">
                             <thead>
                                 <tr>
-                                    <th class="w-28">Conta</th>
+                                    <th class="w-36">Conta / Subconta / Depto</th>
                                     <th>Descrição</th>
                                     <th class="w-40 text-right">Saldo Anterior</th>
                                     <th class="w-36 text-right">Débitos</th>

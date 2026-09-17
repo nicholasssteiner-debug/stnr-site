@@ -18,6 +18,17 @@ export const isResultAccount = (code) => getAccount(code)?.role === 'result';
 // Conta analítica que já tem lançamentos diretos não pode receber subcontas
 export const hasDirectEntries = (code) => state.batches.some(b => b.entries.some(e => e.accountCode === code));
 
+// Nível do padrão do plano: até 4 segmentos (0.0.00.000) é "conta"; abaixo disso é "subconta"
+// (ex.: 1.1.01.001.01 Fulano criada dentro de 1.1.01.001).
+export const STANDARD_DEPTH = 4;
+export const isSubAccountCode = (code) => code.split('.').length > STANDARD_DEPTH;
+
+// Contas do padrão (até o 4º nível), para os seletores "Conta"
+export const getStandardAccounts = () => sortedAccounts().filter(a => !isSubAccountCode(a.code));
+
+// Subcontas (5º nível em diante) abaixo de uma conta do padrão
+export const getSubAccounts = (code) => sortedAccounts().filter(a => a.code.startsWith(code + '.') && isSubAccountCode(a.code));
+
 // true se `code` for igual a `parentCode` ou estiver abaixo dele (1.1.01 ⊂ 1.1, mas 1.10 ⊄ 1.1)
 export const isSelfOrDescendant = (code, parentCode) => code === parentCode || code.startsWith(parentCode + '.');
 
@@ -53,6 +64,8 @@ export const updateDatalists = () => {
     const opt = (code, name) => `<option value="${escapeHtml(`${code} - ${name}`)}"></option>`;
     const all = sortedAccounts();
     document.getElementById('dl-contas').innerHTML = all.map(a => opt(a.code, a.name)).join('');
+    // Seletores "Conta" dos relatórios: só contas do padrão (as subcontas vão no campo ao lado)
+    document.getElementById('dl-contas-padrao').innerHTML = all.filter(a => !isSubAccountCode(a.code)).map(a => opt(a.code, hasChildren(a.code) ? `${a.name} (sintética)` : a.name)).join('');
     // No lançamento qualquer conta pode ser digitada; se for sintética, a subconta é exigida.
     document.getElementById('dl-contas-lancamento').innerHTML = all.filter(a => a.role !== 'result').map(a => opt(a.code, hasChildren(a.code) ? `${a.name} (sintética)` : a.name)).join('');
     document.getElementById('dl-cc').innerHTML = state.costCenters.map(c => opt(c.id, c.name)).join('');

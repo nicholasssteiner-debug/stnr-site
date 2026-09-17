@@ -6,7 +6,7 @@
 import { state } from './state.js';
 import { toCents, formatCents, formatDateBR, escapeHtml } from './utils.js';
 import { navigate } from './ui.js';
-import { getAccount, sortedAccounts, hasChildren, isSelfOrDescendant, isDebitNature, isReducing, codeFromInput, getResultAccount } from './accounts.js';
+import { getAccount, sortedAccounts, hasChildren, isSelfOrDescendant, isDebitNature, isReducing, codeFromInput, getResultAccount, getSubAccounts, isSubAccountCode } from './accounts.js';
 
 // ---------- Filtros ----------
 export const period = { from: '', to: '', cc: '' };   // cc vazio = departamento 0 (todos)
@@ -92,21 +92,55 @@ const sortChrono = (a, b) => (a.date || '').localeCompare(b.date || '') || (a.cr
 const ccName = (id) => state.costCenters.find(c => c.id === id)?.name ?? '';
 
 // ---------- Razão ----------
+// Seleção em dois níveis: Conta (padrão 0.0.00.000) e Subconta (criada abaixo dela).
+const razaoSel = { conta: '', sub: '' };
+
+// Preenche um <select> de subcontas para a conta escolhida. Retorna a quantidade.
+export const fillSubAccountSelect = (selectEl, contaCode, { onlyWithEntries = false, allLabel = 'Todas (totalizador da conta)' } = {}) => {
+    const acc = getAccount(contaCode);
+    if (!acc) { selectEl.innerHTML = '<option value="">Selecione a conta primeiro</option>'; selectEl.disabled = true; return 0; }
+    let subs = getSubAccounts(contaCode);
+    if (onlyWithEntries) {
+        const used = new Set();
+        for (const b of state.batches) for (const e of b.entries) used.add(e.accountCode);
+        subs = subs.filter(a => !hasChildren(a.code) && used.has(a.code));
+    }
+    if (subs.length === 0) { selectEl.innerHTML = '<option value="">Não possui subcontas</option>'; selectEl.disabled = true; return 0; }
+    selectEl.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + subs.map(a =>
+        `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} - ${escapeHtml(a.name)}${hasChildren(a.code) ? ' (sintética)' : ''}</option>`).join('');
+    selectEl.disabled = false;
+    return subs.length;
+};
+
 export const initRazao = () => {
     refreshCcSelectors();
     document.getElementById('razao-period-label').innerText = periodLabel();
     renderRazaoContent();
 };
 
+export const onRazaoContaChange = (text) => {
+    const acc = getAccount(codeFromInput(text));
+    razaoSel.conta = acc ? acc.code : '';
+    razaoSel.sub = '';
+    if (acc) document.getElementById('razao-acc-select').value = `${acc.code} - ${acc.name}`;
+    fillSubAccountSelect(document.getElementById('razao-sub-select'), razaoSel.conta);
+    renderRazaoContent();
+};
+
+export const onRazaoSubChange = (value) => {
+    razaoSel.sub = value || '';
+    renderRazaoContent();
+};
+
 export const renderRazaoContent = () => {
-    const acc = getAccount(codeFromInput(document.getElementById('razao-acc-select').value));
+    const acc = getAccount(razaoSel.sub || razaoSel.conta);
     const area = document.getElementById('razao-content-area');
     if (!acc) { area.classList.add('hidden'); return; }
     area.classList.remove('hidden');
 
     const debitNature = isDebitNature(acc);
     document.getElementById('razao-acc-info').innerText =
-        `${acc.code} - ${acc.name} · Natureza ${debitNature ? 'Devedora' : 'Credora'}${hasChildren(acc.code) ? ' · Visão sintética' : ''} · ${periodLabel()}`;
+        `${isSubAccountCode(acc.code) ? 'Subconta' : 'Conta'} ${acc.code} - ${acc.name} · Natureza ${debitNature ? 'Devedora' : 'Credora'}${hasChildren(acc.code) ? ' · Visão sintética (soma das subcontas)' : ''} · ${periodLabel()}`;
 
     const tbody = document.getElementById('razao-tbody');
     const rows = [];
@@ -209,8 +243,11 @@ export const renderBalancete = () => {
 
         const level = acc.code.split('.').length;
         const synthetic = hasChildren(acc.code);
-        line(acc, escapeHtml(acc.code), escapeHtml(acc.name), openBal, mov, level, synthetic ? 'row-synth' : '',
-            byDept && !synthetic ? ' <span class="muted text-xs">(depto 0 - total)</span>' : '');
+        const sub = isSubAccountCode(acc.code);
+        line(acc, escapeHtml(acc.code), escapeHtml(acc.name), openBal, mov, level,
+            synthetic ? 'row-synth' : (sub ? 'row-sub' : ''),
+            (sub ? ' <span class="badge badge-gray" title="Subconta (criada abaixo do padrão 0.0.00.000)">subconta</span>' : '')
+            + (byDept && !synthetic ? ' <span class="muted text-xs">(depto 0 - total)</span>' : ''));
 
         // Nível departamento (só nas analíticas)
         if (byDept && !synthetic) {

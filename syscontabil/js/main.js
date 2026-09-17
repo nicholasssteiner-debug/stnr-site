@@ -7,10 +7,10 @@ import { initUserWorkspaces, createNewWorkspace, openNewWorkspaceModal, closeNew
 import { renderPlanoContas, addAccount, deleteAccount, promptSubAccount, updateDatalists, importDefaultChart } from './accounts.js';
 import { renderCCConfig, addCostCenter, deleteCostCenter } from './costCenters.js';
 import { initNovoLote, cancelEditLote, handleLineContaSearch, handleLineCcSearch, updateLoteLine, onLoteValueInput, addNovoLoteLine, removeLoteLine, saveNovoLote, renderConsultaLotes, toggleBatch, editBatch, deleteBatch } from './lotes.js';
-import { initRazao, renderRazaoContent, renderBalancete, renderBalanco, setPeriod, setCostCenter, clearPeriod } from './reports.js';
+import { initRazao, renderRazaoContent, onRazaoContaChange, onRazaoSubChange, renderBalancete, renderBalanco, setPeriod, setCostCenter, clearPeriod } from './reports.js';
 import { openClosingModal, closeClosingModal, onClosingDateChange, onClosingDestChange, confirmClosing } from './closing.js';
 import { renderConfiguracaoDRE, toggleDreConfig, renderDRE } from './dre.js';
-import { initConciliacao, setConciliacaoAccount, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible } from './reconcile.js';
+import { initConciliacao, setConciliacaoAccount, setConciliacaoSub, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible } from './reconcile.js';
 
 // ---------- Telas ----------
 registerView('planoContas', renderPlanoContas);
@@ -45,13 +45,13 @@ Object.assign(window, {
     cancelEditLote, handleLineContaSearch, handleLineCcSearch, updateLoteLine, onLoteValueInput, addNovoLoteLine, removeLoteLine, saveNovoLote,
     renderConsultaLotes, toggleBatch, editBatch, deleteBatch,
     // relatórios
-    renderRazaoContent, renderBalancete, setPeriod, setCostCenter, clearPeriod,
+    renderRazaoContent, onRazaoContaChange, onRazaoSubChange, renderBalancete, setPeriod, setCostCenter, clearPeriod,
     // encerramento do exercício
     openClosingModal, closeClosingModal, onClosingDateChange, onClosingDestChange, confirmClosing,
     // DRE
     toggleDreConfig,
     // conciliação
-    setConciliacaoAccount, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible,
+    setConciliacaoAccount, setConciliacaoSub, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible,
 });
 
 // Acesso ao estado pelo console do navegador (diagnóstico)
