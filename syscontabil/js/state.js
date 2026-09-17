@@ -1,43 +1,24 @@
 // Estado global da aplicação e valores padrão.
 // `state` é um único objeto mutável compartilhado; nunca é reatribuído (use resetState).
+import { FULL_CHART, buildDreConfig } from './chartOfAccounts.js';
 
-export const INITIAL_ACCOUNTS = [
-    { code: '1.1.01', name: 'Caixa', type: 'Ativo' },
-    { code: '1.1.02', name: 'Banco Conta Movimento', type: 'Ativo' },
-    { code: '1.1.03', name: 'Clientes', type: 'Ativo' },
-    { code: '1.1.04', name: '(-) Provisão para Devedores Duvidosos', type: 'Ativo' },
-    { code: '1.2.01', name: 'Estoque de Mercadorias', type: 'Ativo' },
-    { code: '1.3.01', name: 'Máquinas e Equipamentos', type: 'Ativo' },
-    { code: '1.3.02', name: '(-) Depreciação Acumulada', type: 'Ativo' },
-    { code: '2.1.01', name: 'Fornecedores a Pagar', type: 'Passivo' },
-    { code: '2.1.02', name: 'Salários a Pagar', type: 'Passivo' },
-    { code: '2.2.01', name: 'Capital Social', type: 'Passivo' },
-    { code: '2.2.02', name: '(-) Prejuízos Acumulados', type: 'Passivo' },
-    { code: '3.1.01', name: 'Receita Bruta de Vendas', type: 'Receita' },
-    { code: '3.1.02', name: 'Receita de Prestação de Serviços', type: 'Receita' },
-    { code: '3.2.01', name: '(-) Devoluções de Vendas', type: 'Receita' },
-    { code: '3.2.02', name: '(-) Impostos s/ Vendas', type: 'Receita' },
-    { code: '3.2.03', name: '(-) Descontos Incondicionais', type: 'Receita' },
-    { code: '4.1.01', name: 'Custo das Mercadorias Vendidas (CMV)', type: 'Despesa' },
-    { code: '4.2.01', name: 'Despesas com Salários', type: 'Despesa' },
-    { code: '4.2.02', name: 'Despesas com Aluguel', type: 'Despesa' },
-];
+// Plano de contas padrão das novas atividades (comércio + serviços, 4 níveis)
+export const INITIAL_ACCOUNTS = FULL_CHART;
 
+// Grupos da DRE, na ordem de apresentação
 export const DRE_GROUPS = [
-    { id: 'receitaBruta', name: 'Receita Bruta de Vendas/Serviços', nature: 'C' },
-    { id: 'deducoes', name: '(-) Deduções e Impostos sobre Vendas', nature: 'D' },
-    { id: 'custos', name: '(-) Custos (CMV/CSP)', nature: 'D' },
+    { id: 'receitaBruta', name: 'Receita Operacional Bruta', nature: 'C' },
+    { id: 'deducoes', name: '(-) Deduções da Receita Bruta', nature: 'D' },
+    { id: 'custos', name: '(-) Custos das Vendas e dos Serviços', nature: 'D' },
     { id: 'despesasOperacionais', name: '(-) Despesas Operacionais', nature: 'D' },
+    { id: 'resultadoFinanceiro', name: '(+/-) Resultado Financeiro', nature: 'C' },
     { id: 'outrasReceitasDespesas', name: '(+/-) Outras Receitas e Despesas', nature: 'C' },
+    { id: 'impostosResultado', name: '(-) IRPJ e CSLL', nature: 'D' },
 ];
 
-export const INITIAL_DRE_CONFIG = {
-    receitaBruta: ['3.1.01', '3.1.02'],
-    deducoes: ['3.2.01', '3.2.02', '3.2.03'],
-    custos: ['4.1.01'],
-    despesasOperacionais: ['4.2.01', '4.2.02'],
-    outrasReceitasDespesas: [],
-};
+export const DRE_GROUP_IDS = DRE_GROUPS.map(g => g.id);
+
+export const INITIAL_DRE_CONFIG = buildDreConfig(INITIAL_ACCOUNTS, DRE_GROUP_IDS);
 
 export const ACCOUNT_TYPES = ['Ativo', 'Passivo', 'Receita', 'Despesa'];
 

@@ -14,6 +14,7 @@ syscontabil/
     main.js               ponto de entrada: registra telas e expõe handlers no window
     firebase.js           inicialização do Firebase (Auth + Firestore)
     state.js              estado compartilhado, valores padrão e normalização
+    chartOfAccounts.js    plano de contas padrão (339 contas, comércio + serviços) e mapeamento da DRE
     utils.js              dinheiro em centavos, máscara 1.234,56, datas locais, escape HTML
     ui.js                 toasts, modal de confirmação, navegação, menu mobile, CSV/impressão
     auth.js               login / cadastro
@@ -57,6 +58,12 @@ workspaces ─► firebase, state, utils, ui
   gravados no lote). A tela compara o saldo conciliado com o saldo do extrato e lista
   as partidas pendentes; a marcação sobrevive à edição do lote quando conta, D/C e
   valor não mudam.
+- Plano de contas padrão (`chartOfAccounts.js`): 4 níveis (1.1.01.001), 339 contas, cobre
+  Ativo/Passivo/PL, receitas de vendas e de serviços, deduções, CMV, CSP, despesas por
+  natureza, resultado financeiro e IRPJ/CSLL. `validateChart` garante pai existente, tipo
+  igual ao do pai e códigos únicos; `buildDreConfig` mapeia cada analítica de resultado
+  em exatamente um dos 7 grupos da DRE. O botão "Importar plano padrão" acrescenta a uma
+  atividade existente só as contas que faltam, sem tocar nas atuais.
 - Botão "+" (cabeçalho e Configurações) cria uma atividade nova do zero ou uma cópia
   da atual; a atividade anterior permanece na lista.
 - Relatórios aceitam período (De/Até). Razão e Balancete mostram saldo anterior;

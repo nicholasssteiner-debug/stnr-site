@@ -77,16 +77,22 @@ export const renderDRE = () => {
     const custos = val('custos');
     const lucroBruto = receitaLiquida - custos;
     const despesasOperacionais = val('despesasOperacionais');
+    const resultadoOperacional = lucroBruto - despesasOperacionais;
+    const financeiro = val('resultadoFinanceiro');
     const outras = val('outrasReceitasDespesas');
-    const resultadoLiquido = lucroBruto - despesasOperacionais + outras;
+    const resultadoAntesIR = resultadoOperacional + financeiro + outras;
+    const impostos = val('impostosResultado');
+    const resultadoLiquido = resultadoAntesIR - impostos;
 
     const header = (title, value) => `<tr class="dre-header"><td>${title}</td><td class="text-right">${formatCents(value)}</td></tr>`;
     const total = (title, value) => `<tr class="dre-total"><td>${title}</td><td class="text-right ${value < 0 ? 'text-danger' : ''}">${formatCents(value)}</td></tr>`;
     const detail = (groupId) => {
         const g = DRE_GROUPS.find(x => x.id === groupId);
-        return state.dreConfig[groupId].map(code =>
-            `<tr class="dre-detail"><td>${escapeHtml(code)} - ${escapeHtml(getAccountName(code))}</td><td class="text-right">${formatCents(groupBalance([code], g.nature, batches))}</td></tr>`
-        ).join('');
+        // Só detalha contas com movimento no período (o plano completo tem centenas de contas)
+        return state.dreConfig[groupId].map(code => {
+            const v = groupBalance([code], g.nature, batches);
+            return v === 0 ? '' : `<tr class="dre-detail"><td>${escapeHtml(code)} - ${escapeHtml(getAccountName(code))}</td><td class="text-right ${v < 0 ? 'text-danger' : ''}">${formatCents(v)}</td></tr>`;
+        }).join('');
     };
 
     const resultClass = resultadoLiquido >= 0 ? 'dre-result-ok' : 'dre-result-bad';
@@ -99,7 +105,11 @@ export const renderDRE = () => {
                 ${header('4. (-) CUSTOS DAS VENDAS E SERVIÇOS', custos)}${detail('custos')}
                 ${total('5. (=) RESULTADO BRUTO', lucroBruto)}
                 ${header('6. (-) DESPESAS OPERACIONAIS', despesasOperacionais)}${detail('despesasOperacionais')}
-                ${header('7. (+/-) OUTRAS RECEITAS E DESPESAS', outras)}${detail('outrasReceitasDespesas')}
+                ${total('7. (=) RESULTADO OPERACIONAL', resultadoOperacional)}
+                ${header('8. (+/-) RESULTADO FINANCEIRO', financeiro)}${detail('resultadoFinanceiro')}
+                ${header('9. (+/-) OUTRAS RECEITAS E DESPESAS', outras)}${detail('outrasReceitasDespesas')}
+                ${total('10. (=) RESULTADO ANTES DO IRPJ E DA CSLL', resultadoAntesIR)}
+                ${header('11. (-) IRPJ E CSLL', impostos)}${detail('impostosResultado')}
                 <tr class="${resultClass}"><td>(=) RESULTADO LÍQUIDO DO EXERCÍCIO</td><td class="text-right">${formatCents(resultadoLiquido)}</td></tr>
             </tbody>
         </table>`;

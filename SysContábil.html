@@ -137,6 +137,17 @@
                             <button type="submit" class="btn btn-primary h-[38px] w-full md:w-auto"><i data-lucide="plus" class="w-[18px] h-[18px]"></i> Adicionar</button>
                         </form>
                     </div>
+                    <div class="p-4 border-b border-stnr-border flex flex-wrap items-center gap-3">
+                        <div class="relative w-full md:w-96">
+                            <input type="text" id="plano-search" oninput="renderPlanoContas()" placeholder="Filtrar por código ou nome..." class="input pl-10" autocomplete="off">
+                            <i data-lucide="search" class="absolute left-3 top-2.5 muted w-[18px] h-[18px]"></i>
+                        </div>
+                        <span id="plano-count" class="text-sm muted"></span>
+                        <div class="ml-auto flex gap-2">
+                            <button class="btn btn-ghost btn-sm" onclick="importDefaultChart()" title="Adiciona as contas do plano padrão (comércio + serviços) que ainda não existem nesta atividade"><i data-lucide="download" class="w-4 h-4"></i> Importar plano padrão</button>
+                            <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('plano-contas-table', 'plano-de-contas.csv')"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> CSV</button>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="tbl min-w-[700px]" id="plano-contas-table">
                             <thead>

@@ -5,6 +5,7 @@ import { state } from './state.js';
 import { compareCodes, escapeHtml } from './utils.js';
 import { showToast, showConfirm, refreshIcons } from './ui.js';
 import { persistState } from './workspaces.js';
+import { FULL_CHART, dreGroupFor } from './chartOfAccounts.js';
 
 // ---------- Consultas ----------
 export const getAccount = (code) => state.accounts.find(a => a.code === code);
@@ -56,10 +57,26 @@ export const codeFromInput = (text) => String(text || '').split(' - ')[0].trim()
 // ---------- Tela ----------
 export const renderPlanoContas = () => {
     const tbody = document.getElementById('plano-contas-tbody');
-    const accounts = sortedAccounts();
+    const all = sortedAccounts();
+    const search = (document.getElementById('plano-search')?.value || '').trim().toLowerCase();
+
+    // Filtro por código ou nome; ao filtrar, mantém as contas-pai para preservar a hierarquia
+    let accounts = all;
+    if (search) {
+        const keep = new Set();
+        for (const a of all) {
+            if (!a.code.toLowerCase().includes(search) && !a.name.toLowerCase().includes(search)) continue;
+            const parts = a.code.split('.');
+            for (let i = 1; i <= parts.length; i++) keep.add(parts.slice(0, i).join('.'));
+        }
+        accounts = all.filter(a => keep.has(a.code));
+    }
+
+    const countEl = document.getElementById('plano-count');
+    if (countEl) countEl.innerText = search ? `${accounts.length} de ${all.length} conta(s)` : `${all.length} conta(s) · ${all.filter(a => isAnalytic(a.code)).length} analíticas`;
 
     if (accounts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">Nenhuma conta cadastrada.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="4" class="empty">${all.length ? 'Nenhuma conta encontrada.' : 'Nenhuma conta cadastrada.'}</td></tr>`;
         return;
     }
 
@@ -161,5 +178,56 @@ export const deleteAccount = (code) => {
         renderPlanoContas();
         persistState();
         showToast('Conta excluída.');
+    });
+};
+
+// ---------- Importar plano de contas padrão ----------
+// Acrescenta à atividade atual as contas do plano padrão que ainda não existem.
+// Nunca remove nem renomeia contas existentes. Contas analíticas que já tenham
+// lançamentos diretos não recebem subcontas (isso esconderia os lançamentos).
+export const importDefaultChart = () => {
+    const existing = new Set(state.accounts.map(a => a.code));
+    const blockedParents = new Set(
+        state.accounts
+            .filter(a => isAnalytic(a.code) && state.batches.some(b => b.entries.some(e => e.accountCode === a.code)))
+            .map(a => a.code)
+    );
+
+    const toAdd = [];
+    const skipped = [];
+    for (const acc of [...FULL_CHART].sort((a, b) => compareCodes(a.code, b.code))) {
+        if (existing.has(acc.code)) continue;
+        const parentCode = acc.code.includes('.') ? acc.code.slice(0, acc.code.lastIndexOf('.')) : null;
+        if (parentCode && [...blockedParents].some(p => isSelfOrDescendant(acc.code, p))) { skipped.push(acc.code); continue; }
+        const parent = parentCode ? (getAccount(parentCode) || toAdd.find(a => a.code === parentCode)) : null;
+        if (parentCode && (!parent || parent.type !== acc.type)) { skipped.push(acc.code); continue; }
+        toAdd.push({ ...acc });
+    }
+
+    if (toAdd.length === 0) {
+        showToast(skipped.length ? `Nada a importar: ${skipped.length} conta(s) conflitam com contas que já têm lançamentos.` : 'O plano padrão já está completo nesta atividade.', 'error');
+        return;
+    }
+
+    const msg = `Adicionar ${toAdd.length} conta(s) do plano padrão (comércio + serviços) a esta atividade?`
+        + (skipped.length ? ` ${skipped.length} conta(s) serão ignoradas por conflitar com lançamentos existentes.` : '')
+        + ' As contas atuais não serão alteradas.';
+
+    showConfirm(msg, () => {
+        state.accounts.push(...toAdd);
+        // Contas que viraram sintéticas saem da DRE (as filhas assumem o lugar)
+        for (const key of Object.keys(state.dreConfig)) state.dreConfig[key] = state.dreConfig[key].filter(c => isAnalytic(c));
+        // Mapeia na DRE as novas contas de resultado que ainda não estão em nenhum grupo
+        const mapped = new Set(Object.values(state.dreConfig).flat());
+        for (const acc of toAdd) {
+            if (acc.type !== 'Receita' && acc.type !== 'Despesa') continue;
+            if (!isAnalytic(acc.code) || mapped.has(acc.code)) continue;
+            const group = dreGroupFor(acc.code);
+            if (group && state.dreConfig[group]) state.dreConfig[group].push(acc.code);
+        }
+        updateDatalists();
+        renderPlanoContas();
+        persistState();
+        showToast(`${toAdd.length} conta(s) importada(s). Plano com ${state.accounts.length} contas.`);
     });
 };

@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { registerView, navigate, switchConfigTab, toggleSidebar, closeSidebar, closeConfirm, initConfirmModal, refreshIcons, printPage, exportTableCSV } from './ui.js';
 import { toggleAuthMode, handleAuthSubmit, doLogout, watchAuth } from './auth.js';
 import { initUserWorkspaces, createNewWorkspace, openNewWorkspaceModal, closeNewWorkspaceModal, confirmNewWorkspace, loadWorkspace, deleteWorkspace, renderWorkspacesList, setOnWorkspaceLoaded, clearSession } from './workspaces.js';
-import { renderPlanoContas, addAccount, deleteAccount, promptSubAccount, updateDatalists } from './accounts.js';
+import { renderPlanoContas, addAccount, deleteAccount, promptSubAccount, updateDatalists, importDefaultChart } from './accounts.js';
 import { renderCCConfig, addCostCenter, deleteCostCenter } from './costCenters.js';
 import { initNovoLote, cancelEditLote, handleLineContaSearch, handleLineCcSearch, updateLoteLine, onLoteValueInput, addNovoLoteLine, removeLoteLine, saveNovoLote, renderConsultaLotes, toggleBatch, editBatch, deleteBatch } from './lotes.js';
 import { initRazao, renderRazaoContent, renderBalancete, renderBalanco, setPeriod, clearPeriod } from './reports.js';
@@ -37,7 +37,7 @@ Object.assign(window, {
     // atividades
     createNewWorkspace, openNewWorkspaceModal, closeNewWorkspaceModal, confirmNewWorkspace, loadWorkspace, deleteWorkspace,
     // plano de contas
-    addAccount, deleteAccount, promptSubAccount,
+    addAccount, deleteAccount, promptSubAccount, renderPlanoContas, importDefaultChart,
     // centros de custo
     addCostCenter, deleteCostCenter,
     // lotes
