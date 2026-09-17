@@ -9,7 +9,9 @@
 
 const TYPE_BY_GROUP = { 1: 'Ativo', 2: 'Passivo', 3: 'Receita', 4: 'Despesa' };
 
-// Cada linha: [código, nome]. O tipo é derivado do primeiro dígito.
+// Cada linha: [código, nome, função?]. O tipo é derivado do primeiro dígito.
+// Função 'result' = conta de resultado do exercício: não recebe lançamentos manuais;
+// seu saldo é calculado automaticamente (receitas - despesas) nos relatórios.
 const ROWS = [
     // =========================== 1 ATIVO ===========================
     ['1', 'ATIVO'],
@@ -194,17 +196,18 @@ const ROWS = [
     ['2.3.01', 'Capital Social'],
     ['2.3.01.001', 'Capital Social Subscrito'],
     ['2.3.01.002', '(-) Capital Social a Integralizar'],
-    ['2.3.02', 'Reservas'],
-    ['2.3.02.001', 'Reserva Legal'],
-    ['2.3.02.002', 'Reserva de Lucros'],
-    ['2.3.02.003', 'Reserva de Capital'],
-    ['2.3.02.004', 'Reserva para Investimentos'],
-    ['2.3.03', 'Lucros ou Prejuízos Acumulados'],
-    ['2.3.03.001', 'Lucros Acumulados de Exercícios Anteriores'],
-    ['2.3.03.002', '(-) Prejuízos Acumulados'],
-    ['2.3.03.003', '(-) Lucros Distribuídos aos Sócios'],
-    ['2.3.04', 'Ajustes de Avaliação Patrimonial'],
-    ['2.3.04.001', 'Ajustes de Avaliação Patrimonial'],
+    ['2.3.02', 'Superávit ou Déficit do Exercício', 'result'],
+    ['2.3.03', 'Reservas'],
+    ['2.3.03.001', 'Reserva Legal'],
+    ['2.3.03.002', 'Reserva de Lucros'],
+    ['2.3.03.003', 'Reserva de Capital'],
+    ['2.3.03.004', 'Reserva para Investimentos'],
+    ['2.3.04', 'Lucros ou Prejuízos Acumulados'],
+    ['2.3.04.001', 'Lucros Acumulados de Exercícios Anteriores'],
+    ['2.3.04.002', '(-) Prejuízos Acumulados'],
+    ['2.3.04.003', '(-) Lucros Distribuídos aos Sócios'],
+    ['2.3.05', 'Ajustes de Avaliação Patrimonial'],
+    ['2.3.05.001', 'Ajustes de Avaliação Patrimonial'],
 
     // =========================== 3 RECEITAS ===========================
     ['3', 'RECEITAS'],
@@ -368,7 +371,7 @@ const ROWS = [
     ['4.4.01.002', 'Provisão para Contribuição Social (CSLL)'],
 ];
 
-export const FULL_CHART = ROWS.map(([code, name]) => ({ code, name, type: TYPE_BY_GROUP[code[0]] }));
+export const FULL_CHART = ROWS.map(([code, name, role]) => ({ code, name, type: TYPE_BY_GROUP[code[0]], ...(role ? { role } : {}) }));
 
 // Grupo da DRE ao qual cada conta de resultado pertence (por prefixo de código)
 const DRE_RULES = [

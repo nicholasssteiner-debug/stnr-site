@@ -128,7 +128,7 @@ label.lbl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--mu
 .batch-head { display: flex; align-items: center; gap: 1rem; padding: 0.9rem 1rem; cursor: pointer; flex-wrap: wrap; transition: background 0.15s; }
 .batch-head:hover { background: rgba(255, 255, 255, 0.03); }
 .batch-details { padding: 1rem 1.5rem 1.25rem 3rem; background: var(--bg); border-top: 1px solid var(--border); overflow-x: auto; }
-.edit-banner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.4); color: var(--warn); font-size: 0.875rem; }
+.edit-banner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem 1rem; padding: 0.75rem 1rem; border-radius: 0.5rem; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.4); color: var(--warn); font-size: 0.875rem; }
 
 /* ---------- DRE ---------- */
 .dre-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; transition: background 0.15s; }
@@ -175,3 +175,5 @@ label.lbl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--mu
 .chk { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); cursor: pointer; }
 .tbl .row-reconciled td { color: var(--muted); }
 .tbl .row-reconciled td:nth-child(4) { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); }
+.edit-banner > span { flex: 1 1 18rem; }
+.edit-banner .btn { flex-shrink: 0; }

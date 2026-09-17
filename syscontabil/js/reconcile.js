@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { toCents, formatCents, formatDateBR, escapeHtml, applyMoneyMask } from './utils.js';
 import { showToast, refreshIcons } from './ui.js';
 import { persistBatch } from './workspaces.js';
-import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput } from './accounts.js';
+import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput, sortedAccounts } from './accounts.js';
 import { getCostCenterName } from './costCenters.js';
 import { period, periodLabel } from './reports.js';
 
@@ -25,15 +25,30 @@ const collectEntries = (acc) => {
 
 const inPeriod = (date) => (!period.from || date >= period.from) && (!period.to || date <= period.to);
 
+// Só contas do último nível (analíticas) com lançamentos podem ser conciliadas
+const reconcilableAccounts = () => {
+    const used = new Set();
+    for (const b of state.batches) for (const e of b.entries) used.add(e.accountCode);
+    return sortedAccounts().filter(a => used.has(a.code) && !hasChildren(a.code) && a.role !== 'result');
+};
+
 export const initConciliacao = () => {
     document.getElementById('conc-period-label').innerText = periodLabel();
+    document.getElementById('dl-contas-conc').innerHTML = reconcilableAccounts()
+        .map(a => `<option value="${escapeHtml(`${a.code} - ${a.name}`)}"></option>`).join('');
     renderConciliacao();
 };
 
 export const setConciliacaoAccount = (text) => {
     const acc = getAccount(codeFromInput(text));
+    if (acc && hasChildren(acc.code)) {
+        showToast(`${acc.code} é sintética. Escolha a conta do último nível (ex.: a subconta do cliente ou fornecedor).`, 'error');
+        view.accountCode = '';
+        renderConciliacao();
+        return;
+    }
     view.accountCode = acc ? acc.code : '';
-    if (!acc && text.trim()) showToast('Conta não encontrada. Selecione uma opção da lista.', 'error');
+    if (!acc && text.trim()) showToast('Conta não encontrada. Selecione uma conta analítica com lançamentos.', 'error');
     renderConciliacao();
 };
 
@@ -91,7 +106,7 @@ export const renderConciliacao = () => {
     area.classList.remove('hidden');
 
     document.getElementById('conc-acc-info').innerText =
-        `${acc.code} - ${acc.name}${hasChildren(acc.code) ? ' · Visão sintética' : ''} · ${periodLabel()}`;
+        `${acc.code} - ${acc.name} · ${periodLabel()}`;
 
     const all = collectEntries(acc).filter(x => inPeriod(x.batch.date));
     lastItems = all.filter(x =>

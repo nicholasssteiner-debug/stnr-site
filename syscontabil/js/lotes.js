@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { toCents, fromCents, formatCents, formatCentsPlain, applyMoneyMask, todayISO, formatDateBR, escapeHtml, padSeq } from './utils.js';
 import { showToast, showConfirm, navigate, refreshIcons } from './ui.js';
 import { persistBatch, removeBatch } from './workspaces.js';
-import { getAccount, getAccountName, hasChildren, getAnalyticDescendants, codeFromInput } from './accounts.js';
+import { getAccount, getAccountName, hasChildren, getAnalyticDescendants, codeFromInput, isResultAccount } from './accounts.js';
 import { getCostCenter, getCostCenterName } from './costCenters.js';
 
 const form = { editingId: null, lines: [] };
@@ -108,7 +108,7 @@ const renderNovoLoteLines = () => {
         const synthetic = line.accountCode && hasChildren(line.accountCode);
         const subs = synthetic ? getAnalyticDescendants(line.accountCode) : [];
         const subOptions = synthetic
-            ? '<option value="">Selecione a subconta...</option>' + subs.map(s => `<option value="${escapeHtml(s.code)}" ${line.subAccountCode === s.code ? 'selected' : ''}>${escapeHtml(s.code)} - ${escapeHtml(s.name)}</option>`).join('')
+            ? '<option value="">Selecione a subconta...</option>' + subs.filter(s => s.role !== 'result').map(s => `<option value="${escapeHtml(s.code)}" ${line.subAccountCode === s.code ? 'selected' : ''}>${escapeHtml(s.code)} - ${escapeHtml(s.name)}</option>`).join('')
             : '<option value="">Não exigida</option>';
 
         return `
@@ -204,6 +204,7 @@ export const saveNovoLote = async () => {
         if (synthetic && !l.subAccountCode) { showToast(`A conta ${l.accountCode} é sintética: selecione a subconta.`, 'error'); return; }
         const finalCode = synthetic ? l.subAccountCode : l.accountCode;
         if (hasChildren(finalCode)) { showToast(`A conta ${finalCode} é sintética e não aceita lançamentos.`, 'error'); return; }
+        if (isResultAccount(finalCode)) { showToast(`A conta ${finalCode} (resultado do exercício) é automática e não aceita lançamentos manuais.`, 'error'); return; }
         entries.push({ accountCode: finalCode, ccId: l.ccId, type: l.type, value: fromCents(l.cents) });
     }
     if (!totals().balanced) { showToast('Débitos e créditos precisam ser iguais.', 'error'); return; }

@@ -11,6 +11,13 @@ import { FULL_CHART, dreGroupFor } from './chartOfAccounts.js';
 export const getAccount = (code) => state.accounts.find(a => a.code === code);
 export const getAccountName = (code) => getAccount(code)?.name ?? 'Desconhecida';
 
+// Conta de resultado do exercício (Superávit/Déficit): saldo automático, sem lançamentos manuais
+export const getResultAccount = () => state.accounts.find(a => a.role === 'result') || null;
+export const isResultAccount = (code) => getAccount(code)?.role === 'result';
+
+// Conta analítica que já tem lançamentos diretos não pode receber subcontas
+export const hasDirectEntries = (code) => state.batches.some(b => b.entries.some(e => e.accountCode === code));
+
 // true se `code` for igual a `parentCode` ou estiver abaixo dele (1.1.01 ⊂ 1.1, mas 1.10 ⊄ 1.1)
 export const isSelfOrDescendant = (code, parentCode) => code === parentCode || code.startsWith(parentCode + '.');
 
@@ -47,7 +54,7 @@ export const updateDatalists = () => {
     const all = sortedAccounts();
     document.getElementById('dl-contas').innerHTML = all.map(a => opt(a.code, a.name)).join('');
     // No lançamento qualquer conta pode ser digitada; se for sintética, a subconta é exigida.
-    document.getElementById('dl-contas-lancamento').innerHTML = all.map(a => opt(a.code, hasChildren(a.code) ? `${a.name} (sintética)` : a.name)).join('');
+    document.getElementById('dl-contas-lancamento').innerHTML = all.filter(a => a.role !== 'result').map(a => opt(a.code, hasChildren(a.code) ? `${a.name} (sintética)` : a.name)).join('');
     document.getElementById('dl-cc').innerHTML = state.costCenters.map(c => opt(c.id, c.name)).join('');
 };
 
@@ -75,6 +82,17 @@ export const renderPlanoContas = () => {
     const countEl = document.getElementById('plano-count');
     if (countEl) countEl.innerText = search ? `${accounts.length} de ${all.length} conta(s)` : `${all.length} conta(s) · ${all.filter(a => isAnalytic(a.code)).length} analíticas`;
 
+    // Aviso quando a atividade ainda usa um plano reduzido ou não tem a conta de resultado
+    const banner = document.getElementById('plano-import-banner');
+    if (banner) {
+        const missing = FULL_CHART.filter(a => !all.some(b => b.code === a.code)).length;
+        const noResult = !getResultAccount();
+        banner.classList.toggle('hidden', missing < 50 && !noResult);
+        document.getElementById('plano-import-banner-text').innerText = noResult && missing < 50
+            ? 'Esta atividade não tem a conta automática "Superávit ou Déficit do Exercício". Importe o plano padrão para criá-la.'
+            : `Esta atividade tem ${all.length} conta(s); o plano padrão completo (comércio + serviços) tem ${FULL_CHART.length}. Importar acrescenta só o que falta, sem alterar as contas atuais.`;
+    }
+
     if (accounts.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="empty">${all.length ? 'Nenhuma conta encontrada.' : 'Nenhuma conta cadastrada.'}</td></tr>`;
         return;
@@ -85,6 +103,10 @@ export const renderPlanoContas = () => {
         const synthetic = hasChildren(acc.code);
         const entries = countAccountEntries(acc.code);
         const badge = { Ativo: 'badge-green', Passivo: 'badge-orange', Receita: 'badge-blue', Despesa: 'badge-red' }[acc.type] || 'badge-gray';
+        const isResult = acc.role === 'result';
+        // Conta do último nível com lançamentos (ou a conta automática) não pode ganhar subcontas
+        const subBlocked = isResult || (!synthetic && entries > 0);
+        const subTitle = isResult ? 'Conta automática: não recebe subcontas' : subBlocked ? 'Conta com lançamentos não pode receber subcontas' : 'Adicionar Subconta';
         return `
             <tr class="${synthetic ? 'row-synth' : ''}">
                 <td class="font-mono" style="padding-left:${0.75 + (level - 1) * 0.9}rem">${escapeHtml(acc.code)}</td>
@@ -92,10 +114,11 @@ export const renderPlanoContas = () => {
                 <td>
                     <span class="badge ${badge}">${escapeHtml(acc.type)}</span>
                     ${synthetic ? '<span class="muted text-xs italic ml-2">Sintética</span>' : ''}
+                    ${isResult ? '<span class="badge badge-accent ml-2" title="Saldo calculado automaticamente: receitas − despesas">Automática</span>' : ''}
                     ${entries ? `<span class="muted text-xs ml-2" title="Lançamentos vinculados">${entries} lçto(s)</span>` : ''}
                 </td>
                 <td class="text-center whitespace-nowrap">
-                    <button onclick="promptSubAccount('${escapeHtml(acc.code)}', '${escapeHtml(acc.type)}')" class="icon-btn" title="Adicionar Subconta"><i data-lucide="plus-square" class="w-4 h-4"></i></button>
+                    <button onclick="promptSubAccount('${escapeHtml(acc.code)}', '${escapeHtml(acc.type)}')" class="icon-btn" title="${subTitle}" ${subBlocked ? 'disabled' : ''}><i data-lucide="plus-square" class="w-4 h-4"></i></button>
                     <button onclick="deleteAccount('${escapeHtml(acc.code)}')" class="icon-btn danger" title="${entries ? 'Conta com lançamentos não pode ser excluída' : 'Excluir Conta'}" ${entries ? 'disabled' : ''}><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                 </td>
             </tr>`;
@@ -139,8 +162,12 @@ export const addAccount = (e) => {
     const parentCode = code.includes('.') ? code.slice(0, code.lastIndexOf('.')) : null;
     if (parentCode) {
         const parent = getAccount(parentCode);
-        if (parent && isAnalytic(parentCode) && state.batches.some(b => b.entries.some(en => en.accountCode === parentCode))) {
+        if (parent && isAnalytic(parentCode) && hasDirectEntries(parentCode)) {
             showToast(`A conta ${parentCode} já possui lançamentos diretos e não pode receber subcontas.`, 'error');
+            return;
+        }
+        if (parent && parent.role === 'result') {
+            showToast('A conta de resultado do exercício é automática e não recebe subcontas.', 'error');
             return;
         }
         if (parent && parent.type !== type) {

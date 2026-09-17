@@ -3,7 +3,7 @@
 import { state } from './state.js';
 import { toCents, formatCents, formatDateBR, escapeHtml } from './utils.js';
 import { navigate } from './ui.js';
-import { getAccount, sortedAccounts, hasChildren, isSelfOrDescendant, isDebitNature, isReducing, codeFromInput } from './accounts.js';
+import { getAccount, sortedAccounts, hasChildren, isSelfOrDescendant, isDebitNature, isReducing, codeFromInput, getResultAccount } from './accounts.js';
 
 // ---------- Período ----------
 export const period = { from: '', to: '' };
@@ -77,6 +77,21 @@ export const renderRazaoContent = () => {
 
     const tbody = document.getElementById('razao-tbody');
     const rows = [];
+
+    // Conta automática: o saldo é o resultado (receitas − despesas), não há partidas próprias
+    if (acc.role === 'result') {
+        const anterior = computeResult(getOpeningBatches());
+        const doPeriodo = computeResult(getPeriodBatches());
+        const final = anterior + doPeriodo;
+        if (period.from) rows.push(`<tr class="row-synth"><td>${formatDateBR(period.from)}</td><td>--</td><td>Resultado acumulado anterior</td><td></td><td></td><td class="text-right">${balanceWithSuffix(acc, anterior)}</td></tr>`);
+        rows.push(`<tr><td>${period.to ? formatDateBR(period.to) : '--'}</td><td>--</td><td>Resultado do período (receitas − despesas) <span class="badge badge-accent">auto</span></td><td class="text-right">${doPeriodo < 0 ? formatCents(-doPeriodo) : ''}</td><td class="text-right">${doPeriodo > 0 ? formatCents(doPeriodo) : ''}</td><td class="text-right font-medium">${balanceWithSuffix(acc, final)}</td></tr>`);
+        rows.push('<tr><td colspan="6" class="empty">Conta automática: não recebe lançamentos manuais. Veja o detalhe na DRE.</td></tr>');
+        tbody.innerHTML = rows.join('');
+        document.getElementById('razao-t-deb').innerText = formatCents(doPeriodo < 0 ? -doPeriodo : 0);
+        document.getElementById('razao-t-cre').innerText = formatCents(doPeriodo > 0 ? doPeriodo : 0);
+        document.getElementById('razao-t-sal').innerText = balanceWithSuffix(acc, final);
+        return;
+    }
 
     // Saldo anterior ao período
     const opening = sumAccount(getOpeningBatches(), acc.code);
@@ -157,31 +172,48 @@ export const renderBalancete = () => {
     diffEl.classList.toggle('text-danger', diff !== 0);
 };
 
+// ---------- Resultado do exercício (receitas − despesas), em centavos ----------
+export const computeResult = (batches) => {
+    let resultado = 0;
+    for (const b of batches) for (const e of b.entries) {
+        const acc = getAccount(e.accountCode);
+        if (!acc) continue;
+        const cents = toCents(e.value);
+        if (acc.type === 'Receita') resultado += e.type === 'C' ? cents : -cents;
+        else if (acc.type === 'Despesa') resultado -= e.type === 'D' ? cents : -cents;
+    }
+    return resultado;
+};
+
 // ---------- Balanço Patrimonial ----------
 export const renderBalanco = () => {
     const content = document.getElementById('balanco-content');
     const batches = getBatchesUntil();
     document.getElementById('balanco-period-label').innerText = period.to ? `Posição em ${formatDateBR(period.to)}` : 'Posição atual (todos os lançamentos)';
 
-    let totalAtivo = 0, totalPassivo = 0, resultado = 0;
+    const resultado = computeResult(batches);
+    const resultAcc = getResultAccount();
+
+    let totalAtivo = 0, totalPassivo = 0;
     const ativo = [], passivo = [];
 
     for (const acc of sortedAccounts()) {
         const { d, c } = sumAccount(batches, acc.code);
-        if (d === 0 && c === 0) continue;
         const synthetic = hasChildren(acc.code);
+        // A conta de resultado (e suas contas-pai) recebe o resultado automaticamente
+        const carriesResult = resultAcc && acc.type === 'Passivo' && isSelfOrDescendant(resultAcc.code, acc.code);
+        if (d === 0 && c === 0 && !carriesResult) continue;
 
         // Somente analíticas entram nos totais (as sintéticas já as agregam)
         if (!synthetic) {
             if (acc.type === 'Ativo') totalAtivo += d - c;
             else if (acc.type === 'Passivo') totalPassivo += c - d;
-            else if (acc.type === 'Receita') resultado += c - d;
-            else if (acc.type === 'Despesa') resultado -= d - c;
         }
 
         // Valor exibido no grupo: redutoras aparecem negativas
-        const shown = acc.type === 'Ativo' ? d - c : c - d;
-        const line = { code: acc.code, name: acc.name, val: shown, reducing: isReducing(acc), synthetic, level: acc.code.split('.').length };
+        let shown = acc.type === 'Ativo' ? d - c : c - d;
+        if (carriesResult) shown += resultado;
+        const line = { code: acc.code, name: acc.name, val: shown, reducing: isReducing(acc), synthetic, level: acc.code.split('.').length, auto: acc.role === 'result' };
         if (acc.type === 'Ativo') ativo.push(line);
         else if (acc.type === 'Passivo') passivo.push(line);
     }
@@ -190,9 +222,13 @@ export const renderBalanco = () => {
         ? '<tr><td colspan="2" class="empty">Nenhum saldo.</td></tr>'
         : lines.map(l => `
             <tr class="${l.synthetic ? 'row-synth' : ''}">
-                <td style="padding-left:${0.75 + (l.level - 1) * 0.9}rem" class="${l.reducing ? 'muted' : ''}">${escapeHtml(l.code)} - ${escapeHtml(l.name)}</td>
+                <td style="padding-left:${0.75 + (l.level - 1) * 0.9}rem" class="${l.reducing ? 'muted' : ''}">${escapeHtml(l.code)} - ${escapeHtml(l.name)}${l.auto ? ' <span class="badge badge-accent" title="Receitas − despesas do período">auto</span>' : ''}</td>
                 <td class="text-right ${l.val < 0 ? 'text-danger' : ''}">${formatCents(l.val)}</td>
             </tr>`).join('');
+
+    // Sem conta automática no plano, o resultado aparece como linha avulsa do PL
+    const fallbackRow = resultAcc ? '' :
+        `<tr class="row-synth"><td>Resultado do Exercício (Receitas − Despesas) <span class="muted text-xs">— importe o plano padrão para ter a conta "Superávit ou Déficit do Exercício"</span></td><td class="text-right ${resultado < 0 ? 'text-danger' : 'text-accent'}">${formatCents(resultado)}</td></tr>`;
 
     const totalPL = totalPassivo + resultado;
     const fechado = totalAtivo === totalPL;
@@ -206,12 +242,7 @@ export const renderBalanco = () => {
             </div>
             <div>
                 <div class="group-title">Passivo e Patrimônio Líquido</div>
-                <table class="tbl compact" id="balanco-passivo-table">
-                    <tbody>
-                        ${renderLines(passivo)}
-                        <tr class="row-synth"><td>Resultado do Exercício (Receitas - Despesas)</td><td class="text-right ${resultado < 0 ? 'text-danger' : 'text-accent'}">${formatCents(resultado)}</td></tr>
-                    </tbody>
-                </table>
+                <table class="tbl compact" id="balanco-passivo-table"><tbody>${renderLines(passivo)}${fallbackRow}</tbody></table>
                 <div class="total-bar"><span>Total Passivo + PL</span><span>${formatCents(totalPL)}</span></div>
             </div>
         </div>

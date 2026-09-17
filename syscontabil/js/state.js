@@ -70,7 +70,9 @@ export const normalizeState = (raw, fallbackName = 'Sem Nome') => {
     return {
         workspaceName: s.workspaceName || fallbackName,
         activeTab: s.activeTab || def.activeTab,
-        accounts: Array.isArray(s.accounts) && s.accounts.length ? s.accounts.map(a => ({ code: String(a.code), name: String(a.name || ''), type: a.type || 'Ativo' })) : def.accounts,
+        accounts: Array.isArray(s.accounts) && s.accounts.length
+            ? s.accounts.map(a => ({ code: String(a.code), name: String(a.name || ''), type: a.type || 'Ativo', ...(a.role ? { role: a.role } : {}) }))
+            : def.accounts,
         batches,
         dreConfig,
         costCenters: Array.isArray(s.costCenters) && s.costCenters.length ? s.costCenters.map(c => ({ id: String(c.id), name: String(c.name || '') })) : def.costCenters,

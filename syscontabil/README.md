@@ -14,7 +14,7 @@ syscontabil/
     main.js               ponto de entrada: registra telas e expõe handlers no window
     firebase.js           inicialização do Firebase (Auth + Firestore)
     state.js              estado compartilhado, valores padrão e normalização
-    chartOfAccounts.js    plano de contas padrão (339 contas, comércio + serviços) e mapeamento da DRE
+    chartOfAccounts.js    plano de contas padrão (340 contas, comércio + serviços) e mapeamento da DRE
     utils.js              dinheiro em centavos, máscara 1.234,56, datas locais, escape HTML
     ui.js                 toasts, modal de confirmação, navegação, menu mobile, CSV/impressão
     auth.js               login / cadastro
@@ -54,11 +54,18 @@ workspaces ─► firebase, state, utils, ui
   analítica, em qualquer profundidade do plano.
 - Número de lote vem de um contador persistido (`nextBatchSeq`); IDs nunca se repetem,
   mesmo após exclusões.
+- Conta automática "Superávit ou Déficit do Exercício" (`role: 'result'`, 2.3.02, logo após o
+  Capital Social): não aceita lançamentos manuais nem subcontas; no Balanço e no Razão seu
+  saldo é receitas − despesas até a data. Sem ela no plano, o Balanço mostra a linha avulsa.
+- Subcontas: conta do último nível que já tem lançamentos diretos não pode receber
+  subcontas (botão "+" desabilitado e validação no cadastro/importação).
+- Conciliação só em contas do último nível (analíticas) com lançamentos; contas sintéticas
+  são recusadas. Razão e Balancete funcionam em qualquer nível (o sintético agrega as filhas).
 - Conciliação: cada partida pode ser marcada como conciliada (`reconciled`, `reconciledAt`
   gravados no lote). A tela compara o saldo conciliado com o saldo do extrato e lista
   as partidas pendentes; a marcação sobrevive à edição do lote quando conta, D/C e
   valor não mudam.
-- Plano de contas padrão (`chartOfAccounts.js`): 4 níveis (1.1.01.001), 339 contas, cobre
+- Plano de contas padrão (`chartOfAccounts.js`): 4 níveis (1.1.01.001), 340 contas, cobre
   Ativo/Passivo/PL, receitas de vendas e de serviços, deduções, CMV, CSP, despesas por
   natureza, resultado financeiro e IRPJ/CSLL. `validateChart` garante pai existente, tipo
   igual ao do pai e códigos únicos; `buildDreConfig` mapeia cada analítica de resultado
