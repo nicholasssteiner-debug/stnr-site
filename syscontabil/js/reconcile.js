@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { toCents, formatCents, formatDateBR, escapeHtml, applyMoneyMask } from './utils.js';
 import { showToast, refreshIcons } from './ui.js';
 import { persistBatch } from './workspaces.js';
-import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput, getStandardAccounts, STANDARD_DEPTH } from './accounts.js';
+import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput, getStandardAccounts, getSubAccounts, displayCode } from './accounts.js';
 import { getCostCenterName } from './costCenters.js';
 import { period, periodLabel, entryInScope, refreshCcSelectors, fillSubAccountSelect } from './reports.js';
 
@@ -39,9 +39,9 @@ const usedCodes = () => {
 // Contas do padrão que têm lançamentos (nelas ou nas suas subcontas)
 const reconcilableContas = () => {
     const used = usedCodes();
-    // Analíticas, ou contas do 4º nível que contêm subcontas (grupos como "1.1" não entram)
+    // Analíticas, ou contas que têm subcontas (grupos como "1.1" não entram)
     return getStandardAccounts().filter(a => a.role !== 'result'
-        && (!hasChildren(a.code) || a.code.split('.').length === STANDARD_DEPTH)
+        && (!hasChildren(a.code) || getSubAccounts(a.code).length > 0)
         && [...used].some(c => isSelfOrDescendant(c, a.code)));
 };
 
@@ -133,7 +133,7 @@ export const renderConciliacao = () => {
     area.classList.remove('hidden');
 
     document.getElementById('conc-acc-info').innerText =
-        `${acc.code} - ${acc.name} · ${periodLabel()}`;
+        `${acc.sub ? `Subconta ${acc.sub} de ${acc.parent}` : `Conta ${acc.code}`} - ${acc.name} · ${periodLabel()}`;
 
     const all = collectEntries(acc).filter(x => inPeriod(x.batch.date));
     lastItems = all.filter(x =>
@@ -153,7 +153,7 @@ export const renderConciliacao = () => {
                     <td class="text-center"><input type="checkbox" class="chk" ${rec ? 'checked' : ''} onchange="toggleReconcile('${escapeHtml(batch.id)}', ${index}, this.checked)" title="${rec ? 'Conciliada em ' + new Date(entry.reconciledAt || 0).toLocaleDateString('pt-BR') : 'Marcar como conciliada'}"></td>
                     <td>${formatDateBR(batch.date)}</td>
                     <td class="font-mono">${escapeHtml(batch.id)}</td>
-                    <td>${escapeHtml(batch.description)}${entry.accountCode !== acc.code ? ` <span class="muted">(${escapeHtml(entry.accountCode)})</span>` : ''}</td>
+                    <td>${escapeHtml(batch.description)}${entry.accountCode !== acc.code ? ` <span class="muted">(${escapeHtml(displayCode(entry.accountCode))})</span>` : ''}</td>
                     <td class="muted text-xs">${escapeHtml(entry.ccId)} - ${escapeHtml(getCostCenterName(entry.ccId))}</td>
                     <td class="text-right">${entry.type === 'D' ? formatCents(cents) : ''}</td>
                     <td class="text-right">${entry.type === 'C' ? formatCents(cents) : ''}</td>

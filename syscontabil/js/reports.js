@@ -6,7 +6,7 @@
 import { state } from './state.js';
 import { toCents, formatCents, formatDateBR, escapeHtml } from './utils.js';
 import { navigate } from './ui.js';
-import { getAccount, sortedAccounts, hasChildren, isSelfOrDescendant, isDebitNature, isReducing, codeFromInput, getResultAccount, getSubAccounts, isSubAccountCode } from './accounts.js';
+import { getAccount, sortedAccounts, hasChildren, isSelfOrDescendant, isDebitNature, isReducing, codeFromInput, getResultAccount, getSubAccounts, isSubAccountCode, displayCode } from './accounts.js';
 
 // ---------- Filtros ----------
 export const period = { from: '', to: '', cc: '' };   // cc vazio = departamento 0 (todos)
@@ -107,7 +107,7 @@ export const fillSubAccountSelect = (selectEl, contaCode, { onlyWithEntries = fa
     }
     if (subs.length === 0) { selectEl.innerHTML = '<option value="">Não possui subcontas</option>'; selectEl.disabled = true; return 0; }
     selectEl.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + subs.map(a =>
-        `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} - ${escapeHtml(a.name)}${hasChildren(a.code) ? ' (sintética)' : ''}</option>`).join('');
+        `<option value="${escapeHtml(a.code)}">${escapeHtml(displayCode(a.code))} - ${escapeHtml(a.name)}</option>`).join('');
     selectEl.disabled = false;
     return subs.length;
 };
@@ -140,7 +140,7 @@ export const renderRazaoContent = () => {
 
     const debitNature = isDebitNature(acc);
     document.getElementById('razao-acc-info').innerText =
-        `${isSubAccountCode(acc.code) ? 'Subconta' : 'Conta'} ${acc.code} - ${acc.name} · Natureza ${debitNature ? 'Devedora' : 'Credora'}${hasChildren(acc.code) ? ' · Visão sintética (soma das subcontas)' : ''} · ${periodLabel()}`;
+        `${isSubAccountCode(acc.code) ? `Subconta ${acc.sub} de ${acc.parent}` : `Conta ${acc.code}`} - ${acc.name} · Natureza ${debitNature ? 'Devedora' : 'Credora'}${hasChildren(acc.code) ? ' · Visão sintética (soma das subcontas)' : ''} · ${periodLabel()}`;
 
     const tbody = document.getElementById('razao-tbody');
     const rows = [];
@@ -176,7 +176,7 @@ export const renderRazaoContent = () => {
             if (e.type === 'D') tD += cents; else tC += cents;
             running += (e.type === 'D') === debitNature ? cents : -cents;
             const desc = escapeHtml(batch.description)
-                + (e.accountCode !== acc.code ? ` <span class="muted">(${escapeHtml(e.accountCode)})</span>` : '')
+                + (e.accountCode !== acc.code ? ` <span class="muted">(${escapeHtml(displayCode(e.accountCode))})</span>` : '')
                 + (batch.kind === 'closing' ? ' <span class="badge badge-gray">encerramento</span>' : '')
                 + (e.reconciled ? ' <span class="badge badge-green" title="Partida conciliada">✓</span>' : '');
             rows.push(`
@@ -244,7 +244,7 @@ export const renderBalancete = () => {
         const level = acc.code.split('.').length;
         const synthetic = hasChildren(acc.code);
         const sub = isSubAccountCode(acc.code);
-        line(acc, escapeHtml(acc.code), escapeHtml(acc.name), openBal, mov, level,
+        line(acc, escapeHtml(sub ? acc.sub : acc.code), escapeHtml(acc.name), openBal, mov, level,
             synthetic ? 'row-synth' : (sub ? 'row-sub' : ''),
             (sub ? ' <span class="badge badge-gray" title="Subconta (criada abaixo do padrão 0.0.00.000)">subconta</span>' : '')
             + (byDept && !synthetic ? ' <span class="muted text-xs">(depto 0 - total)</span>' : ''));

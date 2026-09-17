@@ -116,16 +116,20 @@
                 <div class="card mb-6">
                     <div class="card-head">
                         <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-                            <h3 class="text-lg font-medium">Adicionar Nova Conta</h3>
-                            <span class="text-xs muted"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i>O código é fixo: contas não são renumeradas e contas com lançamentos não podem ser excluídas.</span>
+                            <h3 class="text-lg font-medium" id="acc-form-title">Adicionar Conta (plano padrão)</h3>
+                            <span class="text-xs muted"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i>Aqui se criam <strong>contas</strong> do plano (código 0.0.00.000). Para clientes, fornecedores, funcionários etc., use o <strong>+</strong> ao lado da conta: cria uma <strong>subconta</strong> com código livre (ex.: 1234).</span>
+                        </div>
+                        <div id="acc-sub-banner" class="edit-banner mb-4 hidden">
+                            <span><i data-lucide="corner-down-right" class="w-4 h-4 inline mr-1"></i> Criando <strong>subconta</strong> de <strong id="acc-sub-parent"></strong> — o código é livre e fica dentro dessa conta.</span>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="cancelSubAccountMode()">Voltar para conta</button>
                         </div>
                         <form id="form-add-conta" onsubmit="addAccount(event)" class="flex flex-wrap md:flex-nowrap gap-4 items-end">
                             <div class="w-full md:w-1/4">
-                                <label class="lbl" for="acc-code">Código</label>
+                                <label class="lbl" for="acc-code" id="acc-code-label">Código da conta (padrão 0.0.00.000)</label>
                                 <input required type="text" id="acc-code" placeholder="Ex.: 1.1.03" class="input font-mono" autocomplete="off">
                             </div>
                             <div class="w-full md:w-2/4">
-                                <label class="lbl" for="acc-name">Nome da Conta</label>
+                                <label class="lbl" for="acc-name">Nome</label>
                                 <input required type="text" id="acc-name" placeholder="Ex.: Aplicações Financeiras" class="input" autocomplete="off">
                             </div>
                             <div class="w-full md:w-1/4">
@@ -137,7 +141,7 @@
                                     <option value="Despesa">Despesa</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-primary h-[38px] w-full md:w-auto"><i data-lucide="plus" class="w-[18px] h-[18px]"></i> Adicionar</button>
+                            <button type="submit" class="btn btn-primary h-[38px] w-full md:w-auto"><i data-lucide="plus" class="w-[18px] h-[18px]"></i> <span id="acc-submit-text">Adicionar conta</span></button>
                         </form>
                     </div>
                     <div id="plano-import-banner" class="edit-banner mx-4 mt-4 hidden">

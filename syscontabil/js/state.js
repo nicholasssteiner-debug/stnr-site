@@ -71,7 +71,12 @@ export const normalizeState = (raw, fallbackName = 'Sem Nome') => {
         workspaceName: s.workspaceName || fallbackName,
         activeTab: s.activeTab || def.activeTab,
         accounts: Array.isArray(s.accounts) && s.accounts.length
-            ? s.accounts.map(a => ({ code: String(a.code), name: String(a.name || ''), type: a.type || 'Ativo', ...(a.role ? { role: a.role } : {}) }))
+            ? s.accounts.map(a => ({
+                code: String(a.code), name: String(a.name || ''), type: a.type || 'Ativo',
+                ...(a.role ? { role: a.role } : {}),
+                // subconta: código livre + conta-mãe (o código interno é parent.sub)
+                ...(a.sub ? { sub: String(a.sub), parent: String(a.parent || a.code.slice(0, a.code.lastIndexOf('.'))) } : {}),
+            }))
             : def.accounts,
         batches,
         dreConfig,

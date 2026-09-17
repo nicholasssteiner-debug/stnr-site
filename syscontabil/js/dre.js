@@ -2,7 +2,7 @@
 import { state, DRE_GROUPS } from './state.js';
 import { toCents, formatCents, escapeHtml, compareCodes } from './utils.js';
 import { persistState } from './workspaces.js';
-import { getAccountName, getAnalyticAccounts, isSelfOrDescendant } from './accounts.js';
+import { getAccountName, getStandardAccounts, isAnalytic, getChildAccounts, isSelfOrDescendant, displayCode } from './accounts.js';
 import { getPeriodBatches, periodLabel, entryInScope, refreshCcSelectors } from './reports.js';
 
 // Saldo (centavos) das contas listadas, na natureza do grupo: 'C' soma créditos, 'D' soma débitos
@@ -16,14 +16,16 @@ const groupBalance = (codes, nature, batches) => {
     return total;
 };
 
-// Grupo em que a conta está alocada (ou null)
-const groupOf = (code) => DRE_GROUPS.find(g => state.dreConfig[g.id].includes(code))?.id ?? null;
+// Grupo em que a conta está alocada (ou null). Subcontas herdam o grupo da conta-mãe.
+const groupOf = (code) => DRE_GROUPS.find(g => state.dreConfig[g.id].some(c => isSelfOrDescendant(code, c)))?.id ?? null;
 
 // ---------- Configuração ----------
 export const renderConfiguracaoDRE = () => {
     const grid = document.getElementById('configuracao-grid');
-    const resultAccounts = getAnalyticAccounts()
-        .filter(a => a.type === 'Receita' || a.type === 'Despesa')
+    // Contas de resultado mapeáveis: analíticas ou contas cujas filhas são só subcontas
+    // (as subcontas não aparecem aqui: herdam o grupo da conta)
+    const resultAccounts = getStandardAccounts()
+        .filter(a => (a.type === 'Receita' || a.type === 'Despesa') && (isAnalytic(a.code) || getChildAccounts(a.code).every(c => c.sub)))
         .sort((a, b) => compareCodes(a.code, b.code));
 
     const unallocated = resultAccounts.filter(a => !groupOf(a.code));
@@ -93,7 +95,7 @@ export const renderDRE = () => {
         // Só detalha contas com movimento no período (o plano completo tem centenas de contas)
         return state.dreConfig[groupId].map(code => {
             const v = groupBalance([code], g.nature, batches);
-            return v === 0 ? '' : `<tr class="dre-detail"><td>${escapeHtml(code)} - ${escapeHtml(getAccountName(code))}</td><td class="text-right ${v < 0 ? 'text-danger' : ''}">${formatCents(v)}</td></tr>`;
+            return v === 0 ? '' : `<tr class="dre-detail"><td>${escapeHtml(displayCode(code))} - ${escapeHtml(getAccountName(code))}</td><td class="text-right ${v < 0 ? 'text-danger' : ''}">${formatCents(v)}</td></tr>`;
         }).join('');
     };
 

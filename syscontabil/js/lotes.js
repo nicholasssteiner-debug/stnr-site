@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { toCents, fromCents, formatCents, formatCentsPlain, applyMoneyMask, todayISO, formatDateBR, escapeHtml, padSeq } from './utils.js';
 import { showToast, showConfirm, navigate, refreshIcons } from './ui.js';
 import { persistBatch, removeBatch } from './workspaces.js';
-import { getAccount, getAccountName, hasChildren, getAnalyticDescendants, codeFromInput, isResultAccount } from './accounts.js';
+import { getAccount, getAccountName, hasChildren, getAnalyticDescendants, codeFromInput, isResultAccount, displayCode } from './accounts.js';
 import { getCostCenter, getCostCenterName } from './costCenters.js';
 
 const form = { editingId: null, lines: [] };
@@ -16,15 +16,8 @@ const newLine = (type) => ({ id: ++lineSeq, accountCode: '', subAccountCode: '',
 const ccText = (id) => id ? `${id} - ${getCostCenterName(id)}` : '';
 const accText = (code) => code ? `${code} - ${getAccountName(code)}` : '';
 
-// Procura o pai "principal" (primeira conta sintética acima de `code`) para preencher o formulário na edição
-const findMainParent = (code) => {
-    const parts = code.split('.');
-    for (let i = 1; i < parts.length; i++) {
-        const candidate = parts.slice(0, i).join('.');
-        if (getAccount(candidate) && hasChildren(candidate)) return candidate;
-    }
-    return null;
-};
+// Na edição: uma subconta volta para o formulário como Conta (a mãe) + Subconta
+const findMainParent = (code) => getAccount(code)?.parent || null;
 
 // Próximo ID livre (não reaproveita números mesmo após exclusões)
 const nextBatchId = () => {
@@ -108,7 +101,7 @@ const renderNovoLoteLines = () => {
         const synthetic = line.accountCode && hasChildren(line.accountCode);
         const subs = synthetic ? getAnalyticDescendants(line.accountCode) : [];
         const subOptions = synthetic
-            ? '<option value="">Selecione a subconta...</option>' + subs.filter(s => s.role !== 'result').map(s => `<option value="${escapeHtml(s.code)}" ${line.subAccountCode === s.code ? 'selected' : ''}>${escapeHtml(s.code)} - ${escapeHtml(s.name)}</option>`).join('')
+            ? '<option value="">Selecione a subconta...</option>' + subs.filter(s => s.role !== 'result').map(s => `<option value="${escapeHtml(s.code)}" ${line.subAccountCode === s.code ? 'selected' : ''}>${escapeHtml(displayCode(s.code))} - ${escapeHtml(s.name)}</option>`).join('')
             : '<option value="">Não exigida</option>';
 
         return `
@@ -263,7 +256,7 @@ export const renderConsultaLotes = () => {
                     <tbody>
                         ${batch.entries.map(e => `
                             <tr>
-                                <td class="font-mono">${escapeHtml(e.accountCode)}</td>
+                                <td class="font-mono" title="${escapeHtml(e.accountCode)}">${escapeHtml(displayCode(e.accountCode))}</td>
                                 <td>${escapeHtml(getAccountName(e.accountCode))}</td>
                                 <td class="muted text-xs">${escapeHtml(e.ccId)} - ${escapeHtml(getCostCenterName(e.ccId))}</td>
                                 <td class="text-center"><span class="badge ${e.type === 'D' ? 'badge-blue' : 'badge-orange'}">${e.type}</span></td>
