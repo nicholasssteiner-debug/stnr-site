@@ -6,7 +6,7 @@ import { showToast, refreshIcons } from './ui.js';
 import { persistBatch } from './workspaces.js';
 import { getAccount, hasChildren, isSelfOrDescendant, isDebitNature, codeFromInput, sortedAccounts } from './accounts.js';
 import { getCostCenterName } from './costCenters.js';
-import { period, periodLabel } from './reports.js';
+import { period, periodLabel, entryInScope, refreshCcSelectors } from './reports.js';
 
 const view = { accountCode: '', filter: 'todas', statementCents: 0 };
 
@@ -17,7 +17,7 @@ const collectEntries = (acc) => {
     const list = [];
     for (const batch of [...state.batches].sort(sortChrono)) {
         batch.entries.forEach((entry, index) => {
-            if (isSelfOrDescendant(entry.accountCode, acc.code)) list.push({ batch, entry, index });
+            if (isSelfOrDescendant(entry.accountCode, acc.code) && entryInScope(entry)) list.push({ batch, entry, index });
         });
     }
     return list;
@@ -33,6 +33,7 @@ const reconcilableAccounts = () => {
 };
 
 export const initConciliacao = () => {
+    refreshCcSelectors();
     document.getElementById('conc-period-label').innerText = periodLabel();
     document.getElementById('dl-contas-conc').innerHTML = reconcilableAccounts()
         .map(a => `<option value="${escapeHtml(`${a.code} - ${a.name}`)}"></option>`).join('');

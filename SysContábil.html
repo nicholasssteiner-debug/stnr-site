@@ -57,6 +57,7 @@
     <datalist id="dl-contas-lancamento"></datalist>
     <datalist id="dl-cc"></datalist>
     <datalist id="dl-contas-conc"></datalist>
+    <datalist id="dl-contas-pl"></datalist>
 
     <!-- ===================== Menu lateral ===================== -->
     <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/60 z-30 md:hidden" onclick="closeSidebar()"></div>
@@ -257,7 +258,8 @@
                     <div class="period-bar no-print">
                         <div><label class="lbl">De</label><input type="date" class="input period-from" onchange="setPeriod('from', this.value)"></div>
                         <div><label class="lbl">Até</label><input type="date" class="input period-to" onchange="setPeriod('to', this.value)"></div>
-                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar período</button>
+                        <div><label class="lbl">Departamento</label><select class="input period-cc" onchange="setCostCenter(this.value)"><option value="">0 - Todos (totalizador)</option></select></div>
+                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar filtros</button>
                         <div class="ml-auto flex gap-2">
                             <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('conc-table', 'conciliacao.csv')"><i data-lucide="download" class="w-4 h-4"></i> CSV</button>
                             <button class="btn btn-ghost btn-sm" onclick="printPage()"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
@@ -327,7 +329,8 @@
                     <div class="period-bar no-print">
                         <div><label class="lbl">De</label><input type="date" class="input period-from" onchange="setPeriod('from', this.value)"></div>
                         <div><label class="lbl">Até</label><input type="date" class="input period-to" onchange="setPeriod('to', this.value)"></div>
-                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar período</button>
+                        <div><label class="lbl">Departamento</label><select class="input period-cc" onchange="setCostCenter(this.value)"><option value="">0 - Todos (totalizador)</option></select></div>
+                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar filtros</button>
                         <div class="ml-auto flex gap-2">
                             <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('razao-table', 'razao.csv')"><i data-lucide="download" class="w-4 h-4"></i> CSV</button>
                             <button class="btn btn-ghost btn-sm" onclick="printPage()"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
@@ -352,6 +355,7 @@
                                     <th class="w-28">Data</th>
                                     <th class="w-32">Lote</th>
                                     <th>Histórico</th>
+                                    <th class="w-20">Depto</th>
                                     <th class="w-36 text-right">Débito</th>
                                     <th class="w-36 text-right">Crédito</th>
                                     <th class="w-40 text-right">Saldo</th>
@@ -360,7 +364,7 @@
                             <tbody id="razao-tbody"></tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="3" class="text-right muted uppercase text-xs">Totais do período</td>
+                                    <td colspan="4" class="text-right muted uppercase text-xs">Totais do período</td>
                                     <td id="razao-t-deb" class="text-right">R$ 0,00</td>
                                     <td id="razao-t-cre" class="text-right">R$ 0,00</td>
                                     <td id="razao-t-sal" class="text-right text-accent text-base">R$ 0,00</td>
@@ -377,7 +381,8 @@
                     <div class="period-bar no-print">
                         <div><label class="lbl">De</label><input type="date" class="input period-from" onchange="setPeriod('from', this.value)"></div>
                         <div><label class="lbl">Até</label><input type="date" class="input period-to" onchange="setPeriod('to', this.value)"></div>
-                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar período</button>
+                        <div><label class="lbl">Departamento</label><select class="input period-cc" onchange="setCostCenter(this.value)"><option value="">0 - Todos (totalizador)</option></select></div>
+                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar filtros</button>
                         <div class="ml-auto flex gap-2">
                             <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('balancete-table', 'balancete.csv')"><i data-lucide="download" class="w-4 h-4"></i> CSV</button>
                             <button class="btn btn-ghost btn-sm" onclick="printPage()"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
@@ -386,6 +391,7 @@
                     <div class="report-head">
                         <h2>Balancete de Verificação</h2>
                         <p id="balancete-period-label"></p>
+                        <label id="balancete-by-dept-wrap" class="inline-flex items-center gap-2 text-xs muted mt-2 cursor-pointer no-print"><input type="checkbox" id="balancete-by-dept" class="chk" checked onchange="renderBalancete()"> Detalhar cada conta por departamento (a linha da conta é o depto 0, totalizador)</label>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="tbl min-w-[900px]" id="balancete-table">
@@ -420,6 +426,7 @@
                         <div><label class="lbl">Posição até</label><input type="date" class="input period-to" onchange="setPeriod('to', this.value)"></div>
                         <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar período</button>
                         <div class="ml-auto flex gap-2">
+                            <button class="btn btn-ghost btn-sm" onclick="openClosingModal()" title="Zera receitas e despesas e transfere o resultado para Lucros/Prejuízos Acumulados"><i data-lucide="lock" class="w-4 h-4"></i> Encerrar exercício</button>
                             <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('balanco-ativo-table,balanco-passivo-table', 'balanco.csv')"><i data-lucide="download" class="w-4 h-4"></i> CSV</button>
                             <button class="btn btn-ghost btn-sm" onclick="printPage()"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
                         </div>
@@ -438,8 +445,10 @@
                     <div class="period-bar no-print">
                         <div><label class="lbl">De</label><input type="date" class="input period-from" onchange="setPeriod('from', this.value)"></div>
                         <div><label class="lbl">Até</label><input type="date" class="input period-to" onchange="setPeriod('to', this.value)"></div>
-                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar período</button>
+                        <div><label class="lbl">Departamento</label><select class="input period-cc" onchange="setCostCenter(this.value)"><option value="">0 - Todos (totalizador)</option></select></div>
+                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar filtros</button>
                         <div class="ml-auto flex gap-2">
+                            <button class="btn btn-ghost btn-sm" onclick="openClosingModal()" title="Zera receitas e despesas e transfere o resultado para Lucros/Prejuízos Acumulados"><i data-lucide="lock" class="w-4 h-4"></i> Encerrar exercício</button>
                             <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('dre-table', 'dre.csv')"><i data-lucide="download" class="w-4 h-4"></i> CSV</button>
                             <button class="btn btn-ghost btn-sm" onclick="printPage()"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
                         </div>
@@ -582,6 +591,37 @@
             <div class="flex justify-end gap-3">
                 <button type="button" onclick="closeNewWorkspaceModal()" class="btn btn-ghost">Cancelar</button>
                 <button type="submit" id="ws-modal-submit" class="btn btn-primary"><i data-lucide="plus" class="w-4 h-4"></i> Criar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modal: encerramento do exercício -->
+    <div id="closing-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 hidden opacity-0 transition-opacity duration-300 p-4">
+        <form onsubmit="confirmClosing(event)" class="card p-6 w-full max-w-lg shadow-2xl">
+            <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="lock" class="w-5 h-5 text-stnr-accent"></i>
+                <h3 class="text-lg font-bold">Encerrar exercício</h3>
+            </div>
+            <p class="muted text-sm mb-5">Gera um lote que zera todas as receitas e despesas (por conta e departamento) até a data informada e transfere o resultado para a conta de destino. A conta automática "Superávit ou Déficit do Exercício" volta a zero. O lote pode ser excluído na Consulta de Lotes se precisar desfazer.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="lbl" for="closing-date">Data do encerramento</label>
+                    <input type="date" id="closing-date" class="input" onchange="onClosingDateChange(this.value)" required>
+                </div>
+                <div>
+                    <label class="lbl" for="closing-dest">Conta de destino (PL)</label>
+                    <input type="text" id="closing-dest" list="dl-contas-pl" class="input" onchange="onClosingDestChange(this.value)" placeholder="Lucros ou Prejuízos Acumulados" autocomplete="off" required>
+                </div>
+            </div>
+            <label class="lbl" for="closing-desc">Histórico</label>
+            <input type="text" id="closing-desc" class="input mb-4" autocomplete="off">
+
+            <div id="closing-preview" class="text-sm p-3 rounded-lg border border-stnr-border bg-stnr-bg mb-6"></div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeClosingModal()" class="btn btn-ghost">Cancelar</button>
+                <button type="submit" id="closing-submit" class="btn btn-primary"><i data-lucide="lock" class="w-4 h-4"></i> Gerar lote de encerramento</button>
             </div>
         </form>
     </div>

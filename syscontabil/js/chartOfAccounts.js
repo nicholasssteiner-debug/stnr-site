@@ -10,8 +10,9 @@
 const TYPE_BY_GROUP = { 1: 'Ativo', 2: 'Passivo', 3: 'Receita', 4: 'Despesa' };
 
 // Cada linha: [código, nome, função?]. O tipo é derivado do primeiro dígito.
-// Função 'result' = conta de resultado do exercício: não recebe lançamentos manuais;
-// seu saldo é calculado automaticamente (receitas - despesas) nos relatórios.
+// Funções: 'result' = conta de resultado do exercício (não recebe lançamentos manuais;
+// saldo calculado automaticamente); 'retainedEarnings' / 'accumulatedLosses' = destinos
+// padrão do lote de encerramento do exercício.
 const ROWS = [
     // =========================== 1 ATIVO ===========================
     ['1', 'ATIVO'],
@@ -203,8 +204,8 @@ const ROWS = [
     ['2.3.03.003', 'Reserva de Capital'],
     ['2.3.03.004', 'Reserva para Investimentos'],
     ['2.3.04', 'Lucros ou Prejuízos Acumulados'],
-    ['2.3.04.001', 'Lucros Acumulados de Exercícios Anteriores'],
-    ['2.3.04.002', '(-) Prejuízos Acumulados'],
+    ['2.3.04.001', 'Lucros Acumulados de Exercícios Anteriores', 'retainedEarnings'],
+    ['2.3.04.002', '(-) Prejuízos Acumulados', 'accumulatedLosses'],
     ['2.3.04.003', '(-) Lucros Distribuídos aos Sócios'],
     ['2.3.05', 'Ajustes de Avaliação Patrimonial'],
     ['2.3.05.001', 'Ajustes de Avaliação Patrimonial'],

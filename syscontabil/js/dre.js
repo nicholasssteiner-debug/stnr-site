@@ -3,13 +3,13 @@ import { state, DRE_GROUPS } from './state.js';
 import { toCents, formatCents, escapeHtml, compareCodes } from './utils.js';
 import { persistState } from './workspaces.js';
 import { getAccountName, getAnalyticAccounts, isSelfOrDescendant } from './accounts.js';
-import { getPeriodBatches, periodLabel } from './reports.js';
+import { getPeriodBatches, periodLabel, entryInScope, refreshCcSelectors } from './reports.js';
 
 // Saldo (centavos) das contas listadas, na natureza do grupo: 'C' soma créditos, 'D' soma débitos
 const groupBalance = (codes, nature, batches) => {
     let total = 0;
     for (const b of batches) for (const e of b.entries) {
-        if (!codes.some(c => isSelfOrDescendant(e.accountCode, c))) continue;
+        if (!entryInScope(e) || !codes.some(c => isSelfOrDescendant(e.accountCode, c))) continue;
         const cents = toCents(e.value);
         total += (e.type === nature) ? cents : -cents;
     }
@@ -63,8 +63,10 @@ export const toggleDreConfig = (groupId, accountCode, checked) => {
 
 // ---------- Demonstração ----------
 export const renderDRE = () => {
-    const batches = getPeriodBatches();
-    document.getElementById('dre-period-label').innerText = periodLabel();
+    refreshCcSelectors();
+    // Lotes de encerramento zeram as contas de resultado; ficam fora da DRE para ela continuar informativa
+    const batches = getPeriodBatches().filter(b => b.kind !== 'closing');
+    document.getElementById('dre-period-label').innerText = periodLabel() + (getPeriodBatches().some(b => b.kind === 'closing') ? ' · lotes de encerramento não considerados' : '');
 
     const val = (groupId) => {
         const g = DRE_GROUPS.find(x => x.id === groupId);

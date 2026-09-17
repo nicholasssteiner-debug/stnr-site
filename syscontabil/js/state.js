@@ -85,6 +85,7 @@ export const normalizeBatch = (b) => ({
     date: b.date || '',
     description: b.description || '',
     createdAt: Number(b.createdAt) || 0,
+    ...(b.kind ? { kind: String(b.kind) } : {}),   // 'closing' = lote de encerramento do exercício
     entries: Array.isArray(b.entries) ? b.entries.map(e => ({
         accountCode: String(e.accountCode),
         ccId: e.ccId || '',

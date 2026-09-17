@@ -177,3 +177,4 @@ label.lbl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--mu
 .tbl .row-reconciled td:nth-child(4) { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); }
 .edit-banner > span { flex: 1 1 18rem; }
 .edit-banner .btn { flex-shrink: 0; }
+.tbl .row-dept td { font-size: 0.8rem; background: rgba(255, 255, 255, 0.015); }

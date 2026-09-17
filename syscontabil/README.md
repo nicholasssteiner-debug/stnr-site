@@ -23,6 +23,7 @@ syscontabil/
     costCenters.js        centros de custo
     lotes.js              novo lançamento, edição e consulta de lotes
     reconcile.js          conciliação de partidas (marcação vs. extrato)
+    closing.js            encerramento do exercício (lote automático)
     reports.js            período, Razão, Balancete, Balanço Patrimonial
     dre.js                configuração e demonstração da DRE
 ```
@@ -73,6 +74,16 @@ workspaces ─► firebase, state, utils, ui
   atividade existente só as contas que faltam, sem tocar nas atuais.
 - Botão "+" (cabeçalho e Configurações) cria uma atividade nova do zero ou uma cópia
   da atual; a atividade anterior permanece na lista.
+- Níveis de análise: conta → subconta → departamento (centro de custo). Razão, Balancete,
+  DRE e Conciliação têm o seletor "Departamento"; o departamento 0 é o totalizador. No
+  Balancete, com o depto 0 selecionado e mais de um centro de custo, cada conta analítica
+  é aberta por departamento (linha da conta = total). O Balanço é sempre consolidado.
+- Encerramento do exercício (`closing.js`, botão no Balanço e na DRE): gera um lote
+  `kind: 'closing'` que zera cada saldo de receita/despesa por (conta, departamento) até a
+  data e transfere o resultado para Lucros Acumulados (`role: 'retainedEarnings'`) ou
+  Prejuízos Acumulados (`role: 'accumulatedLosses'`), escolhíveis no modal. Depois disso a
+  conta automática volta a zero. A DRE ignora lotes de encerramento; Razão e Balancete os
+  mostram. Para desfazer, exclua o lote na Consulta de Lotes.
 - Relatórios aceitam período (De/Até). Razão e Balancete mostram saldo anterior;
   o Balanço usa a posição até a data final.
 

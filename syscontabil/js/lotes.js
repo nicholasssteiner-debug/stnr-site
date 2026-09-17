@@ -277,7 +277,7 @@ export const renderConsultaLotes = () => {
             <div class="batch-row">
                 <div class="batch-head" onclick="toggleBatch('${escapeHtml(batch.id)}')">
                     <i data-lucide="${expanded ? 'chevron-down' : 'chevron-right'}" class="w-5 h-5 muted shrink-0"></i>
-                    <div class="w-28 font-semibold shrink-0">${escapeHtml(batch.id)}</div>
+                    <div class="w-28 font-semibold shrink-0">${escapeHtml(batch.id)}${batch.kind === 'closing' ? ' <span class="badge badge-gray" title="Lote de encerramento do exercício">enc.</span>' : ''}</div>
                     <div class="w-24 muted text-sm shrink-0">${formatDateBR(batch.date)}</div>
                     <div class="flex-1 truncate text-sm min-w-[8rem]">${escapeHtml(batch.description)}</div>
                     <div class="w-36 text-right font-medium shrink-0">${formatCents(totalCents)}</div>
