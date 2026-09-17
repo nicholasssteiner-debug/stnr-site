@@ -166,3 +166,12 @@ label.lbl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--mu
     .tbl td { border-bottom: 1px solid #ccc !important; color: #000 !important; }
     .muted { color: #555 !important; }
 }
+
+/* ---------- Conciliação ---------- */
+.stat { display: flex; flex-direction: column; gap: 0.25rem; padding: 1rem 1.25rem; }
+.stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-2); font-weight: 600; }
+.stat-value { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
+.text-warn { color: var(--warn) !important; }
+.chk { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); cursor: pointer; }
+.tbl .row-reconciled td { color: var(--muted); }
+.tbl .row-reconciled td:nth-child(4) { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); }

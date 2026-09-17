@@ -3,17 +3,19 @@
 import { state } from './state.js';
 import { registerView, navigate, switchConfigTab, toggleSidebar, closeSidebar, closeConfirm, initConfirmModal, refreshIcons, printPage, exportTableCSV } from './ui.js';
 import { toggleAuthMode, handleAuthSubmit, doLogout, watchAuth } from './auth.js';
-import { initUserWorkspaces, createNewWorkspace, loadWorkspace, deleteWorkspace, renderWorkspacesList, setOnWorkspaceLoaded, clearSession } from './workspaces.js';
+import { initUserWorkspaces, createNewWorkspace, openNewWorkspaceModal, closeNewWorkspaceModal, confirmNewWorkspace, loadWorkspace, deleteWorkspace, renderWorkspacesList, setOnWorkspaceLoaded, clearSession } from './workspaces.js';
 import { renderPlanoContas, addAccount, deleteAccount, promptSubAccount, updateDatalists } from './accounts.js';
 import { renderCCConfig, addCostCenter, deleteCostCenter } from './costCenters.js';
 import { initNovoLote, cancelEditLote, handleLineContaSearch, handleLineCcSearch, updateLoteLine, onLoteValueInput, addNovoLoteLine, removeLoteLine, saveNovoLote, renderConsultaLotes, toggleBatch, editBatch, deleteBatch } from './lotes.js';
 import { initRazao, renderRazaoContent, renderBalancete, renderBalanco, setPeriod, clearPeriod } from './reports.js';
 import { renderConfiguracaoDRE, toggleDreConfig, renderDRE } from './dre.js';
+import { initConciliacao, setConciliacaoAccount, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible } from './reconcile.js';
 
 // ---------- Telas ----------
 registerView('planoContas', renderPlanoContas);
 registerView('novoLote', initNovoLote);
 registerView('consultaLotes', renderConsultaLotes);
+registerView('conciliacao', initConciliacao);
 registerView('razao', initRazao);
 registerView('balancete', renderBalancete);
 registerView('balanco', renderBalanco);
@@ -33,7 +35,7 @@ Object.assign(window, {
     // autenticação
     toggleAuthMode, handleAuthSubmit, doLogout,
     // atividades
-    createNewWorkspace, loadWorkspace, deleteWorkspace,
+    createNewWorkspace, openNewWorkspaceModal, closeNewWorkspaceModal, confirmNewWorkspace, loadWorkspace, deleteWorkspace,
     // plano de contas
     addAccount, deleteAccount, promptSubAccount,
     // centros de custo
@@ -45,6 +47,8 @@ Object.assign(window, {
     renderRazaoContent, setPeriod, clearPeriod,
     // DRE
     toggleDreConfig,
+    // conciliação
+    setConciliacaoAccount, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible,
 });
 
 // Acesso ao estado pelo console do navegador (diagnóstico)

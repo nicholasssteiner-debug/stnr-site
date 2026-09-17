@@ -73,6 +73,7 @@
             <div class="nav-section">Movimentação</div>
             <button onclick="navigate('novoLote')" id="nav-novoLote" class="nav-btn"><i data-lucide="plus" class="w-[18px] h-[18px]"></i> Novo Lançamento</button>
             <button onclick="navigate('consultaLotes')" id="nav-consultaLotes" class="nav-btn"><i data-lucide="search" class="w-[18px] h-[18px]"></i> Consulta de Lotes</button>
+            <button onclick="navigate('conciliacao')" id="nav-conciliacao" class="nav-btn"><i data-lucide="check-square" class="w-[18px] h-[18px]"></i> Conciliação</button>
 
             <div class="nav-section">Relatórios</div>
             <button onclick="navigate('razao')" id="nav-razao" class="nav-btn"><i data-lucide="book-open" class="w-[18px] h-[18px]"></i> Razão Contábil</button>
@@ -101,6 +102,7 @@
             <div class="ml-auto text-sm muted flex items-center gap-2 min-w-0">
                 <i data-lucide="folder" class="w-4 h-4 shrink-0"></i>
                 <span id="current-workspace-name" class="font-medium text-stnr-accentHover truncate">Carregando...</span>
+                <button onclick="openNewWorkspaceModal()" class="icon-btn no-print" title="Nova atividade (começar do zero)"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
             </div>
         </header>
 
@@ -230,6 +232,76 @@
                         <span id="consulta-count" class="text-sm muted"></span>
                     </div>
                     <div id="consulta-list" class="min-h-[200px]"></div>
+                </div>
+            </section>
+
+            <!-- ---------- Conciliação de partidas ---------- -->
+            <section id="view-conciliacao" class="view-section hidden flex flex-col gap-6">
+                <div class="card">
+                    <div class="period-bar no-print">
+                        <div><label class="lbl">De</label><input type="date" class="input period-from" onchange="setPeriod('from', this.value)"></div>
+                        <div><label class="lbl">Até</label><input type="date" class="input period-to" onchange="setPeriod('to', this.value)"></div>
+                        <button class="btn btn-ghost btn-sm" onclick="clearPeriod()">Limpar período</button>
+                        <div class="ml-auto flex gap-2">
+                            <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('conc-table', 'conciliacao.csv')"><i data-lucide="download" class="w-4 h-4"></i> CSV</button>
+                            <button class="btn btn-ghost btn-sm" onclick="printPage()"><i data-lucide="printer" class="w-4 h-4"></i> Imprimir</button>
+                        </div>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="lbl" for="conc-acc-select">Conta a conciliar (ex.: banco ou caixa)</label>
+                            <input type="text" list="dl-contas" id="conc-acc-select" onchange="setConciliacaoAccount(this.value)" placeholder="Ex.: 1.1.02 - Banco Conta Movimento" class="input" autocomplete="off">
+                            <p id="conc-period-label" class="text-xs muted mt-2"></p>
+                        </div>
+                        <div>
+                            <label class="lbl" for="conc-extrato">Saldo do extrato na data final (R$)</label>
+                            <input type="text" inputmode="numeric" id="conc-extrato" oninput="onStatementInput(this)" placeholder="0,00" class="input money text-right" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="conc-content-area" class="card overflow-hidden hidden">
+                    <div class="card-head flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-xl font-bold">Conciliação de Partidas</h3>
+                            <p id="conc-acc-info" class="muted text-sm">--</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 no-print">
+                            <select class="input w-auto" onchange="setConciliacaoFilter(this.value)">
+                                <option value="todas">Todas</option>
+                                <option value="pendentes">Só pendentes</option>
+                                <option value="conciliadas">Só conciliadas</option>
+                            </select>
+                            <button class="btn btn-ghost btn-sm" onclick="reconcileAllVisible(true)"><i data-lucide="check-check" class="w-4 h-4"></i> Marcar visíveis</button>
+                            <button class="btn btn-ghost btn-sm" onclick="reconcileAllVisible(false)"><i data-lucide="x" class="w-4 h-4"></i> Desmarcar visíveis</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 lg:grid-cols-4 divide-x divide-[var(--border)] border-b border-stnr-border">
+                        <div class="stat"><span class="stat-label">Saldo contábil</span><span id="conc-saldo-contabil" class="stat-value">--</span></div>
+                        <div class="stat"><span class="stat-label">Conciliado</span><span id="conc-saldo-conciliado" class="stat-value text-ok">--</span></div>
+                        <div class="stat"><span class="stat-label">Pendente</span><span id="conc-saldo-pendente" class="stat-value text-warn">--</span></div>
+                        <div class="stat"><span class="stat-label">Extrato − conciliado</span><span id="conc-diferenca" class="stat-value">--</span></div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="tbl min-w-[900px]" id="conc-table">
+                            <thead>
+                                <tr>
+                                    <th class="w-10 text-center">✓</th>
+                                    <th class="w-28">Data</th>
+                                    <th class="w-32">Lote</th>
+                                    <th>Histórico</th>
+                                    <th class="w-40">C. Custo</th>
+                                    <th class="w-36 text-right">Débito</th>
+                                    <th class="w-36 text-right">Crédito</th>
+                                    <th class="w-32 text-center">Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="conc-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 text-xs muted border-t border-stnr-border" id="conc-count"></div>
                 </div>
             </section>
 
@@ -379,13 +451,18 @@
                             <h2 class="text-lg font-bold">Atividades na nuvem</h2>
                             <p class="muted text-sm">Cada atividade é um conjunto independente de plano de contas, lançamentos e configurações. Os dados ficam isolados na sua conta.</p>
                         </div>
-                        <div class="card-head rounded-lg mb-8 flex flex-col md:flex-row gap-4 justify-between items-center border border-stnr-border">
-                            <div class="w-full md:w-2/3">
-                                <h3 class="font-bold mb-1 text-stnr-accentHover">Salvar como nova atividade</h3>
-                                <p class="muted text-sm mb-3">Cria uma cópia da atividade atual (plano, lotes e configurações) com o nome informado. Ex.: Empresa X - Balanço 2026.</p>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+                            <div class="card-head rounded-lg border border-stnr-border">
+                                <h3 class="font-bold mb-1 text-stnr-accentHover"><i data-lucide="plus-circle" class="w-4 h-4 inline mr-1"></i>Nova atividade do zero</h3>
+                                <p class="muted text-sm mb-3">Começa um projeto novo: plano de contas padrão, sem lançamentos. A atividade atual continua salva na lista.</p>
+                                <button onclick="openNewWorkspaceModal()" class="btn btn-primary"><i data-lucide="plus" class="w-4 h-4"></i> Criar nova atividade</button>
+                            </div>
+                            <div class="card-head rounded-lg border border-stnr-border">
+                                <h3 class="font-bold mb-1 text-stnr-accentHover"><i data-lucide="copy" class="w-4 h-4 inline mr-1"></i>Salvar cópia da atividade atual</h3>
+                                <p class="muted text-sm mb-3">Duplica plano, lotes e configurações com o nome informado. Ex.: Empresa X - Balanço 2026.</p>
                                 <div class="flex gap-2 w-full">
-                                    <input type="text" id="ws-name-input" placeholder="Nome da atividade..." class="input flex-1" autocomplete="off">
-                                    <button onclick="createNewWorkspace()" class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> Salvar</button>
+                                    <input type="text" id="ws-name-input" placeholder="Nome da cópia..." class="input flex-1" autocomplete="off">
+                                    <button onclick="createNewWorkspace()" class="btn btn-ghost"><i data-lucide="save" class="w-4 h-4"></i> Salvar cópia</button>
                                 </div>
                             </div>
                         </div>
@@ -455,6 +532,42 @@
                 <button id="confirm-btn" class="btn btn-danger">Confirmar</button>
             </div>
         </div>
+    </div>
+
+    <!-- Modal: nova atividade -->
+    <div id="ws-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 hidden opacity-0 transition-opacity duration-300 p-4">
+        <form onsubmit="confirmNewWorkspace(event)" class="card p-6 w-full max-w-md shadow-2xl">
+            <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-stnr-accent"></i>
+                <h3 class="text-lg font-bold">Nova atividade</h3>
+            </div>
+            <p class="muted text-sm mb-5">A atividade atual continua salva; você pode voltar a ela em Configurações → Atividades.</p>
+
+            <label class="lbl" for="ws-modal-name">Nome</label>
+            <input type="text" id="ws-modal-name" placeholder="Ex.: Empresa X - Exercício 2026" class="input mb-5" autocomplete="off" required>
+
+            <div class="space-y-2 mb-6">
+                <label class="dre-item border border-stnr-border">
+                    <input type="radio" name="ws-modal-mode" id="ws-modal-blank" value="blank" checked>
+                    <div>
+                        <div class="text-sm font-medium">Começar do zero</div>
+                        <div class="text-xs muted">Plano de contas padrão, sem lançamentos, DRE e centros de custo iniciais.</div>
+                    </div>
+                </label>
+                <label class="dre-item border border-stnr-border">
+                    <input type="radio" name="ws-modal-mode" id="ws-modal-copy" value="copy">
+                    <div>
+                        <div class="text-sm font-medium">Copiar a atividade atual</div>
+                        <div class="text-xs muted">Leva plano de contas, lotes e configurações para a nova atividade.</div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeNewWorkspaceModal()" class="btn btn-ghost">Cancelar</button>
+                <button type="submit" id="ws-modal-submit" class="btn btn-primary"><i data-lucide="plus" class="w-4 h-4"></i> Criar</button>
+            </div>
+        </form>
     </div>
 
     <!-- Aplicação (módulos ES em syscontabil/js) -->

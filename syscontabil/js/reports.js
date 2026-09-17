@@ -93,7 +93,9 @@ export const renderRazaoContent = () => {
             const cents = toCents(e.value);
             if (e.type === 'D') tD += cents; else tC += cents;
             running += (e.type === 'D') === debitNature ? cents : -cents;
-            const desc = escapeHtml(batch.description) + (e.accountCode !== acc.code ? ` <span class="muted">(${escapeHtml(e.accountCode)})</span>` : '');
+            const desc = escapeHtml(batch.description)
+                + (e.accountCode !== acc.code ? ` <span class="muted">(${escapeHtml(e.accountCode)})</span>` : '')
+                + (e.reconciled ? ' <span class="badge badge-green" title="Partida conciliada">✓</span>' : '');
             rows.push(`
                 <tr>
                     <td>${formatDateBR(batch.date)}</td>

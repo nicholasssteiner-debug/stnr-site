@@ -211,6 +211,12 @@ export const saveNovoLote = async () => {
     if (form.editingId) {
         const idx = state.batches.findIndex(b => b.id === form.editingId);
         if (idx < 0) { showToast('Lote não encontrado.', 'error'); return; }
+        // Mantém a marcação de conciliação das partidas que não mudaram (conta, D/C e valor)
+        const remaining = state.batches[idx].entries.filter(e => e.reconciled);
+        for (const entry of entries) {
+            const i = remaining.findIndex(e => e.accountCode === entry.accountCode && e.type === entry.type && e.value === entry.value);
+            if (i >= 0) { entry.reconciled = true; entry.reconciledAt = remaining[i].reconciledAt || 0; remaining.splice(i, 1); }
+        }
         const updated = { ...state.batches[idx], date, description, entries, updatedAt: Date.now() };
         state.batches[idx] = updated;
         await persistBatch(updated);

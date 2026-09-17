@@ -180,22 +180,24 @@ export const loadWorkspace = async (wsId) => {
 };
 
 // ---------- Criar / excluir ----------
-export const createNewWorkspace = async () => {
-    const nameInput = document.getElementById('ws-name-input');
-    const name = nameInput.value.trim();
-    if (!name) { showToast('Dê um nome à nova atividade.', 'error'); return; }
-    if (!session.user) return;
+// Cria uma atividade e a torna a atual.
+//   copy = true  -> cópia da atividade aberta (plano, lotes e configurações)
+//   copy = false -> começa do zero (plano de contas padrão, sem lançamentos)
+export const createWorkspace = async (name, copy) => {
+    name = String(name || '').trim();
+    if (!name) { showToast('Dê um nome à nova atividade.', 'error'); return false; }
+    if (!session.user) return false;
 
     try {
         await flushPending();
         const id = 'ws_' + Date.now();
         const now = Date.now();
-        // Copia a atividade atual (plano, lotes, configurações) para a nova
-        const snapshot = JSON.parse(JSON.stringify(state));
-        snapshot.workspaceName = name;
+        const next = copy ? JSON.parse(JSON.stringify(state)) : createDefaultState();
+        next.workspaceName = name;
+        next.activeTab = copy ? state.activeTab : 'planoContas';
 
         session.workspaceId = id;
-        resetState(snapshot);
+        resetState(next);
 
         await setDoc(wsRef(id), {
             state: stateWithoutBatches(),
@@ -203,17 +205,53 @@ export const createNewWorkspace = async () => {
             createdAt: now,
             updatedAt: now,
         });
-        await writeBatchesChunked(id, state.batches);
+        if (state.batches.length) await writeBatchesChunked(id, state.batches);
 
-        nameInput.value = '';
         document.getElementById('current-workspace-name').innerText = name;
         session.workspaces.unshift({ id, workspaceName: name, updatedAt: now });
+        onWorkspaceLoaded();
         renderWorkspacesList();
-        showToast('Nova atividade salva na nuvem!');
+        showToast(copy ? 'Cópia salva como nova atividade!' : `Atividade "${name}" criada do zero.`);
+        return true;
     } catch (e) {
         console.error(e);
         showToast('Erro ao criar a atividade.', 'error');
+        return false;
     }
+};
+
+// Botão "Salvar cópia" da tela de Configurações
+export const createNewWorkspace = async () => {
+    const nameInput = document.getElementById('ws-name-input');
+    if (await createWorkspace(nameInput.value, true)) nameInput.value = '';
+};
+
+// ---------- Modal "+" (nova atividade) ----------
+export const openNewWorkspaceModal = () => {
+    if (!session.user) return;
+    const modal = document.getElementById('ws-modal');
+    const input = document.getElementById('ws-modal-name');
+    input.value = '';
+    document.getElementById('ws-modal-blank').checked = true;
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => { modal.classList.remove('opacity-0'); input.focus(); });
+};
+
+export const closeNewWorkspaceModal = () => {
+    const modal = document.getElementById('ws-modal');
+    modal.classList.add('opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 250);
+};
+
+export const confirmNewWorkspace = async (e) => {
+    if (e) e.preventDefault();
+    const name = document.getElementById('ws-modal-name').value;
+    const copy = document.getElementById('ws-modal-copy').checked;
+    const btn = document.getElementById('ws-modal-submit');
+    btn.disabled = true;
+    const ok = await createWorkspace(name, copy);
+    btn.disabled = false;
+    if (ok) closeNewWorkspaceModal();
 };
 
 export const deleteWorkspace = (wsId) => {

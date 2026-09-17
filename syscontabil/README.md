@@ -21,6 +21,7 @@ syscontabil/
     accounts.js           plano de contas
     costCenters.js        centros de custo
     lotes.js              novo lançamento, edição e consulta de lotes
+    reconcile.js          conciliação de partidas (marcação vs. extrato)
     reports.js            período, Razão, Balancete, Balanço Patrimonial
     dre.js                configuração e demonstração da DRE
 ```
@@ -28,11 +29,12 @@ syscontabil/
 Dependências entre módulos (setas = importa):
 
 ```
-main ─► ui, auth, workspaces, accounts, costCenters, lotes, reports, dre
+main ─► ui, auth, workspaces, accounts, costCenters, lotes, reports, dre, reconcile
 accounts ─► state, utils, ui, workspaces
 lotes ─► state, utils, ui, workspaces, accounts, costCenters
 reports ─► state, utils, ui, accounts
 dre ─► state, utils, workspaces, accounts, reports
+reconcile ─► state, utils, ui, workspaces, accounts, costCenters, reports
 workspaces ─► firebase, state, utils, ui
 ```
 
@@ -51,6 +53,12 @@ workspaces ─► firebase, state, utils, ui
   analítica, em qualquer profundidade do plano.
 - Número de lote vem de um contador persistido (`nextBatchSeq`); IDs nunca se repetem,
   mesmo após exclusões.
+- Conciliação: cada partida pode ser marcada como conciliada (`reconciled`, `reconciledAt`
+  gravados no lote). A tela compara o saldo conciliado com o saldo do extrato e lista
+  as partidas pendentes; a marcação sobrevive à edição do lote quando conta, D/C e
+  valor não mudam.
+- Botão "+" (cabeçalho e Configurações) cria uma atividade nova do zero ou uma cópia
+  da atual; a atividade anterior permanece na lista.
 - Relatórios aceitam período (De/Até). Razão e Balancete mostram saldo anterior;
   o Balanço usa a posição até a data final.
 

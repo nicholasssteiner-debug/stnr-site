@@ -107,5 +107,7 @@ export const normalizeBatch = (b) => ({
         ccId: e.ccId || '',
         type: e.type === 'C' ? 'C' : 'D',
         value: Math.round((Number(e.value) || 0) * 100) / 100,  // reais com 2 casas
+        // Conciliação: só grava os campos quando a partida está conciliada
+        ...(e.reconciled ? { reconciled: true, reconciledAt: Number(e.reconciledAt) || 0 } : {}),
     })) : [],
 });

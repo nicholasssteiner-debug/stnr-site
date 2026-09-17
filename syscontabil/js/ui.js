@@ -57,6 +57,7 @@ const TITLES = {
     planoContas: 'Plano de Contas',
     novoLote: 'Novo Lançamento',
     consultaLotes: 'Consulta de Lotes',
+    conciliacao: 'Conciliação de Partidas',
     razao: 'Razão Contábil',
     balancete: 'Balancete de Verificação',
     balanco: 'Balanço Patrimonial',
