@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plantão 24h · Protocolo de Atendimento</title>
+    <link rel="icon" href="https://cdn.prod.website-files.com/6a171f532efcbde95d0c445d/6a1727506204d20ba4f276c0_LOGO_PLANTAO24H-1.svg">
+    <!-- Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons para os ícones -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf para gerar o arquivo PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Paleta oficial do app Plantão 24h
+                        brand: {
+                            50: '#E9F7F3', 100: '#BFEADE', 200: '#9FCABF', 300: '#5FC9B5',
+                            400: '#18E29A', 500: '#12B981', 600: '#0E9C86', 700: '#0A7A68',
+                            800: '#2B5D54', 900: '#05463C'
+                        },
+                        ink: '#34464C',
+                        muted: '#5C6B67'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+    <style type="text/tailwindcss">
+        .field { @apply w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm; }
+        .lbl { @apply block text-xs font-semibold text-muted uppercase tracking-wide mb-1; }
+        .chip { @apply px-3 py-1.5 rounded-full border text-sm cursor-pointer select-none transition-all border-slate-200 bg-white text-ink hover:border-brand-400; }
+        .chip.on { @apply bg-brand-600 border-brand-600 text-white; }
+        .card { @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-6; }
+        .card-title { @apply flex items-center gap-2 text-lg font-bold text-brand-900 mb-4; }
+        .navlink { @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-ink hover:bg-brand-50 hover:text-brand-700 transition-colors; }
+        .navlink.active { @apply bg-brand-50 text-brand-700 font-semibold; }
+    </style>
+    <style>
+        /* ---------- Documento A4 (base do PDF) ---------- */
+        #documento {
+            width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff;
+            padding: 10mm 12mm 10mm; box-sizing: border-box; color: #1f2d2a;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            font-size: 9.5pt; line-height: 1.35; position: relative;
+        }
+        #documento .doc-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0E9C86; padding-bottom: 6px; margin-bottom: 8px; }
+        #documento .doc-head img { height: 34px; width: auto; }
+        #documento .doc-title { text-align: right; }
+        #documento .doc-title h1 { margin: 0; font-size: 15pt; font-weight: 800; color: #05463C; letter-spacing: -0.2px; }
+        #documento .doc-title p { margin: 2px 0 0; font-size: 8.5pt; color: #5C6B67; }
+        #documento .doc-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        #documento .doc-meta span { background: #E9F7F3; color: #05463C; border-radius: 999px; padding: 2px 10px; font-size: 8.5pt; font-weight: 600; }
+        #documento .sec { margin-bottom: 7px; page-break-inside: avoid; }
+        #documento .sec h2 { margin: 0 0 4px; font-size: 9.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: #0A7A68; border-left: 4px solid #18E29A; padding-left: 7px; }
+        #documento table { width: 100%; border-collapse: collapse; }
+        #documento table.kv td { padding: 2px 5px; vertical-align: top; border-bottom: 1px solid #E3E8E6; }
+        #documento table.kv td.k { width: 30%; color: #5C6B67; font-weight: 600; font-size: 8.5pt; }
+        #documento table.grid th { background: #E9F7F3; color: #05463C; text-align: left; padding: 4px 6px; font-size: 8.5pt; border: 1px solid #BFEADE; }
+        #documento table.grid td { padding: 3px 6px; border: 1px solid #E3E8E6; font-size: 9.5pt; }
+        #documento .txt { white-space: pre-wrap; padding: 3px 6px; background: #F6F8F7; border-radius: 6px; border: 1px solid #E3E8E6; }
+        #documento .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+        #documento .tags span { border: 1px solid #9FCABF; color: #05463C; border-radius: 999px; padding: 1px 8px; font-size: 8.5pt; }
+        #documento .cid-main { display: flex; align-items: center; gap: 8px; background: #05463C; color: #fff; border-radius: 8px; padding: 6px 10px; margin-bottom: 5px; }
+        #documento .cid-main b { background: #18E29A; color: #05463C; border-radius: 6px; padding: 1px 8px; font-size: 11pt; }
+        #documento .cid-sec { display: flex; align-items: center; gap: 8px; padding: 3px 10px; border-bottom: 1px solid #E3E8E6; }
+        #documento .cid-sec b { background: #E9F7F3; color: #05463C; border-radius: 6px; padding: 0 7px; }
+        #documento .alert { border: 1.5px solid #dc2625; background: #fff5f5; border-radius: 8px; padding: 6px 10px; white-space: pre-wrap; }
+        #documento .sign { margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end; page-break-inside: avoid; }
+        #documento .sign .line { width: 75mm; border-top: 1px solid #1f2d2a; text-align: center; padding-top: 4px; font-size: 9pt; }
+        #documento .doc-foot { margin-top: 10px; border-top: 1px solid #E3E8E6; padding-top: 6px; font-size: 7.5pt; color: #5C6B67; text-align: center; }
+
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { background: #fff !important; }
+            #app, #toast, .modal, #docBar { display: none !important; }
+            #docView { display: block !important; position: static; padding: 0; background: #fff; }
+            #documento { box-shadow: none; margin: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-ink min-h-screen font-sans">
+
+    <!-- ===================== APLICAÇÃO ===================== -->
+    <div id="app">
+        <!-- TOPO -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-4 min-w-0">
+                <img src="https://cdn.prod.website-files.com/6a171f532efcbde95d0c445d/6a1727506204d20ba4f276c0_LOGO_PLANTAO24H-1.svg" alt="Plantão 24h" class="h-6 sm:h-8 shrink-0">
+                <div class="hidden lg:block border-l border-slate-200 pl-4">
+                    <h1 class="font-bold text-brand-900 leading-tight">Protocolo de Atendimento</h1>
+                    <p class="text-xs text-muted">Teleconsulta · registro clínico e emissão em PDF</p>
+                </div>
+                <div class="flex-1 min-w-0"></div>
+                <div class="hidden md:flex items-center gap-2 text-xs text-muted mr-2">
+                    <i data-lucide="hash" class="w-4 h-4 text-brand-600"></i>
+                    <span id="topProtocolo" class="font-mono font-semibold text-ink">—</span>
+                </div>
+                <button onclick="abrirHistorico()" class="p-2 rounded-lg hover:bg-slate-100 text-ink shrink-0" title="Histórico de protocolos"><i data-lucide="history" class="w-5 h-5"></i></button>
+                <button onclick="novoProtocolo()" class="p-2 rounded-lg hover:bg-slate-100 text-ink shrink-0" title="Novo protocolo"><i data-lucide="file-plus-2" class="w-5 h-5"></i></button>
+                <button onclick="salvarProtocolo()" class="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm font-medium shrink-0"><i data-lucide="save" class="w-4 h-4"></i>Salvar</button>
+                <button onclick="mostrarDocumento()" class="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-200 text-brand-700 hover:bg-brand-50 text-sm font-medium shrink-0"><i data-lucide="eye" class="w-4 h-4"></i>Pré-visualizar</button>
+                <button onclick="gerarPDF()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm shrink-0"><i data-lucide="file-down" class="w-4 h-4"></i><span><span class="hidden sm:inline">Gerar </span>PDF</span></button>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
+            <!-- NAVEGAÇÃO LATERAL -->
+            <aside class="hidden lg:block">
+                <nav class="sticky top-24 space-y-1" id="sideNav">
+                    <a href="#secPaciente" class="navlink"><i data-lucide="user" class="w-4 h-4"></i>Paciente</a>
+                    <a href="#secAtendimento" class="navlink"><i data-lucide="stethoscope" class="w-4 h-4"></i>Atendimento</a>
+                    <a href="#secAnamnese" class="navlink"><i data-lucide="clipboard-list" class="w-4 h-4"></i>Anamnese</a>
+                    <a href="#secAntecedentes" class="navlink"><i data-lucide="heart-pulse" class="w-4 h-4"></i>Antecedentes</a>
+                    <a href="#secAvaliacao" class="navlink"><i data-lucide="search-check" class="w-4 h-4"></i>Hipótese e CID</a>
+                    <a href="#secConduta" class="navlink"><i data-lucide="pill" class="w-4 h-4"></i>Conduta</a>
+                    <a href="#secFinal" class="navlink"><i data-lucide="flag" class="w-4 h-4"></i>Finalização</a>
+                    <div class="pt-4 mt-4 border-t border-slate-200 text-xs text-muted px-3 leading-relaxed">
+                        <p class="flex items-center gap-1"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i>Rascunho salvo automaticamente neste navegador.</p>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- FORMULÁRIO -->
+            <main class="space-y-6">
+
+                <!-- PACIENTE -->
+                <section id="secPaciente" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="user" class="w-5 h-5 text-brand-600"></i>Identificação do paciente</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                        <div class="md:col-span-4"><label class="lbl">Nome completo *</label><input id="pacNome" class="field" placeholder="Nome do paciente"></div>
+                        <div class="md:col-span-2"><label class="lbl">CPF</label><input id="pacCpf" class="field" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)"></div>
+                        <div class="md:col-span-2"><label class="lbl">Data de nascimento</label><input id="pacNasc" type="date" class="field" onchange="atualizarIdade()"></div>
+                        <div class="md:col-span-1"><label class="lbl">Idade</label><input id="pacIdade" class="field bg-slate-100" readonly placeholder="—"></div>
+                        <div class="md:col-span-1"><label class="lbl">Sexo</label><select id="pacSexo" class="field"><option value="">—</option><option>Feminino</option><option>Masculino</option><option>Outro</option></select></div>
+                        <div class="md:col-span-2"><label class="lbl">Telefone / WhatsApp</label><input id="pacTel" class="field" placeholder="(00) 00000-0000" oninput="mascaraTel(this)"></div>
+                        <div class="md:col-span-4"><label class="lbl">Cidade</label><input id="pacCidade" class="field" placeholder="Cidade"></div>
+                        <div class="md:col-span-2"><label class="lbl">UF</label><select id="pacUf" class="field"><option value="">—</option></select></div>
+                    </div>
+                </section>
+
+                <!-- ATENDIMENTO -->
+                <section id="secAtendimento" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="stethoscope" class="w-5 h-5 text-brand-600"></i>Dados do atendimento</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                        <div class="md:col-span-2"><label class="lbl">Nº do protocolo</label><input id="atdProtocolo" class="field bg-slate-100 font-mono" readonly></div>
+                        <div class="md:col-span-2"><label class="lbl">Data</label><input id="atdData" type="date" class="field"></div>
+                        <div class="md:col-span-1"><label class="lbl">Início</label><input id="atdHoraIni" type="time" class="field"></div>
+                        <div class="md:col-span-1"><label class="lbl">Término</label><input id="atdHoraFim" type="time" class="field"></div>
+                        <div class="md:col-span-2">
+                            <label class="lbl">Modalidade</label>
+                            <div class="flex gap-2" id="modalidadeChips">
+                                <span class="chip flex items-center gap-1" data-v="Chat"><i data-lucide="message-circle" class="w-4 h-4"></i>Chat</span>
+                                <span class="chip flex items-center gap-1" data-v="Ligação"><i data-lucide="phone" class="w-4 h-4"></i>Ligação</span>
+                                <span class="chip flex items-center gap-1 on" data-v="Vídeo"><i data-lucide="video" class="w-4 h-4"></i>Vídeo</span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2"><label class="lbl">Tipo de consulta</label><select id="atdTipo" class="field"><option>Primeira consulta</option><option>Retorno (até 24h)</option><option>Reavaliação</option></select></div>
+                        <div class="md:col-span-2"><label class="lbl">Especialidade</label><input id="medEsp" class="field" value="Clínica Médica"></div>
+                        <div class="md:col-span-3"><label class="lbl">Médico(a) responsável *</label><input id="medNome" class="field" placeholder="Dr(a). Nome Sobrenome"></div>
+                        <div class="md:col-span-2"><label class="lbl">CRM *</label><input id="medCrm" class="field" placeholder="000000"></div>
+                        <div class="md:col-span-1"><label class="lbl">UF CRM</label><select id="medUf" class="field"><option value="">—</option></select></div>
+                    </div>
+                </section>
+
+                <!-- ANAMNESE -->
+                <section id="secAnamnese" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="clipboard-list" class="w-5 h-5 text-brand-600"></i>Anamnese</h2>
+                    <div class="space-y-5">
+                        <div><label class="lbl">Queixa principal *</label><input id="queixa" class="field" placeholder="Ex.: Dor de garganta e febre há 2 dias"></div>
+                        <div>
+                            <label class="lbl">Sintomas relatados <span class="font-normal normal-case text-slate-400">— clique para marcar</span></label>
+                            <div id="sintomasWrap" class="space-y-3"></div>
+                            <input id="sintomasOutros" class="field mt-3" placeholder="Outros sintomas (separe por vírgula)">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="lbl">Início dos sintomas</label>
+                                <div class="flex gap-2">
+                                    <input id="inicioQtd" type="number" min="0" class="field" placeholder="0">
+                                    <select id="inicioUn" class="field"><option>horas</option><option selected>dias</option><option>semanas</option><option>meses</option></select>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2"><label class="lbl">Evolução</label><select id="evolucao" class="field"><option>Progressiva</option><option>Estável</option><option>Em melhora</option><option>Flutuante</option><option>Súbita</option></select></div>
+                            <div class="md:col-span-2">
+                                <label class="lbl">Intensidade da dor: <span id="dorVal" class="text-brand-700 font-bold">0</span>/10</label>
+                                <input id="dorEscala" type="range" min="0" max="10" value="0" class="w-full accent-brand-600 mt-2" oninput="document.getElementById('dorVal').textContent=this.value">
+                            </div>
+                        </div>
+                        <div><label class="lbl">História da doença atual (HDA)</label><textarea id="hda" rows="4" class="field" placeholder="Descreva o quadro: início, características, fatores de melhora/piora, tratamentos já realizados, sintomas associados..."></textarea></div>
+                        <div>
+                            <label class="lbl">Sinais vitais informados pelo paciente</label>
+                            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                <div><input id="svTemp" class="field" placeholder="Temp. °C"></div>
+                                <div><input id="svPa" class="field" placeholder="PA (mmHg)"></div>
+                                <div><input id="svFc" class="field" placeholder="FC (bpm)"></div>
+                                <div><input id="svSpo2" class="field" placeholder="SpO₂ (%)"></div>
+                                <div><input id="svPeso" class="field" placeholder="Peso (kg)"></div>
+                                <div><input id="svAlt" class="field" placeholder="Altura (cm)"></div>
+                            </div>
+                        </div>
+                        <div><label class="lbl">Exame / observação por vídeo</label><textarea id="exame" rows="2" class="field" placeholder="Ex.: Bom estado geral, corado, hidratado, eupneico, fala frases completas, sem sinais de desconforto respiratório à observação por vídeo."></textarea></div>
+                    </div>
+                </section>
+
+                <!-- ANTECEDENTES -->
+                <section id="secAntecedentes" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="heart-pulse" class="w-5 h-5 text-brand-600"></i>Antecedentes</h2>
+                    <div class="space-y-5">
+                        <div>
+                            <label class="lbl">Comorbidades</label>
+                            <div id="comorbChips" class="flex flex-wrap gap-2"></div>
+                            <input id="comorbOutras" class="field mt-3" placeholder="Outras comorbidades">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="lbl">Alergias</label><input id="alergias" class="field" placeholder="Nega alergias / Dipirona, penicilina..."></div>
+                            <div><label class="lbl">Medicamentos em uso</label><input id="medUso" class="field" placeholder="Nenhum / Losartana 50mg 1x/dia..."></div>
+                            <div><label class="lbl">Gestante / lactante</label><select id="gestante" class="field"><option>Não se aplica</option><option>Não</option><option>Gestante</option><option>Lactante</option></select></div>
+                            <div><label class="lbl">Hábitos</label><input id="habitos" class="field" placeholder="Tabagismo, etilismo, atividade física..."></div>
+                            <div class="md:col-span-2"><label class="lbl">Cirurgias / internações prévias</label><input id="cirurgias" class="field" placeholder="Nega / ..."></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AVALIAÇÃO / CID -->
+                <section id="secAvaliacao" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="search-check" class="w-5 h-5 text-brand-600"></i>Hipótese diagnóstica e CID-10</h2>
+                    <div class="space-y-5">
+                        <div class="relative">
+                            <label class="lbl">Buscar CID-10 <span class="font-normal normal-case text-slate-400">— código ou descrição</span></label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                                <input id="cidBusca" class="field pl-9" placeholder="Ex.: J06.9, faringite, infecção urinária..." autocomplete="off">
+                            </div>
+                            <div id="cidResultados" class="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto hidden"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="lbl">CID principal *</label>
+                                <div id="cidPrincipalBox" class="min-h-[52px] rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/50 p-2 flex items-center text-sm text-muted">Selecione na busca acima</div>
+                            </div>
+                            <div>
+                                <label class="lbl">CIDs secundários</label>
+                                <div id="cidSecBox" class="min-h-[52px] rounded-xl border border-slate-200 bg-slate-50 p-2 flex flex-wrap gap-2 text-sm text-muted">Nenhum</div>
+                            </div>
+                        </div>
+                        <div><label class="lbl">Hipótese diagnóstica / raciocínio clínico</label><textarea id="hipotese" rows="3" class="field" placeholder="Ex.: Quadro compatível com IVAS de provável etiologia viral, sem sinais de gravidade."></textarea></div>
+                        <div>
+                            <label class="lbl">Classificação</label>
+                            <div class="flex flex-wrap gap-2" id="riscoChips">
+                                <span class="chip on" data-v="Baixo risco — manejo por telemedicina">🟢 Baixo risco — manejo por telemedicina</span>
+                                <span class="chip" data-v="Risco intermediário — avaliação presencial recomendada">🟡 Intermediário — avaliação presencial</span>
+                                <span class="chip" data-v="Alto risco — encaminhado à emergência">🔴 Alto risco — emergência</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CONDUTA -->
+                <section id="secConduta" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="pill" class="w-5 h-5 text-brand-600"></i>Conduta</h2>
+                    <div class="space-y-5">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="lbl mb-0">Prescrição</label>
+                                <button onclick="addPresc()" class="text-xs font-semibold text-brand-700 hover:text-brand-900 flex items-center gap-1"><i data-lucide="plus-circle" class="w-4 h-4"></i>Adicionar medicamento</button>
+                            </div>
+                            <div id="prescLista" class="space-y-2"></div>
+                            <p id="prescVazia" class="text-sm text-slate-400 italic">Nenhum medicamento prescrito.</p>
+                        </div>
+                        <div><label class="lbl">Orientações gerais</label><textarea id="orientacoes" rows="3" class="field" placeholder="Hidratação, repouso, alimentação, medidas não farmacológicas..."></textarea></div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="lbl">Atestado médico</label>
+                                <div class="flex gap-2">
+                                    <input id="atestadoDias" type="number" min="0" class="field" placeholder="0">
+                                    <span class="self-center text-sm text-muted whitespace-nowrap">dia(s)</span>
+                                </div>
+                                <label class="flex items-center gap-2 mt-2 text-sm"><input id="atestadoCid" type="checkbox" class="accent-brand-600"> Incluir CID no atestado (autorizado pelo paciente)</label>
+                            </div>
+                            <div><label class="lbl">Exames solicitados</label><textarea id="exames" rows="3" class="field" placeholder="Hemograma, EAS, urocultura..."></textarea></div>
+                            <div>
+                                <label class="lbl">Encaminhamento</label>
+                                <select id="encaminhamento" class="field">
+                                    <option>Nenhum</option>
+                                    <option>Avaliação presencial eletiva</option>
+                                    <option>Especialista</option>
+                                    <option>Pronto atendimento / UPA</option>
+                                    <option>Emergência imediata (SAMU 192)</option>
+                                </select>
+                                <input id="encaminhamentoObs" class="field mt-2" placeholder="Especialidade / motivo">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="lbl">Sinais de alarme — quando procurar atendimento presencial</label>
+                            <textarea id="alarme" rows="3" class="field"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- FINALIZAÇÃO -->
+                <section id="secFinal" class="card scroll-mt-24">
+                    <h2 class="card-title"><i data-lucide="flag" class="w-5 h-5 text-brand-600"></i>Finalização</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="lbl">Desfecho</label>
+                            <select id="desfecho" class="field">
+                                <option>Orientação e alta</option>
+                                <option>Prescrição e alta</option>
+                                <option>Alta com retorno em 24h</option>
+                                <option>Encaminhado para avaliação presencial</option>
+                                <option>Encaminhado à emergência</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2 pt-5">
+                            <label class="flex items-center gap-2 text-sm"><input id="retorno24" type="checkbox" class="accent-brand-600" checked> Retorno gratuito em até 24h, se necessário</label>
+                            <label class="flex items-center gap-2 text-sm"><input id="consentimento" type="checkbox" class="accent-brand-600" checked> Paciente ciente das limitações da teleconsulta e consentiu com o atendimento</label>
+                        </div>
+                        <div class="md:col-span-2"><label class="lbl">Observações</label><textarea id="obs" rows="2" class="field"></textarea></div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-6 pt-6 border-t border-slate-100">
+                        <button onclick="salvarProtocolo()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm font-medium"><i data-lucide="save" class="w-4 h-4"></i>Salvar no histórico</button>
+                        <button onclick="mostrarDocumento()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-brand-200 text-brand-700 hover:bg-brand-50 text-sm font-medium"><i data-lucide="eye" class="w-4 h-4"></i>Pré-visualizar</button>
+                        <button onclick="gerarPDF()" class="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm"><i data-lucide="file-down" class="w-4 h-4"></i>Gerar PDF</button>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- ===================== DOCUMENTO (PDF) ===================== -->
+    <div id="docView" class="hidden fixed inset-0 z-40 bg-slate-700/90 overflow-y-auto">
+        <div id="docBar" class="sticky top-0 z-10 bg-white border-b border-slate-200">
+            <div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+                <button onclick="fecharDocumento()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 text-sm"><i data-lucide="arrow-left" class="w-4 h-4"></i>Voltar ao formulário</button>
+                <div class="flex-1"></div>
+                <button onclick="window.print()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm"><i data-lucide="printer" class="w-4 h-4"></i>Imprimir</button>
+                <button onclick="gerarPDF()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold"><i data-lucide="file-down" class="w-4 h-4"></i>Baixar PDF</button>
+            </div>
+        </div>
+        <div class="py-8 px-2">
+            <div id="documento" class="shadow-2xl"></div>
+        </div>
+    </div>
+
+    <!-- ===================== HISTÓRICO ===================== -->
+    <div id="histModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4" onclick="if(event.target===this)fecharHistorico()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <div class="flex items-center gap-3 p-5 border-b border-slate-100">
+                <i data-lucide="history" class="w-5 h-5 text-brand-600"></i>
+                <h3 class="font-bold text-lg text-brand-900">Histórico de protocolos</h3>
+                <div class="flex-1"></div>
+                <input id="histBusca" class="field max-w-xs" placeholder="Buscar por nome, CID ou nº" oninput="renderHistorico()">
+                <button onclick="fecharHistorico()" class="p-2 rounded-lg hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="histLista" class="overflow-y-auto p-3 space-y-2"></div>
+            <div class="p-4 border-t border-slate-100 flex items-center gap-3 text-xs text-muted">
+                <button onclick="exportarHistorico()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-ink"><i data-lucide="download" class="w-3.5 h-3.5"></i>Exportar backup (JSON)</button>
+                <label class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-ink cursor-pointer"><i data-lucide="upload" class="w-3.5 h-3.5"></i>Importar backup<input type="file" accept=".json" class="hidden" onchange="importarHistorico(this)"></label>
+                <span class="flex-1"></span><span id="histCount"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] hidden px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white bg-brand-900"></div>
+
+<script>
+/* =========================================================
+   DADOS DE REFERÊNCIA
+   ========================================================= */
+const LOGO_URL = 'https://cdn.prod.website-files.com/6a171f532efcbde95d0c445d/6a1727506204d20ba4f276c0_LOGO_PLANTAO24H-1.svg';
+const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
+const SINTOMAS = {
+    'Gerais': ['Febre','Calafrios','Mal-estar','Fadiga','Sudorese','Perda de apetite','Perda de peso'],
+    'Respiratório / ORL': ['Tosse seca','Tosse produtiva','Coriza','Congestão nasal','Espirros','Dor de garganta','Rouquidão','Dor de ouvido','Falta de ar','Chiado','Dor facial / sinusal'],
+    'Gastrointestinal': ['Náusea','Vômito','Diarreia','Dor abdominal','Azia / queimação','Distensão abdominal','Constipação','Sangue nas fezes'],
+    'Urinário / Ginecológico': ['Dor ao urinar','Urinar muitas vezes','Urgência miccional','Dor lombar','Sangue na urina','Corrimento','Prurido genital','Atraso menstrual','Cólica menstrual'],
+    'Neurológico / Psíquico': ['Cefaleia','Tontura','Vertigem','Insônia','Ansiedade','Tristeza / desânimo','Palpitação','Formigamento'],
+    'Pele / Olhos': ['Manchas / erupção','Coceira','Urticária','Lesão / ferida','Olho vermelho','Secreção ocular','Lacrimejamento','Inchaço'],
+    'Musculoesquelético': ['Dor muscular','Dor articular','Dor nas costas','Dor cervical','Trauma / entorse']
+};
+
+const COMORBIDADES = ['Nega comorbidades','Hipertensão','Diabetes','Asma','DPOC','Cardiopatia','Hipotireoidismo','Obesidade','Doença renal','Imunossupressão','Ansiedade / depressão','Epilepsia','Câncer (atual/prévio)'];
+
+const ALARME_PADRAO = 'Procurar atendimento presencial ou emergência (SAMU 192) imediatamente se apresentar: febre persistente acima de 39 °C por mais de 72h; falta de ar ou dificuldade para respirar; dor no peito; confusão mental ou sonolência excessiva; vômitos persistentes com incapacidade de ingerir líquidos; sangramentos; piora dos sintomas ou ausência de melhora em 48–72h.';
+
+// CID-10 mais utilizados em teleconsulta (código | descrição)
+const CID10 = [
+    ['J00','Nasofaringite aguda (resfriado comum)'],['J01.9','Sinusite aguda não especificada'],['J02.9','Faringite aguda não especificada'],['J03.9','Amigdalite aguda não especificada'],['J04.0','Laringite aguda'],['J05.0','Laringite obstrutiva aguda (crupe)'],['J06.9','Infecção aguda das vias aéreas superiores não especificada'],['J10.1','Influenza com outras manifestações respiratórias, vírus identificado'],['J11.1','Influenza com outras manifestações respiratórias, vírus não identificado'],['J11.8','Influenza com outras manifestações, vírus não identificado'],['J18.9','Pneumonia não especificada'],['J20.9','Bronquite aguda não especificada'],['J21.9','Bronquiolite aguda não especificada'],['J22','Infecção aguda não especificada das vias aéreas inferiores'],['J30.1','Rinite alérgica devida a pólen'],['J30.4','Rinite alérgica não especificada'],['J31.0','Rinite crônica'],['J32.9','Sinusite crônica não especificada'],['J40','Bronquite não especificada como aguda ou crônica'],['J44.1','DPOC com exacerbação aguda'],['J45.0','Asma predominantemente alérgica'],['J45.9','Asma não especificada'],['J98.9','Transtorno respiratório não especificado'],
+    ['R05','Tosse'],['R06.0','Dispneia'],['R07.0','Dor de garganta'],['R07.4','Dor torácica não especificada'],['R50.9','Febre não especificada'],['R51','Cefaleia'],['R53','Mal-estar, fadiga'],['R55','Síncope e colapso'],['R42','Tontura e instabilidade'],['R11','Náusea e vômitos'],['R10.1','Dor localizada no abdome superior'],['R10.3','Dor localizada em outras partes do abdome inferior'],['R10.4','Outras dores abdominais e as não especificadas'],['R19.7','Diarreia não especificada'],['R21','Eritema e outras erupções cutâneas não especificadas'],['R20.2','Parestesia da pele'],['R30.0','Disúria'],['R63.0','Anorexia'],['R63.4','Perda de peso anormal'],['R03.0','Valor elevado da pressão arterial sem diagnóstico de hipertensão'],['R73.9','Hiperglicemia não especificada'],['R68.1','Sintomas não específicos peculiares à infância'],['R56.0','Convulsões febris'],
+    ['K29.7','Gastrite não especificada'],['K30','Dispepsia'],['K21.0','Doença de refluxo gastroesofágico com esofagite'],['K21.9','Doença de refluxo gastroesofágico sem esofagite'],['K52.9','Gastroenterite e colite não infecciosas não especificadas'],['A09','Diarreia e gastroenterite de origem infecciosa presumível'],['A08.4','Infecção intestinal viral não especificada'],['K59.0','Constipação'],['I84.9','Hemorroidas sem complicação, não especificadas'],['K04.7','Abscesso periapical sem fístula'],['K12.0','Aftas bucais recidivantes'],['K12.1','Outras formas de estomatite'],['K00.7','Síndrome da erupção dentária'],
+    ['N39.0','Infecção do trato urinário de localização não especificada'],['N30.0','Cistite aguda'],['N30.9','Cistite não especificada'],['N10','Pielonefrite aguda (nefrite túbulo-intersticial aguda)'],['N20.0','Cálculo do rim'],['N20.1','Cálculo do ureter'],['N23','Cólica nefrética não especificada'],['N34.1','Uretrite não especificada'],['N41.0','Prostatite aguda'],['N76.0','Vaginite aguda'],['B37.3','Candidíase da vulva e da vagina'],['N89.8','Outros transtornos não inflamatórios da vagina (corrimento)'],['N94.6','Dismenorreia não especificada'],['N92.6','Menstruação irregular não especificada'],['N91.2','Amenorreia não especificada'],['A64','Doenças sexualmente transmissíveis não especificadas'],['O21.0','Hiperêmese gravídica leve'],['Z34.9','Supervisão de gravidez normal não especificada'],
+    ['L20.9','Dermatite atópica não especificada'],['L23.9','Dermatite alérgica de contato de causa não especificada'],['L25.9','Dermatite de contato não especificada'],['L30.9','Dermatite não especificada'],['L50.0','Urticária alérgica'],['L50.9','Urticária não especificada'],['L29.9','Prurido não especificado'],['L01.0','Impetigo'],['L02.9','Abscesso cutâneo, furúnculo e antraz de localização não especificada'],['L03.9','Celulite não especificada'],['L08.9','Infecção localizada da pele e do tecido subcutâneo não especificada'],['B00.1','Dermatite vesicular devida ao vírus do herpes (herpes labial)'],['B02.9','Herpes zoster sem complicação'],['B35.3','Tinha dos pés'],['B35.4','Tinha do corpo'],['B35.6','Tinha crural'],['B36.0','Pitiríase versicolor'],['B86','Escabiose'],['L70.0','Acne vulgar'],['L60.0','Unha encravada'],['T14.0','Traumatismo superficial de região não especificada do corpo'],['T14.1','Ferimento aberto de região não especificada do corpo'],['W57','Mordedura ou picada de inseto e outros artrópodes não venenosos'],['T63.4','Efeito tóxico de contato com veneno de outros artrópodes'],['T78.4','Alergia não especificada'],['T78.2','Choque anafilático não especificado'],
+    ['H10.1','Conjuntivite aguda atópica'],['H10.3','Conjuntivite aguda não especificada'],['H10.9','Conjuntivite não especificada'],['H00.0','Hordéolo e outras inflamações profundas da pálpebra (terçol)'],['H01.0','Blefarite'],['H11.3','Hemorragia conjuntival'],['H65.9','Otite média não supurativa não especificada'],['H66.0','Otite média supurativa aguda'],['H66.9','Otite média não especificada'],['H60.9','Otite externa não especificada'],['H61.2','Cerume impactado'],['H81.1','Vertigem paroxística benigna'],['H81.9','Transtorno da função vestibular não especificado'],['H92.0','Otalgia'],['H93.1','Tinnitus'],
+    ['I10','Hipertensão essencial (primária)'],['I95.9','Hipotensão não especificada'],['I20.9','Angina pectoris não especificada'],['I21.9','Infarto agudo do miocárdio não especificado'],['I63.9','Infarto cerebral não especificado'],['E10.9','Diabetes mellitus insulino-dependente sem complicações'],['E11.9','Diabetes mellitus não-insulino-dependente sem complicações'],['E78.5','Hiperlipidemia não especificada'],['E03.9','Hipotireoidismo não especificado'],['E66.9','Obesidade não especificada'],['E86','Depleção de volume (desidratação)'],
+    ['M54.2','Cervicalgia'],['M54.4','Lumbago com ciática'],['M54.5','Dor lombar baixa'],['M54.9','Dorsalgia não especificada'],['M79.1','Mialgia'],['M79.6','Dor em membro'],['M25.5','Dor articular'],['M62.6','Distensão muscular'],['M77.9','Entesopatia não especificada'],['M65.9','Sinovite e tenossinovite não especificadas'],['M10.9','Gota não especificada'],['M19.9','Artrose não especificada'],['M75.1','Síndrome do manguito rotador'],['G56.0','Síndrome do túnel do carpo'],['S93.4','Entorse e distensão do tornozelo'],['S63.5','Entorse e distensão do punho'],
+    ['G43.0','Enxaqueca sem aura'],['G43.9','Enxaqueca não especificada'],['G44.2','Cefaleia tensional'],['G47.0','Distúrbios do início e da manutenção do sono'],['F51.0','Insônia não-orgânica'],['F41.0','Transtorno de pânico'],['F41.1','Ansiedade generalizada'],['F41.9','Transtorno ansioso não especificado'],['F32.0','Episódio depressivo leve'],['F32.9','Episódio depressivo não especificado'],['F33.9','Transtorno depressivo recorrente não especificado'],['F43.0','Reação aguda ao estresse'],['F43.2','Transtornos de adaptação'],['F17.2','Transtornos mentais devidos ao uso de fumo — síndrome de dependência'],['F10.1','Transtornos mentais devidos ao uso de álcool — uso nocivo'],['Z73.0','Esgotamento (burnout)'],
+    ['B34.9','Infecção viral não especificada'],['B34.2','Infecção por coronavírus não especificada'],['U07.1','COVID-19, vírus identificado'],['U07.2','COVID-19, vírus não identificado'],['A90','Dengue clássico'],['A91','Febre hemorrágica da dengue'],['A92.0','Febre de Chikungunya'],['A92.8','Outras febres virais transmitidas por mosquitos (Zika)'],['B01.9','Varicela sem complicação'],['B05.9','Sarampo sem complicação'],['B26.9','Caxumba sem complicação'],['B08.4','Estomatite vesicular com exantema (doença mão-pé-boca)'],['B27.9','Mononucleose infecciosa não especificada'],['A38','Escarlatina'],
+    ['Z00.0','Exame médico geral'],['Z02.7','Emissão de declaração médica (atestado)'],['Z03.9','Observação por suspeita de doença ou afecção não especificada'],['Z09.9','Exame de seguimento após tratamento não especificado'],['Z71.1','Pessoa com queixa para a qual não foi feito diagnóstico'],['Z71.9','Aconselhamento não especificado'],['Z76.0','Emissão de receita de repetição']
+];
+
+/* =========================================================
+   ESTADO
+   ========================================================= */
+const KEY_HIST = 'p24h_protocolos', KEY_DRAFT = 'p24h_rascunho', KEY_MED = 'p24h_medico';
+// Armazenamento com fallback em memória (caso o navegador bloqueie o localStorage)
+const store = (() => {
+    try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return localStorage; }
+    catch { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; }
+})();
+let cidPrincipal = null;   // {codigo, descricao}
+let cidSecundarios = [];
+let editandoId = null;     // id do registro do histórico em edição
+let autoSaveTimer = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/* =========================================================
+   INICIALIZAÇÃO
+   ========================================================= */
+function init() {
+    // UFs
+    ['pacUf','medUf'].forEach(id => UFS.forEach(uf => { const o = document.createElement('option'); o.textContent = uf; $(id).appendChild(o); }));
+
+    // Sintomas por grupo
+    $('sintomasWrap').innerHTML = Object.entries(SINTOMAS).map(([g, itens]) => `
+        <div><p class="text-xs font-semibold text-brand-700 mb-1.5">${g}</p>
+        <div class="flex flex-wrap gap-2">${itens.map(s => `<span class="chip sint" data-v="${esc(s)}" onclick="toggleChip(this)">${esc(s)}</span>`).join('')}</div></div>`).join('');
+
+    // Comorbidades
+    $('comorbChips').innerHTML = COMORBIDADES.map(c => `<span class="chip comorb" data-v="${esc(c)}" onclick="toggleComorb(this)">${esc(c)}</span>`).join('');
+
+    // Chips de seleção única
+    document.querySelectorAll('#modalidadeChips .chip, #riscoChips .chip').forEach(ch => ch.addEventListener('click', () => {
+        ch.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('on')); ch.classList.add('on'); agendarAutoSave();
+    }));
+
+    // Busca CID
+    $('cidBusca').addEventListener('input', buscarCID);
+    $('cidBusca').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); const first = $('cidResultados').querySelector('[data-idx]'); if (first) first.click(); }
+        if (e.key === 'Escape') $('cidResultados').classList.add('hidden');
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('#cidBusca') && !e.target.closest('#cidResultados')) $('cidResultados').classList.add('hidden'); });
+
+    // Auto-save em qualquer alteração
+    document.querySelectorAll('#app input, #app select, #app textarea').forEach(el => el.addEventListener('input', agendarAutoSave));
+
+    // Navegação lateral ativa
+    const links = [...document.querySelectorAll('#sideNav a')];
+    const obs = new IntersectionObserver(entries => entries.forEach(en => { if (en.isIntersecting) { links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + en.target.id)); } }), { rootMargin: '-40% 0px -55% 0px' });
+    document.querySelectorAll('main section').forEach(s => obs.observe(s));
+
+    // Rascunho anterior ou novo
+    const draft = lerJSON(KEY_DRAFT);
+    if (draft && draft.pacNome) { preencher(draft); toast('Rascunho anterior restaurado'); }
+    else novoProtocolo(true);
+
+    lucide.createIcons();
+}
+
+/* =========================================================
+   UTILITÁRIOS DE FORMULÁRIO
+   ========================================================= */
+function toggleChip(el) { el.classList.toggle('on'); agendarAutoSave(); }
+function toggleComorb(el) {
+    const nega = el.dataset.v === 'Nega comorbidades';
+    if (nega) { document.querySelectorAll('.comorb').forEach(c => c.classList.remove('on')); el.classList.add('on'); }
+    else { document.querySelector('.comorb[data-v="Nega comorbidades"]').classList.remove('on'); el.classList.toggle('on'); }
+    agendarAutoSave();
+}
+function chipsOn(sel) { return [...document.querySelectorAll(sel + '.on')].map(c => c.dataset.v); }
+function setChips(sel, valores) { document.querySelectorAll(sel).forEach(c => c.classList.toggle('on', (valores || []).includes(c.dataset.v))); }
+
+function mascaraCPF(i) { i.value = i.value.replace(/\D/g, '').slice(0, 11).replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); }
+function mascaraTel(i) { let v = i.value.replace(/\D/g, '').slice(0, 11); v = v.replace(/^(\d{2})(\d)/, '($1) $2'); v = v.length > 13 ? v.replace(/(\d{5})(\d)/, '$1-$2') : v.replace(/(\d{4})(\d)/, '$1-$2'); i.value = v; }
+
+function calcIdade(nasc, ref) {
+    if (!nasc) return '';
+    const n = new Date(nasc + 'T00:00:00'), r = ref ? new Date(ref + 'T00:00:00') : new Date();
+    if (isNaN(n)) return '';
+    let a = r.getFullYear() - n.getFullYear(); const m = r.getMonth() - n.getMonth();
+    if (m < 0 || (m === 0 && r.getDate() < n.getDate())) a--;
+    if (a < 2) { const meses = (r.getFullYear() - n.getFullYear()) * 12 + m - (r.getDate() < n.getDate() ? 1 : 0); return meses + (meses === 1 ? ' mês' : ' meses'); }
+    return a + ' anos';
+}
+function atualizarIdade() { $('pacIdade').value = calcIdade($('pacNasc').value, $('atdData').value); }
+
+function fmtData(iso) { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; }
+function hoje() { const d = new Date(); return d.toISOString().slice(0, 10); }
+function agora() { const d = new Date(); return d.toTimeString().slice(0, 5); }
+
+function novoNumero() {
+    // Número aleatório de 8 dígitos, evitando repetir um já usado no histórico
+    let n; do { n = String(Math.floor(10000000 + Math.random() * 90000000)); } while (lerHist().some(h => (h.atdProtocolo || "").endsWith(n)));
+    return `P24H-${n}`;
+}
+
+/* =========================================================
+   PRESCRIÇÃO
+   ========================================================= */
+function addPresc(p = {}) {
+    const row = document.createElement('div');
+    row.className = 'presc grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-slate-50 border border-slate-200 rounded-xl p-2';
+    row.innerHTML = `
+        <input class="field md:col-span-4 p-med" placeholder="Medicamento e apresentação" value="${esc(p.med)}">
+        <input class="field md:col-span-5 p-pos" placeholder="Posologia (ex.: 1 comprimido de 8/8h)" value="${esc(p.pos)}">
+        <input class="field md:col-span-2 p-dur" placeholder="Duração" value="${esc(p.dur)}">
+        <button onclick="this.closest('.presc').remove();atualizarPrescVazia();agendarAutoSave()" class="md:col-span-1 h-[38px] rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center" title="Remover"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`;
+    $('prescLista').appendChild(row);
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', agendarAutoSave));
+    lucide.createIcons({ nodes: [row] });
+    atualizarPrescVazia();
+    if (!p.med) row.querySelector('.p-med').focus();
+}
+function atualizarPrescVazia() { $('prescVazia').classList.toggle('hidden', $('prescLista').children.length > 0); }
+function lerPresc() { return [...document.querySelectorAll('.presc')].map(r => ({ med: r.querySelector('.p-med').value.trim(), pos: r.querySelector('.p-pos').value.trim(), dur: r.querySelector('.p-dur').value.trim() })).filter(p => p.med); }
+
+/* =========================================================
+   CID-10
+   ========================================================= */
+function buscarCID() {
+    const q = norm($('cidBusca').value.trim());
+    const box = $('cidResultados');
+    if (q.length < 2) { box.classList.add('hidden'); return; }
+    const res = CID10.map((c, i) => ({ i, c, score: norm(c[0]).startsWith(q) ? 0 : norm(c[0]).includes(q) ? 1 : norm(c[1]).includes(q) ? 2 : 9 })).filter(r => r.score < 9).sort((a, b) => a.score - b.score).slice(0, 40);
+    let html = res.map(r => `<div data-idx="${r.i}" class="flex items-center gap-3 px-3 py-2 hover:bg-brand-50 cursor-pointer text-sm border-b border-slate-50">
+        <span class="font-mono font-bold text-brand-700 bg-brand-50 rounded px-1.5">${esc(r.c[0])}</span><span class="flex-1 text-ink">${esc(r.c[1])}</span>
+        <button class="text-xs text-muted hover:text-brand-700 px-2" data-sec="1">+ secundário</button></div>`).join('');
+    // Permite código digitado manualmente (formato A00 ou A00.0)
+    const raw = $('cidBusca').value.trim().toUpperCase();
+    if (/^[A-Z]\d{2}(\.\d{1,2})?$/.test(raw) && !CID10.some(c => c[0] === raw)) {
+        html += `<div data-manual="${esc(raw)}" class="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm text-amber-800 flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Usar código <b>${esc(raw)}</b> (fora da lista — descrição livre)</div>`;
+    }
+    if (!html) html = '<div class="px-3 py-3 text-sm text-muted">Nenhum resultado. Você pode digitar o código (ex.: J06.9) para usá-lo manualmente.</div>';
+    box.innerHTML = html; box.classList.remove('hidden');
+    box.querySelectorAll('[data-idx]').forEach(el => el.addEventListener('click', e => {
+        const c = CID10[+el.dataset.idx]; const item = { codigo: c[0], descricao: c[1] };
+        e.target.dataset.sec ? addCidSecundario(item) : setCidPrincipal(item);
+    }));
+    box.querySelectorAll('[data-manual]').forEach(el => el.addEventListener('click', () => {
+        const desc = prompt('Descrição para o código ' + el.dataset.manual + ':') || '';
+        const item = { codigo: el.dataset.manual, descricao: desc.trim() || 'Descrição não informada' };
+        cidPrincipal ? addCidSecundario(item) : setCidPrincipal(item);
+    }));
+    lucide.createIcons({ nodes: [box] });
+}
+function setCidPrincipal(item) { cidPrincipal = item; $('cidBusca').value = ''; $('cidResultados').classList.add('hidden'); renderCids(); agendarAutoSave(); }
+function addCidSecundario(item) {
+    if (cidPrincipal && cidPrincipal.codigo === item.codigo) return toast('Este código já é o CID principal');
+    if (!cidSecundarios.some(c => c.codigo === item.codigo)) cidSecundarios.push(item);
+    $('cidBusca').value = ''; $('cidResultados').classList.add('hidden'); renderCids(); agendarAutoSave();
+}
+function removerCidSec(cod) { cidSecundarios = cidSecundarios.filter(c => c.codigo !== cod); renderCids(); agendarAutoSave(); }
+function renderCids() {
+    const p = $('cidPrincipalBox');
+    if (cidPrincipal) {
+        p.innerHTML = `<div class="flex items-center gap-2 w-full"><span class="font-mono font-bold text-white bg-brand-700 rounded-lg px-2 py-1">${esc(cidPrincipal.codigo)}</span><span class="flex-1 text-ink text-sm">${esc(cidPrincipal.descricao)}</span>
+            <button onclick="cidPrincipal=null;renderCids();agendarAutoSave()" class="p-1 text-red-500 hover:bg-red-50 rounded" title="Remover"><i data-lucide="x" class="w-4 h-4"></i></button></div>`;
+        p.classList.replace('border-dashed', 'border-solid');
+    } else { p.innerHTML = 'Selecione na busca acima'; p.classList.replace('border-solid', 'border-dashed'); }
+    const s = $('cidSecBox');
+    s.innerHTML = cidSecundarios.length ? cidSecundarios.map(c => `<span class="inline-flex items-center gap-1 bg-white border border-brand-200 rounded-full pl-2 pr-1 py-0.5 text-xs"><b class="font-mono text-brand-700">${esc(c.codigo)}</b><span class="text-ink max-w-[180px] truncate" title="${esc(c.descricao)}">${esc(c.descricao)}</span><button onclick="removerCidSec('${esc(c.codigo)}')" class="text-red-500 hover:bg-red-50 rounded-full p-0.5"><i data-lucide="x" class="w-3 h-3"></i></button></span>`).join('') : 'Nenhum';
+    lucide.createIcons({ nodes: [p, s] });
+}
+
+/* =========================================================
+   COLETA / PREENCHIMENTO
+   ========================================================= */
+const CAMPOS = ['pacNome','pacCpf','pacNasc','pacSexo','pacTel','pacCidade','pacUf','atdProtocolo','atdData','atdHoraIni','atdHoraFim','atdTipo','medEsp','medNome','medCrm','medUf','queixa','sintomasOutros','inicioQtd','inicioUn','evolucao','dorEscala','hda','svTemp','svPa','svFc','svSpo2','svPeso','svAlt','exame','comorbOutras','alergias','medUso','gestante','habitos','cirurgias','hipotese','orientacoes','atestadoDias','exames','encaminhamento','encaminhamentoObs','alarme','desfecho','obs'];
+const CHECKS = ['atestadoCid','retorno24','consentimento'];
+
+function coletar() {
+    const d = {};
+    CAMPOS.forEach(id => d[id] = $(id).value);
+    CHECKS.forEach(id => d[id] = $(id).checked);
+    d.sintomas = chipsOn('.sint'); d.comorbidades = chipsOn('.comorb');
+    d.modalidade = chipsOn('#modalidadeChips .chip')[0] || ''; d.risco = chipsOn('#riscoChips .chip')[0] || '';
+    d.cidPrincipal = cidPrincipal; d.cidSecundarios = cidSecundarios; d.prescricao = lerPresc();
+    d.idade = calcIdade(d.pacNasc, d.atdData);
+    d.id = editandoId;
+    return d;
+}
+function preencher(d) {
+    CAMPOS.forEach(id => { if (d[id] !== undefined) $(id).value = d[id]; });
+    CHECKS.forEach(id => { if (d[id] !== undefined) $(id).checked = !!d[id]; });
+    setChips('.sint', d.sintomas); setChips('.comorb', d.comorbidades);
+    setChips('#modalidadeChips .chip', [d.modalidade]); setChips('#riscoChips .chip', [d.risco]);
+    cidPrincipal = d.cidPrincipal || null; cidSecundarios = d.cidSecundarios || []; renderCids();
+    $('prescLista').innerHTML = ''; (d.prescricao || []).forEach(addPresc); atualizarPrescVazia();
+    $('dorVal').textContent = $('dorEscala').value; editandoId = d.id || null;
+    $('topProtocolo').textContent = $('atdProtocolo').value || '—'; atualizarIdade();
+}
+
+function novoProtocolo(silencioso) {
+    if (!silencioso && $('pacNome').value && !confirm('Iniciar um novo protocolo? O rascunho atual será substituído (salve no histórico antes, se necessário).')) return;
+    const med = lerJSON(KEY_MED) || {};
+    CAMPOS.forEach(id => $(id).value = ''); CHECKS.forEach(id => $(id).checked = true); $('atestadoCid').checked = false;
+    cidPrincipal = null; cidSecundarios = []; editandoId = null; $('prescLista').innerHTML = '';
+    setChips('.sint', []); setChips('.comorb', []); setChips('#modalidadeChips .chip', ['Vídeo']); setChips('#riscoChips .chip', ['Baixo risco — manejo por telemedicina']);
+    $('atdProtocolo').value = novoNumero(); $('atdData').value = hoje(); $('atdHoraIni').value = agora();
+    $('atdTipo').value = 'Primeira consulta'; $('inicioUn').value = 'dias'; $('evolucao').value = 'Progressiva'; $('gestante').value = 'Não se aplica';
+    $('encaminhamento').value = 'Nenhum'; $('desfecho').value = 'Orientação e alta'; $('dorEscala').value = 0; $('dorVal').textContent = '0';
+    $('alarme').value = ALARME_PADRAO; $('medEsp').value = med.medEsp || 'Clínica Médica'; $('medNome').value = med.medNome || ''; $('medCrm').value = med.medCrm || ''; $('medUf').value = med.medUf || '';
+    renderCids(); atualizarPrescVazia(); $('topProtocolo').textContent = $('atdProtocolo').value; $('pacIdade').value = '';
+    store.removeItem(KEY_DRAFT);
+    if (!silencioso) { toast('Novo protocolo iniciado'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+
+function agendarAutoSave() { clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(() => { store.setItem(KEY_DRAFT, JSON.stringify(coletar())); $('topProtocolo').textContent = $('atdProtocolo').value || '—'; }, 400); }
+function lerJSON(k) { try { return JSON.parse(store.getItem(k)); } catch { return null; } }
+
+function validar(d) {
+    const faltas = [];
+    if (!d.pacNome.trim()) faltas.push('nome do paciente');
+    if (!d.queixa.trim()) faltas.push('queixa principal');
+    if (!d.cidPrincipal) faltas.push('CID principal');
+    if (!d.medNome.trim()) faltas.push('médico responsável');
+    if (!d.medCrm.trim()) faltas.push('CRM');
+    if (faltas.length) { toast('Preencha: ' + faltas.join(', '), true); return false; }
+    return true;
+}
+
+/* =========================================================
+   HISTÓRICO (localStorage)
+   ========================================================= */
+function lerHist() { return lerJSON(KEY_HIST) || []; }
+function salvarProtocolo(silencioso) {
+    const d = coletar();
+    if (!d.pacNome.trim()) return toast('Informe ao menos o nome do paciente para salvar', true);
+    if (!d.atdHoraFim) { d.atdHoraFim = agora(); $('atdHoraFim').value = d.atdHoraFim; }
+    const hist = lerHist();
+    if (!d.id) { d.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); editandoId = d.id; }
+    d.salvoEm = new Date().toISOString();
+    const i = hist.findIndex(h => h.id === d.id); i >= 0 ? hist[i] = d : hist.unshift(d);
+    store.setItem(KEY_HIST, JSON.stringify(hist));
+    store.setItem(KEY_MED, JSON.stringify({ medNome: d.medNome, medCrm: d.medCrm, medUf: d.medUf, medEsp: d.medEsp }));
+    if (!silencioso) toast('Protocolo salvo no histórico');
+    return d;
+}
+function abrirHistorico() { $('histBusca').value = ''; renderHistorico(); $('histModal').classList.remove('hidden'); lucide.createIcons(); }
+function fecharHistorico() { $('histModal').classList.add('hidden'); }
+function renderHistorico() {
+    const q = norm($('histBusca').value); const hist = lerHist().filter(h => !q || norm(h.pacNome + ' ' + h.atdProtocolo + ' ' + (h.cidPrincipal?.codigo || '') + ' ' + (h.cidPrincipal?.descricao || '')).includes(q));
+    $('histCount').textContent = hist.length + ' protocolo(s)';
+    $('histLista').innerHTML = hist.length ? hist.map(h => `
+        <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/40">
+            <div class="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center text-brand-700"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-ink truncate">${esc(h.pacNome)} <span class="font-normal text-muted text-xs">· ${esc(h.idade || '')}</span></p>
+                <p class="text-xs text-muted truncate"><span class="font-mono">${esc(h.atdProtocolo)}</span> · ${fmtData(h.atdData)} ${esc(h.atdHoraIni)} · ${esc(h.modalidade)} · ${h.cidPrincipal ? `<b class="text-brand-700">${esc(h.cidPrincipal.codigo)}</b> ${esc(h.cidPrincipal.descricao)}` : 'sem CID'}</p>
+            </div>
+            <button onclick="carregarHist('${h.id}')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700">Abrir</button>
+            <button onclick="duplicarHist('${h.id}')" class="p-2 rounded-lg hover:bg-slate-100 text-ink" title="Novo atendimento (retorno) com os dados deste paciente"><i data-lucide="copy-plus" class="w-4 h-4"></i></button>
+            <button onclick="excluirHist('${h.id}')" class="p-2 rounded-lg hover:bg-red-50 text-red-500" title="Excluir"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>`).join('') : '<p class="text-center text-muted text-sm py-10">Nenhum protocolo salvo ainda.</p>';
+    lucide.createIcons({ nodes: [$('histLista')] });
+}
+function carregarHist(id) { const h = lerHist().find(x => x.id === id); if (!h) return; preencher(h); fecharHistorico(); agendarAutoSave(); toast('Protocolo carregado'); window.scrollTo({ top: 0 }); }
+function duplicarHist(id) {
+    const h = lerHist().find(x => x.id === id); if (!h) return;
+    novoProtocolo(true);
+    ['pacNome','pacCpf','pacNasc','pacSexo','pacTel','pacCidade','pacUf','alergias','medUso','gestante','habitos','cirurgias','comorbOutras'].forEach(k => $(k).value = h[k] || '');
+    setChips('.comorb', h.comorbidades); $('atdTipo').value = 'Retorno (até 24h)'; atualizarIdade();
+    fecharHistorico(); agendarAutoSave(); toast('Novo atendimento criado com os dados do paciente'); window.scrollTo({ top: 0 });
+}
+function excluirHist(id) { if (!confirm('Excluir este protocolo do histórico?')) return; store.setItem(KEY_HIST, JSON.stringify(lerHist().filter(h => h.id !== id))); if (editandoId === id) editandoId = null; renderHistorico(); }
+function exportarHistorico() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(lerHist(), null, 2)], { type: 'application/json' })); a.download = `plantao24h_protocolos_${hoje()}.json`; a.click(); }
+function importarHistorico(input) {
+    const f = input.files[0]; if (!f) return; const r = new FileReader();
+    r.onload = () => { try { const arr = JSON.parse(r.result); if (!Array.isArray(arr)) throw 0; const hist = lerHist(); let n = 0; arr.forEach(x => { if (x && x.id && !hist.some(h => h.id === x.id)) { hist.push(x); n++; } }); hist.sort((a, b) => (b.salvoEm || '').localeCompare(a.salvoEm || '')); store.setItem(KEY_HIST, JSON.stringify(hist)); renderHistorico(); toast(n + ' protocolo(s) importado(s)'); } catch { toast('Arquivo inválido', true); } };
+    r.readAsText(f); input.value = '';
+}
+
+/* =========================================================
+   DOCUMENTO / PDF
+   ========================================================= */
+function montarDocumento(d) {
+    const kv = (rows) => `<table class="kv">${rows.filter(r => r[1] !== undefined && r[1] !== null && String(r[1]).trim() !== '').map(r => `<tr><td class="k">${r[0]}</td><td>${esc(r[1])}</td></tr>`).join('')}</table>`;
+    const tags = arr => arr && arr.length ? `<div class="tags">${arr.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : '';
+    const txt = s => s && s.trim() ? `<div class="txt">${esc(s)}</div>` : '';
+    const sinais = [['Temp.', d.svTemp, '°C'], ['PA', d.svPa, 'mmHg'], ['FC', d.svFc, 'bpm'], ['SpO₂', d.svSpo2, '%'], ['Peso', d.svPeso, 'kg'], ['Altura', d.svAlt, 'cm']].filter(x => x[1]);
+    const sintomasTodos = [...(d.sintomas || []), ...String(d.sintomasOutros || '').split(',').map(s => s.trim()).filter(Boolean)];
+    const comorbTodas = [...(d.comorbidades || []), ...String(d.comorbOutras || '').split(',').map(s => s.trim()).filter(Boolean)];
+    const inicio = d.inicioQtd ? `${d.inicioQtd} ${d.inicioUn}` : '';
+    const emitido = new Date();
+    const riscoCor = /Alto/.test(d.risco) ? '#dc2625' : /interm/i.test(d.risco) ? '#b45309' : '#0A7A68';
+
+    return `
+    <div class="doc-head">
+        <img src="${LOGO_URL}" crossorigin="anonymous" alt="Plantão 24h">
+        <div class="doc-title"><h1>Protocolo de Atendimento</h1><p>Teleconsulta médica · Registro clínico</p><p><b style="color:#0A7A68">${esc(d.atdProtocolo)}</b></p></div>
+    </div>
+    <div class="doc-meta">
+        <span>📅 ${fmtData(d.atdData)}</span><span>🕒 ${esc(d.atdHoraIni || '—')}${d.atdHoraFim ? ' – ' + esc(d.atdHoraFim) : ''}</span><span>${esc(d.modalidade || '—')}</span><span>${esc(d.atdTipo)}</span><span>${esc(d.medEsp)}</span>
+    </div>
+
+    <div class="sec"><h2>1. Identificação do paciente</h2>
+        <table class="kv"><tr><td class="k">Nome</td><td colspan="3"><b>${esc(d.pacNome)}</b></td></tr>
+        <tr><td class="k">Nascimento</td><td>${fmtData(d.pacNasc)}${d.idade ? ' (' + esc(d.idade) + ')' : ''}</td><td class="k">Sexo</td><td>${esc(d.pacSexo || '—')}</td></tr>
+        <tr><td class="k">CPF</td><td>${esc(d.pacCpf || '—')}</td><td class="k">Telefone</td><td>${esc(d.pacTel || '—')}</td></tr>
+        <tr><td class="k">Cidade / UF</td><td colspan="3">${esc([d.pacCidade, d.pacUf].filter(Boolean).join(' / ') || '—')}</td></tr></table>
+    </div>
+
+    <div class="sec"><h2>2. Anamnese</h2>
+        ${kv([['Queixa principal', d.queixa], ['Início dos sintomas', inicio], ['Evolução', d.evolucao], ['Intensidade da dor', d.dorEscala > 0 ? d.dorEscala + '/10' : '']])}
+        ${sintomasTodos.length ? `<p style="margin:5px 0 3px;font-size:8.5pt;color:#5C6B67;font-weight:600">Sintomas relatados</p>${tags(sintomasTodos)}` : ''}
+        ${d.hda ? `<p style="margin:5px 0 3px;font-size:8.5pt;color:#5C6B67;font-weight:600">História da doença atual</p>${txt(d.hda)}` : ''}
+        ${sinais.length ? `<p style="margin:5px 0 3px;font-size:8.5pt;color:#5C6B67;font-weight:600">Sinais vitais informados pelo paciente</p><div class="tags">${sinais.map(s => `<span><b>${s[0]}</b> ${esc(s[1])} ${s[2]}</span>`).join('')}</div>` : ''}
+        ${d.exame ? `<p style="margin:5px 0 3px;font-size:8.5pt;color:#5C6B67;font-weight:600">Exame / observação por vídeo</p>${txt(d.exame)}` : ''}
+    </div>
+
+    <div class="sec"><h2>3. Antecedentes</h2>
+        ${comorbTodas.length ? `<div style="margin-bottom:4px">${tags(comorbTodas)}</div>` : ''}
+        ${kv([['Alergias', d.alergias], ['Medicamentos em uso', d.medUso], ['Gestante / lactante', d.gestante !== 'Não se aplica' ? d.gestante : ''], ['Hábitos', d.habitos], ['Cirurgias / internações', d.cirurgias]])}
+    </div>
+
+    <div class="sec"><h2>4. Hipótese diagnóstica — CID-10</h2>
+        ${d.cidPrincipal ? `<div class="cid-main"><b>${esc(d.cidPrincipal.codigo)}</b><span>${esc(d.cidPrincipal.descricao)}</span><span style="margin-left:auto;font-size:8pt;opacity:.8">PRINCIPAL</span></div>` : ''}
+        ${(d.cidSecundarios || []).map(c => `<div class="cid-sec"><b>${esc(c.codigo)}</b><span>${esc(c.descricao)}</span><span style="margin-left:auto;font-size:8pt;color:#5C6B67">secundário</span></div>`).join('')}
+        ${d.hipotese ? `<div style="margin-top:5px">${txt(d.hipotese)}</div>` : ''}
+        <p style="margin:6px 0 0;font-size:9pt"><b style="color:${riscoCor}">● ${esc(d.risco)}</b></p>
+    </div>
+
+    <div class="sec"><h2>5. Conduta</h2>
+        ${d.prescricao.length ? `<table class="grid" style="margin-bottom:6px"><tr><th style="width:38%">Medicamento</th><th>Posologia</th><th style="width:16%">Duração</th></tr>${d.prescricao.map(p => `<tr><td><b>${esc(p.med)}</b></td><td>${esc(p.pos)}</td><td>${esc(p.dur)}</td></tr>`).join('')}</table>` : ''}
+        ${d.orientacoes ? `<p style="margin:0 0 3px;font-size:8.5pt;color:#5C6B67;font-weight:600">Orientações</p>${txt(d.orientacoes)}` : ''}
+        ${kv([['Atestado', d.atestadoDias > 0 ? `${d.atestadoDias} dia(s) de afastamento${d.atestadoCid ? ' — com CID (autorizado pelo paciente)' : ''}` : ''], ['Exames solicitados', d.exames], ['Encaminhamento', d.encaminhamento !== 'Nenhum' ? d.encaminhamento + (d.encaminhamentoObs ? ' — ' + d.encaminhamentoObs : '') : '']])}
+        ${d.alarme ? `<p style="margin:6px 0 3px;font-size:8.5pt;color:#dc2625;font-weight:700">⚠ Sinais de alarme</p><div class="alert">${esc(d.alarme)}</div>` : ''}
+    </div>
+
+    <div class="sec"><h2>6. Desfecho</h2>
+        ${kv([['Desfecho', d.desfecho], ['Retorno', d.retorno24 ? 'Retorno gratuito em até 24h, se necessário, conforme avaliação médica' : ''], ['Consentimento', d.consentimento ? 'Paciente informado sobre as limitações da teleconsulta e consentiu com o atendimento' : ''], ['Observações', d.obs]])}
+    </div>
+
+    <div class="sign">
+        <div style="font-size:8pt;color:#5C6B67">Emitido em ${emitido.toLocaleDateString('pt-BR')} às ${emitido.toTimeString().slice(0, 5)}</div>
+        <div class="line"><b>${esc(d.medNome)}</b><br>CRM ${esc(d.medCrm)}${d.medUf ? '/' + esc(d.medUf) : ''} · ${esc(d.medEsp)}</div>
+    </div>
+    <div class="doc-foot">Plantão 24h · Telemedicina · Atendimento realizado por profissional inscrito no CRM, em conformidade com a Resolução CFM nº 2.314/2022. Este documento é um registro do atendimento e não substitui receita, atestado ou solicitação de exames emitidos com assinatura digital.</div>`;
+}
+
+function mostrarDocumento() {
+    const d = coletar(); if (!validar(d)) return;
+    $('documento').innerHTML = montarDocumento(d);
+    $('docView').classList.remove('hidden'); document.body.style.overflow = 'hidden'; lucide.createIcons();
+}
+function fecharDocumento() { $('docView').classList.add('hidden'); document.body.style.overflow = ''; }
+
+async function gerarPDF() {
+    const d = coletar(); if (!validar(d)) return;
+    salvarProtocolo(true);
+    $('documento').innerHTML = montarDocumento(d);
+    const aberto = !$('docView').classList.contains('hidden');
+    if (!aberto) { $('docView').classList.remove('hidden'); $('docView').style.visibility = 'hidden'; }
+    toast('Gerando PDF…');
+    // Aguarda o logo carregar antes de renderizar
+    const img = $('documento').querySelector('img'); if (img && !img.complete) await new Promise(r => { img.onload = img.onerror = r; });
+    const nome = (d.pacNome || 'paciente').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+    // Sem altura mínima durante a renderização, para não gerar página em branco no final
+    $('documento').style.minHeight = '0';
+    try {
+        await html2pdf().set({
+            margin: 0, filename: `Protocolo_${d.atdProtocolo}_${nome}.pdf`,
+            image: { type: 'jpeg', quality: 0.97 },
+            html2canvas: { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', scrollY: 0 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+        }).from($('documento')).save();
+        toast('PDF gerado e salvo no histórico');
+    } catch (e) { console.error(e); toast('Falha ao gerar o PDF — use "Imprimir" na pré-visualização', true); }
+    $('documento').style.minHeight = '';
+    if (!aberto) { $('docView').classList.add('hidden'); }
+    $('docView').style.visibility = '';
+}
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+let toastTimer;
+function toast(msg, erro) { const t = $('toast'); t.textContent = msg; t.className = t.className.replace(/bg-\S+/g, '') + (erro ? ' bg-red-600' : ' bg-brand-900'); t.classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), 3200); }
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
