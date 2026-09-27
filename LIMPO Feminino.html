@@ -164,6 +164,15 @@
                             <i data-lucide="chevron-right" class="w-4 h-4 md:w-5 md:h-5"></i>
                         </button>
                     </div>
+
+                    <div id="periodo-switch" class="flex items-center gap-1 bg-slate-950 p-1 md:p-1.5 rounded-xl border border-slate-800">
+                        <button data-periodo="M" class="btn-periodo flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-all">
+                            <i data-lucide="sunrise" class="w-3.5 h-3.5 md:w-4 md:h-4"></i><span class="hidden sm:inline">MANHÃ</span>
+                        </button>
+                        <button data-periodo="T" class="btn-periodo flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-all">
+                            <i data-lucide="sunset" class="w-3.5 h-3.5 md:w-4 md:h-4"></i><span class="hidden sm:inline">TARDE</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-2 md:gap-6 justify-end">
@@ -383,7 +392,7 @@
                     <i data-lucide="alert-triangle" class="w-6 h-6"></i>
                 </div>
                 <h3 class="text-xl font-bold text-slate-100 mb-2">Aviso de Segurança</h3>
-                <p class="text-sm text-slate-400">Deseja apagar <strong class="text-rose-400 uppercase tracking-wider">todas</strong> as avaliações referentes ao dia <br><span id="modal-clear-date" class="text-slate-200 font-semibold mt-1 inline-block"></span>?</p>
+                <p class="text-sm text-slate-400">Deseja apagar <strong class="text-rose-400 uppercase tracking-wider">todas</strong> as avaliações referentes a <br><span id="modal-clear-date" class="text-slate-200 font-semibold mt-1 inline-block"></span>?</p>
             </div>
             
             <div class="space-y-4">
@@ -428,13 +437,15 @@
             dashSelectedRoomId: null,
             raceSelectedWingId: 'w1',
             currentDate: '',
+            currentPeriod: 'M',      // 'M' = Manhã, 'T' = Tarde
             evaluations: {},
             vazios: {}          // roomId -> true (quarto sem ninguem morando)
         };
 
-        // Dias seguidos em que a ala foi avaliada e o quarto foi pulado para o
+        // Turnos seguidos em que a ala foi avaliada e o quarto foi pulado para o
         // sistema parar de cobrar e sugerir que o quarto esta vazio.
-        const DIAS_PARA_SUGERIR_VAZIO = 4;
+        // 8 turnos = 4 dias inteiros de manha e tarde.
+        const DIAS_PARA_SUGERIR_VAZIO = 8;
 
         WINGS.forEach(wing => {
             wing.rooms.forEach(roomId => {
@@ -520,7 +531,32 @@
             return d.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());
         };
 
+        /* MANHÃ E TARDE
+           Cada dia tem DUAS avaliações. A chave do registro é "2026-09-27-M"
+           (manhã) ou "2026-09-27-T" (tarde). A data pura continua em
+           state.currentDate e o turno fica em state.currentPeriod. Como a chave
+           começa com a data, os filtros por mês ("2026-09") e por ano ("2026")
+           seguem funcionando sem mudança — cada turno conta como uma avaliação. */
+        const PERIODOS = { M: 'Manhã', T: 'Tarde' };
+
+        const chaveDe = (dateStr, periodo) => `${dateStr}-${periodo}`;
+        const chaveAtual = () => chaveDe(state.currentDate, state.currentPeriod);
+        const dataDaChave = (chave) => chave.substring(0, 10);
+        const periodoDaChave = (chave) => chave.substring(11) || 'M';
+
+        const displayChave = (chave) =>
+            `${displayDate(dataDaChave(chave))} (${PERIODOS[periodoDaChave(chave)] || '—'})`;
+
+        // Turno imediatamente anterior: tarde -> manhã do mesmo dia -> tarde do dia anterior.
+        const chaveAnterior = (chave) => periodoDaChave(chave) === 'T'
+            ? chaveDe(dataDaChave(chave), 'M')
+            : chaveDe(addDays(dataDaChave(chave), -1), 'T');
+
+        // As duas chaves de um dia, na ordem em que acontecem.
+        const chavesDoDia = (dateStr) => [chaveDe(dateStr, 'M'), chaveDe(dateStr, 'T')];
+
         state.currentDate = getTodayStr();
+        state.currentPeriod = new Date().getHours() < 13 ? 'M' : 'T';   // abre no turno da hora
         state.selectedRoomId = state.rooms[0].id;
         state.dashSelectedRoomId = state.rooms[0].id;
 
@@ -535,11 +571,25 @@
                     // BLINDAGEM: Usamos o fallback || {} exigido para evitar erros 
                     const serverData = docSnap.data().evaluations || {};
 
-                    // PRESERVAÇÃO DE DIGITAÇÃO: Protege o texto local enquanto o Firestore sincroniza
+                    /* COMPATIBILIDADE: antes da divisão em turnos, cada dia tinha
+                       um registro só ("2026-09-20"). Esses dias entram como MANHÃ
+                       para não sumir do histórico. Nada é apagado na nuvem — a
+                       conversão acontece só aqui na memória, e para de acontecer
+                       assim que aquela manhã for avaliada de novo. */
+                    Object.keys(serverData).forEach(rid => {
+                        const dias = serverData[rid] || {};
+                        Object.keys(dias).forEach(k => {
+                            if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+                            if (!dias[`${k}-M`]) dias[`${k}-M`] = dias[k];
+                            delete dias[k];
+                        });
+                    });
+
+                    // PRESERVAÇÃO DE DIGITAÇÃO: protege o texto local enquanto o Firestore sincroniza
                     const obsEl = document.activeElement;
                     if (obsEl && obsEl.id === 'obs-textarea' && state.view === 'evaluation') {
                         const rId = obsEl.dataset.roomId || state.selectedRoomId;
-                        const dStr = obsEl.dataset.date || state.currentDate;
+                        const dStr = obsEl.dataset.date || chaveAtual();
                         if (!serverData[rId]) serverData[rId] = {};
                         if (!serverData[rId][dStr]) serverData[rId][dStr] = { score: null, criteria: [], obs: "" };
                         serverData[rId][dStr].obs = obsEl.value; 
@@ -766,18 +816,18 @@
         const alaFoiAvaliada = (wing, date) =>
             wing.rooms.some(rid => (state.evaluations[rid] || {})[date]);
 
-        // Dias SEGUIDOS em que a ala foi avaliada e este quarto foi pulado.
+        // Turnos SEGUIDOS em que a ala foi avaliada e este quarto foi pulado.
         const diasPulados = (roomId, ateData) => {
             const wing = WINGS.find(w => w.rooms.includes(roomId));
             if (!wing) return 0;
             let n = 0, d = ateData, olhados = 0;
-            while (olhados < 90) {
+            while (olhados < 180) {          // 180 turnos = ~90 dias
                 olhados++;
                 if (alaFoiAvaliada(wing, d)) {
                     if (estadoDoDia(roomId, d) === 'sem-registro') n++;
                     else break;
                 }
-                d = addDays(d, -1);
+                d = chaveAnterior(d);
             }
             return n;
         };
@@ -820,6 +870,7 @@
             return count > 0 ? (total / count) : 0;
         };
 
+        // Sequência de notas 10 seguidas, contada turno a turno.
         const getStreak = (roomId, startDate) => {
             let streak = 0;
             let checkDate = startDate;
@@ -829,7 +880,7 @@
                 const ev = evals[checkDate];
                 if (ev && ev.score === 10) {
                     streak++;
-                    checkDate = addDays(checkDate, -1);
+                    checkDate = chaveAnterior(checkDate);
                 } else {
                     break;
                 }
@@ -915,10 +966,10 @@
 
                 filteredRooms.forEach(room => {
                     const isSelected = state.selectedRoomId === room.id && state.view === 'evaluation';
-                    const todayEval = getRoomEval(room.id, state.currentDate);
+                    const todayEval = getRoomEval(room.id, chaveAtual());
                     const scDot = scoreOf(todayEval);
                     const hasEval = scDot !== null;
-                    const est = estadoDoDia(room.id, state.currentDate);
+                    const est = estadoDoDia(room.id, chaveAtual());
                     // vazio = cinza; sem nota = anel vermelho vazado; avaliado = bolinha da cor da nota
                     const evalDot = quartoVazio(room.id)
                         ? `<span class="text-[9px] font-bold text-slate-600 uppercase tracking-wider">vazio</span>`
@@ -963,12 +1014,12 @@
 
             renderInconsistencias();
 
-            const estado = estadoDoDia(room.id, state.currentDate);
+            const estado = estadoDoDia(room.id, chaveAtual());
             const marcaVazio = quartoVazio(room.id) ? ' · <span class="text-slate-500">VAZIO — fora do ranking</span>' : '';
             document.getElementById('summary-room-name').innerHTML = room.name + (quartoVazio(room.id)
                 ? ' <span class="text-[10px] align-middle bg-slate-800 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full">vazio</span>' : '');
             document.getElementById('summary-date').innerHTML =
-                `Avaliação referente ao dia ${displayDate(state.currentDate)}` +
+                `Avaliação referente a ${displayChave(chaveAtual())}` +
                 (estado === 'sem-nota'
                     ? ` · <span class="text-rose-400 font-bold">SEM AVALIAÇÃO — falta a nota</span>`
                     : marcaVazio);
@@ -984,7 +1035,7 @@
                 badgeEl.classList.remove('flex');
             }
 
-            const currentEval = getRoomEval(state.selectedRoomId, state.currentDate);
+            const currentEval = getRoomEval(state.selectedRoomId, chaveAtual());
             const isAdmin = activeUser && activeUser.role === 'admin';
 
             // Botão para marcar/desmarcar ESTE quarto como vazio (só admin)
@@ -1012,7 +1063,7 @@
                 if (isAdmin) {
                     btn.addEventListener('click', () => {
                         // Envia SÓ a nota
-                        setRoomEval(state.selectedRoomId, state.currentDate, { score: i });
+                        setRoomEval(state.selectedRoomId, chaveAtual(), { score: i });
                         updateUI();
                     });
                 }
@@ -1064,7 +1115,7 @@
                     if (isActive) newCriteria = newCriteria.filter(id => id !== crit.id);
                     else newCriteria.push(crit.id);
                     // Envia SÓ os critérios
-                    setRoomEval(state.selectedRoomId, state.currentDate, { criteria: newCriteria });
+                    setRoomEval(state.selectedRoomId, chaveAtual(), { criteria: newCriteria });
                     updateUI();
                 });
             }
@@ -1073,10 +1124,10 @@
 
         const obsEl = document.getElementById('obs-textarea');
         
-        if (document.activeElement !== obsEl || obsEl.dataset.roomId !== state.selectedRoomId || obsEl.dataset.date !== state.currentDate) {
+        if (document.activeElement !== obsEl || obsEl.dataset.roomId !== state.selectedRoomId || obsEl.dataset.date !== chaveAtual()) {
             obsEl.value = currentEval.obs || "";
             obsEl.dataset.roomId = state.selectedRoomId; 
-            obsEl.dataset.date = state.currentDate;
+            obsEl.dataset.date = chaveAtual();
         }
         obsEl.disabled = !isAdmin;
 
@@ -1133,11 +1184,11 @@
             if (!isAdmin) { painel.classList.add('hidden'); painelVazios.classList.add('hidden'); return; }
             painelVazios.classList.remove('hidden');
 
-            const { semNota, naoAvaliados, sugestaoVazio } = levantarInconsistencias(state.currentDate);
+            const { semNota, naoAvaliados, sugestaoVazio } = levantarInconsistencias(chaveAtual());
             const total = semNota.length + naoAvaliados.length + sugestaoVazio.length;
 
             document.getElementById('incons-data-ref').innerHTML =
-                `Situação de <b>${displayDate(state.currentDate)}</b>. Dias em que a ala inteira não foi visitada não são cobrados.`;
+                `Situação de <b>${displayChave(chaveAtual())}</b>. Turnos em que a ala inteira não foi visitada não são cobrados.`;
             document.getElementById('incons-contador').textContent = total === 0 ? 'tudo certo' : `${total} pendência${total > 1 ? 's' : ''}`;
 
             const corpo = document.getElementById('incons-corpo');
@@ -1180,7 +1231,7 @@
                 html += `<div class="border-t border-slate-800 pt-3">
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                         <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Provavelmente vazios (${sugestaoVazio.length})</div>
-                    <p class="text-[11px] text-slate-500 mb-2">Pulados há ${DIAS_PARA_SUGERIR_VAZIO}+ visitas seguidas — o sistema parou de cobrar.
+                    <p class="text-[11px] text-slate-500 mb-2">Pulados há ${DIAS_PARA_SUGERIR_VAZIO}+ turnos seguidos — o sistema parou de cobrar.
                        Se não mora ninguém, marque como vazio para sair do ranking.</p>
                     <div class="flex flex-wrap gap-1.5">${sugestaoVazio.map(s =>
                         `<button data-vazio="${s.room.id}" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:border-pink-500/50 hover:text-pink-300 transition-all">
@@ -1270,7 +1321,7 @@
                 wing.rooms.forEach(roomId => {
                     if (quartoVazio(roomId)) return;          // quarto vazio fica fora do ranking
                     wAtivos++;
-                    wTotalStreak += getStreak(roomId, state.currentDate);
+                    wTotalStreak += getStreak(roomId, chaveAtual());
 
                     const per = acumularPeriodo(roomId, periodPrefix);
                     wTotalSc += per.soma; wCountSc += per.dias;
@@ -1356,7 +1407,7 @@
                     criteriaCount: per.criteriaCount,
                     semNota: per.semNota,
                     avgToUse: getAverage(roomId, currentYear),
-                    streak: getStreak(roomId, state.currentDate)
+                    streak: getStreak(roomId, chaveAtual())
                 });
             });
 
@@ -1395,7 +1446,7 @@
             document.getElementById('dash-period-display').textContent = isAnnual ? currentYear : getMonthDisplay(state.currentDate);
             document.getElementById('dash-period-select').value = state.dashPeriod;
 
-            document.getElementById('ranking-title-1').textContent = isAnnual ? 'Ranking Mensal (Média)' : 'Ranking de Hoje';
+            document.getElementById('ranking-title-1').textContent = isAnnual ? 'Ranking Mensal (Média)' : `Ranking de Hoje (${PERIODOS[state.currentPeriod]})`;
             document.getElementById('ranking-icon-1').setAttribute('data-lucide', isAnnual ? 'calendar' : 'calendar-days');
             
             document.getElementById('ranking-title-2').textContent = isAnnual ? 'Ranking Anual (Média)' : 'Ranking Mensal (Média)';
@@ -1440,7 +1491,7 @@
             state.rooms.forEach(room => {
                 if (quartoVazio(room.id)) return;         // quarto vazio fica fora do ranking
                 const roomEvals = state.evaluations[room.id] || {};
-                const streak = getStreak(room.id, state.currentDate);
+                const streak = getStreak(room.id, chaveAtual());
                 const monthlyAvg = getAverage(room.id, currentMonthPrefix);
                 const annualAvg = getAverage(room.id, currentYear);
 
@@ -1449,7 +1500,7 @@
 
                 if (!isAnnual) {
                     // Ranking 1 = HOJE; Ranking 2 = media do mes
-                    const hoje = roomEvals[state.currentDate];
+                    const hoje = roomEvals[chaveAtual()];
                     data1.push({
                         name: room.name,
                         score: scoreOf(hoje),
@@ -1541,15 +1592,22 @@
                     const dayStr = `${currentMonthPrefix}-${String(i).padStart(2, '0')}`;
                     let total = 0, count = 0;
                     
+                    // A linha do mês junta a manhã e a tarde de cada dia.
                     state.rooms.forEach(room => {
                         if (quartoVazio(room.id)) return;
-                        const sc = scoreOf(getRoomEval(room.id, dayStr));
-                        if (sc !== null) { total += sc; count++; }
+                        chavesDoDia(dayStr).forEach(ch => {
+                            const sc = scoreOf(getRoomEval(room.id, ch));
+                            if (sc !== null) { total += sc; count++; }
+                        });
                     });
                     overallAverages.push(count > 0 ? (total/count).toFixed(1) : null);
                     
-                    const indSc = scoreOf(getRoomEval(state.dashSelectedRoomId, dayStr));
-                    indScores.push(indSc !== null ? indSc : null);
+                    const doQuarto = chavesDoDia(dayStr)
+                        .map(ch => scoreOf(getRoomEval(state.dashSelectedRoomId, ch)))
+                        .filter(sc => sc !== null);
+                    indScores.push(doQuarto.length
+                        ? parseFloat((doQuarto.reduce((a, b) => a + b, 0) / doQuarto.length).toFixed(1))
+                        : null);
                 }
             } else {
                 labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -1628,8 +1686,19 @@
             });
         };
 
+        // Deixa aceso o botão do turno aberto.
+        const syncPeriodoBtns = () => {
+            document.querySelectorAll('.btn-periodo').forEach(btn => {
+                const aceso = btn.dataset.periodo === state.currentPeriod;
+                btn.className = 'btn-periodo flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-all ' +
+                    (aceso ? 'bg-pink-600 text-white shadow-[0_0_12px_rgba(244,114,182,0.45)]'
+                           : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900');
+            });
+        };
+
         const updateMainContent = () => {
             document.getElementById('display-date').textContent = displayDate(state.currentDate);
+            syncPeriodoBtns();
 
             const emptyState = document.getElementById('empty-state');
             const evalContent = document.getElementById('evaluation-content');
@@ -1677,7 +1746,16 @@
                 renderDashboardContent();
             });
 
+            document.querySelectorAll('.btn-periodo').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (state.currentPeriod === btn.dataset.periodo) return;
+                    state.currentPeriod = btn.dataset.periodo;
+                    updateUI();
+                });
+            });
+
             document.getElementById('btn-prev-day').addEventListener('click', () => {
+
                 state.currentDate = addDays(state.currentDate, -1);
                 updateUI();
             });
@@ -1699,7 +1777,7 @@
                     if (!activeUser || activeUser.role !== 'admin') return;
                     
                     const roomId = obsEl.dataset.roomId || state.selectedRoomId;
-                    const date = obsEl.dataset.date || state.currentDate;
+                    const date = obsEl.dataset.date || chaveAtual();
                     
                     if (!state.evaluations[roomId]) state.evaluations[roomId] = {};
                     if (!state.evaluations[roomId][date]) state.evaluations[roomId][date] = { score: null, criteria: [], obs: "" };
@@ -1744,7 +1822,7 @@
                 btnSecretClear.classList.remove('text-rose-500');
                 btnSecretClear.classList.add('text-slate-600');
                 
-                document.getElementById('modal-clear-date').textContent = displayDate(state.currentDate);
+                document.getElementById('modal-clear-date').textContent = displayChave(chaveAtual());
                 document.getElementById('clear-password').value = '';
                 document.getElementById('clear-error').classList.add('hidden');
                 modalClearDay.classList.remove('hidden');
@@ -1762,10 +1840,11 @@
                 let modificationsMade = false;
                 const updates = {};
                 
+                const chaveLimpeza = chaveAtual();   // apaga SÓ o turno aberto
                 Object.keys(state.evaluations).forEach(roomId => {
-                    if (state.evaluations[roomId][state.currentDate]) {
-                        delete state.evaluations[roomId][state.currentDate];
-                        updates[`evaluations.${roomId}.${state.currentDate}`] = deleteField();
+                    if (state.evaluations[roomId][chaveLimpeza]) {
+                        delete state.evaluations[roomId][chaveLimpeza];
+                        updates[`evaluations.${roomId}.${chaveLimpeza}`] = deleteField();
                         modificationsMade = true;
                     }
                 });
