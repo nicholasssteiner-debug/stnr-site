@@ -205,7 +205,8 @@ function renderEstoque(g) {
       <div><label>Valor (R$)</label><input id="iprice" type="number" step="0.01" min="0" inputmode="decimal" onkeydown="if(event.key==='Enter')addItem()"></div></div>
       <label>Código de barras <span class="muted">(opcional — leia o código da embalagem ou deixe vazio para gerar um)</span></label>
       <input id="icode" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();addItem()}">
-      <div style="margin-top:12px"><button class="btn primary" onclick="addItem()">Adicionar item</button></div>
+      <div style="margin-top:12px"><button class="btn primary" onclick="addItem()">Adicionar item</button>
+        ${g.items.length ? '<button class="btn" style="margin-left:8px" onclick="printAllLabels()">Imprimir todas as etiquetas</button>' : ''}</div>
       <div class="msg" id="imsg"></div></div>
     ${list || '<div class="empty">Nenhum item neste grupo.</div>'}`;
 }
@@ -228,12 +229,36 @@ function delItem(id) {
   cart[g.id] = (cart[g.id] || []).filter(l => l.id !== id); save(); render();
 }
 const cleanCode = s => String(s).replace(/[\x00-\x1f\x7f]/g, '').trim();
+// Etiqueta para impressão: barras grossas, altura generosa e margem branca (quiet zone) larga
+function labelSVG(code) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const fmt = /^\d{13}$/.test(code) ? 'EAN13' : /^\d{12}$/.test(code) ? 'UPC' : /^\d{8}$/.test(code) ? 'EAN8' : 'CODE128';
+  const opts = { width: 3, height: 90, fontSize: 20, margin: 20, marginTop: 8, marginBottom: 8, background: '#ffffff', lineColor: '#000000' };
+  try { JsBarcode(el, code, { ...opts, format: fmt }); } catch (e) { JsBarcode(el, code, { ...opts, format: 'CODE128' }); }
+  if (!el.getAttribute('viewBox')) el.setAttribute('viewBox', `0 0 ${parseFloat(el.getAttribute('width'))} ${parseFloat(el.getAttribute('height'))}`);
+  el.removeAttribute('width'); el.removeAttribute('height');
+  return el.outerHTML;
+}
+function printLabels(items, copies) {
+  const labels = items.flatMap(i => Array(copies).fill(`<div class="l"><div class="n">${esc(i.name)}</div><div class="p">${brl(i.price)}</div>${labelSVG(i.code)}</div>`)).join('');
+  const w = window.open('', '_blank');
+  if (!w) return alert('Permita pop-ups para imprimir as etiquetas.');
+  w.document.write(`<!DOCTYPE html><meta charset="UTF-8"><title>Etiquetas</title><style>
+    @page{margin:6mm} body{margin:0;font-family:Arial,sans-serif;color:#000}
+    .l{display:inline-block;vertical-align:top;width:62mm;padding:3mm;margin:1mm;border:1px dashed #bbb;text-align:center;break-inside:avoid;page-break-inside:avoid}
+    .n{font-size:11pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.p{font-size:10pt;margin-bottom:1mm}
+    svg{width:100%;height:auto;display:block}
+    @media print{.l{border-color:#fff}}</style><body>${labels}<script>onload=()=>setTimeout(()=>print(),200)<\/script>`);
+  w.document.close();
+}
 function printLabel(id) {
   const i = group().items.find(x => x.id === id);
-  const svg = document.querySelector(`svg[data-code="${i.code}"]`).outerHTML;
-  const w = window.open('', '_blank');
-  w.document.write(`<title>${esc(i.name)}</title><body style="font-family:sans-serif;text-align:center;margin:20px"><div>${esc(i.name)} — ${brl(i.price)}</div>${svg}<script>onload=()=>print()<\/script>`);
-  w.document.close();
+  const n = parseInt(prompt('Quantas etiquetas imprimir?', '1'));
+  if (n >= 1) printLabels([i], Math.min(n, 200));
+}
+function printAllLabels() {
+  const g = group(); if (!g.items.length) return;
+  printLabels(g.items, 1);
 }
 
 /* ---------- Marcado ---------- */
