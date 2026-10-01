@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Análise Financeira ANC — Loja</title>
+<script>
+  // Trava simples: no site (http/https), exige login. Local (file://) abre direto.
+  if (location.protocol !== "file:" && sessionStorage.getItem("anp_ok") !== "1") {
+    location.replace("login.html");
+  }
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --azul-escuro: #2c5f7c;
+    --azul-header: #33607d;
+    --azul-tabela: #2c5f7c;
+    --azul-claro: #5b9bd5;
+    --cinza-titulo: #8aa8bd;
+    --fundo: #eef1f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--fundo);
+    color: #222;
+  }
+
+  /* ---------- Cabeçalho ---------- */
+  header {
+    background: var(--azul-header);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+  }
+  header h1 { font-size: 26px; font-weight: 400; text-align: center; flex: 1; }
+  header .info { font-size: 12px; text-align: right; min-width: 160px; }
+
+  /* ---------- Layout ---------- */
+  .container { display: flex; min-height: calc(100vh - 56px); }
+
+  /* ---------- Barra lateral (filtros) ---------- */
+  aside {
+    width: 240px;
+    background: linear-gradient(180deg, #3d7ea6 0%, #7db8dc 60%, #b7d9ee 100%);
+    color: #fff;
+    padding: 18px 16px;
+    flex-shrink: 0;
+  }
+  aside .logo { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+  aside h3 { font-size: 15px; font-weight: 600; margin: 18px 0 8px; }
+  aside label { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 2px; cursor: pointer; }
+  aside input[type="checkbox"] { width: 15px; height: 15px; accent-color: #1e3a4f; }
+  .meses-box { display: flex; gap: 10px; margin: 8px 0 4px; }
+  .meses-box input {
+    width: 70px; padding: 5px 8px; border: none; border-radius: 3px;
+    font-size: 14px; text-align: center;
+  }
+  aside .dica { font-size: 11px; font-style: italic; opacity: .9; margin-top: 4px; }
+  aside hr { border: none; border-top: 1px solid rgba(255,255,255,.6); margin: 22px 0; }
+
+  /* ---------- Carregar arquivo ---------- */
+  .arquivo {
+    margin-top: 26px;
+    background: rgba(255,255,255,.18);
+    border: 1px dashed rgba(255,255,255,.8);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .arquivo:hover { background: rgba(255,255,255,.3); }
+  .arquivo strong { display: block; font-size: 13px; margin-bottom: 4px; }
+  #status-arquivo { font-size: 11px; margin-top: 8px; word-break: break-all; }
+
+  /* ---------- Área principal ---------- */
+  main { flex: 1; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; overflow-x: auto; }
+
+  /* ---------- Cartões ---------- */
+  .cartoes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .cartao {
+    background: #fff; border-radius: 4px; padding: 10px 14px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+    text-align: center;
+  }
+  .cartao .titulo { color: var(--cinza-titulo); font-size: 13px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cartao .valor { color: #1f4e6b; font-size: 26px; font-weight: 600; white-space: nowrap; }
+
+  /* ---------- Tabela ---------- */
+  .painel { background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  thead th {
+    background: var(--azul-tabela); color: #fff; padding: 7px 9px;
+    text-align: left; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.25);
+  }
+  tbody td { padding: 6px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid #e4e9ee; }
+  tbody td:first-child { text-align: left; }
+  tbody tr.grupo td { font-weight: 700; background: #f4f7fa; }
+  tbody tr.total td { font-weight: 700; background: #e8eef4; border-top: 2px solid var(--azul-tabela); }
+  tbody tr.detalhe td:first-child { padding-left: 26px; }
+
+  /* ---------- Gráficos ---------- */
+  .graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grafico h2 { color: var(--cinza-titulo); font-size: 16px; font-weight: 400; margin: 4px 6px 12px; }
+  .barras { display: flex; align-items: flex-end; justify-content: space-around; height: 190px; padding: 0 10px; }
+  .barra-item { display: flex; flex-direction: column; align-items: center; width: 70px; height: 100%; justify-content: flex-end; }
+  .barra-item .rotulo-valor { font-size: 11px; color: #555; margin-bottom: 3px; }
+  .barra-item .barra { width: 100%; max-width: 60px; background: var(--azul-tabela); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .barra-item .barra.neg { background: #c0504d; }
+  .barra-item .rotulo-mes { font-size: 12px; color: #666; margin-top: 5px; }
+  .vazio { color: #999; font-style: italic; padding: 30px; text-align: center; }
+
+  /* ---------- Abas ---------- */
+  .abas { display: flex; gap: 14px; }
+  .aba-btn {
+    padding: 11px 30px; font-size: 15px; font-family: inherit;
+    color: #7d9cb5; background: #f0f4f8; border: 1px solid #c9d6e2;
+    border-radius: 3px; cursor: pointer; transition: all .15s;
+  }
+  .aba-btn:hover { background: #e2ebf2; }
+  .aba-btn.ativa { background: var(--azul-tabela); color: #fff; border-color: var(--azul-tabela); }
+  .conteudo-aba { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- Tabela DRE ---------- */
+  .tabela-dre th.num, .tabela-dre td.num { text-align: right; }
+  .tabela-dre td.num.total-col { font-weight: 700; }
+  .tabela-dre tr.dre-n1 td { font-weight: 700; background: #eef3f8; }
+  .tabela-dre tr.dre-n2 td:first-child { padding-left: 30px; }
+  .tabela-dre tr.dre-n3 td { background: #fafbfd; color: #556; }
+  .tabela-dre tr.dre-n3 td:first-child { padding-left: 52px; }
+  .tabela-dre tr.dre-resultado td { font-weight: 700; background: #e8eef4; border-top: 2px solid var(--azul-tabela); }
+  .tabela-dre tr.escondida { display: none; }
+  .alternar {
+    cursor: pointer; display: inline-block; width: 16px; text-align: center;
+    color: var(--azul-claro); font-weight: 700; user-select: none;
+  }
+
+  /* ---------- Selos de variação nos cartões ---------- */
+  .badge-delta {
+    display: inline-block; margin-top: 6px; padding: 2px 10px;
+    font-size: 12px; font-weight: 600; border-radius: 10px;
+  }
+  .badge-delta.bom { background: #e2f3e8; color: #2e7d4f; }
+  .badge-delta.ruim { background: #fbe4e2; color: #b3423a; }
+  .badge-delta.neutro { background: #eef1f4; color: #778; }
+
+  /* ---------- Comparativo ---------- */
+  .legenda { display: flex; gap: 18px; justify-content: center; margin-bottom: 10px; font-size: 13px; color: #556; }
+  .legenda .chip::before {
+    content: ""; display: inline-block; width: 12px; height: 12px;
+    background: var(--c); border-radius: 3px; margin-right: 6px; vertical-align: -1px;
+  }
+  .cascata-svg, .linhas-svg { width: 100%; height: auto; display: block; }
+  .barras-duplas { display: flex; align-items: flex-end; justify-content: space-around; height: 210px; padding: 0 6px; }
+  .par-mes { display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; flex: 1; max-width: 90px; }
+  .par-mes .duas { display: flex; align-items: flex-end; gap: 3px; height: 100%; justify-content: center; }
+  .par-mes .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .par-mes .rotulo-v { font-size: 10px; color: #667; margin-bottom: 2px; white-space: nowrap; }
+  .par-mes .b { width: 22px; border-radius: 2px 2px 0 0; min-height: 2px; }
+  .par-mes .b.ant { background: #9db8cc; }
+  .par-mes .b.atu { background: var(--azul-tabela); }
+  .par-mes .b.negativo { background: #c0504d; }
+  .par-mes .rotulo-mes { font-size: 12px; color: #666; margin-top: 5px; }
+
+  /* ---------- Projeção ---------- */
+  .cartao .faixa { font-size: 12px; color: #778; margin-top: 5px; }
+  .explica { font-size: 13.5px; color: #445; line-height: 1.6; padding: 16px 20px; }
+  .explica h3 { color: var(--azul-escuro); font-size: 15px; margin-bottom: 8px; }
+  .explica p { margin: 6px 0; }
+  .explica b { color: var(--azul-escuro); }
+
+  /* ---------- Dica flutuante (tooltip) ---------- */
+  #dica {
+    position: fixed; display: none; z-index: 99; pointer-events: none;
+    background: rgba(26, 32, 44, .94); color: #fff;
+    padding: 8px 12px; border-radius: 6px;
+    font-size: 12.5px; line-height: 1.5; max-width: 280px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  #dica b { color: #9fd1ff; }
+
+  /* ---------- Ferramentas ---------- */
+  .fer-desc { font-size: 12.5px; color: #778; margin: -4px 6px 10px; }
+  .fer-tabela { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .fer-tabela th { background: #eef3f8; color: #345; padding: 6px 9px; text-align: left; }
+  .fer-tabela td { padding: 5px 9px; border-bottom: 1px solid #e4e9ee; }
+  .fer-tabela td.num { text-align: right; white-space: nowrap; }
+  .selo-ok { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #e2f3e8; color: #2e7d4f; }
+  .selo-alerta { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #fbe4e2; color: #b3423a; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="min-width:160px; font-weight:600;">Adventista</div>
+  <h1>Análise Financeira ANC — Loja</h1>
+  <div class="info">ANC • Loja<br>Atualizado em <span id="data-atualizacao">—</span></div>
+</header>
+
+<div class="container">
+  <aside>
+    <h3>Ano</h3>
+    <div id="filtro-anos"></div>
+
+    <h3>Meses</h3>
+    <div class="meses-box">
+      <input type="number" id="mes-ini" min="1" max="12" value="1">
+      <input type="number" id="mes-fim" min="1" max="12" value="12">
+    </div>
+    <div class="dica">Selecione o Intervalo de Meses</div>
+
+    <hr>
+
+    <h3>Campo</h3>
+    <div id="filtro-campos"></div>
+
+    <div class="arquivo" id="area-arquivo">
+      <strong>📂 Carregar planilha</strong>
+      Clique aqui ou arraste o arquivo Excel (.xlsx) exportado do banco
+      <input type="file" id="input-arquivo" accept=".xlsx,.xls" style="display:none">
+      <div id="status-arquivo">Exibindo dados de exemplo</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="abas">
+      <button class="aba-btn ativa" data-aba="visao">Visão Geral</button>
+      <button class="aba-btn" data-aba="dre">DRE por Mês</button>
+      <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
+      <button class="aba-btn" data-aba="proj">Projeção</button>
+      <button class="aba-btn" data-aba="subv">Subvenções</button>
+      <button class="aba-btn" data-aba="bp">Balanço</button>
+      <button class="aba-btn" data-aba="fer">Ferramentas</button>
+    </div>
+
+    <div id="aba-visao" class="conteudo-aba">
+    <div class="cartoes" id="cartoes"></div>
+
+    <div class="painel">
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th><th>Vendas Líquidas</th><th>CMV</th><th>%CMV</th>
+            <th>Lucro Bruto</th><th>Margem Bruta</th><th>Pessoal</th><th>%Pessoal</th>
+            <th>Adm Gerais</th><th>%Adm Gerais</th><th>Resultado</th><th>%Resultado</th>
+          </tr>
+        </thead>
+        <tbody id="corpo-tabela"></tbody>
+      </table>
+    </div>
+
+    <div class="graficos">
+      <div class="painel grafico">
+        <h2>Resultado do Mês S/ Subvenção</h2>
+        <div class="barras" id="grafico-sem-subv"></div>
+      </div>
+      <div class="painel grafico">
+        <h2>Resultado do Mês</h2>
+        <div class="barras" id="grafico-resultado"></div>
+      </div>
+    </div>
+    </div>
+
+    <div id="aba-dre" class="conteudo-aba" style="display:none">
+      <div class="painel" style="overflow-x:auto">
+        <table class="tabela-dre">
+          <thead id="dre-cabecalho"></thead>
+          <tbody id="dre-corpo"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="aba-comp" class="conteudo-aba" style="display:none">
+      <div class="painel grafico">
+        <h2 id="titulo-cascata">Cascata do Resultado</h2>
+        <div id="grafico-cascata"></div>
+      </div>
+      <div class="graficos">
+        <div class="painel grafico">
+          <h2 id="titulo-comp-meses">Resultado Mês a Mês</h2>
+          <div id="legenda-meses" class="legenda"></div>
+          <div id="grafico-comp-meses" class="barras-duplas"></div>
+        </div>
+        <div class="painel grafico">
+          <h2 id="titulo-acumulado">Resultado Acumulado</h2>
+          <div id="legenda-acumulado" class="legenda"></div>
+          <div id="grafico-acumulado"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="aba-proj" class="conteudo-aba" style="display:none">
+      <div class="legenda" style="justify-content:flex-start; margin-bottom:0">
+        <label for="proj-metodo" style="align-self:center">Método da projeção:&nbsp;</label>
+        <select id="proj-metodo" style="padding:6px 10px; border:1px solid #c9d6e2; border-radius:3px; font-family:inherit; color:#345">
+          <option value="media" selected>Média do ano atual</option>
+          <option value="sazonal">Sazonal (padrão dos anos anteriores × ritmo atual)</option>
+        </select>
+      </div>
+      <div class="legenda" style="justify-content:flex-start; margin-bottom:0; gap:8px; flex-wrap:wrap">
+        <label style="align-self:center">Períodos encerrados:&nbsp;</label>
+        <div id="proj-fechados" style="display:flex; gap:5px; flex-wrap:wrap"></div>
+        <button type="button" id="proj-auto" style="padding:4px 10px; border:1px solid #c9d6e2; border-radius:3px; background:#fff; font-family:inherit; font-size:12px; color:#567; cursor:pointer">detectar automaticamente</button>
+      </div>
+      <p class="fer-desc" style="margin:6px 0 0">Marque os meses cuja contabilização já foi <b>encerrada</b>. Os demais que já tenham lançamentos entram como <b>em andamento</b>: a projeção parte do padrão, mas nunca fica abaixo do que já está contabilizado.</p>
+      <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="proj-cartoes"></div>
+      <div class="graficos">
+        <div class="painel grafico">
+          <h2 id="titulo-proj-meses">Resultado Mensal — Realizado e Projetado</h2>
+          <div id="legenda-proj" class="legenda"></div>
+          <div id="grafico-proj-meses"></div>
+        </div>
+        <div class="painel grafico">
+          <h2 id="titulo-proj-acum">Acumulado com Cone de Incerteza</h2>
+          <div id="grafico-proj-acum"></div>
+        </div>
+      </div>
+      <div class="painel" id="proj-painel-comp" style="display:none">
+        <h2 id="proj-comp-titulo">Composição da previsão</h2>
+        <p class="fer-desc" id="proj-comp-desc"></p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="proj-composicao"></table></div>
+      </div>
+      <div class="painel explica" id="proj-explica"></div>
+    </div>
+
+    <div id="aba-subv" class="conteudo-aba" style="display:none">
+      <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="subv-cartoes"></div>
+      <div class="painel grafico">
+        <h2>Subvenções Recebidas — por conta</h2>
+        <p class="fer-desc">Detalhamento das subvenções que a ANP recebeu, por conta contábil, no intervalo de meses selecionado.</p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="subv-recebidas"></table></div>
+      </div>
+      <div class="painel grafico">
+        <h2>Subvenções / Repasses Enviados (Outorgamentos) — por conta</h2>
+        <p class="fer-desc">O outro lado: subvenções e rateios que a ANP enviou a outras entidades ou centros de custo.</p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="subv-enviadas"></table></div>
+      </div>
+    </div>
+
+    <div id="aba-bp" class="conteudo-aba" style="display:none">
+      <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="bp-cartoes"></div>
+      <div class="painel explica" id="bp-check" style="padding:14px 18px"></div>
+      <div class="painel explica" id="bp-aviso" style="display:none">
+        <h3>Carregue a planilha para ver o balanço</h3>
+        <p>O Balanço usa as contas de <b>ativo e passivo</b>. Se a tabela estiver vazia, carregue a
+           <b>Dados Financeiros.xlsx</b> na área "Carregar planilha".</p>
+      </div>
+      <div class="graficos" style="grid-template-columns:1fr 1fr">
+        <div class="painel grafico">
+          <h2>ATIVO</h2>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="bp-ativo"></table></div>
+        </div>
+        <div class="painel grafico">
+          <h2>PASSIVO + PATRIMÔNIO LÍQUIDO</h2>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="bp-passivo"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="aba-fer" class="conteudo-aba" style="display:none">
+      <div class="painel explica" id="fer-aviso" style="display:none">
+        <h3>Carregue a planilha para usar as ferramentas</h3>
+        <p>Esta aba analisa as contas de <b>ativo e passivo</b>. Se elas não aparecerem, carregue a planilha
+           (<b>Dados Financeiros.xlsx</b>) na área "Carregar planilha" da barra lateral.</p>
+      </div>
+
+      <div class="painel grafico">
+        <h2>🔎 Busca rápida de conta</h2>
+        <input type="text" id="fer-busca" placeholder="Digite parte do nome ou do código da conta (ex.: banco, 1136, convênio...)"
+          style="width:100%; padding:10px 14px; border:1px solid #c9d6e2; border-radius:4px; font-size:14px; font-family:inherit; margin-bottom:10px">
+        <div id="fer-busca-resultado"></div>
+      </div>
+
+      <div class="painel grafico">
+        <h2>⚠️ Contas fora de natureza (ativo e passivo)</h2>
+        <p class="fer-desc">Contas analíticas do balanço com saldo contrário à natureza — ativo (devedor) com saldo credor, passivo (credor) com saldo devedor.
+          Saldo acumulado da abertura até o mês final selecionado. Sinais como no razão (devedor +, credor −).</p>
+        <div id="fer-natureza"></div>
+
+        <h2 style="margin-top:22px">🔬 Contas e subcontas fora de natureza</h2>
+        <p class="fer-desc">Um nível abaixo: cada subconta (identificada pelo código) dentro de uma conta de balanço,
+          cujo saldo está contrário à natureza da conta. Ex.: um fornecedor com saldo devedor em "Fornecedores a Pagar" (adiantamento).
+          No site, mostra só o código; carregando a planilha completa localmente, mostra também o nome.</p>
+        <div id="fer-natureza-sub"></div>
+      </div>
+
+      <div class="painel grafico">
+        <h2>💸 Movimentação Adto Salário — gerar CSV</h2>
+        <p class="fer-desc">Reclassificação do adiantamento de salário (contas 1135001/1135005, dept 3310000).
+          <b>OP 1</b>: zera o saldo residual de cada subconta da 1135001 (devedor → 1135005; credor → 2135005).
+          <b>OP 2</b>: transfere para a 1135001 os lançamentos da 1135005 que têm vencimento, um a um, com o histórico de cada linha.
+          Ferramenta local (usa nomes de funcionários); o CSV exporta só o código da subconta.</p>
+        <div id="fer-movto"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* =====================================================================
+   LÓGICA REPLICADA DO POWER BI (query BD_AASI + medidas DAX)
+   Validada em 03/07/2026 contra o painel original: todas as medidas,
+   percentuais e gráficos mensais batem exatamente.
+
+   Regras (iguais à query M do BI):
+   1. Só entram linhas SEM subconta (Subconta nula).
+   2. Saldo base: mês 12 usa Saldo_Ajustado; demais meses, Saldo_Legal.
+   3. Cada conta é ligada ao De/Para DRE (join exato por código);
+      contas fora do De/Para ficam de fora; contas com 2 mapeamentos
+      geram 2 linhas (transitam valor entre grupos da DRE).
+   4. Sinal "+" mantém, "−" inverte; depois multiplica tudo por −1
+      (receitas ficam positivas).
+
+   Medidas (iguais ao DAX):
+   - Resultado            = soma de todas as linhas mapeadas
+   - Prestação de Serviços= DRE3 "Prestação de Serviços" + "Dízimo Líquidos de Repasses"
+   - Pessoal              = −soma(DRE3 "Despesas Com Pessoal")
+   - Adm Gerais           = −soma(DRE3 "Administrativas e Gerais")
+   - Educação Assist      = −soma(DRE3 "Educação, Assistência E Orientação Social")
+   - Subvenções Recebidas = soma(DRE3 "Subvenções Recebidas")
+   - Não Recorrente       = soma(DRE2 "RESULTADO NÃO RECORRENTE")
+   - Resultado S/ Subv    = Resultado − Subvenções − Não Recorrente
+   - Percentuais sempre sobre Prestação de Serviços
+   ===================================================================== */
+
+/* Blocos da DRE do varejo. Os slots do motor são reaproveitados:
+   prest + dizimo = Receita Bruta + Deduções = VENDAS LÍQUIDAS (base dos %);
+   educ = CMV (entra positivado, vira o Custo das Mercadorias Vendidas). */
+const DRE3 = {
+  prest: "Receita Bruta de Vendas",
+  dizimo: "(-) Deduções de Vendas",
+  pessoal: "Despesas Com Pessoal",
+  adm: "Administrativas e Gerais",
+  educ: "(-) Custo das Mercadorias Vendidas",
+  subv: "Subvenções e Transferências Recebidas",
+};
+const DRE2_NAO_RECORRENTE = "RESULTADO NÃO RECORRENTE";
+
+/* De/Para DRE padrão (cópia do arquivo de parâmetros do BI).
+   Campos: sinal, conta, DRE 2, ordem 2, DRE 3, ordem 3, DRE 4, ordem 4.
+   É substituído automaticamente se a planilha carregada tiver uma aba
+   com as colunas Sinal / Conta / DRE 2 / DRE 3. */
+const MAPA_DRE_PADRAO = [
+  ["+","3111000","RECEITAS",1,"Dízimo Líquidos de Repasses",0.5,"Dízimos Repassados da Mantenedora",1],
+  ["+","3131001","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Pessoas Físicas",2],
+  ["+","3131002","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Pessoas Jurídicas",2],
+  ["+","3131015","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações do Exterior",2],
+  ["+","3131020","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Diversas",2],
+  ["+","3135201","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Convênios de Cooperação - Não Dízimo",2],
+  ["+","3141000","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Diversas",3],
+  ["+","3141100","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Ed Básica",3],
+  ["+","3141200","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Graduação",3],
+  ["+","3141300","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Pós Graduação",3],
+  ["+","3186000","RECEITAS",1,"Prestação de Serviços",2,"Receitas Educacionais Diversas",4],
+  ["+","3187000","RECEITAS",1,"Prestação de Serviços",2,"Receitas de Pensionato",4],
+  ["+","3187500","RECEITAS",1,"Prestação de Serviços",2,"(-) Desc. E Abat S/ Outras Receitas",5],
+  ["+","3149000","RECEITAS",1,"Prestação de Serviços",2,"(-) Desc. E Abat S/ Receitas e Serviços",6],
+  ["+","3149100","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Concedidas - Educ. Básica",7],
+  ["+","3149200","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Concedidas - Graduação",7],
+  ["+","4126007","RECEITAS",1,"Prestação de Serviços",2,"(-) Descontos Condicionais Concedidos",7],
+  ["+","3195110","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Confessionais",7],
+  ["+","3180000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Outras Receitas Recorrentes",7],
+  ["-","3186000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Outras Receitas Educacionais Diversas",7],
+  ["-","3187000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Receitas de Pensionato",7],
+  ["-","3187500","RECEITAS",1,"Outras Receitas Recorrentes",4,"(-) Desc. E Abat S/ Outras Receitas Educacionais",7],
+  ["+","3192200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Internas Mesma Região - Não Dízimo",8],
+  ["+","3193200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Internas - Não Dízimo",10],
+  ["+","3195100","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Congêneres - Dízimo",10],
+  ["+","3195200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Congêneres - Não Dízimo",10],
+  ["+","3197200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"(-) Repasse Subv. Entidades Congêneres - Não Dízimo",10],
+  ["+","3198100","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Convênio de Cooperação Entidades Privadas",10],
+  ["-","3195110","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"(-) Bolsas Confessionais",10],
+  ["+","3210000","RESULTADO NÃO RECORRENTE",4,"Receitas Não Recorrentes",6,"Receitas Não Recorrentes",11],
+  ["+","4111000","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Proventos",13],
+  ["+","4112000","DESPESAS",2,"Despesas Com Pessoal",7,"Encargos Sociais",13],
+  ["+","4113000","DESPESAS",2,"Despesas Com Pessoal",7,"Reembolsos de Despesas",13],
+  ["+","4114000","DESPESAS",2,"Despesas Com Pessoal",7,"Encargos Pessoais Diversos",13],
+  ["+","4119000","DESPESAS",2,"Despesas Com Pessoal",7,"Serviços de Terceiros",13],
+  ["+","4119500","DESPESAS",2,"Despesas Com Pessoal",7,"(-)Deduções Despesas Com Pessoal",13],
+  ["+","4121052","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Moradia Empregados - Geral",13],
+  ["+","4121058","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Moradia Empregados - Contrato",13],
+  ["+","4129122","DESPESAS",2,"Despesas Com Pessoal",7,"Contribuição Associativa - Assistencial",13],
+  ["+","4195210","DESPESAS",2,"Despesas Com Pessoal",7,"Subv. Enviada Educação - Não Dízimo",13],
+  ["+","4121000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Gerais",18],
+  ["+","4121500","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Materiais",18],
+  ["+","4121800","DESPESAS",2,"Administrativas e Gerais",8,"Despesas da Operação",18],
+  ["+","4122000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas de Conservação e Manutenção",18],
+  ["+","4122500","DESPESAS",2,"Administrativas e Gerais",8,"Prestação de Serviços PJ",19],
+  ["+","4123000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Depreciações e Amortizações",20],
+  ["+","4124000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Provisões Gerais",20],
+  ["+","4125000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Tributárias",20],
+  ["+","4126000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Financeiras",20],
+  ["+","4128500","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Diversas",20],
+  ["+","4129000","DESPESAS",2,"Administrativas e Gerais",8,"Contribuições e Despesas Associativas",20],
+  ["+","4129500","DESPESAS",2,"Administrativas e Gerais",8,"(-)Deduções Despesas Administrativas",20],
+  ["+","4129600","DESPESAS",2,"Administrativas e Gerais",8,"(-)Deduções Despesas Administrativas",20],
+  ["-","4126007","DESPESAS",2,"Administrativas e Gerais",8,"Descontos Condicionais Concedidos",20],
+  ["-","4121052","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Moradia Empregados - Geral",20],
+  ["-","4121058","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Moradia Empregados - Contrato",20],
+  ["-","4129122","DESPESAS",2,"Administrativas e Gerais",8,"Contribuição Associativa - Assistencial",20],
+  ["+","4141000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Assistência e Orient. Social",21],
+  ["+","4141100","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Programas, Projetos e Orient. Social",21],
+  ["+","4142000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Promoção Treinamento e Eventos",21],
+  ["+","4146500","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Apoio ao Aluno Bolsista",22],
+  ["+","4146000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Gratuidade Assist. Social",23],
+  ["+","4149500","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"(-)Dedução Despesas Educação e Assist",24],
+  ["+","4149600","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"(-)Dedução Despesas Educação e Assist",24],
+  ["+","4190000","DESPESAS",2,"Outorgamentos",10,"Outorgamentos",25],
+  ["+","3191005","DESPESAS",2,"Outorgamentos",10,"Rateios Dpto Sede",26],
+  ["-","4195210","DESPESAS",2,"Outorgamentos",10,"Subv. Enviada Educação - Não Dízimo",26],
+  ["+","4210000","RESULTADO NÃO RECORRENTE",4,"Despesas Não Recorrentes",11,"Outras Despesas",27],
+];
+
+const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+/* De/Para Balanço Patrimonial (aba "Contas BP" dos parâmetros): apenas
+   para dar nomes/estrutura bonitos às contas sintéticas. O balanço em si
+   usa TODAS as contas analíticas de ativo/passivo para fechar exato.
+   [conta, grupo, ordemGrupo, subgrupo, ordemSub] */
+const MAPA_BP = [
+  ["1112001","ATIVO CIRCULANTE",1,"Disponível",1],
+  ["1113001","ATIVO CIRCULANTE",1,"Disponível",1],
+  ["1131000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1132000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1135000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1136000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1137000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1138500","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1139000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1160000","ATIVO CIRCULANTE",1,"Despesas Antecipadas",3],
+  ["1211000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1215000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1216000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1219000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1230000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
+  ["1240000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
+  ["2130100","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130300","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130500","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130600","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130800","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2131000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2135000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2136000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2137000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2139000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2141000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2142000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2143000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2150000","PASSIVO CIRCULANTE",3,"Fundos em Confiança",8],
+  ["2311000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+  ["2320000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+];
+// grupo/subgrupo por prefixo de conta (para classificar QUALQUER conta 1/2)
+const GRUPOS_BP = (() => {
+  const porPrefixo = [];
+  for (const [conta, grupo, og, sub, os] of MAPA_BP)
+    porPrefixo.push({ prefixo: conta.replace(/0+$/, ""), grupo, og, sub, os });
+  porPrefixo.sort((a, b) => b.prefixo.length - a.prefixo.length);  // mais específico primeiro
+  return porPrefixo;
+})();
+function classificaBP(conta) {
+  for (const g of GRUPOS_BP) if (conta.startsWith(g.prefixo)) return g;
+  // fallback por grupo contábil
+  if (conta[0] === "1") return { grupo: "ATIVO", og: 1, sub: "Outras Contas do Ativo", os: 90 };
+  if (conta[0] === "2") {
+    if (conta.startsWith("23")) return { grupo: "PATRIMÔNIO LÍQUIDO", og: 4, sub: "Patrimônio Líquido", os: 91 };
+    return { grupo: "PASSIVO CIRCULANTE", og: 3, sub: "Outras Contas do Passivo", os: 92 };
+  }
+  return null;
+}
+
+/* De/Para Entidade (aba "Campos" da planilha: Entidade / Nome / Tipo) */
+let mapaEntidades = { "1622": { nome: "ANP", tipo: "Campo" } };
+const nomeDe = e => (mapaEntidades[e] && mapaEntidades[e].nome) || e;
+const tipoDe = e => (mapaEntidades[e] && mapaEntidades[e].tipo) || "Campo";
+
+/* =====================================================================
+   DADOS DE EXEMPLO (reproduzem os totais do print do BI, 2026 m1-4)
+   Substituídos ao carregar a planilha real.
+   ===================================================================== */
+function dadosExemplo() {
+  // [mês, conta, saldo legal] — sinais como no banco (receita negativa)
+  const lanc = [
+    [1,"3141100",-3005906],[2,"3141100",-3005906],[3,"3141100",-3005906],[4,"3141100",-3005907],
+    [1,"4111000",1603508],[2,"4111000",1603508],[3,"4111000",1603509],[4,"4111000",1603509],
+    [1,"4121000",1029523],[2,"4121000",1029523],[3,"4121000",1029523],[4,"4121000",1029524],
+    [1,"4141000",59498],[2,"4141000",59498],[3,"4141000",59498],[4,"4141000",59499],
+    [1,"3193200",-1000000],[2,"3193200",-1000000],[3,"3193200",-1000000],[4,"3193200",-1000000],
+    [2,"3195200",-38712],
+    [1,"3180000",205578],[2,"3180000",8473],[3,"3180000",-9971],[4,"3180000",-48889],
+  ];
+  return lanc.map(([mes, conta, saldo]) => ({
+    Ano: 2026, Mes: mes, Entidade: "1622", Conta: conta, Subconta: "",
+    SaldoLegal: saldo, SaldoAjustado: saldo,
+  }));
+}
+
+/* ===================================================================== */
+let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4]) =>
+  ({ sinal, conta, dre2, ord2, dre3, ord3, dre4, ord4 }));
+let infoContas = { ehAnalitica: () => true };
+let dadosBrutos = dadosExemplo();
+let movtoDados = [];   // lançamentos da aba Movto1135 (ferramenta Adto Salário)
+let linhasDRE = [];   // resultado do processamento (equivalente à tabela BD_AASI)
+
+// Replica a query BD_AASI: filtro de subconta, saldo por mês, join com o
+// De/Para, aplicação do sinal e inversão final.
+function processar() {
+  const porConta = {};
+  for (const m of mapaDRE) (porConta[m.conta] = porConta[m.conta] || []).push(m);
+
+  infoContas = classificarContas();
+  linhasDRE = [];
+  for (const d of dadosBrutos) {
+    if (d.Subconta) continue;                                  // Subconta = null
+    if (!d.Mes) continue;                                      // mês 0 (abertura) não entra na DRE
+    const regras = porConta[d.Conta];
+    if (!regras) continue;                                     // conta fora do De/Para
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;  // ignora linhas zeradas (meses futuros vêm no balancete com saldo 0)
+    for (const r of regras) {
+      linhasDRE.push({
+        Ano: d.Ano, Mes: d.Mes, Entidade: d.Entidade,
+        conta: d.Conta, nome: d.NomeConta,
+        dre2: r.dre2, ord2: r.ord2, dre3: r.dre3, ord3: r.ord3,
+        dre4: r.dre4, ord4: r.ord4,
+        saldo: (r.sinal === "+" ? base : -base) * -1,
+      });
+    }
+  }
+}
+
+const fmtNum = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const fmtPct = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const n = v => fmtNum.format(Math.round(v));
+const pct = v => isFinite(v) ? fmtPct.format(v * 100) + "%" : "—";
+
+function filtrosAtuais() {
+  const anos = [...document.querySelectorAll("#filtro-anos input:checked")].map(i => +i.value);
+  const campos = [...document.querySelectorAll("#filtro-campos input:checked")].map(i => i.value);
+  const mesIni = +document.getElementById("mes-ini").value || 1;
+  const mesFim = +document.getElementById("mes-fim").value || 12;
+  return { anos, campos, mesIni, mesFim };
+}
+
+function dadosFiltrados() {
+  const f = filtrosAtuais();
+  return linhasDRE.filter(d =>
+    f.anos.includes(d.Ano) &&
+    f.campos.includes(d.Entidade) &&
+    d.Mes >= f.mesIni && d.Mes <= f.mesFim
+  );
+}
+
+function calcularMedidas(linhas) {
+  let prest = 0, pessoal = 0, adm = 0, educ = 0, subv = 0, naoRec = 0, resultado = 0;
+  for (const l of linhas) {
+    resultado += l.saldo;
+    if (l.dre3 === DRE3.prest || l.dre3 === DRE3.dizimo) prest += l.saldo;
+    else if (l.dre3 === DRE3.pessoal) pessoal += l.saldo;
+    else if (l.dre3 === DRE3.adm) adm += l.saldo;
+    else if (l.dre3 === DRE3.educ) educ += l.saldo;
+    else if (l.dre3 === DRE3.subv) subv += l.saldo;
+    if (l.dre2 === DRE2_NAO_RECORRENTE) naoRec += l.saldo;
+  }
+  pessoal = -pessoal; adm = -adm; educ = -educ;
+  const resSemSubv = resultado - subv - naoRec;
+  const cmv = educ;                    // educ guarda o CMV já positivado
+  const lucroBruto = prest - cmv;      // vendas líquidas − CMV
+  return {
+    prest, resultado, subv, naoRec, resSemSubv, pessoal, adm, educ,
+    cmv, lucroBruto,
+    pLucroBruto: lucroBruto / prest,
+    pCmv: cmv / prest,
+    pResultado: resultado / prest,
+    pResSemSubv: resSemSubv / prest,
+    pPessoal: pessoal / prest,
+    pAdm: adm / prest,
+    pEduc: educ / prest,
+  };
+}
+
+function montarFiltros() {
+  const anos = [...new Set(linhasDRE.map(d => d.Ano))].sort();
+  const campos = [...new Set(linhasDRE.map(d => d.Entidade))].sort();
+  const ultimoAno = anos[anos.length - 1];
+
+  document.getElementById("filtro-anos").innerHTML = anos.map(a =>
+    `<label><input type="checkbox" value="${a}" ${a === ultimoAno ? "checked" : ""}> ${a}</label>`).join("");
+  document.getElementById("filtro-campos").innerHTML = campos.map(c =>
+    `<label><input type="checkbox" value="${c}" checked> ${nomeDe(c)}</label>`).join("");
+
+  document.querySelectorAll("aside input").forEach(el => el.addEventListener("change", render));
+}
+
+function render() {
+  const linhas = dadosFiltrados();
+  const m = calcularMedidas(linhas);
+
+  // ----- Cartões (contagem animada + variação vs mesmo período do ano anterior) -----
+  const f = filtrosAtuais();
+  const anoAtual = f.anos.length ? Math.max(...f.anos) : null;
+  let ant = null;
+  if (f.anos.length === 1 && linhasDRE.some(d => d.Ano === anoAtual - 1)) {
+    ant = calcularMedidas(linhasDRE.filter(d => d.Ano === anoAtual - 1 &&
+      f.campos.includes(d.Entidade) && d.Mes >= f.mesIni && d.Mes <= f.mesFim));
+  }
+  const cartoes = [
+    { titulo: "Vendas Líquidas", tipo: "num", valor: m.prest, antes: ant && ant.prest, sobeBom: true },
+    { titulo: "Lucro Bruto", tipo: "num", valor: m.lucroBruto, antes: ant && ant.lucroBruto, sobeBom: true },
+    { titulo: "Margem Bruta", tipo: "pct", valor: m.pLucroBruto, antes: ant && ant.pLucroBruto, sobeBom: true },
+    { titulo: "Resultado", tipo: "num", valor: m.resultado, antes: ant && ant.resultado, sobeBom: true },
+    { titulo: "%CMV", tipo: "pct", valor: m.pCmv, antes: ant && ant.pCmv, sobeBom: false },
+    { titulo: "%Despesa c/ Pessoal", tipo: "pct", valor: m.pPessoal, antes: ant && ant.pPessoal, sobeBom: false },
+  ];
+  document.getElementById("cartoes").innerHTML = cartoes.map(c => {
+    let selo = "";
+    if (c.antes != null && isFinite(c.antes)) {
+      // pct: diferença em pontos percentuais; num: variação %
+      const delta = c.tipo === "pct" ? (c.valor - c.antes) * 100 : (c.antes ? c.valor / c.antes - 1 : NaN);
+      if (isFinite(delta) && Math.abs(delta) > 0.0005) {
+        const subiu = delta > 0;
+        const classe = subiu === c.sobeBom ? "bom" : "ruim";
+        const texto = c.tipo === "pct"
+          ? `${subiu ? "▲" : "▼"} ${fmtPct.format(Math.abs(delta))} p.p. vs ${anoAtual - 1}`
+          : `${subiu ? "▲" : "▼"} ${fmtPct.format(Math.abs(delta) * 100)}% vs ${anoAtual - 1}`;
+        selo = `<div class="badge-delta ${classe}">${texto}</div>`;
+      }
+    }
+    return `<div class="cartao"><div class="titulo">${c.titulo}</div>
+      <div class="valor" data-tipo="${c.tipo}" data-valor="${c.valor}"></div>${selo}</div>`;
+  }).join("");
+  document.querySelectorAll("#cartoes .valor").forEach(animaValor);
+
+  // ----- Tabela -----
+  const linhaTabela = (rotulo, md, classe) => `
+    <tr class="${classe}">
+      <td>${rotulo}</td>
+      <td>${n(md.prest)}</td><td>${n(md.cmv)}</td><td>${pct(md.pCmv)}</td>
+      <td>${n(md.lucroBruto)}</td><td>${pct(md.pLucroBruto)}</td>
+      <td>${n(md.pessoal)}</td><td>${pct(md.pPessoal)}</td>
+      <td>${n(md.adm)}</td><td>${pct(md.pAdm)}</td>
+      <td>${n(md.resultado)}</td><td>${pct(md.pResultado)}</td>
+    </tr>`;
+
+  const entidades = [...new Set(linhas.map(d => d.Entidade))].sort();
+  const tipos = [...new Set(entidades.map(tipoDe))].sort();
+  let html = "";
+  for (const t of tipos) {
+    const doTipo = entidades.filter(e => tipoDe(e) === t);
+    const mt = calcularMedidas(linhas.filter(d => doTipo.includes(d.Entidade)));
+    html += linhaTabela(t, mt, "grupo");
+    for (const e of doTipo) {
+      const me = calcularMedidas(linhas.filter(d => d.Entidade === e));
+      html += linhaTabela(nomeDe(e), me, "detalhe");
+    }
+  }
+  html += linhaTabela("Total", m, "total");
+  document.getElementById("corpo-tabela").innerHTML =
+    linhas.length ? html : `<tr><td colspan="12" class="vazio">Sem dados para os filtros selecionados</td></tr>`;
+
+  // ----- Gráficos -----
+  desenharBarras("grafico-sem-subv", linhas, "resSemSubv");
+  desenharBarras("grafico-resultado", linhas, "resultado");
+
+  // ----- Abas DRE, Comparativo, Projeção, Subvenções e Ferramentas -----
+  renderDRE(linhas);
+  renderComparativo();
+  renderProjecao();
+  renderSubvencoes(linhas);
+  renderBalanco();
+  renderFerramentas();
+  renderMovto();
+}
+
+/* =====================================================================
+   MOVIMENTAÇÃO ADTO SALÁRIO — gera o CSV de reclassificação.
+   Fonte: aba local Movto1135 (lançamentos de 1135001/1135005, dept 3310000).
+   OP 1: zera o saldo residual acumulado de cada subconta da 1135001 no mês.
+   OP 2: transfere lançamento a lançamento a 1135005 (com vencimento) → 1135001.
+   Valor em centavos; crédito negativo; débito/crédito um embaixo do outro.
+   ===================================================================== */
+const MOVTO_DEP = "3310000", MOVTO_FUNDO = "10", MOVTO_REST = "0A";
+const centavos = v => Math.round(v * 100);
+
+// Gera as linhas do CSV (e a prévia com nomes) para um mês.
+function gerarMovto(mes) {
+  const linhas = [];  // { op, conta, sub, nome, valor(centavos), hist }
+  const histResidual = `Adto Salário - Valor Residual Conta Corrente - ${String(mes).padStart(2, "0")}/${MOVTO_ANO}`;
+
+  // CONVENÇÃO DE SINAL do banco (campo value): DÉBITO é NEGATIVO, CRÉDITO é
+  // POSITIVO. No CSV é o contrário (débito positivo, crédito negativo), então
+  // o valor exportado é o próprio residual em centavos, com os papéis abaixo.
+
+  // ---- OP 1: resíduo NÃO ALOCADO das subcontas da 1135001 (até o mês) ----
+  const saldos = new Map();  // sub -> { nome, saldo(residual, DB: neg=devedor) }
+  for (const d of movtoDados) {
+    if (d.conta !== "1135001" || d.mes > mes) continue;
+    const reg = saldos.get(d.sub) || { nome: d.nome, saldo: 0 };
+    reg.saldo += d.valor + d.aloc;   // residual = valor + alocado (0 = quitado)
+    if (!reg.nome && d.nome) reg.nome = d.nome;
+    saldos.set(d.sub, reg);
+  }
+  for (const [sub, reg] of saldos) {
+    const rc = centavos(reg.saldo);
+    if (rc === 0) continue;
+    // saldo < 0 = DEVEDOR → vai para 1135005 ; saldo > 0 = CREDOR → vai para 2135005
+    const contra = reg.saldo < 0 ? "1135005" : "2135005";
+    linhas.push({ op: "OP1", conta: contra, sub, nome: reg.nome, valor: -rc, hist: histResidual });
+    linhas.push({ op: "OP1", conta: "1135001", sub, nome: reg.nome, valor: rc, hist: histResidual });
+  }
+
+  // ---- OP 2: itens NÃO ALOCADOS da 1135005 que vencem no mês ----
+  // Usa a baixa real do sistema (tabela Allocation): o pendente de cada item
+  // é valor + alocado (0 = quitado). Cada item não alocado que VENCE no mês
+  // é transferido para a 1135001, com o histórico do próprio item.
+  const mesVenc = d => d.venc ? +d.venc.slice(5, 7) : 0;
+  for (const d of movtoDados) {
+    if (d.conta !== "1135005" || mesVenc(d) !== mes) continue;
+    const rc = centavos(d.valor + d.aloc);   // residual não alocado (DB: neg=devedor)
+    if (rc === 0) continue;                   // item já alocado (quitado)
+    linhas.push({ op: "OP2", conta: "1135001", sub: d.sub, nome: d.nome, valor: -rc, hist: d.hist });
+    linhas.push({ op: "OP2", conta: "1135005", sub: d.sub, nome: d.nome, valor: rc, hist: d.hist });
+  }
+  return linhas;
+}
+
+let MOVTO_ANO = new Date().getFullYear();
+
+// Botão próprio de carregar planilha (torna a ferramenta autônoma)
+function movtoLoader(msg, cor) {
+  const el = document.getElementById("fer-movto");
+  el.innerHTML =
+    `<p class="fer-desc"${cor ? ` style="color:${cor}"` : ""}>${msg}</p>
+     <button id="movto-carregar" class="aba-btn ativa" style="padding:9px 20px">📂 Carregar Dados Financeiros.xlsx</button>
+     <input type="file" id="movto-input" accept=".xlsx,.xls" style="display:none">`;
+  const inp = document.getElementById("movto-input");
+  document.getElementById("movto-carregar").addEventListener("click", () => inp.click());
+  inp.addEventListener("change", () => inp.files[0] && carregarMovto(inp.files[0]));
+}
+
+// Lê a aba Movto1135 de um arquivo (independente do resto do painel)
+function carregarMovto(arquivo) {
+  const leitor = new FileReader();
+  leitor.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "array" });
+      let aba = null;
+      for (const nome of wb.SheetNames) {
+        const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
+        if (!json.length) continue;
+        const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
+        if (cols.includes("mescomp") && cols.includes("historico")) { aba = json; break; }
+      }
+      if (!aba) throw new Error("A planilha não tem a aba Movto1135. Rode o Atualizar Dados.bat e use a Dados Financeiros.xlsx completa.");
+      const val = (l, nm) => { const p = Object.entries(l).find(([k]) => k.trim().toLowerCase() === nm); return p ? p[1] : null; };
+      movtoDados = aba.map(l => ({
+        conta: String(val(l, "conta") ?? "").trim().replace(/\.0$/, ""),
+        sub: String(val(l, "subconta") ?? "").trim(),
+        nome: String(val(l, "nome") ?? "").trim(),
+        mes: +val(l, "mescomp") || 0,
+        venc: String(val(l, "venc") ?? "").trim(),
+        valor: +val(l, "valor") || 0,
+        aloc: +val(l, "aloc") || 0,
+        hist: String(val(l, "historico") ?? "").trim(),
+      })).filter(d => d.conta && d.mes);
+      window.__movtoMes = null;
+      renderMovto();
+    } catch (err) {
+      movtoLoader("✗ " + err.message, "#b3423a");
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+function renderMovto() {
+  const el = document.getElementById("fer-movto");
+  if (!movtoDados.length) {
+    movtoLoader('Selecione a planilha <b>Dados Financeiros.xlsx</b> (a completa, local). Os dados de funcionários não são publicados no site — ficam só no seu navegador.');
+    return;
+  }
+  const meses = [...new Set(movtoDados.map(d => d.mes))].sort((a, b) => a - b);
+  const mesAtivo = window.__movtoMes && meses.includes(window.__movtoMes) ? window.__movtoMes : meses[meses.length - 1];
+  window.__movtoMes = mesAtivo;
+
+  const abas = meses.map(m =>
+    `<button class="aba-btn${m === mesAtivo ? " ativa" : ""}" data-movtomes="${m}" style="padding:6px 16px;font-size:13px">${NOMES_MESES[m - 1]}</button>`).join("");
+
+  const linhas = gerarMovto(mesAtivo);
+  const op1 = linhas.filter(l => l.op === "OP1"), op2 = linhas.filter(l => l.op === "OP2");
+
+  // Bloco de uma operação (título, resumo, botão de CSV próprio e tabela)
+  const bloco = (id, titulo, fluxo, desc, ls, sufixo) => {
+    const soma = ls.reduce((s, l) => s + l.valor, 0);
+    const corpo = ls.map(l => `<tr>
+      <td>${l.conta}</td><td>${l.sub}</td><td>${l.nome || "—"}</td>
+      <td class="num" style="color:${l.valor < 0 ? "#b3423a" : "#2e7d4f"}">${(l.valor / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+      <td>${l.hist}</td></tr>`).join("");
+    return `
+      <div style="margin-top:16px;padding:12px;border:1px solid #d7e0e8;border-radius:6px;background:#fafcfe">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <h3 style="color:var(--azul-escuro);font-size:15px;margin:0">${titulo}</h3>
+          <span style="background:var(--azul-tabela);color:#fff;font-size:13px;font-weight:600;padding:3px 12px;border-radius:12px">${fluxo}</span>
+        </div>
+        <p class="fer-desc" style="margin:0 0 8px">${desc}</p>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <button data-baixar="${id}" class="aba-btn ativa" style="padding:9px 20px">⬇ Baixar CSV — ${titulo.split("—")[0].trim()}</button>
+          <span class="fer-desc" style="margin:0">${ls.length / 2} par(es) · ${ls.length} linhas ·
+            ${soma === 0 ? '<span class="selo-ok">✓ balanceado</span>' : '<span class="selo-alerta">⚠ diferença ' + n(soma) + '</span>'}</span>
+        </div>
+        <div style="overflow-x:auto;max-height:340px;overflow-y:auto;border:1px solid #e4e9ee;border-radius:4px">
+          <table class="fer-tabela"><thead><tr><th>Conta</th><th>Subconta</th><th>Nome</th><th class="num">Valor</th><th>Histórico</th></tr></thead>
+          <tbody>${corpo || '<tr><td colspan="5" class="vazio">Nada neste mês</td></tr>'}</tbody></table>
+        </div>
+      </div>`;
+  };
+
+  el.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <button id="movto-trocar" class="aba-btn" style="padding:6px 12px;font-size:12px">📂 Trocar planilha</button>
+      <span class="fer-desc" style="margin:0">Ferramenta carregada localmente. Selecione o mês (período contábil):</span>
+    </div>
+    <div style="font-weight:600;color:#556;margin-bottom:4px">Mês:</div>
+    <div class="abas" style="margin-bottom:6px;flex-wrap:wrap">${abas}</div>
+    ${bloco("op1", "OP 1 — Resíduo (zerar 1135001)", "1135001 → 1135005 / 2135005", "Zera o saldo residual de cada subconta da 1135001. Saldo devedor vai para a 1135005; saldo credor vai para a 2135005.", op1, "OP1")}
+    ${bloco("op2", "OP 2 — Transferência do adiantamento", "1135005 → 1135001", "Usa a baixa REAL do sistema (tela de Alocação): transfere só os itens NÃO ALOCADOS que vencem no mês selecionado, cada um com o histórico do próprio item. Item já alocado (quitado) não aparece.", op2, "OP2")}`;
+
+  el.querySelectorAll("[data-movtomes]").forEach(b => b.addEventListener("click", () => {
+    window.__movtoMes = +b.dataset.movtomes; renderMovto();
+  }));
+  el.querySelector('[data-baixar="op1"]').addEventListener("click", () => baixarMovtoCSV(mesAtivo, op1, "OP1"));
+  el.querySelector('[data-baixar="op2"]').addEventListener("click", () => baixarMovtoCSV(mesAtivo, op2, "OP2"));
+  document.getElementById("movto-trocar").addEventListener("click", () => { movtoDados = []; renderMovto(); });
+}
+
+function baixarMovtoCSV(mes, linhas, sufixo) {
+  const cab = "Conta;Subconta;Fundo;Departamento;Restrição;Valor;Aviso;Histórico";
+  const corpo = linhas.map(l =>
+    `${l.conta};${l.sub};${MOVTO_FUNDO};${MOVTO_DEP};${MOVTO_REST};${l.valor};N;${l.hist}`).join("\r\n");
+  const csv = "﻿" + cab + "\r\n" + corpo + "\r\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Movto_Adto_Salario_${sufixo}_${String(mes).padStart(2, "0")}_${MOVTO_ANO}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+/* =====================================================================
+   ABA BALANÇO PATRIMONIAL — posição em uma data (saldo acumulado da
+   abertura até o mês final selecionado). Usa TODAS as contas analíticas
+   de ativo (grupo 1) e passivo/PL (grupo 2), agrupadas pela estrutura BP.
+   Ativo mostrado como devedor (+); passivo/PL como credor exibido (+).
+   Fecha quando Ativo = Passivo + PL + Resultado do exercício.
+   ===================================================================== */
+function renderBalanco() {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(dadosBrutos.map(d => d.Ano))].sort((a, b) => a - b);
+  const ano = f.anos.length ? Math.max(...f.anos) : (anosDisp[anosDisp.length - 1] || 0);
+  const mFim = Math.max(1, Math.min(12, f.mesFim));
+
+  const temBP = dadosBrutos.some(d => d.Conta[0] === "1" || d.Conta[0] === "2");
+  document.getElementById("bp-aviso").style.display = temBP ? "none" : "";
+
+  // saldo acumulado (abertura..mFim) por conta analítica de ativo/passivo
+  const ativo = new Map();    // conta -> { nome, sub, os, total }
+  const passivo = new Map();
+  let totAtivo = 0, totPassPL = 0;
+  for (const d of dadosBrutos) {
+    if (d.Subconta) continue;
+    const g = d.Conta[0];
+    if (g !== "1" && g !== "2") continue;
+    if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
+    if (!infoContas.ehAnalitica(d.Conta)) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;
+    const cls = classificaBP(d.Conta);
+    const ativoLado = cls.grupo.startsWith("ATIVO");
+    const valor = ativoLado ? base : -base;   // passivo/PL: credor -> exibe positivo
+    const alvo = ativoLado ? ativo : passivo;
+    const reg = alvo.get(d.Conta) || { nome: d.NomeConta || "", grupo: cls.grupo, og: cls.og, sub: cls.sub, os: cls.os, total: 0 };
+    reg.total += valor;
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    alvo.set(d.Conta, reg);
+    if (ativoLado) totAtivo += valor; else totPassPL += valor;
+  }
+
+  // resultado acumulado do exercício (conta 98), jan..mFim
+  let resultado = 0;
+  for (const l of linhasDRE)
+    if (l.Ano === ano && l.Mes <= mFim && f.campos.includes(l.Entidade)) resultado += l.saldo;
+
+  // ----- Cartões -----
+  document.getElementById("bp-cartoes").innerHTML = `
+    <div class="cartao"><div class="titulo">Ativo Total</div>
+      <div class="valor" data-tipo="num" data-valor="${totAtivo}"></div></div>
+    <div class="cartao"><div class="titulo">Passivo + PL</div>
+      <div class="valor" data-tipo="num" data-valor="${totPassPL}"></div></div>
+    <div class="cartao"><div class="titulo">Resultado do Exercício</div>
+      <div class="valor" data-tipo="num" data-valor="${resultado}"></div></div>`;
+  document.querySelectorAll("#bp-cartoes .valor").forEach(animaValor);
+
+  // ----- Teste de fechamento -----
+  const diferenca = totAtivo - (totPassPL + resultado);
+  const fecha = Math.abs(diferenca) < 1;
+  document.getElementById("bp-check").innerHTML = temBP
+    ? `<h3>Conferência do Balanço — posição em ${NOMES_MESES[mFim - 1]}/${ano}</h3>
+       <p>Ativo (${n(totAtivo)}) = Passivo + PL (${n(totPassPL)}) + Resultado do Exercício (${n(resultado)})</p>
+       <p>${fecha
+         ? `<span class="selo-ok">✓ Balanço fechado — diferença de ${n(diferenca)}</span>`
+         : `<span class="selo-alerta">⚠ Diferença de ${n(diferenca)} — o balanço NÃO fechou; há lançamento sem contrapartida</span>`}</p>`
+    : `<p class="fer-desc">Carregue a planilha completa para conferir o balanço.</p>`;
+
+  tabelaBalanco("bp-ativo", ativo, totAtivo, "ATIVO");
+  tabelaBalanco("bp-passivo", passivo, totPassPL, "PASSIVO + PL");
+}
+
+/* Tabela hierárquica do balanço: subgrupo -> contas, com Total. */
+function tabelaBalanco(idTabela, contas, totalLado, rotuloTotal) {
+  const el = document.getElementById(idTabela);
+  if (!contas.size) {
+    el.innerHTML = `<tbody><tr><td class="vazio">Sem dados no recorte</td></tr></tbody>`;
+    return;
+  }
+  // agrupa por subgrupo
+  const subgrupos = new Map();  // sub -> { os, contas:[], total }
+  for (const [conta, reg] of contas) {
+    if (Math.abs(reg.total) < 0.5) continue;
+    const sg = subgrupos.get(reg.sub) || { os: reg.os, contas: [], total: 0 };
+    sg.contas.push({ conta, nome: reg.nome, total: reg.total });
+    sg.total += reg.total;
+    subgrupos.set(reg.sub, sg);
+  }
+  const ordenados = [...subgrupos.entries()].sort((a, b) => a[1].os - b[1].os);
+
+  let html = `<thead><tr><th>Conta</th><th>Descrição</th><th class="num">Saldo</th></tr></thead><tbody>`;
+  let seq = 0;
+  for (const [sub, sg] of ordenados) {
+    const id = idTabela + "-s" + (++seq);
+    html += `<tr class="dre-n1"><td><span class="alternar" data-alvo="${id}">+</span> </td><td>${sub}</td><td class="num total-col">${n(sg.total)}</td></tr>`;
+    for (const c of sg.contas.sort((a, b) => Math.abs(b.total) - Math.abs(a.total)))
+      html += `<tr class="dre-n3 escondida" data-pai="${id}"><td>${c.conta}</td><td>${c.nome || "—"}</td><td class="num">${n(c.total)}</td></tr>`;
+  }
+  html += `<tr class="dre-resultado"><td></td><td>TOTAL ${rotuloTotal}</td><td class="num total-col">${n(totalLado)}</td></tr></tbody>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll(".alternar").forEach(sp => sp.addEventListener("click", () => {
+    const abrir = sp.textContent === "+";
+    sp.textContent = abrir ? "−" : "+";
+    el.querySelectorAll(`tr[data-pai="${sp.dataset.alvo}"]`).forEach(tr => tr.classList.toggle("escondida", !abrir));
+  }));
+}
+
+/* =====================================================================
+   ABA SUBVENÇÕES — detalha por conta as subvenções recebidas e enviadas
+   (outorgamentos), com os meses do intervalo nas colunas.
+   ===================================================================== */
+function renderSubvencoes(linhas) {
+  // cartões-resumo
+  const recebidas = linhas.filter(l => l.dre3 === "Subvenções Recebidas");
+  const enviadas = linhas.filter(l => l.dre2 === "DESPESAS" && l.dre3 === "Outorgamentos");
+  const somaR = recebidas.reduce((s, l) => s + l.saldo, 0);
+  const somaE = -enviadas.reduce((s, l) => s + l.saldo, 0);  // despesa: mostra positivo
+  document.getElementById("subv-cartoes").innerHTML = `
+    <div class="cartao"><div class="titulo">Subvenções Recebidas</div>
+      <div class="valor" data-tipo="num" data-valor="${somaR}"></div></div>
+    <div class="cartao"><div class="titulo">Repasses Enviados (Outorgamentos)</div>
+      <div class="valor" data-tipo="num" data-valor="${somaE}"></div></div>
+    <div class="cartao"><div class="titulo">Líquido (recebido − enviado)</div>
+      <div class="valor" data-tipo="num" data-valor="${somaR - somaE}"></div></div>`;
+  document.querySelectorAll("#subv-cartoes .valor").forEach(animaValor);
+
+  tabelaPorConta("subv-recebidas", recebidas, false);
+  tabelaPorConta("subv-enviadas", enviadas, true);
+}
+
+/* Saldo bruto (de razão) por conta e mês, no recorte atual — usado para
+   abrir as contas analíticas dentro de cada conta da DRE. */
+function saldoBrutoPorConta() {
+  const f = filtrosAtuais();
+  const mapa = new Map();  // conta -> { nome, meses:Map(chaveMes->base) }
+  for (const d of dadosBrutos) {
+    if (d.Subconta) continue;
+    if (!f.anos.includes(d.Ano) || !f.campos.includes(d.Entidade) || d.Mes < f.mesIni || d.Mes > f.mesFim) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;
+    const reg = mapa.get(d.Conta) || { nome: d.NomeConta || "", meses: new Map() };
+    const c = d.Ano * 100 + d.Mes;
+    reg.meses.set(c, (reg.meses.get(c) || 0) + base);
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    mapa.set(d.Conta, reg);
+  }
+  return mapa;
+}
+
+/* Monta uma tabela conta × meses (com Total). Cada conta da DRE que tenha
+   contas analíticas por baixo vira expansível (+/-). */
+function tabelaPorConta(idTabela, linhas, inverterSinal) {
+  const el = document.getElementById(idTabela);
+  const chavesMes = [...new Set(linhas.map(d => d.Ano * 100 + d.Mes))].sort((a, b) => a - b);
+  const rotuloMes = c => NOMES_MESES[(c % 100) - 1] + "/" + Math.floor(c / 100);
+  const sinal = inverterSinal ? -1 : 1;
+
+  if (!linhas.length) {
+    el.innerHTML = `<tbody><tr><td class="vazio">Nenhuma subvenção neste recorte</td></tr></tbody>`;
+    return;
+  }
+
+  // agrega por conta da DRE (nível sintético mapeado)
+  const contas = new Map();  // conta -> { nome, meses:Map, total }
+  for (const l of linhas) {
+    const reg = contas.get(l.conta) || { nome: l.nome || "", meses: new Map(), total: 0 };
+    const c = l.Ano * 100 + l.Mes, v = l.saldo * sinal;
+    reg.meses.set(c, (reg.meses.get(c) || 0) + v);
+    reg.total += v;
+    if (!reg.nome && l.nome) reg.nome = l.nome;
+    contas.set(l.conta, reg);
+  }
+  const ordenadas = [...contas.entries()].sort((a, b) => Math.abs(b[1].total) - Math.abs(a[1].total));
+
+  const bruto = saldoBrutoPorConta();
+  const contasBruto = [...bruto.keys()];
+  const cel = m => chavesMes.map(c =>
+    `<td class="num">${m.has(c) ? n(m.get(c)) : ""}</td>`).join("");
+
+  // filhas analíticas de uma conta sintética (mesmo tronco, folhas, com saldo)
+  function filhasDe(conta) {
+    if (infoContas.ehAnalitica(conta)) return [];   // já é analítica: sem detalhe
+    const tronco = conta.replace(/0+$/, "");
+    return contasBruto.filter(c => c !== conta && c.startsWith(tronco) && infoContas.ehAnalitica(c));
+  }
+
+  const totalGeral = { meses: new Map(), total: 0 };
+  for (const [, reg] of ordenadas) {
+    totalGeral.total += reg.total;
+    for (const [c, v] of reg.meses) totalGeral.meses.set(c, (totalGeral.meses.get(c) || 0) + v);
+  }
+
+  let html = `<thead><tr><th>Conta</th><th>Descrição</th>` +
+    chavesMes.map(c => `<th class="num">${rotuloMes(c)}</th>`).join("") +
+    `<th class="num">Total</th></tr></thead><tbody>`;
+
+  let seq = 0;
+  for (const [conta, reg] of ordenadas) {
+    const filhas = filhasDe(conta);
+    // fator que converte saldo bruto -> valor exibido (aplica sinal da DRE e a inversão da tabela)
+    const brutoPai = bruto.get(conta);
+    const totalBrutoPai = brutoPai ? [...brutoPai.meses.values()].reduce((s, v) => s + v, 0) : 0;
+    const fator = totalBrutoPai ? reg.total / totalBrutoPai : 0;
+    const temDetalhe = filhas.length && fator;
+    const id = idTabela + "-g" + (++seq);
+    const seta = temDetalhe ? `<span class="alternar" data-alvo="${id}">+</span> ` : "";
+    html += `<tr class="dre-n1-lite"><td>${seta}${conta}</td><td>${reg.nome || "—"}</td>${cel(reg.meses)}<td class="num total-col">${n(reg.total)}</td></tr>`;
+    if (temDetalhe) {
+      const detalhe = filhas.map(fc => {
+        const b = bruto.get(fc);
+        const meses = new Map([...b.meses].map(([c, v]) => [c, v * fator]));
+        const total = [...meses.values()].reduce((s, v) => s + v, 0);
+        return { conta: fc, nome: b.nome, meses, total };
+      }).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+      for (const f of detalhe)
+        html += `<tr class="dre-n3 escondida" data-pai="${id}"><td>${f.conta}</td><td>${f.nome || "—"}</td>${cel(f.meses)}<td class="num total-col">${n(f.total)}</td></tr>`;
+    }
+  }
+  html += `<tr class="dre-resultado"><td></td><td>TOTAL</td>${cel(totalGeral.meses)}<td class="num total-col">${n(totalGeral.total)}</td></tr></tbody>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll(".alternar").forEach(sp => sp.addEventListener("click", () => {
+    const abrir = sp.textContent === "+";
+    sp.textContent = abrir ? "−" : "+";
+    el.querySelectorAll(`tr[data-pai="${sp.dataset.alvo}"]`).forEach(tr => tr.classList.toggle("escondida", !abrir));
+  }));
+}
+
+/* Identifica contas sintéticas: existe outra conta que começa com o seu
+   "tronco" (código sem os zeros finais). Ex.: 3141100 é pai de 3141101. */
+function classificarContas() {
+  const codigos = [...new Set(dadosBrutos.map(d => d.Conta))];
+  const sinteticas = new Set();
+  for (const c of codigos) {
+    if (!/00$/.test(c)) continue;          // sintéticas terminam em "00" (nível de grupo);
+    const tronco = c.replace(/0+$/, "");   // contas como 4119530 são analíticas
+    if (!tronco) continue;
+    for (const outro of codigos)
+      if (outro !== c && outro.startsWith(tronco)) { sinteticas.add(c); break; }
+  }
+  return { ehAnalitica: c => !sinteticas.has(c) };
+}
+
+/* Contagem animada dos cartões */
+function animaValor(el) {
+  const alvo = +el.dataset.valor, tipo = el.dataset.tipo;
+  const formata = v => tipo === "pct" ? pct(v) : n(v);
+  if (!isFinite(alvo)) { el.textContent = "—"; return; }
+  const inicio = performance.now(), duracao = 700;
+  requestAnimationFrame(function passo(t) {
+    const p = Math.min(1, (t - inicio) / duracao);
+    const suave = 1 - Math.pow(1 - p, 3);
+    el.textContent = formata(alvo * suave);
+    if (p < 1) requestAnimationFrame(passo);
+  });
+}
+
+const fmtCompacto = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
+const nc = v => fmtCompacto.format(Math.round(v));
+
+/* ---------- Dica flutuante: qualquer elemento com data-dica ganha tooltip ---------- */
+const dica = document.createElement("div");
+dica.id = "dica";
+document.body.appendChild(dica);
+function ligarDicas(container) {
+  container.querySelectorAll("[data-dica]").forEach(el => {
+    el.addEventListener("mousemove", e => {
+      dica.innerHTML = el.dataset.dica;
+      dica.style.display = "block";
+      const larg = dica.offsetWidth;
+      dica.style.left = Math.min(e.clientX + 14, window.innerWidth - larg - 8) + "px";
+      dica.style.top = (e.clientY - 12) + "px";
+    });
+    el.addEventListener("mouseleave", () => { dica.style.display = "none"; });
+  });
+}
+
+/* =====================================================================
+   ABA COMPARATIVO ANUAL: cascata do resultado, barras ano x ano e
+   linhas de resultado acumulado. Compara o maior ano selecionado com
+   o ano anterior, respeitando o intervalo de meses e o Campo.
+   ===================================================================== */
+function renderComparativo() {
+  const f = filtrosAtuais();
+  const anosDisponiveis = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisponiveis.length) return;
+  const anoAtual = f.anos.length ? Math.max(...f.anos) : anosDisponiveis[anosDisponiveis.length - 1];
+  const anoAnterior = anoAtual - 1;
+  const temAnterior = linhasDRE.some(d => d.Ano === anoAnterior);
+  const doAno = ano => linhasDRE.filter(d => d.Ano === ano &&
+    f.campos.includes(d.Entidade) && d.Mes >= f.mesIni && d.Mes <= f.mesFim);
+  const atual = doAno(anoAtual);
+  const anterior = temAnterior ? doAno(anoAnterior) : [];
+
+  const mIni = Math.max(1, Math.min(12, f.mesIni)), mFim = Math.max(1, Math.min(12, f.mesFim));
+  const periodo = mIni === mFim ? NOMES_MESES[mIni - 1] : `${NOMES_MESES[mIni - 1]}–${NOMES_MESES[mFim - 1]}`;
+  document.getElementById("titulo-cascata").textContent = `Cascata do Resultado — ${anoAtual} (${periodo})`;
+
+  desenharCascata(atual);
+  desenharCompMeses(atual, anterior, anoAtual, anoAnterior, temAnterior);
+  desenharAcumulado(atual, anterior, anoAtual, anoAnterior, temAnterior);
+}
+
+function desenharCascata(linhas) {
+  const alvo = document.getElementById("grafico-cascata");
+  if (!linhas.length) { alvo.innerHTML = `<div class="vazio">Sem dados para os filtros selecionados</div>`; return; }
+  const m = calcularMedidas(linhas);
+  const somaGrupo = filtro => linhas.reduce((s, l) => filtro(l) ? s + l.saldo : s, 0);
+  const passos = [
+    { nome: "Receitas", v: somaGrupo(l => l.dre2 === "RECEITAS") },
+    { nome: "Pessoal", v: -m.pessoal },
+    { nome: "Adm e Gerais", v: -m.adm },
+    { nome: "Educ. Assist.", v: -m.educ },
+    { nome: "Outorgamentos", v: somaGrupo(l => l.dre3 === "Outorgamentos") },
+    { nome: "Subvenções", v: m.subv },
+  ];
+  if (Math.abs(m.naoRec) > 0.5) passos.push({ nome: "Não Recorrente", v: m.naoRec });
+
+  let acum = 0;
+  const barras = passos.map(p => { const ini = acum; acum += p.v; return { ...p, ini, fim: acum }; });
+  barras.push({ nome: "RESULTADO", v: m.resultado, ini: 0, fim: m.resultado, final: true });
+
+  const teto = Math.max(...barras.map(b => Math.max(b.ini, b.fim)), 1);
+  const piso = Math.min(...barras.map(b => Math.min(b.ini, b.fim)), 0);
+  const L = 980, A = 330, topoY = 40, baseY = 285, margem = 30;
+  const escala = (baseY - topoY) / (teto - piso || 1);
+  const y = v => baseY - (v - piso) * escala;
+  const larg = (L - 2 * margem) / barras.length;
+
+  let svg = "";
+  barras.forEach((b, i) => {
+    const x = margem + i * larg + larg * 0.14, w = larg * 0.72;
+    const yTopo = y(Math.max(b.ini, b.fim));
+    const h = Math.max(2, Math.abs(b.fim - b.ini) * escala);
+    const cor = b.final ? "#2c5f7c" : (b.v >= 0 ? "#4a9d6e" : "#c0504d");
+    const texto = b.final
+      ? `<b>${b.nome}</b><br>${n(b.v)}`
+      : `<b>${b.nome}</b><br>Valor: ${n(b.v)}<br>Acumulado até aqui: ${n(b.fim)}`;
+    svg += `<rect x="${x}" y="${yTopo}" width="${w}" height="${h}" rx="3" fill="${cor}" data-dica="${texto}">
+      <animate attributeName="height" from="0" to="${h}" dur="0.5s" fill="freeze"/>
+      <animate attributeName="y" from="${yTopo + h}" to="${yTopo}" dur="0.5s" fill="freeze"/>
+    </rect>`;
+    svg += `<text x="${x + w / 2}" y="${yTopo - 7}" text-anchor="middle" font-size="13" font-weight="600" fill="#334">${nc(b.v)}</text>`;
+    svg += `<text x="${x + w / 2}" y="${baseY + 20}" text-anchor="middle" font-size="12" fill="#667">${b.nome}</text>`;
+    if (!b.final) {
+      const xProx = margem + (i + 1) * larg + larg * 0.14;
+      svg += `<line x1="${x + w}" y1="${y(b.fim)}" x2="${xProx}" y2="${y(b.fim)}" stroke="#aab" stroke-dasharray="4 3"/>`;
+    }
+  });
+  svg += `<line x1="${margem - 10}" y1="${y(0)}" x2="${L - margem + 10}" y2="${y(0)}" stroke="#889"/>`;
+  alvo.innerHTML = `<svg class="cascata-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(alvo);
+}
+
+function desenharCompMeses(atual, anterior, anoAtual, anoAnterior, temAnterior) {
+  const el = document.getElementById("grafico-comp-meses");
+  document.getElementById("legenda-meses").innerHTML =
+    (temAnterior ? `<span class="chip" style="--c:#9db8cc">${anoAnterior}</span>` : "") +
+    `<span class="chip" style="--c:#2c5f7c">${anoAtual}</span>`;
+  const meses = [...new Set([...atual, ...anterior].map(d => d.Mes))].sort((a, b) => a - b);
+  if (!meses.length) { el.innerHTML = `<div class="vazio">Sem dados</div>`; return; }
+
+  const resDo = (linhas, mes) => calcularMedidas(linhas.filter(d => d.Mes === mes)).resultado;
+  const dados = meses.map(mes => ({
+    mes,
+    a: resDo(atual, mes),
+    b: temAnterior ? resDo(anterior, mes) : null,
+  }));
+  const maxAbs = Math.max(...dados.flatMap(d => [Math.abs(d.a), Math.abs(d.b ?? 0)]), 1);
+
+  el.innerHTML = dados.map(d => {
+    const barra = (v, classe) => v == null ? "" :
+      `<div class="col"><div class="rotulo-v">${nc(v)}</div>
+       <div class="b ${classe}${v < 0 ? " negativo" : ""}" style="height:${Math.max(2, Math.abs(v) / maxAbs * 150)}px"></div></div>`;
+    return `<div class="par-mes"><div class="duas">${barra(d.b, "ant")}${barra(d.a, "atu")}</div>
+      <div class="rotulo-mes">${NOMES_MESES[d.mes - 1]}</div></div>`;
+  }).join("");
+}
+
+function desenharAcumulado(atual, anterior, anoAtual, anoAnterior, temAnterior) {
+  const el = document.getElementById("grafico-acumulado");
+  document.getElementById("legenda-acumulado").innerHTML =
+    (temAnterior ? `<span class="chip" style="--c:#9db8cc">${anoAnterior}</span>` : "") +
+    `<span class="chip" style="--c:#2c5f7c">${anoAtual}</span>`;
+  const meses = [...new Set([...atual, ...anterior].map(d => d.Mes))].sort((a, b) => a - b);
+  if (!meses.length) { el.innerHTML = `<div class="vazio">Sem dados</div>`; return; }
+
+  const serie = linhas => {
+    let s = 0;
+    return meses.map(mes => {
+      if (!linhas.some(d => d.Mes === mes)) return null;
+      s += calcularMedidas(linhas.filter(d => d.Mes === mes)).resultado;
+      return s;
+    });
+  };
+  const sAtual = serie(atual);
+  const sAnt = temAnterior ? serie(anterior) : [];
+  const valores = [...sAtual, ...sAnt].filter(v => v != null);
+  const maxV = Math.max(...valores, 0), minV = Math.min(...valores, 0);
+  const L = 480, A = 250, esq = 14, dir = 52, topoY = 18, baseY = 212;
+  const x = i => esq + (meses.length === 1 ? (L - esq - dir) / 2 : i * (L - esq - dir) / (meses.length - 1));
+  const y = v => baseY - (v - minV) / (maxV - minV || 1) * (baseY - topoY);
+
+  const linhaSvg = (s, cor) => {
+    const pts = s.map((v, i) => v == null ? null : `${x(i)},${y(v)}`).filter(Boolean).join(" ");
+    const bolas = s.map((v, i) => v == null ? "" : `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${cor}"/>`).join("");
+    let rot = "";
+    for (let i = s.length - 1; i >= 0; i--) {
+      if (s[i] != null) { rot = `<text x="${x(i) + 7}" y="${y(s[i]) + 4}" font-size="12" font-weight="600" fill="${cor}">${nc(s[i])}</text>`; break; }
+    }
+    return `<polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="2.5"/>${bolas}${rot}`;
+  };
+  let svg = `<line x1="${esq}" y1="${y(0)}" x2="${L - dir}" y2="${y(0)}" stroke="#ccd"/>`;
+  svg += meses.map((mes, i) => `<text x="${x(i)}" y="${baseY + 24}" text-anchor="middle" font-size="11" fill="#667">${NOMES_MESES[mes - 1]}</text>`).join("");
+  if (temAnterior) svg += linhaSvg(sAnt, "#9db8cc");
+  svg += linhaSvg(sAtual, "#2c5f7c");
+  // captura do mouse por mês, mostrando os dois anos juntos
+  svg += meses.map((mes, i) => {
+    const partes = [`<b>Acumulado até ${NOMES_MESES[mes - 1]}</b>`];
+    if (sAtual[i] != null) partes.push(`${anoAtual}: ${n(sAtual[i])}`);
+    if (temAnterior && sAnt[i] != null) {
+      partes.push(`${anoAnterior}: ${n(sAnt[i])}`);
+      if (sAtual[i] != null && sAnt[i]) partes.push(`Diferença: ${n(sAtual[i] - sAnt[i])}`);
+    }
+    return `<rect x="${x(i) - (L - esq - dir) / (2 * Math.max(meses.length - 1, 1))}" y="${topoY}" width="${(L - esq - dir) / Math.max(meses.length - 1, 1)}" height="${baseY - topoY}" fill="#000" fill-opacity="0" pointer-events="all" data-dica="${partes.join("<br>")}"/>`;
+  }).join("");
+  el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(el);
+}
+
+/* Matriz "DRE por Mês": hierarquia DRE 2 > DRE 3 > DRE 4, meses nas colunas.
+   Nível 2 começa aberto; níveis 3/4 expandem no clique (como no Power BI). */
+function renderDRE(linhas) {
+  const cab = document.getElementById("dre-cabecalho");
+  const corpo = document.getElementById("dre-corpo");
+  const chavesMes = [...new Set(linhas.map(d => d.Ano * 100 + d.Mes))].sort((a, b) => a - b);
+  const rotulo = c => NOMES_MESES[(c % 100) - 1] + "/" + Math.floor(c / 100);
+
+  cab.innerHTML = "<tr><th>DRE</th>" +
+    chavesMes.map(c => `<th class="num">${rotulo(c)}</th>`).join("") +
+    `<th class="num">Total</th></tr>`;
+  if (!linhas.length) {
+    corpo.innerHTML = `<tr><td colspan="${chavesMes.length + 2}" class="vazio">Sem dados para os filtros selecionados</td></tr>`;
+    return;
+  }
+
+  // Agrega nos 3 níveis
+  const novoNo = ord => ({ ord, meses: new Map(), total: 0, filhos: new Map() });
+  const pega = (mapa, chave, ord) => { if (!mapa.has(chave)) mapa.set(chave, novoNo(ord)); return mapa.get(chave); };
+  const raiz = new Map();
+  const geral = novoNo(0);
+  for (const l of linhas) {
+    const c = l.Ano * 100 + l.Mes;
+    const n1 = pega(raiz, l.dre2, l.ord2);
+    const n2 = pega(n1.filhos, l.dre3, l.ord3);
+    const n3 = pega(n2.filhos, l.dre4 || "(sem detalhe)", l.ord4);
+    for (const no of [n1, n2, n3, geral]) {
+      no.total += l.saldo;
+      no.meses.set(c, (no.meses.get(c) || 0) + l.saldo);
+    }
+  }
+
+  const celulas = no => chavesMes.map(c =>
+      `<td class="num">${no.meses.has(c) ? n(no.meses.get(c)) : ""}</td>`).join("") +
+    `<td class="num total-col">${n(no.total)}</td>`;
+  const ordenado = mapa => [...mapa.entries()].sort((a, b) =>
+    (a[1].ord ?? 99) - (b[1].ord ?? 99) || a[0].localeCompare(b[0], "pt-BR"));
+
+  let html = "", seq = 0;
+  for (const [nome2, n1] of ordenado(raiz)) {
+    const id1 = "dre" + (++seq);
+    html += `<tr class="dre-n1" data-id="${id1}"><td><span class="alternar" data-alvo="${id1}">−</span> ${nome2}</td>${celulas(n1)}</tr>`;
+    for (const [nome3, n2] of ordenado(n1.filhos)) {
+      const id2 = "dre" + (++seq);
+      const alterna = n2.filhos.size ? `<span class="alternar" data-alvo="${id2}">+</span> ` : "";
+      html += `<tr class="dre-n2" data-id="${id2}" data-pai="${id1}"><td>${alterna}${nome3}</td>${celulas(n2)}</tr>`;
+      for (const [nome4, n3] of ordenado(n2.filhos)) {
+        html += `<tr class="dre-n3 escondida" data-pai="${id2}"><td>${nome4}</td>${celulas(n3)}</tr>`;
+      }
+    }
+  }
+  html += `<tr class="dre-resultado"><td>RESULTADO</td>${celulas(geral)}</tr>`;
+  corpo.innerHTML = html;
+
+  corpo.querySelectorAll(".alternar").forEach(el => el.addEventListener("click", () => {
+    const alvo = el.dataset.alvo;
+    const abrir = el.textContent === "+";
+    el.textContent = abrir ? "−" : "+";
+    corpo.querySelectorAll(`tr[data-pai="${alvo}"]`).forEach(tr => {
+      tr.classList.toggle("escondida", !abrir);
+      if (!abrir && tr.dataset.id) {           // recolhe os netos junto
+        const t = tr.querySelector(".alternar");
+        if (t) t.textContent = "+";
+        corpo.querySelectorAll(`tr[data-pai="${tr.dataset.id}"]`).forEach(x => x.classList.add("escondida"));
+      }
+    });
+  }));
+}
+
+function desenharBarras(idDestino, linhas, chaveMedida) {
+  const el = document.getElementById(idDestino);
+  const meses = [...new Set(linhas.map(d => d.Mes))].sort((a, b) => a - b);
+  if (!meses.length) { el.innerHTML = `<div class="vazio">Sem dados</div>`; return; }
+
+  const valores = meses.map(mes => calcularMedidas(linhas.filter(d => d.Mes === mes))[chaveMedida]);
+  const max = Math.max(...valores.map(Math.abs), 1);
+
+  el.innerHTML = meses.map((mes, i) => {
+    const v = valores[i];
+    const altura = Math.max(2, Math.abs(v) / max * 130);
+    return `<div class="barra-item">
+      <div class="rotulo-valor">${n(v)}</div>
+      <div class="barra ${v < 0 ? "neg" : ""}" style="height:${altura}px"></div>
+      <div class="rotulo-mes">${NOMES_MESES[mes - 1] || mes}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- Leitura da planilha Excel ---------- */
+const limpaConta = v => String(v ?? "").trim().replace(/\.0$/, "");
+
+function carregarArquivo(arquivo) {
+  const leitor = new FileReader();
+  leitor.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "array" });
+
+      // Identifica as abas pelo conteúdo:
+      //  - Ano + Conta            -> dados do banco
+      //  - Sinal + Conta + DRE 3  -> De/Para DRE
+      //  - Entidade + Tipo        -> De/Para de Campos
+      let abaDados = null, abaDRE = null, abaCampos = null, abaMovto = null, abaMeta = null;
+      for (const nome of wb.SheetNames) {
+        const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
+        if (!json.length) continue;
+        const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
+        if (!abaMovto && cols.includes("mescomp") && cols.includes("historico")) abaMovto = json;
+        else if (!abaMeta && cols.includes("chave") && cols.includes("valor")) abaMeta = json;
+        else if (!abaDRE && cols.includes("sinal") && cols.includes("conta") && cols.some(c => c.startsWith("dre 3"))) abaDRE = json;
+        else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
+        else if (!abaCampos && cols.includes("entidade") && cols.includes("tipo")) abaCampos = json;
+      }
+      if (!abaDados) throw new Error("Nenhuma aba com as colunas Ano e Conta foi encontrada");
+
+      const valorDe = (l, nome) => {
+        const par = Object.entries(l).find(([k]) => k.trim().toLowerCase() === nome.toLowerCase());
+        return par ? par[1] : null;
+      };
+
+      if (abaCampos) {
+        mapaEntidades = {};
+        for (const l of abaCampos) {
+          const ent = valorDe(l, "entidade");
+          if (ent == null) continue;
+          mapaEntidades[limpaConta(ent)] = {
+            nome: String(valorDe(l, "nome") ?? ent).trim(),
+            tipo: String(valorDe(l, "tipo") ?? "Campo").trim(),
+          };
+        }
+      }
+
+      if (abaDRE) {
+        mapaDRE = abaDRE
+          .filter(l => valorDe(l, "sinal") != null && valorDe(l, "conta") != null)
+          .map(l => ({
+            sinal: String(valorDe(l, "sinal")).trim(),
+            conta: limpaConta(valorDe(l, "conta")),
+            dre2: String(valorDe(l, "dre 2") ?? "").trim(),
+            ord2: +valorDe(l, "dre 2 - ordem") || 99,
+            dre3: String(valorDe(l, "dre 3") ?? "").trim(),
+            ord3: +valorDe(l, "dre 3 - ordem") || 99,
+            dre4: String(valorDe(l, "dre 4") ?? "").trim(),
+            ord4: +valorDe(l, "dre 4 - ordem") || 99,
+          }));
+      }
+
+      // Colunas da aba de dados (Mês pode vir como "Mês" ou "Mes")
+      const chaves = Object.keys(abaDados[0]);
+      const acha = nome => chaves.find(k => k.trim().toLowerCase() === nome.toLowerCase())
+                        || chaves.find(k => k.trim().toLowerCase().startsWith(nome.toLowerCase().slice(0, 3)));
+      const colMes = acha("Mês") || acha("Mes");
+      const colLegal = acha("Saldo_Legal");
+      const colAjust = acha("Saldo_Ajustado");
+      const colSub = acha("Subconta");
+      const obrigatorias = { Ano: acha("Ano"), Mes: colMes, Entidade: acha("Entidade"), Conta: acha("Conta"), Saldo_Legal: colLegal, Saldo_Ajustado: colAjust };
+      for (const [nomeCol, col] of Object.entries(obrigatorias))
+        if (!col) throw new Error("Coluna não encontrada: " + nomeCol);
+
+      const colNome = acha("Nome_Conta");
+      // exato (sem fuzzy): senão "Nome_Subconta" casaria por engano com "Nome_Conta"
+      const colNomeSub = chaves.find(k => k.trim().toLowerCase() === "nome_subconta");
+      dadosBrutos = abaDados.map(l => ({
+        Ano: +l[obrigatorias.Ano],
+        Mes: l[colMes] == null ? null : +l[colMes],   // mês 0 = saldo de abertura (balanço)
+        Entidade: limpaConta(l[obrigatorias.Entidade]),
+        Conta: limpaConta(l[obrigatorias.Conta]),
+        NomeConta: colNome ? String(l[colNome] ?? "").trim() : "",
+        Subconta: colSub ? String(l[colSub] ?? "").trim() : "",
+        NomeSubconta: colNomeSub ? String(l[colNomeSub] ?? "").trim() : "",
+        SaldoLegal: +l[colLegal] || 0,
+        SaldoAjustado: +l[colAjust] || 0,
+      })).filter(d => d.Ano && d.Mes != null && isFinite(d.Mes));
+
+      // Movimentação Adto Salário (aba local Movto1135)
+      movtoDados = abaMovto ? abaMovto.map(l => ({
+        conta: limpaConta(valorDe(l, "conta")),
+        sub: String(valorDe(l, "subconta") ?? "").trim(),
+        nome: String(valorDe(l, "nome") ?? "").trim(),
+        mes: +valorDe(l, "mescomp") || 0,
+        venc: String(valorDe(l, "venc") ?? "").trim(),
+        valor: +valorDe(l, "valor") || 0,
+        aloc: +valorDe(l, "aloc") || 0,
+        hist: String(valorDe(l, "historico") ?? "").trim(),
+      })).filter(d => d.conta && d.mes) : [];
+
+      processar();
+      document.getElementById("status-arquivo").textContent =
+        `✓ ${arquivo.name} — ${dadosBrutos.length.toLocaleString("pt-BR")} linhas`;
+      let carimbo = null;
+      if (abaMeta) {
+        const linha = abaMeta.find(l => String(valorDe(l, "chave") ?? "").trim().toLowerCase() === "atualizado");
+        if (linha) carimbo = String(valorDe(linha, "valor") ?? "").trim();
+      }
+      document.getElementById("data-atualizacao").textContent =
+        carimbo || new Date(arquivo.lastModified).toLocaleString("pt-BR");
+      montarFiltros();
+      render();
+    } catch (erro) {
+      document.getElementById("status-arquivo").textContent = "✗ Erro: " + erro.message;
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+const area = document.getElementById("area-arquivo");
+const input = document.getElementById("input-arquivo");
+area.addEventListener("click", () => input.click());
+input.addEventListener("change", () => input.files[0] && carregarArquivo(input.files[0]));
+document.body.addEventListener("dragover", e => e.preventDefault());
+document.body.addEventListener("drop", e => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) carregarArquivo(e.dataTransfer.files[0]);
+});
+
+/* ---------- Carregamento automático (quando publicado em um site) ----------
+   Se a página estiver sendo servida por HTTP (GitHub Pages, servidor local),
+   busca a planilha que estiver ao lado dela, sem precisar arrastar.
+   Aberta direto do disco (file://), o navegador bloqueia — usa o arrastar. */
+async function carregarAutomatico() {
+  if (location.protocol === "file:") return;
+  for (const nome of ["dados.xlsx", "Dados%20Financeiros.xlsx"]) {
+    try {
+      const resp = await fetch(nome, { cache: "no-store" });
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      const modificado = resp.headers.get("last-modified");
+      carregarArquivo(new File([blob], decodeURIComponent(nome),
+        { lastModified: modificado ? Date.parse(modificado) : Date.now() }));
+      return;
+    } catch (e) { /* tenta o próximo nome */ }
+  }
+}
+
+/* =====================================================================
+   ABA PROJEÇÃO
+   Cada mês do ano fica em um de três estados:
+     • encerrado    — contabilização fechada (marcado no seletor). É a
+                      base do padrão e da margem de erro.
+     • em andamento — já tem lançamentos, mas o mês não foi encerrado.
+                      A estimativa parte do padrão e usa o que JÁ está
+                      contabilizado como PISO (lançamento só acumula),
+                      com receita e despesa tratadas em separado.
+     • futuro       — sem lançamento nenhum: só o padrão.
+   Padrão: sazonal (mesmo mês dos anos anteriores × ritmo do ano atual)
+   ou média dos meses encerrados. Margem: ±1,64 × desvio típico dos meses
+   encerrados (~90%). Mês em andamento tem margem REDUZIDA na proporção
+   do que já foi contabilizado.
+   ===================================================================== */
+const FATOR_CONFIANCA = 1.64;   // ~90%
+const PISO_INCERTEZA = 0.25;    // mês em andamento nunca vira "quase certo"
+const LIMIAR_LANCADA = 0.6;     // conta com >=60% do seu padrão já foi lançada no mês
+
+let projFechados = new Map();   // ano -> Set dos meses encerrados
+let projManual = new Set();     // anos cuja marcação veio do usuário (ou do storage)
+
+/* Receita (contas 3), despesa (contas 4, em módulo) e resultado de cada mês. */
+function componentesAno(ano, campos) {
+  const mapa = new Map();
+  for (const d of linhasDRE) {
+    if (d.Ano !== ano || !campos.includes(d.Entidade)) continue;
+    const c = mapa.get(d.Mes) || { receita: 0, despesa: 0, resultado: 0 };
+    c.resultado += d.saldo;
+    if (d.conta[0] === "3") c.receita += d.saldo;
+    else if (d.conta[0] === "4") c.despesa -= d.saldo;
+    mapa.set(d.Mes, c);
+  }
+  for (const c of mapa.values()) c.outros = c.resultado - (c.receita - c.despesa);
+  return mapa;
+}
+
+/* Saldo de cada LINHA DA DRE (conta + bloco) em cada mês — base da estimativa
+   conta a conta. A chave inclui o bloco porque 9 contas aparecem duas vezes no
+   De/Para, com sinais opostos (reclassificação entre blocos da DRE); agrupar só
+   por conta faria as duas linhas se anularem. */
+function contasPorMes(ano, campos) {
+  const mapa = new Map();   // "conta|bloco" -> { conta, nome, grupo, meses: Map(mes -> saldo) }
+  for (const d of linhasDRE) {
+    if (d.Ano !== ano || !campos.includes(d.Entidade)) continue;
+    const grupo = d.dre3 || d.dre2 || "Outros";
+    const chave = d.conta + "|" + grupo;
+    const reg = mapa.get(chave) || { conta: d.conta, nome: d.nome || "", grupo, meses: new Map() };
+    reg.meses.set(d.Mes, (reg.meses.get(d.Mes) || 0) + d.saldo);
+    mapa.set(chave, reg);
+  }
+  return mapa;
+}
+
+/* Estimativa de um mês EM ANDAMENTO, conta a conta.
+   Cada conta é classificada como "já lançada" (o mês dela já entrou — usa o
+   valor real, que pode estar acima OU abaixo do normal) ou "a lançar" (usa o
+   padrão). É isso que faz a previsão enxergar a movimentação do próprio mês,
+   em vez de repetir a média. */
+function estimarMesConta(mes, mesesFech, porConta, padraoResultado) {
+  const linhas = [];
+  let total = 0, pesoLancado = 0, pesoTotal = 0;
+  for (const reg of porConta.values()) {
+    const conta = reg.conta;
+    const base = mesesFech.map(mm => reg.meses.get(mm) || 0);
+    const med = base.length ? base.reduce((s, v) => s + v, 0) / base.length : 0;
+    const atual = reg.meses.get(mes) || 0;
+    if (!med && !atual) continue;
+    const razao = med ? atual / med : (atual ? Infinity : 0);
+    // conta nova (sem histórico) com lançamento também conta como lançada
+    const lancada = med === 0 ? atual !== 0 : razao >= LIMIAR_LANCADA;
+    // a lançar: usa o padrão, mas nunca abaixo do que já entrou (piso)
+    const usado = lancada ? atual : (Math.abs(atual) > Math.abs(med) ? atual : med);
+    total += usado;
+    pesoTotal += Math.abs(usado);
+    if (lancada) pesoLancado += Math.abs(usado);
+    linhas.push({ conta, nome: reg.nome, grupo: reg.grupo, med, atual, usado, lancada });
+  }
+  if (!porConta.size) total = padraoResultado;
+  return { total, linhas, completude: pesoTotal ? pesoLancado / pesoTotal : 0 };
+}
+
+/* Palpite inicial: mês com receita compatível com a mediana está encerrado.
+   Mês com despesa lançada e receita muito abaixo do normal está em aberto. */
+function detectarFechados(comps, ano) {
+  const meses = [...comps.keys()].sort((a, b) => a - b);
+  if (!meses.length) return new Set();
+  // A Loja é fortemente sazonal (o didático concentra a venda no início do ano),
+  // então NÃO dá para usar "receita abaixo da mediana = mês incompleto": maio
+  // vende pouco por natureza, não por falta de lançamento. Aqui o critério é
+  // só o calendário — mês anterior ao corrente, com lançamento, está encerrado.
+  // O usuário desmarca no seletor o que ainda não fechou.
+  const hoje = new Date();
+  const corrente = ano === hoje.getFullYear() ? hoje.getMonth() + 1 : 13;
+  const s = new Set();
+  for (const m of meses) {
+    if (m >= corrente) continue;
+    s.add(m);
+  }
+  return s;
+}
+
+const chaveFechados = ano => "anp_proj_fechados_" + ano;
+
+/* Marcação salva neste navegador, ou null se nunca foi definida. */
+function lerGuardado(ano) {
+  try {
+    const bruto = localStorage.getItem(chaveFechados(ano));
+    if (bruto !== null) return new Set(bruto.split(",").filter(x => x !== "").map(Number));
+  } catch (e) { /* navegador sem storage: segue na detecção automática */ }
+  return null;
+}
+
+function gravarFechados(ano, set) {
+  try { localStorage.setItem(chaveFechados(ano), [...set].sort((a, b) => a - b).join(",")); }
+  catch (e) { /* sem storage: vale só nesta sessão */ }
+}
+
+function montarSeletorFechados(ano, comps, fechados) {
+  const el = document.getElementById("proj-fechados");
+  el.innerHTML = "";
+  for (let m = 1; m <= 12; m++) {
+    const temLanc = comps.has(m), marcado = fechados.has(m);
+    const lab = document.createElement("label");
+    lab.style.cssText =
+      "display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:3px; font-size:12px;" +
+      "border:1px solid " + (marcado ? "#2c5f7c" : "#c9d6e2") + ";" +
+      "background:" + (marcado ? "#eaf2f8" : "#fff") + ";" +
+      "color:" + (temLanc ? "#345" : "#aab") + ";" +
+      "cursor:" + (temLanc ? "pointer" : "default") + ";";
+    lab.innerHTML = `<input type="checkbox" value="${m}" ${marcado ? "checked" : ""} ${temLanc ? "" : "disabled"} style="margin:0"> ${NOMES_MESES[m - 1]}`;
+    lab.querySelector("input").addEventListener("change", ev => {
+      if (ev.target.checked) fechados.add(m); else fechados.delete(m);
+      projManual.add(ano);            // a partir daqui manda a marcação do usuário
+      gravarFechados(ano, fechados);
+      renderProjecao();
+    });
+    el.appendChild(lab);
+  }
+}
+
+function renderProjecao() {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisp.length) return;
+  const ano = f.anos.length ? Math.max(...f.anos) : anosDisp[anosDisp.length - 1];
+
+  const comps = componentesAno(ano, f.campos);
+  const porConta = contasPorMes(ano, f.campos);
+  // Enquanto o usuário não marcar nada, a detecção é refeita a cada render —
+  // assim ela acompanha a planilha que acabou de ser carregada.
+  if (!projManual.has(ano)) {
+    const guardado = lerGuardado(ano);
+    if (guardado) { projFechados.set(ano, guardado); projManual.add(ano); }
+    else projFechados.set(ano, detectarFechados(comps, ano));
+  }
+  const fechados = projFechados.get(ano);
+  montarSeletorFechados(ano, comps, fechados);
+
+  // A marcação do usuário NUNCA é alterada aqui — se ela fosse podada pelos
+  // meses ausentes, a primeira renderização (que roda com os dados de exemplo,
+  // só 4 meses) apagaria os meses marcados e a seleção se perderia a cada F5.
+  // Mês marcado mas ainda sem lançamento simplesmente entra como projetado.
+  const mesesFech = [...fechados].filter(m => comps.has(m)).sort((a, b) => a - b);
+  const encerrado = new Set(mesesFech);
+  const mesesAbertos = [];
+  for (let m = 1; m <= 12; m++) if (!encerrado.has(m)) mesesAbertos.push(m);
+
+  // ----- padrão por mês, separando receita e despesa -----
+  const soma = { receita: 0, despesa: 0, resultado: 0 };
+  for (const m of mesesFech) {
+    const c = comps.get(m);
+    soma.receita += c.receita; soma.despesa += c.despesa; soma.resultado += c.resultado;
+  }
+  const nF = mesesFech.length || 1;
+  const media = { receita: soma.receita / nF, despesa: soma.despesa / nF, resultado: soma.resultado / nF };
+
+  const anteriores = anosDisp.filter(a => a < ano)
+    .map(a => ({ a, mapa: componentesAno(a, f.campos) }))
+    .filter(x => x.mapa.size >= 10);
+
+  // ritmo do ano atual vs mesmo período do ano anterior, por componente
+  for (const ant of anteriores) {
+    let baseR = 0, baseD = 0;
+    for (const m of mesesFech) {
+      const c = ant.mapa.get(m);
+      if (c) { baseR += c.receita; baseD += c.despesa; }
+    }
+    ant.fR = baseR ? soma.receita / baseR : 1;
+    ant.fD = baseD ? soma.despesa / baseD : 1;
+    if (!isFinite(ant.fR) || ant.fR <= 0) ant.fR = 1;
+    if (!isFinite(ant.fD) || ant.fD <= 0) ant.fD = 1;
+  }
+
+  const sazonal = new Map();
+  if (anteriores.length && mesesFech.length >= 2) {
+    for (let m = 1; m <= 12; m++) {
+      const rs = [], ds = [];
+      for (const ant of anteriores) {
+        const c = ant.mapa.get(m);
+        if (!c) continue;
+        rs.push(c.receita * ant.fR); ds.push(c.despesa * ant.fD);
+      }
+      if (rs.length) {
+        const r = rs.reduce((s, v) => s + v, 0) / rs.length;
+        const d = ds.reduce((s, v) => s + v, 0) / ds.length;
+        sazonal.set(m, { receita: r, despesa: d, resultado: r - d });
+      }
+    }
+  }
+
+  const escolhido = (document.getElementById("proj-metodo") || {}).value || "media";
+  const metodo = escolhido === "sazonal" && sazonal.size ? "sazonal" : "media";
+  const padrao = m => (metodo === "sazonal" ? sazonal.get(m) : null) || media;
+
+  // ----- estimativa de cada mês -----
+  function estimarCom(padraoFn) {
+    const e = new Map();
+    for (let m = 1; m <= 12; m++) {
+      const p = padraoFn(m), c = comps.get(m);
+      if (encerrado.has(m)) {
+        e.set(m, { tipo: "fechado", receita: c.receita, despesa: c.despesa, resultado: c.resultado, completude: 1 });
+      } else if (c) {
+        // mês em andamento: estimativa CONTA A CONTA (usa a movimentação do
+        // próprio mês onde ela já existe; o padrão só onde ainda não entrou)
+        const r = estimarMesConta(m, mesesFech, porConta, p.resultado);
+        e.set(m, {
+          tipo: "andamento", resultado: r.total, feito: c, completude: r.completude,
+          linhas: r.linhas,
+          receita: r.linhas.filter(l => l.conta[0] === "3").reduce((s, l) => s + l.usado, 0),
+          despesa: -r.linhas.filter(l => l.conta[0] === "4").reduce((s, l) => s + l.usado, 0),
+        });
+      } else {
+        e.set(m, { tipo: "futuro", receita: p.receita, despesa: p.despesa, resultado: p.resultado, completude: 0 });
+      }
+    }
+    return e;
+  }
+  const estim = estimarCom(padrao);
+
+  // ----- margem de erro -----
+  const desvios = mesesFech.map(m => comps.get(m).resultado - padrao(m).resultado);
+  const sigma = desvios.length >= 2
+    ? Math.sqrt(desvios.reduce((s, r) => s + r * r, 0) / (desvios.length - 1))
+    : Math.abs(media.resultado) * 0.25;
+  const margemCheia = FATOR_CONFIANCA * sigma;
+  const margemDe = m => {
+    const e = estim.get(m);
+    return e.tipo === "fechado" ? 0 : margemCheia * Math.max(PISO_INCERTEZA, 1 - e.completude);
+  };
+
+  const somaAberto = mesesAbertos.reduce((s, m) => s + estim.get(m).resultado, 0);
+  const fechamento = soma.resultado + somaAberto;
+  const margemFech = Math.sqrt(mesesAbertos.reduce((s, m) => s + margemDe(m) ** 2, 0));
+
+  // fechamento pelo método alternativo (referência na explicação)
+  let fechamentoAlt = null, nomeAlt = "";
+  if (sazonal.size) {
+    const outro = metodo === "sazonal" ? (() => media) : (m => sazonal.get(m) || media);
+    const eAlt = estimarCom(outro);
+    fechamentoAlt = soma.resultado + mesesAbertos.reduce((s, m) => s + eAlt.get(m).resultado, 0);
+    nomeAlt = metodo === "sazonal" ? "média do ano atual" : "sazonal";
+  }
+
+  // ----- cartões-resumo -----
+  const ultimoFech = mesesFech.length ? NOMES_MESES[mesesFech[mesesFech.length - 1] - 1] : "—";
+  const proxMes = mesesAbertos.length ? mesesAbertos[0] : null;
+  const eProx = proxMes != null ? estim.get(proxMes) : null;
+  let detProx = "";
+  if (eProx) {
+    const mg = margemDe(proxMes);
+    detProx = `faixa: ${n(eProx.resultado - mg)} a ${n(eProx.resultado + mg)}`;
+    if (eProx.tipo === "andamento")
+      detProx += ` · já contabilizado: ${n(eProx.feito.resultado)} (${pct(eProx.completude)} do mês)`;
+  }
+  const cartaoProx = proxMes == null ? "" : `
+    <div class="cartao"><div class="titulo">Próximo mês (${NOMES_MESES[proxMes - 1]}/${ano}${eProx.tipo === "andamento" ? " — em andamento" : ""})</div>
+      <div class="valor" data-tipo="num" data-valor="${eProx.resultado}"></div>
+      <div class="faixa">${detProx}</div></div>`;
+  const elCartoes = document.getElementById("proj-cartoes");
+  elCartoes.style.gridTemplateColumns = `repeat(${proxMes == null ? 3 : 4}, 1fr)`;
+  elCartoes.innerHTML = `
+    <div class="cartao"><div class="titulo">Realizado (até ${ultimoFech}/${ano})</div>
+      <div class="valor" data-tipo="num" data-valor="${soma.resultado}"></div>
+      <div class="faixa">${mesesFech.length} meses encerrados</div></div>
+    ${cartaoProx}
+    <div class="cartao"><div class="titulo">Projeção meses restantes</div>
+      <div class="valor" data-tipo="num" data-valor="${somaAberto}"></div>
+      <div class="faixa">${mesesAbertos.length} meses a realizar</div></div>
+    <div class="cartao"><div class="titulo">Fechamento projetado ${ano}</div>
+      <div class="valor" data-tipo="num" data-valor="${fechamento}"></div>
+      <div class="faixa">faixa provável: ${n(fechamento - margemFech)} a ${n(fechamento + margemFech)}</div></div>`;
+  document.querySelectorAll("#proj-cartoes .valor").forEach(animaValor);
+
+  document.getElementById("legenda-proj").innerHTML =
+    `<span class="chip" style="--c:#2c5f7c">Encerrado</span>` +
+    `<span class="chip" style="--c:#6f9fc4">Em andamento (± margem)</span>` +
+    `<span class="chip" style="--c:#a9c9e0">Projetado (± margem)</span>`;
+
+  desenharProjMeses(estim, margemDe);
+  desenharProjAcumulado(estim, margemDe);
+  renderComposicao(proxMes, eProx, ano, mesesFech);
+
+  // ----- explicação -----
+  const emAndamento = mesesAbertos.filter(m => estim.get(m).tipo === "andamento");
+  const listaAnt = anteriores.map(x => x.a).join(" e ");
+  const comoCentral = metodo === "sazonal"
+    ? `usamos o <b>mesmo mês</b> em ${listaAnt}, ajustado pelo <b>ritmo de ${ano}</b> (receita e despesa comparadas separadamente com os ${mesesFech.length} meses já encerrados). Esse método assume que o calendário de receitas e subvenções se repete — se ele mudou de um ano para o outro, a projeção distorce.`
+    : (anteriores.length
+      ? `usamos a <b>média dos ${mesesFech.length} meses encerrados</b> de ${ano} (${n(media.resultado)}/mês). Há também o método sazonal no seletor acima, mas quando o calendário muda entre os anos a média do próprio ano tende a ser mais realista.`
+      : `sem ano anterior completo para comparar, usamos a <b>média dos ${mesesFech.length} meses encerrados</b> (${n(media.resultado)}/mês).`);
+
+  const explicaAndamento = emAndamento.length ? `
+    <p><b>Meses em andamento (${emAndamento.map(m => NOMES_MESES[m - 1]).join(", ")}):</b> já têm lançamentos, mas não foram encerrados.
+      Para esses, o painel <b>não usa o valor parcial como se fosse o mês inteiro</b> (isso jogaria o resultado para baixo, porque a
+      despesa já entrou e a receita ainda não) — mas também <b>não ignora a movimentação do mês</b>. Ele vai <b>conta a conta</b>:
+      compara cada conta com o padrão dela nos meses encerrados e pergunta se o lançamento daquele mês <b>já entrou</b>. Se já entrou
+      (a conta está em ${pct(LIMIAR_LANCADA)} ou mais do seu normal), vale o <b>valor real</b> — inclusive se vier acima ou abaixo do
+      normal, que é justamente a informação nova. Se ainda não entrou, usa o padrão, nunca abaixo do que já foi lançado.
+      Na prática: se a folha de julho já foi lançada 8% acima do usual, a previsão de julho <b>já nasce com esses 8%</b>.
+      A tabela "Composição da previsão" acima mostra linha a linha o que é fato e o que é estimativa.
+      Como parte do mês já é fato, a margem de erro dele também é <b>menor</b> que a de um mês totalmente futuro
+      ${emAndamento.map(m => `(${NOMES_MESES[m - 1]}: ${pct(estim.get(m).completude)} contabilizado, margem ±${n(margemDe(m))})`).join(", ")}.</p>` : "";
+
+  let atipico = "";
+  if (desvios.length >= 3 && sigma > 0) {
+    let iMax = 0;
+    desvios.forEach((d, i) => { if (Math.abs(d) > Math.abs(desvios[iMax])) iMax = i; });
+    if (Math.abs(desvios[iMax]) > sigma) {
+      const mesA = mesesFech[iMax];
+      atipico = ` O mês encerrado que mais fugiu do padrão foi <b>${NOMES_MESES[mesA - 1]}/${ano}</b> (${n(comps.get(mesA).resultado)}) — é o principal responsável pelo tamanho da margem.`;
+    }
+  }
+  const alternativo = fechamentoAlt != null
+    ? `<p><b>Cenário alternativo:</b> pelo método <b>${nomeAlt}</b>, o fechamento seria <b>${n(fechamentoAlt)}</b>.
+       A distância entre os dois métodos é, por si só, um termômetro da incerteza — quando eles divergem muito,
+       trate a projeção com cautela redobrada.</p>`
+    : "";
+  document.getElementById("proj-explica").innerHTML = `
+    <h3>Como esta projeção é calculada — e qual é a margem de erro</h3>
+    <p><b>Meses encerrados:</b> os que você marcou no seletor acima
+      (${mesesFech.length ? mesesFech.map(m => NOMES_MESES[m - 1]).join(", ") : "nenhum"}).
+      Só eles formam o padrão e a margem de erro. Ao encerrar mais um mês, basta marcá-lo — a marcação fica gravada neste navegador.</p>
+    <p><b>Valor central:</b> ${comoCentral}</p>
+    ${explicaAndamento}
+    <p><b>Margem de erro (até ±${n(margemCheia)} por mês):</b> medimos o quanto os meses encerrados de ${ano} variaram em relação ao
+      próprio padrão (desvio típico de ${n(sigma)}) e aplicamos um fator de ~90% de confiança (1,64×). Em cerca de <b>9 de cada 10
+      cenários</b>, o mês projetado cai dentro da haste do gráfico.${atipico}</p>
+    <p><b>Por que o cone alarga:</b> no acumulado as incertezas de cada mês se somam. Para o fechamento de ${ano}, com
+      ${mesesAbertos.length} meses a realizar, ela chega a <b>±${n(margemFech)}</b>
+      (faixa de ${n(fechamento - margemFech)} a ${n(fechamento + margemFech)}).</p>
+    ${alternativo}
+    <p><b>Atenção:</b> projeção é referência, não promessa. Eventos fora do padrão — reajuste de mensalidades, subvenções
+      extraordinárias, 13º salário, matrículas — podem levar o resultado para fora da faixa.</p>`;
+}
+
+/* Abre a previsão do próximo mês por grupo da DRE, mostrando o que já foi
+   lançado (fato) e o que ainda é padrão (estimativa). É a justificativa do
+   número — útil quando a previsão vai para a diretoria. */
+function renderComposicao(mes, e, ano, mesesFech) {
+  const painel = document.getElementById("proj-painel-comp");
+  if (mes == null || !e || e.tipo !== "andamento" || !e.linhas) { painel.style.display = "none"; return; }
+  painel.style.display = "";
+  document.getElementById("proj-comp-titulo").textContent =
+    `Composição da previsão de ${NOMES_MESES[mes - 1]}/${ano}`;
+  document.getElementById("proj-comp-desc").innerHTML =
+    `Conta a conta: as que <b>já foram lançadas</b> em ${NOMES_MESES[mes - 1]} entram pelo <b>valor real</b> — ` +
+    `é a movimentação do próprio mês, não a média. As que <b>ainda não entraram</b> usam o padrão dos ` +
+    `${mesesFech.length} meses encerrados. Agrupado pelos blocos da DRE.`;
+
+  const grupos = new Map();
+  for (const l of e.linhas) {
+    const g = grupos.get(l.grupo) || { med: 0, atual: 0, usado: 0, nLanc: 0, nTotal: 0, contas: [] };
+    g.med += l.med; g.atual += l.atual; g.usado += l.usado;
+    g.nTotal++; if (l.lancada) g.nLanc++;
+    g.contas.push(l);
+    grupos.set(l.grupo, g);
+  }
+  const ord = [...grupos.entries()].sort((a, b) => Math.abs(b[1].usado) - Math.abs(a[1].usado));
+
+  let html = `<thead><tr><th>Bloco da DRE</th><th class="num">Padrão (média)</th>` +
+    `<th class="num">Já lançado</th><th class="num">Usado na previsão</th><th>Situação</th></tr></thead><tbody>`;
+  let tMed = 0, tAtual = 0, tUsado = 0;
+  for (const [nome, g] of ord) {
+    tMed += g.med; tAtual += g.atual; tUsado += g.usado;
+    const todas = g.nLanc === g.nTotal, nenhuma = g.nLanc === 0;
+    const sit = todas ? `<span style="color:#2c5f7c; font-weight:600">✓ lançado</span>`
+      : nenhuma ? `<span style="color:#96a">aguardando lançamento</span>`
+        : `<span style="color:#a67">parcial — ${g.nLanc} de ${g.nTotal} contas</span>`;
+    const marca = todas ? "" : ` style="color:#96a"`;
+    html += `<tr class="dre-n1-lite"><td>${nome}</td><td class="num">${n(g.med)}</td>` +
+      `<td class="num"${marca}>${n(g.atual)}</td><td class="num total-col">${n(g.usado)}</td><td>${sit}</td></tr>`;
+  }
+  html += `<tr class="dre-resultado"><td>RESULTADO PREVISTO</td><td class="num">${n(tMed)}</td>` +
+    `<td class="num">${n(tAtual)}</td><td class="num total-col">${n(tUsado)}</td>` +
+    `<td>${pct(e.completude)} do mês já é fato</td></tr></tbody>`;
+  document.getElementById("proj-composicao").innerHTML = html;
+}
+
+const COR_PROJ = { fechado: "#2c5f7c", andamento: "#6f9fc4", futuro: "#a9c9e0" };
+const BORDA_PROJ = { andamento: "#2c5f7c", futuro: "#5b9bd5" };
+
+function desenharProjMeses(estim, margemDe) {
+  const el = document.getElementById("grafico-proj-meses");
+  const valores = [];
+  for (let m = 1; m <= 12; m++) {
+    const e = estim.get(m);
+    valores.push({ m, v: e.resultado, tipo: e.tipo, mg: margemDe(m), e });
+  }
+  const maxV = Math.max(...valores.map(d => d.v + d.mg), 1);
+  const minV = Math.min(...valores.map(d => d.v - d.mg), 0);
+  const L = 480, A = 260, esq = 8, topoY = 16, baseY = 222;
+  const esc = (baseY - topoY) / (maxV - minV || 1);
+  const y = v => baseY - (v - minV) * esc;
+  const larg = (L - 2 * esq) / 12;
+
+  let svg = `<line x1="${esq}" y1="${y(0)}" x2="${L - esq}" y2="${y(0)}" stroke="#ccd"/>`;
+  valores.forEach((d, i) => {
+    const x = esq + i * larg + larg * 0.18, w = larg * 0.64, cx = x + w / 2;
+    const yT = y(Math.max(d.v, 0)), h = Math.max(2, Math.abs(d.v) * esc);
+    if (d.tipo === "fechado") {
+      svg += `<rect x="${x}" y="${yT}" width="${w}" height="${h}" rx="2" fill="${COR_PROJ.fechado}"/>`;
+    } else {
+      svg += `<rect x="${x}" y="${yT}" width="${w}" height="${h}" rx="2" fill="${COR_PROJ[d.tipo]}" stroke="${BORDA_PROJ[d.tipo]}" stroke-dasharray="4 3"/>` +
+        `<line x1="${cx}" y1="${y(d.v + d.mg)}" x2="${cx}" y2="${y(d.v - d.mg)}" stroke="#445" stroke-width="1.4"/>` +
+        `<line x1="${cx - 5}" y1="${y(d.v + d.mg)}" x2="${cx + 5}" y2="${y(d.v + d.mg)}" stroke="#445" stroke-width="1.4"/>` +
+        `<line x1="${cx - 5}" y1="${y(d.v - d.mg)}" x2="${cx + 5}" y2="${y(d.v - d.mg)}" stroke="#445" stroke-width="1.4"/>`;
+    }
+    svg += `<text x="${cx}" y="${baseY + 18}" text-anchor="middle" font-size="10.5" fill="#667">${NOMES_MESES[d.m - 1]}</text>`;
+    let texto;
+    if (d.tipo === "fechado")
+      texto = `<b>${NOMES_MESES[d.m - 1]} — Encerrado</b><br>Resultado: ${n(d.v)}`;
+    else if (d.tipo === "andamento")
+      texto = `<b>${NOMES_MESES[d.m - 1]} — Em andamento</b><br>Estimativa do mês completo: ${n(d.v)}` +
+        `<br>Já contabilizado: ${n(d.e.feito.resultado)} (${pct(d.e.completude)} do mês)` +
+        `<br>Receita: ${n(d.e.feito.receita)} de ${n(d.e.receita)}` +
+        `<br>Despesa: ${n(d.e.feito.despesa)} de ${n(d.e.despesa)}` +
+        `<br>Faixa (~90%): ${n(d.v - d.mg)} a ${n(d.v + d.mg)}`;
+    else
+      texto = `<b>${NOMES_MESES[d.m - 1]} — Projetado</b><br>Resultado: ${n(d.v)}<br>Faixa (~90%): ${n(d.v - d.mg)} a ${n(d.v + d.mg)}`;
+    svg += `<rect x="${esq + i * larg}" y="${topoY}" width="${larg}" height="${baseY - topoY}" fill="#000" fill-opacity="0" pointer-events="all" data-dica="${texto}"/>`;
+  });
+  el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(el);
+}
+
+function desenharProjAcumulado(estim, margemDe) {
+  const el = document.getElementById("grafico-proj-acum");
+  let s = 0, varAcc = 0;
+  const pontos = [];
+  for (let m = 1; m <= 12; m++) {
+    const e = estim.get(m), mg = margemDe(m);
+    s += e.resultado; varAcc += mg * mg;
+    const margem = Math.sqrt(varAcc);
+    pontos.push({ m, v: s, tipo: e.tipo, fechado: e.tipo === "fechado", sup: s + margem, inf: s - margem });
+  }
+  const maxV = Math.max(...pontos.map(p => p.sup), 0), minV = Math.min(...pontos.map(p => p.inf), 0);
+  const L = 480, A = 260, esq = 14, dir = 52, topoY = 16, baseY = 222;
+  const x = i => esq + (pontos.length === 1 ? (L - esq - dir) / 2 : i * (L - esq - dir) / (pontos.length - 1));
+  const y = v => baseY - (v - minV) / (maxV - minV || 1) * (baseY - topoY);
+
+  const idxUltReal = pontos.reduce((r, p, i) => p.fechado ? i : r, -1);
+  const futuros = pontos.map((p, i) => ({ p, i })).filter(o => !o.p.fechado);
+  let cone = "";
+  if (futuros.length) {
+    const inicio = idxUltReal >= 0 ? [`${x(idxUltReal)},${y(pontos[idxUltReal].v)}`] : [];
+    const sup = futuros.map(o => `${x(o.i)},${y(o.p.sup)}`);
+    const inf = futuros.map(o => `${x(o.i)},${y(o.p.inf)}`).reverse();
+    cone = `<polygon points="${[...inicio, ...sup, ...inf].join(" ")}" fill="#2c5f7c" opacity="0.13"/>`;
+  }
+  const linhaDe = idxs => idxs.map(i => `${x(i)},${y(pontos[i].v)}`).join(" ");
+  const idxReais = pontos.map((p, i) => p.fechado ? i : -1).filter(i => i >= 0);
+  const idxProj = idxUltReal >= 0 ? [idxUltReal, ...futuros.map(o => o.i)] : futuros.map(o => o.i);
+
+  let svg = `<line x1="${esq}" y1="${y(0)}" x2="${L - dir}" y2="${y(0)}" stroke="#ccd"/>` + cone;
+  svg += `<polyline points="${linhaDe(idxReais)}" fill="none" stroke="#2c5f7c" stroke-width="2.5"/>`;
+  if (idxProj.length > 1)
+    svg += `<polyline points="${linhaDe(idxProj)}" fill="none" stroke="#5b9bd5" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  svg += pontos.map((p, i) => p.fechado ? `<circle cx="${x(i)}" cy="${y(p.v)}" r="3.2" fill="#2c5f7c"/>` : "").join("");
+  const fim = pontos[pontos.length - 1];
+  svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.v) + 4}" font-size="12" font-weight="600" fill="#2c5f7c">${nc(fim.v)}</text>`;
+  if (!fim.fechado) {
+    svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.sup) + 4}" font-size="10" fill="#889">${nc(fim.sup)}</text>`;
+    svg += `<text x="${x(pontos.length - 1) + 6}" y="${y(fim.inf) + 4}" font-size="10" fill="#889">${nc(fim.inf)}</text>`;
+  }
+  svg += pontos.map((p, i) => `<text x="${x(i)}" y="${baseY + 18}" text-anchor="middle" font-size="10.5" fill="#667">${NOMES_MESES[p.m - 1]}</text>`).join("");
+  svg += pontos.map((p, i) => {
+    const rot = p.tipo === "fechado" ? "realizado" : (p.tipo === "andamento" ? "mês em andamento" : "projetado");
+    const texto = p.fechado
+      ? `<b>Acumulado até ${NOMES_MESES[p.m - 1]}</b><br>${n(p.v)} (${rot})`
+      : `<b>Acumulado até ${NOMES_MESES[p.m - 1]}</b><br>Projeção: ${n(p.v)} (${rot})<br>Faixa (~90%): ${n(p.inf)} a ${n(p.sup)}`;
+    return `<circle cx="${x(i)}" cy="${y(p.v)}" r="11" fill="#000" fill-opacity="0" pointer-events="all" data-dica="${texto}"/>`;
+  }).join("");
+  el.innerHTML = `<svg class="linhas-svg" viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+  ligarDicas(el);
+}
+document.getElementById("proj-metodo").addEventListener("change", renderProjecao);
+document.getElementById("proj-auto").addEventListener("click", () => {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisp.length) return;
+  const ano = f.anos.length ? Math.max(...f.anos) : anosDisp[anosDisp.length - 1];
+  projManual.delete(ano);                                   // volta ao automático
+  try { localStorage.removeItem(chaveFechados(ano)); } catch (e) { /* sem storage */ }
+  projFechados.set(ano, detectarFechados(componentesAno(ano, f.campos), ano));
+  renderProjecao();
+});
+
+/* =====================================================================
+   ABA FERRAMENTAS — utilitários diários do contador (uso interno).
+   Trabalha com os saldos "de razão" (devedor +, credor −), sem o
+   tratamento da DRE. Balanço (contas 1/2): saldo acumulado da abertura
+   até o mês final selecionado; resultado (3/4): soma do intervalo.
+   ===================================================================== */
+let ferPorConta = new Map();   // conta -> { nome, saldo } no recorte atual
+let ferNomes = new Map();      // conta -> nome (todas, p/ rótulos de família)
+
+function renderFerramentas() {
+  const f = filtrosAtuais();
+  const anosDisp = [...new Set(dadosBrutos.map(d => d.Ano))].sort((a, b) => a - b);
+  if (!anosDisp.length) return;
+  const ano = f.anos.length ? Math.max(...f.anos) : anosDisp[anosDisp.length - 1];
+  const mIni = Math.max(1, Math.min(12, f.mesIni)), mFim = Math.max(1, Math.min(12, f.mesFim));
+
+  const temBP = dadosBrutos.some(d => d.Conta[0] === "1" || d.Conta[0] === "2");
+  document.getElementById("fer-aviso").style.display = temBP ? "none" : "";
+
+  // saldo por conta numa passada só
+  ferPorConta = new Map();
+  ferNomes = new Map();
+  for (const d of dadosBrutos) {
+    if (d.NomeConta && !ferNomes.has(d.Conta)) ferNomes.set(d.Conta, d.NomeConta);
+    if (d.Subconta || d.Ano !== ano || !f.campos.includes(d.Entidade)) continue;
+    const g = d.Conta[0];
+    const dentro = (g === "1" || g === "2") ? d.Mes <= mFim : (d.Mes >= mIni && d.Mes <= mFim);
+    if (!dentro) continue;
+    const v = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!v) continue;
+    const reg = ferPorConta.get(d.Conta) || { nome: d.NomeConta || "", saldo: 0 };
+    reg.saldo += v;
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    ferPorConta.set(d.Conta, reg);
+  }
+
+  // ----- 1) Contas fora de natureza -----
+  const temNomes = [...ferPorConta.values()].some(r => r.nome);
+  const esperado = { "1": 1, "2": -1 };  // só balanço: ativo devedor +1, passivo credor −1
+  const fora = [];
+  if (temNomes) for (const [conta, r] of ferPorConta) {
+    if (!infoContas.ehAnalitica(conta)) continue;
+    let e = esperado[conta[0]];
+    if (!e || Math.abs(r.saldo) <= 1) continue;
+    if (/\(-\)/.test(r.nome)) e = -e;   // retificadora/redutora: natureza invertida
+    if (Math.sign(r.saldo) !== e)
+      fora.push({ conta, nome: r.nome, saldo: r.saldo, nat: e === 1 ? "devedora" : "credora" });
+  }
+  fora.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+  document.getElementById("fer-natureza").innerHTML = !temNomes
+    ? `<p class="fer-desc">Requer a planilha completa (os nomes das contas identificam as retificadoras).</p>`
+    : (fora.length
+      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome</th><th>Natureza esperada</th><th style="text-align:right">Saldo</th></tr>` +
+        fora.map(x => `<tr><td>${x.conta}</td><td>${x.nome || "—"}</td><td>${x.nat}</td>
+          <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
+        `</table><p class="fer-desc" style="margin-top:8px">${fora.length} conta(s) para conferir. Contas com "(-)" no nome já são tratadas como retificadoras.</p>`
+      : `<span class="selo-ok">✓ Nenhuma conta fora de natureza no recorte atual</span>`);
+
+  // ----- 1b) Contas + subcontas fora de natureza -----
+  // Só funciona com a planilha completa (linhas com subconta); o dados.xlsx
+  // publicado não traz subconta (privacidade: são nomes de fornec./func.).
+  const temSub = dadosBrutos.some(d => d.Subconta);
+  if (!temSub) {
+    document.getElementById("fer-natureza-sub").innerHTML =
+      `<p class="fer-desc">Sem dados de subconta no arquivo carregado.</p>`;
+  } else {
+    const porSub = new Map();  // conta|subconta -> { conta, nomeConta, sub, nomeSub, saldo }
+    for (const d of dadosBrutos) {
+      if (!d.Subconta) continue;
+      const g = d.Conta[0];
+      if (g !== "1" && g !== "2") continue;
+      if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
+      if (!infoContas.ehAnalitica(d.Conta)) continue;
+      const v = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+      if (!v) continue;
+      const chave = d.Conta + "|" + d.Subconta;
+      const reg = porSub.get(chave) || { conta: d.Conta, nomeConta: d.NomeConta || "", sub: d.Subconta, nomeSub: d.NomeSubconta || "", saldo: 0 };
+      reg.saldo += v;
+      if (!reg.nomeSub && d.NomeSubconta) reg.nomeSub = d.NomeSubconta;
+      porSub.set(chave, reg);
+    }
+    const foraSub = [];
+    for (const r of porSub.values()) {
+      let e = esperado[r.conta[0]];
+      if (!e || Math.abs(r.saldo) <= 1) continue;
+      if (/\(-\)/.test(r.nomeConta)) e = -e;
+      if (Math.sign(r.saldo) !== e)
+        foraSub.push({ ...r, nat: e === 1 ? "devedora" : "credora" });
+    }
+    foraSub.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+    const temNomeSub = foraSub.some(x => x.nomeSub);   // site publica só o código
+    const colNomeSub = temNomeSub ? "<th>Nome da Subconta</th>" : "";
+    document.getElementById("fer-natureza-sub").innerHTML = foraSub.length
+      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome da Conta</th><th>Subconta</th>${colNomeSub}<th>Natureza</th><th style="text-align:right">Saldo</th></tr>` +
+        foraSub.slice(0, 200).map(x => `<tr><td>${x.conta}</td><td>${x.nomeConta || "—"}</td><td>${x.sub}</td>${temNomeSub ? `<td>${x.nomeSub || "—"}</td>` : ""}<td>${x.nat}</td>
+          <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
+        `</table><p class="fer-desc" style="margin-top:8px">${foraSub.length} subconta(s) para conferir${foraSub.length > 200 ? " (mostrando as 200 maiores)" : ""}.</p>`
+      : `<span class="selo-ok">✓ Nenhuma subconta fora de natureza no recorte atual</span>`;
+  }
+
+  renderBusca();
+}
+
+// ----- 4) Busca rápida de conta -----
+function renderBusca() {
+  const alvo = document.getElementById("fer-busca-resultado");
+  const termo = document.getElementById("fer-busca").value.trim().toLowerCase();
+  if (termo.length < 2) { alvo.innerHTML = `<p class="fer-desc">Digite ao menos 2 caracteres. O saldo mostrado respeita os filtros da barra lateral.</p>`; return; }
+  const achados = [...ferPorConta.entries()]
+    .filter(([c, r]) => c.includes(termo) || (r.nome && r.nome.toLowerCase().includes(termo)))
+    .sort((a, b) => Math.abs(b[1].saldo) - Math.abs(a[1].saldo))
+    .slice(0, 30);
+  alvo.innerHTML = achados.length
+    ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome</th><th>Tipo</th><th style="text-align:right">Saldo no recorte</th></tr>` +
+      achados.map(([c, r]) => `<tr><td>${c}</td><td>${r.nome || "—"}</td>
+        <td>${infoContas.ehAnalitica(c) ? "analítica" : "Σ sintética"}</td><td class="num">${n(r.saldo)}</td></tr>`).join("") + `</table>`
+    : `<p class="fer-desc">Nenhuma conta encontrada para "${termo}".</p>`;
+}
+document.getElementById("fer-busca").addEventListener("input", renderBusca);
+
+/* ---------- Troca de abas ---------- */
+document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
+  for (const aba of ["visao", "dre", "comp", "proj", "subv", "bp", "fer"])
+    document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
+}));
+
+/* ---------- Inicialização ---------- */
+document.getElementById("data-atualizacao").textContent = new Date().toLocaleString("pt-BR");
+processar();
+montarFiltros();
+render();
+carregarAutomatico();
+</script>
+</body>
+</html>
