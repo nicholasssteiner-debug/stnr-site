@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Acesso — Análise Financeira Campos</title>
+<title>Acesso — Análise Financeira ANC Loja</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -38,7 +38,7 @@
 </head>
 <body>
   <div class="caixa">
-    <h1>Análise Financeira Campos</h1>
+    <h1>Análise Financeira ANC — Loja</h1>
     <p class="sub">Acesso restrito</p>
     <form id="form">
       <label for="usuario">Usuário</label>
@@ -51,14 +51,14 @@
   </div>
 
 <script>
-  var USUARIO = "ANP@IASD";
-  var SENHA = "Anp1622";
+  var USUARIO = "ANC@IASD";
+  var SENHA = "Anc1012";
   document.getElementById("form").addEventListener("submit", function (e) {
     e.preventDefault();
     var u = document.getElementById("usuario").value.trim();
     var s = document.getElementById("senha").value;
     if (u === USUARIO && s === SENHA) {
-      sessionStorage.setItem("anp_ok", "1");
+      sessionStorage.setItem("anc_ok", "1");
       // Volta para a página que pediu o login (?de=/anp/fluxo/), só se for um
       // caminho interno da seção ANP; senão vai para o painel principal.
       var de = new URLSearchParams(location.search).get("de") || "";
