@@ -185,6 +185,10 @@
 
   /* ---------- Ferramentas ---------- */
   .fer-desc { font-size: 12.5px; color: #778; margin: -4px 6px 10px; }
+  .prod-ord { padding: 5px 12px; border: 1px solid #c9d6e2; border-radius: 3px; background: #fff;
+              font-family: inherit; font-size: 12.5px; color: #456; cursor: pointer; transition: all .15s; }
+  .prod-ord:hover { border-color: #5b9bd5; color: #2c5f7c; }
+  .prod-ord.ativo { background: #2c5f7c; border-color: #2c5f7c; color: #fff; font-weight: 600; }
   .fer-tabela { border-collapse: collapse; width: 100%; font-size: 13px; }
   .fer-tabela th { background: #eef3f8; color: #345; padding: 6px 9px; text-align: left; }
   .fer-tabela td { padding: 5px 9px; border-bottom: 1px solid #e4e9ee; }
@@ -369,6 +373,26 @@
       </div>
 
       <div class="painel grafico">
+        <h2>🛒 Rentabilidade por Linha de Produto</h2>
+        <p class="fer-desc">Vendas brutas, deduções e CMV de cada linha de produto (subconta das contas 315x/316x/317x)
+          no intervalo selecionado na barra lateral. <b>Volume e rentabilidade não andam juntos</b>: uma linha pode
+          puxar o faturamento e, ao mesmo tempo, ter a pior margem. Ordene pelos botões para ver as duas leituras.<br>
+          <b>Atenção na coluna Deduções:</b> só entram as <b>devoluções de venda</b> (3161001), que é o que a
+          contabilidade abre por linha de produto. ICMS, Cofins e descontos concedidos são lançados sem subconta,
+          então não dá para atribuí-los a uma linha — por isso o total de deduções aqui é menor que o da DRE.</p>
+        <div id="prod-insight"></div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
+          <button type="button" class="prod-ord" data-ord="margem">Mais rentável (margem %)</button>
+          <button type="button" class="prod-ord" data-ord="lucro">Maior lucro bruto (R$)</button>
+          <button type="button" class="prod-ord" data-ord="vendas">Maior volume de vendas</button>
+          <button type="button" class="prod-ord" data-ord="cmv">Maior %CMV</button>
+          <button type="button" class="prod-ord" data-ord="devol">Maior % de devolução</button>
+          <button type="button" class="prod-ord" data-ord="nome">Nome (A–Z)</button>
+        </div>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="fer-produtos"></table></div>
+      </div>
+
+      <div class="painel grafico">
         <h2>🔎 Busca rápida de conta</h2>
         <input type="text" id="fer-busca" placeholder="Digite parte do nome ou do código da conta (ex.: banco, 1136, convênio...)"
           style="width:100%; padding:10px 14px; border:1px solid #c9d6e2; border-radius:4px; font-size:14px; font-family:inherit; margin-bottom:10px">
@@ -388,7 +412,9 @@
         <div id="fer-natureza-sub"></div>
       </div>
 
-      <div class="painel grafico">
+      <!-- Ferramenta da ANP (adiantamento de salário do dept 3310000): não se
+           aplica à Loja e depende de uma aba que esta extração não gera. -->
+      <div class="painel grafico" style="display:none">
         <h2>💸 Movimentação Adto Salário — gerar CSV</h2>
         <p class="fer-desc">Reclassificação do adiantamento de salário (contas 1135001/1135005, dept 3310000).
           <b>OP 1</b>: zera o saldo residual de cada subconta da 1135001 (devedor → 1135005; credor → 2135005).
@@ -2109,6 +2135,9 @@ function desenharProjAcumulado(estim, margemDe) {
   ligarDicas(el);
 }
 document.getElementById("proj-metodo").addEventListener("change", renderProjecao);
+document.querySelectorAll(".prod-ord").forEach(b =>
+  b.addEventListener("click", () => { prodOrdem = b.dataset.ord; renderProdutos(); }));
+
 document.getElementById("proj-auto").addEventListener("click", () => {
   const f = filtrosAtuais();
   const anosDisp = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
@@ -2129,7 +2158,133 @@ document.getElementById("proj-auto").addEventListener("click", () => {
 let ferPorConta = new Map();   // conta -> { nome, saldo } no recorte atual
 let ferNomes = new Map();      // conta -> nome (todas, p/ rótulos de família)
 
+/* =====================================================================
+   RENTABILIDADE POR LINHA DE PRODUTO
+   A subconta das contas 315x (vendas), 316x (deduções) e 317x (CMV) é a
+   LINHA DE PRODUTO (Denominacional, Didáticos, Bíblias...). Aqui elas são
+   cruzadas para mostrar que volume e margem são coisas diferentes.
+     Vendas Líquidas = Vendas Brutas − Deduções
+     Lucro Bruto     = Vendas Líquidas − CMV
+     Margem          = Lucro Bruto / Vendas Líquidas
+   ===================================================================== */
+let prodOrdem = "lucro";   // começa pelo que mais pesa no resultado
+
+function dadosProdutos() {
+  const f = filtrosAtuais();
+  const mapa = new Map();   // código da subconta -> acumuladores
+  for (const d of dadosBrutos) {
+    if (!d.Subconta) continue;
+    const g = d.Conta.slice(0, 3);
+    if (g !== "315" && g !== "316" && g !== "317") continue;
+    if (!f.anos.includes(d.Ano) || !f.campos.includes(d.Entidade)) continue;
+    if (d.Mes < f.mesIni || d.Mes > f.mesFim) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;
+    const reg = mapa.get(d.Subconta) || { cod: d.Subconta, nome: "", vendas: 0, deducoes: 0, cmv: 0 };
+    // O nome da subconta oscila entre anos (acentuação); fica com o mais longo.
+    if (d.NomeSubconta && d.NomeSubconta.length > reg.nome.length) reg.nome = d.NomeSubconta;
+    const v = -base;                       // mesma convenção da DRE
+    if (g === "315") reg.vendas += v;       // crédito -> positivo
+    else if (g === "316") reg.deducoes -= v; // débito -> vira positivo
+    else reg.cmv -= v;                       // débito -> vira positivo
+    mapa.set(d.Subconta, reg);
+  }
+  const linhas = [];
+  for (const r of mapa.values()) {
+    if (!r.vendas && !r.cmv && !r.deducoes) continue;
+    r.liquidas = r.vendas - r.deducoes;
+    r.lucro = r.liquidas - r.cmv;
+    r.margem = r.liquidas ? r.lucro / r.liquidas : 0;
+    r.pCmv = r.liquidas ? r.cmv / r.liquidas : 0;
+    r.pDevol = r.vendas ? r.deducoes / r.vendas : 0;
+    linhas.push(r);
+  }
+  const totL = linhas.reduce((s, r) => s + r.liquidas, 0);
+  const totG = linhas.reduce((s, r) => s + r.lucro, 0);
+  for (const r of linhas) {
+    r.partVendas = totL ? r.liquidas / totL : 0;
+    r.partLucro = totG ? r.lucro / totG : 0;
+  }
+  return { linhas, totL, totG, totV: linhas.reduce((s, r) => s + r.vendas, 0),
+           totD: linhas.reduce((s, r) => s + r.deducoes, 0),
+           totC: linhas.reduce((s, r) => s + r.cmv, 0) };
+}
+
+function renderProdutos() {
+  const el = document.getElementById("fer-produtos");
+  const box = document.getElementById("prod-insight");
+  if (!el) return;
+  const { linhas, totL, totG, totV, totD, totC } = dadosProdutos();
+  document.querySelectorAll(".prod-ord").forEach(b =>
+    b.classList.toggle("ativo", b.dataset.ord === prodOrdem));
+
+  if (!linhas.length) {
+    el.innerHTML = `<tbody><tr><td class="vazio">Sem vendas por linha de produto neste recorte.
+      Se a tabela estiver sempre vazia, atualize a planilha — as subcontas de produto passaram a ser publicadas na versão nova.</td></tr></tbody>`;
+    box.innerHTML = ""; return;
+  }
+
+  const criterio = {
+    margem: (a, b) => b.margem - a.margem,
+    lucro: (a, b) => b.lucro - a.lucro,
+    vendas: (a, b) => b.liquidas - a.liquidas,
+    cmv: (a, b) => b.pCmv - a.pCmv,
+    devol: (a, b) => b.pDevol - a.pDevol,
+    nome: (a, b) => (a.nome || a.cod).localeCompare(b.nome || b.cod, "pt-BR"),
+  }[prodOrdem];
+  const ord = [...linhas].sort(criterio);
+
+  // leitura automática: quem manda no volume x quem manda na margem
+  const porVol = [...linhas].sort((a, b) => b.liquidas - a.liquidas);
+  const comMargem = linhas.filter(r => r.liquidas > 0);
+  const melhor = [...comMargem].sort((a, b) => b.margem - a.margem)[0];
+  const pior = [...comMargem].sort((a, b) => a.margem - b.margem)[0];
+  const lider = porVol[0];
+  let texto = "";
+  if (lider && melhor && pior) {
+    texto = `<b>${lider.nome || lider.cod}</b> lidera o faturamento (${pct(lider.partVendas)} das vendas líquidas,
+      margem de ${pct(lider.margem)}).`;
+    if (pior && lider.cod === pior.cod)
+      texto += ` <b>E é justamente a de pior margem</b> — cada real vendido aí rende menos que em qualquer outra linha.`;
+    texto += ` A melhor margem é de <b>${melhor.nome || melhor.cod}</b> (${pct(melhor.margem)}), que representa
+      ${pct(melhor.partVendas)} das vendas.`;
+  }
+  box.innerHTML = texto ? `<p class="fer-desc" style="margin:0 0 4px">${texto}</p>` : "";
+
+  const linha = r => `<tr class="dre-n1-lite">
+      <td>${r.cod}</td><td>${r.nome || "—"}</td>
+      <td class="num">${n(r.vendas)}</td>
+      <td class="num">${n(r.deducoes)}</td>
+      <td class="num">${n(r.liquidas)}</td>
+      <td class="num">${n(r.cmv)}</td>
+      <td class="num">${pct(r.pCmv)}</td>
+      <td class="num total-col">${n(r.lucro)}</td>
+      <td class="num"><b>${pct(r.margem)}</b></td>
+      <td class="num">${pct(r.partVendas)}</td>
+      <td class="num">${pct(r.partLucro)}</td>
+    </tr>`;
+
+  el.innerHTML = `<thead><tr>
+      <th>Sub</th><th>Linha de produto</th><th class="num">Vendas Brutas</th>
+      <th class="num">(−) Deduções</th><th class="num">Vendas Líquidas</th>
+      <th class="num">CMV</th><th class="num">%CMV</th>
+      <th class="num">Lucro Bruto</th><th class="num">Margem</th>
+      <th class="num">% das Vendas</th><th class="num">% do Lucro</th>
+    </tr></thead><tbody>
+    ${ord.map(linha).join("")}
+    <tr class="dre-resultado">
+      <td></td><td>TOTAL</td>
+      <td class="num">${n(totV)}</td><td class="num">${n(totD)}</td>
+      <td class="num">${n(totL)}</td><td class="num">${n(totC)}</td>
+      <td class="num">${pct(totL ? totC / totL : 0)}</td>
+      <td class="num total-col">${n(totG)}</td>
+      <td class="num"><b>${pct(totL ? totG / totL : 0)}</b></td>
+      <td class="num">100,00%</td><td class="num">100,00%</td>
+    </tr></tbody>`;
+}
+
 function renderFerramentas() {
+  renderProdutos();
   const f = filtrosAtuais();
   const anosDisp = [...new Set(dadosBrutos.map(d => d.Ano))].sort((a, b) => a - b);
   if (!anosDisp.length) return;
