@@ -191,6 +191,13 @@
   .fer-tabela td.num { text-align: right; white-space: nowrap; }
   .selo-ok { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #e2f3e8; color: #2e7d4f; }
   .selo-alerta { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #fbe4e2; color: #b3423a; }
+
+  /* ---------- Rentabilidade ---------- */
+  .rent-ord, .rent-esc { padding: 5px 12px; border: 1px solid #c9d6e2; border-radius: 3px; background: #fff;
+    font-family: inherit; font-size: 12.5px; color: #567; cursor: pointer; }
+  .rent-ord:hover, .rent-esc:hover { border-color: #5b9bd5; color: #2c5f7c; }
+  .rent-ord.ativo, .rent-esc.ativo { background: #2c5f7c; border-color: #2c5f7c; color: #fff; font-weight: 600; }
+  #rent-matriz td.cel { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -234,6 +241,7 @@
       <button class="aba-btn" data-aba="proj">Projeção</button>
       <button class="aba-btn" data-aba="subv">Subvenções</button>
       <button class="aba-btn" data-aba="bp">Balanço</button>
+      <button class="aba-btn" data-aba="rent">Rentabilidade</button>
       <button class="aba-btn" data-aba="fer">Ferramentas</button>
     </div>
 
@@ -325,6 +333,58 @@
         <div style="overflow-x:auto"><table class="tabela-dre" id="proj-composicao"></table></div>
       </div>
       <div class="painel explica" id="proj-explica"></div>
+    </div>
+
+    <div id="aba-rent" class="conteudo-aba" style="display:none">
+      <div id="rent-aviso" class="painel" style="display:none">
+        <h3>Esta aba precisa da planilha com a coluna de departamento</h3>
+        <p>A rentabilidade por escola e por serviço vem do <b>departamento contábil</b>
+           (ex.: "CAM - Fundamental II"). Rode o <b>Atualizar Dados</b> uma vez para a
+           planilha passar a trazer essa coluna.</p>
+      </div>
+      <div id="rent-corpo">
+        <div class="legenda" style="justify-content:flex-start; margin-bottom:0; gap:8px; flex-wrap:wrap">
+          <label style="align-self:center">Escola:&nbsp;</label>
+          <div id="rent-escolas" style="display:flex; gap:5px; flex-wrap:wrap"></div>
+        </div>
+        <p class="fer-desc" style="margin:6px 0 0">
+          <b>Receita</b> = Prestação de Serviços + Subvenções + Outras Receitas + Doações.
+          <b>Resultado</b> = receita − despesas do próprio departamento.
+          A coluna <b>Operacional</b> tira as subvenções dos dois lados — é ela que mostra se a
+          escola se sustenta pela mensalidade. Margem fica como "—" quando a receita é pequena
+          demais para o percentual significar algo.</p>
+        <div class="cartoes" style="grid-template-columns:repeat(4,1fr)" id="rent-cartoes"></div>
+        <div id="rent-insight"></div>
+
+        <div class="painel grafico">
+          <h2>🏫 Rentabilidade por Escola</h2>
+          <p class="fer-desc">Quem traz mais retorno. <b>Volume e rentabilidade não andam juntos</b>:
+            a escola que mais fatura pode não ser a de melhor margem.</p>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
+            <button type="button" class="rent-ord" data-ord="res">Maior resultado (R$)</button>
+            <button type="button" class="rent-ord" data-ord="margem">Melhor margem (%)</button>
+            <button type="button" class="rent-ord" data-ord="margemOp">Melhor margem operacional</button>
+            <button type="button" class="rent-ord" data-ord="rec">Maior receita</button>
+            <button type="button" class="rent-ord" data-ord="nome">Nome (A–Z)</button>
+          </div>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="rent-escola"></table></div>
+        </div>
+
+        <div class="painel grafico">
+          <h2 id="rent-serv-titulo">🎓 Rentabilidade por Serviço</h2>
+          <p class="fer-desc">Cada série/segmento e cada taxa é um <b>departamento</b> próprio, com
+            receita e despesa lançadas nele. Use o seletor de escola acima para ver o serviço
+            dentro de uma escola específica.</p>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="rent-servico"></table></div>
+        </div>
+
+        <div class="painel grafico">
+          <h2>🔀 Matriz Escola × Serviço — margem</h2>
+          <p class="fer-desc">A mesma série rende diferente em cada escola. Verde = margem positiva,
+            vermelho = negativa; quanto mais forte, maior. Passe o mouse para ver receita e resultado.</p>
+          <div style="overflow-x:auto"><table class="tabela-dre" id="rent-matriz"></table></div>
+        </div>
+      </div>
     </div>
 
     <div id="aba-subv" class="conteudo-aba" style="display:none">
@@ -626,6 +686,7 @@ function processar() {
         conta: d.Conta, nome: d.NomeConta,
         dre2: r.dre2, ord2: r.ord2, dre3: r.dre3, ord3: r.ord3,
         dre4: r.dre4, ord4: r.ord4,
+        dep: d.Dep || "", depNome: d.DepNome || "",
         saldo: (r.sinal === "+" ? base : -base) * -1,
       });
     }
@@ -765,6 +826,7 @@ function render() {
   renderComparativo();
   renderProjecao();
   renderSubvencoes(linhas);
+  renderRentabilidade();
   renderBalanco();
   renderFerramentas();
   renderMovto();
@@ -1532,6 +1594,10 @@ function carregarArquivo(arquivo) {
       const colNome = acha("Nome_Conta");
       // exato (sem fuzzy): senão "Nome_Subconta" casaria por engano com "Nome_Conta"
       const colNomeSub = chaves.find(k => k.trim().toLowerCase() === "nome_subconta");
+      // Departamento = escola + serviço (ex.: "CAM - Fundamental II"); usado
+      // pela aba Rentabilidade. Pode não existir em planilhas antigas.
+      const colDep = chaves.find(k => k.trim().toLowerCase() === "departamento");
+      const colDepNome = chaves.find(k => k.trim().toLowerCase() === "nome_depto");
       dadosBrutos = abaDados.map(l => ({
         Ano: +l[obrigatorias.Ano],
         Mes: l[colMes] == null ? null : +l[colMes],   // mês 0 = saldo de abertura (balanço)
@@ -1540,6 +1606,8 @@ function carregarArquivo(arquivo) {
         NomeConta: colNome ? String(l[colNome] ?? "").trim() : "",
         Subconta: colSub ? String(l[colSub] ?? "").trim() : "",
         NomeSubconta: colNomeSub ? String(l[colNomeSub] ?? "").trim() : "",
+        Dep: colDep ? limpaConta(l[colDep]) : "",
+        DepNome: colDepNome ? String(l[colDepNome] ?? "").trim() : "",
         SaldoLegal: +l[colLegal] || 0,
         SaldoAjustado: +l[colAjust] || 0,
       })).filter(d => d.Ano && d.Mes != null && isFinite(d.Mes));
@@ -2109,6 +2177,293 @@ document.getElementById("proj-auto").addEventListener("click", () => {
   projFechados.set(ano, detectarFechados(componentesAno(ano, f.campos), ano));
   renderProjecao();
 });
+
+/* =====================================================================
+   ABA RENTABILIDADE — por escola e por serviço
+   O DEPARTAMENTO contábil carrega as duas dimensões ao mesmo tempo: o nome
+   vem como "ESCOLA - Serviço" (ex.: "CAM - Fundamental II") e o código tem a
+   escola nos 4 primeiros dígitos (3311=CAL, 3312=CAM, ...). Cada série, taxa
+   e caixa escola é um departamento próprio, com receita E despesa lançadas
+   nele — por isso dá para medir resultado por serviço sem nenhum rateio.
+     Receita     = blocos de receita da DRE
+     Despesa     = os demais blocos (Pessoal, Adm, Educ/Assist, Outorgamentos)
+     Resultado   = receita − despesa (= soma das linhas da DRE do depto)
+     Operacional = o mesmo tirando as SUBVENÇÕES dos dois lados; mostra se a
+                   escola se sustenta pela mensalidade.
+   ===================================================================== */
+const RENT_RECEITA = new Set([
+  DRE3.prest, DRE3.dizimo, DRE3.subv,
+  "Outras Receitas Recorrentes", "Doações E Contribuições Recebidas",
+]);
+const RENT_ESCOLAS = {
+  "3310": "Sede", "3311": "CAL", "3312": "CAM", "3313": "EAM",
+  "3314": "EAC", "3315": "EAA", "3316": "CALGP", "3317": "CAME",
+};
+// Piso só para evitar ruído de divisão em base irrelevante; o que de fato
+// barra percentual sem sentido é o limite de escala (RENT_MAX_MARGEM).
+const RENT_MIN_RECEITA = 5000;
+let rentOrdem = "res";
+let rentEscola = "__todas";
+
+/* "CAM - Fundamental II" -> { escola:"CAM", servico:"Fundamental II" }
+   Um código de projeto na frente ("900241118177 - CALGP - Construção") é
+   descartado. Sem " - " no nome, a escola sai do código do departamento. */
+function rentPartes(cod, nome) {
+  let p = String(nome || "").split(" - ").map(s => s.trim()).filter(Boolean);
+  if (p.length && /^\d+$/.test(p[0])) p = p.slice(1);
+  const porCodigo = RENT_ESCOLAS[String(cod).slice(0, 4)] || "Outros";
+  if (p.length >= 2) return { escola: p[0], servico: p.slice(1).join(" - ") };
+  return { escola: porCodigo, servico: p[0] || String(cod) };
+}
+
+function rentZero() {
+  return { rec: 0, desp: 0, res: 0, subv: 0, deps: new Set() };
+}
+function rentAcumula(reg, l) {
+  const ehRec = RENT_RECEITA.has(l.dre3);
+  reg.res += l.saldo;
+  if (ehRec) reg.rec += l.saldo; else reg.desp -= l.saldo;
+  if (l.dre3 === DRE3.subv) reg.subv += l.saldo;
+  if (l.dep) reg.deps.add(l.dep);
+}
+/* Margem só vale como percentual sobre uma base relevante E dentro de escala:
+   acima de ±300% o denominador deixou de ser uma referência (a Sede, p.ex.,
+   vive de subvenção — sem ela a "margem operacional" daria −2.645%). Nesses
+   casos sai "—" e a leitura fica na coluna de valor absoluto. */
+const RENT_MAX_MARGEM = 3;
+function rentMargem(res, den) {
+  if (!(den >= RENT_MIN_RECEITA)) return null;
+  const m = res / den;
+  return isFinite(m) && Math.abs(m) <= RENT_MAX_MARGEM ? m : null;
+}
+function rentFecha(reg) {
+  reg.recOp = reg.rec - reg.subv;
+  reg.resOp = reg.res - reg.subv;
+  reg.margem = rentMargem(reg.res, reg.rec);
+  reg.margemOp = rentMargem(reg.resOp, reg.recOp);
+  return reg;
+}
+
+/* Linhas da DRE do recorte atual que tenham departamento identificado. */
+function rentLinhas() {
+  const f = filtrosAtuais();
+  return linhasDRE.filter(l => l.dep && f.anos.includes(l.Ano) &&
+    f.campos.includes(l.Entidade) && l.Mes >= f.mesIni && l.Mes <= f.mesFim);
+}
+
+function rentAgrupar(linhas, chave) {
+  const mapa = new Map();
+  for (const l of linhas) {
+    const k = chave(l);
+    if (k == null) continue;
+    const reg = mapa.get(k) || rentZero();
+    rentAcumula(reg, l);
+    mapa.set(k, reg);
+  }
+  for (const reg of mapa.values()) rentFecha(reg);
+  return mapa;
+}
+
+const rentPct = v => v == null ? "—" : pct(v);
+/* verde para margem positiva, vermelho para negativa; intensidade pelo módulo */
+function rentCor(m) {
+  if (m == null) return "";
+  const i = Math.min(1, Math.abs(m) / 0.45);
+  const a = (0.07 + i * 0.3).toFixed(2);
+  return `background:rgba(${m >= 0 ? "46,125,79" : "179,66,58"},${a})`;
+}
+
+function renderRentabilidade() {
+  const corpo = document.getElementById("rent-corpo");
+  const aviso = document.getElementById("rent-aviso");
+  const temDep = dadosBrutos.some(d => d.Dep);
+  corpo.style.display = temDep ? "" : "none";
+  aviso.style.display = temDep ? "none" : "";
+  if (!temDep) return;
+
+  const linhas = rentLinhas();
+  const porEscola = rentAgrupar(linhas, l => rentPartes(l.dep, l.depNome).escola);
+
+  // ----- seletor de escola -----
+  const seletor = document.getElementById("rent-escolas");
+  const nomes = [...porEscola.keys()].sort((a, b) => (porEscola.get(b).rec - porEscola.get(a).rec));
+  if (rentEscola !== "__todas" && !porEscola.has(rentEscola)) rentEscola = "__todas";
+  seletor.innerHTML = "";
+  for (const [valor, rotulo] of [["__todas", "Todas"], ...nomes.map(e => [e, e])]) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "rent-esc" + (rentEscola === valor ? " ativo" : "");
+    b.textContent = rotulo;
+    b.addEventListener("click", () => { rentEscola = valor; renderRentabilidade(); });
+    seletor.appendChild(b);
+  }
+
+  // ----- cartões (respeitam a escola selecionada) -----
+  const foco = rentEscola === "__todas"
+    ? rentFecha([...porEscola.values()].reduce((acc, r) => {
+        acc.rec += r.rec; acc.desp += r.desp; acc.res += r.res; acc.subv += r.subv; return acc;
+      }, rentZero()))
+    : porEscola.get(rentEscola);
+  const elC = document.getElementById("rent-cartoes");
+  elC.innerHTML = `
+    <div class="cartao"><div class="titulo">Receita${rentEscola === "__todas" ? "" : " — " + rentEscola}</div>
+      <div class="valor" data-tipo="num" data-valor="${foco.rec}"></div>
+      <div class="faixa">subvenções: ${n(foco.subv)}</div></div>
+    <div class="cartao"><div class="titulo">Resultado</div>
+      <div class="valor" data-tipo="num" data-valor="${foco.res}"></div>
+      <div class="faixa">despesa: ${n(foco.desp)}</div></div>
+    <div class="cartao"><div class="titulo">Margem</div>
+      <div class="valor" data-tipo="pct" data-valor="${foco.margem ?? 0}"></div>
+      <div class="faixa">resultado ÷ receita</div></div>
+    <div class="cartao"><div class="titulo">Margem Operacional</div>
+      <div class="valor" data-tipo="pct" data-valor="${foco.margemOp ?? 0}"></div>
+      <div class="faixa">sem subvenções: ${n(foco.resOp)}</div></div>`;
+  document.querySelectorAll("#rent-cartoes .valor").forEach(animaValor);
+
+  renderRentEscolas(porEscola);
+  renderRentServicos(linhas);
+  renderRentMatriz(linhas);
+}
+
+function renderRentEscolas(porEscola) {
+  const el = document.getElementById("rent-escola");
+  document.querySelectorAll(".rent-ord").forEach(b =>
+    b.classList.toggle("ativo", b.dataset.ord === rentOrdem));
+  const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }));
+  if (!itens.length) { el.innerHTML = `<tbody><tr><td class="vazio">Sem dados neste recorte.</td></tr></tbody>`; return; }
+
+  const totRec = itens.reduce((s, r) => s + r.rec, 0);
+  const totRes = itens.reduce((s, r) => s + r.res, 0);
+  const nulo = v => v == null ? -Infinity : v;
+  const criterio = {
+    res: (a, b) => b.res - a.res,
+    margem: (a, b) => nulo(b.margem) - nulo(a.margem),
+    margemOp: (a, b) => nulo(b.margemOp) - nulo(a.margemOp),
+    rec: (a, b) => b.rec - a.rec,
+    nome: (a, b) => a.escola.localeCompare(b.escola, "pt-BR"),
+  }[rentOrdem];
+  const ord = [...itens].sort(criterio);
+
+  // leitura automática: líder de volume x líder de margem (operacional)
+  const box = document.getElementById("rent-insight");
+  const comMargem = itens.filter(r => r.margemOp != null);
+  const lider = [...itens].sort((a, b) => b.rec - a.rec)[0];
+  const melhor = [...comMargem].sort((a, b) => b.margemOp - a.margemOp)[0];
+  const pior = [...comMargem].sort((a, b) => a.margemOp - b.margemOp)[0];
+  let txt = "";
+  if (lider && melhor) {
+    txt = `<b>${lider.escola}</b> lidera a receita (${pct(totRec ? lider.rec / totRec : 0)} do total`;
+    txt += lider.margemOp != null ? `, margem operacional de ${pct(lider.margemOp)})` : ")";
+    txt += `. A melhor margem operacional é de <b>${melhor.escola}</b> (${pct(melhor.margemOp)})`;
+    if (melhor.escola === lider.escola) txt += ` — ela junta as duas coisas, volume e rentabilidade`;
+    txt += ".";
+    if (pior && pior.margemOp < 0)
+      txt += ` <b>${pior.escola}</b> opera no vermelho (${pct(pior.margemOp)}): a receita própria não cobre a despesa dela.`;
+  }
+  box.innerHTML = txt ? `<p class="fer-desc" style="margin:4px 6px 10px">${txt}</p>` : "";
+
+  el.innerHTML = `<thead><tr>
+      <th>Escola</th><th class="num">Receita</th><th class="num">(−) Subvenção</th>
+      <th class="num">Despesa</th><th class="num">Resultado</th><th class="num">Margem</th>
+      <th class="num">Result. Operacional</th><th class="num">Margem Oper.</th>
+      <th class="num">% da Receita</th><th class="num">% do Resultado</th>
+    </tr></thead><tbody>` +
+    ord.map(r => `<tr class="dre-n1-lite">
+      <td><b>${r.escola}</b></td>
+      <td class="num">${n(r.rec)}</td>
+      <td class="num">${n(r.subv)}</td>
+      <td class="num">${n(r.desp)}</td>
+      <td class="num total-col">${n(r.res)}</td>
+      <td class="num" style="${rentCor(r.margem)}"><b>${rentPct(r.margem)}</b></td>
+      <td class="num">${n(r.resOp)}</td>
+      <td class="num" style="${rentCor(r.margemOp)}"><b>${rentPct(r.margemOp)}</b></td>
+      <td class="num">${pct(totRec ? r.rec / totRec : 0)}</td>
+      <td class="num">${pct(totRes ? r.res / totRes : 0)}</td>
+    </tr>`).join("") +
+    `<tr class="dre-resultado"><td>TOTAL</td>
+      <td class="num">${n(totRec)}</td>
+      <td class="num">${n(itens.reduce((s, r) => s + r.subv, 0))}</td>
+      <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
+      <td class="num total-col">${n(totRes)}</td><td></td>
+      <td class="num">${n(itens.reduce((s, r) => s + r.resOp, 0))}</td>
+      <td></td><td></td><td></td></tr></tbody>`;
+}
+
+function renderRentServicos(linhas) {
+  const el = document.getElementById("rent-servico");
+  const alvo = rentEscola === "__todas" ? linhas
+    : linhas.filter(l => rentPartes(l.dep, l.depNome).escola === rentEscola);
+  document.getElementById("rent-serv-titulo").textContent =
+    "🎓 Rentabilidade por Serviço" + (rentEscola === "__todas" ? " — todas as escolas" : " — " + rentEscola);
+
+  const porServico = rentAgrupar(alvo, l => rentPartes(l.dep, l.depNome).servico);
+  const itens = [...porServico.entries()].map(([servico, r]) => ({ servico, ...r }))
+    .sort((a, b) => b.rec - a.rec);
+  if (!itens.length) { el.innerHTML = `<tbody><tr><td class="vazio">Sem dados neste recorte.</td></tr></tbody>`; return; }
+  const totRec = itens.reduce((s, r) => s + r.rec, 0);
+  const totRes = itens.reduce((s, r) => s + r.res, 0);
+
+  el.innerHTML = `<thead><tr>
+      <th>Serviço</th><th class="num">Receita</th><th class="num">Despesa</th>
+      <th class="num">Resultado</th><th class="num">Margem</th>
+      <th class="num">Margem Oper.</th><th class="num">% da Receita</th>
+    </tr></thead><tbody>` +
+    itens.map(r => `<tr class="dre-n1-lite">
+      <td>${r.servico}</td>
+      <td class="num">${n(r.rec)}</td>
+      <td class="num">${n(r.desp)}</td>
+      <td class="num total-col">${n(r.res)}</td>
+      <td class="num" style="${rentCor(r.margem)}"><b>${rentPct(r.margem)}</b></td>
+      <td class="num" style="${rentCor(r.margemOp)}">${rentPct(r.margemOp)}</td>
+      <td class="num">${pct(totRec ? r.rec / totRec : 0)}</td>
+    </tr>`).join("") +
+    `<tr class="dre-resultado"><td>TOTAL</td><td class="num">${n(totRec)}</td>
+      <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
+      <td class="num total-col">${n(totRes)}</td><td></td><td></td><td></td></tr></tbody>`;
+}
+
+function renderRentMatriz(linhas) {
+  const el = document.getElementById("rent-matriz");
+  const celulas = new Map();   // "escola||servico" -> reg
+  const escolas = new Map(), servicos = new Map();
+  for (const l of linhas) {
+    const { escola, servico } = rentPartes(l.dep, l.depNome);
+    const k = escola + "||" + servico;
+    const reg = celulas.get(k) || rentZero();
+    rentAcumula(reg, l); celulas.set(k, reg);
+    const e = escolas.get(escola) || rentZero(); rentAcumula(e, l); escolas.set(escola, e);
+    const s = servicos.get(servico) || rentZero(); rentAcumula(s, l); servicos.set(servico, s);
+  }
+  for (const r of celulas.values()) rentFecha(r);
+  for (const r of escolas.values()) rentFecha(r);
+  for (const r of servicos.values()) rentFecha(r);
+  if (!celulas.size) { el.innerHTML = `<tbody><tr><td class="vazio">Sem dados neste recorte.</td></tr></tbody>`; return; }
+
+  // mostra as colunas que mais pesam; o resto fica fora para a tabela caber
+  const colunas = [...servicos.entries()].sort((a, b) => b[1].rec - a[1].rec)
+    .slice(0, 8).map(([s]) => s);
+  const linhasEsc = [...escolas.entries()].sort((a, b) => b[1].rec - a[1].rec).map(([e]) => e);
+
+  const cel = (e, s) => {
+    const r = celulas.get(e + "||" + s);
+    if (!r) return `<td class="cel" style="color:#bbc">—</td>`;
+    const dica = `<b>${e} — ${s}</b><br>Receita: ${n(r.rec)}<br>Despesa: ${n(r.desp)}<br>Resultado: ${n(r.res)}<br>Margem: ${rentPct(r.margem)}`;
+    return `<td class="cel" style="${rentCor(r.margem)}" data-dica="${dica}">${rentPct(r.margem)}</td>`;
+  };
+  el.innerHTML = `<thead><tr><th>Escola</th>` +
+    colunas.map(s => `<th class="num">${s}</th>`).join("") +
+    `<th class="num">Total</th></tr></thead><tbody>` +
+    linhasEsc.map(e => `<tr class="dre-n1-lite"><td><b>${e}</b></td>` +
+      colunas.map(s => cel(e, s)).join("") +
+      `<td class="cel total-col" style="${rentCor(escolas.get(e).margem)}"><b>${rentPct(escolas.get(e).margem)}</b></td></tr>`).join("") +
+    `<tr class="dre-resultado"><td>Total do serviço</td>` +
+    colunas.map(s => `<td class="cel"><b>${rentPct(servicos.get(s).margem)}</b></td>`).join("") +
+    `<td></td></tr></tbody>`;
+  ligarDicas(el);
+}
+
+document.querySelectorAll(".rent-ord").forEach(b =>
+  b.addEventListener("click", () => { rentOrdem = b.dataset.ord; renderRentabilidade(); }));
 
 /* =====================================================================
    ABA FERRAMENTAS — utilitários diários do contador (uso interno).
