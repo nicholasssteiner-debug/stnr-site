@@ -355,9 +355,10 @@
           As colunas leem como uma DRE:
           <b>(+) Receita</b> (Prestação de Serviços + Subvenções + Outras Receitas + Doações)
           <b>(−) Despesa</b> (Pessoal, Adm e Gerais, Educ./Assistência e Outorgamentos lançados no
-          próprio departamento) <b>(=) Resultado</b>, e daí a <b>Margem</b>.
+          próprio departamento) <b>(=) Resultado</b>, e daí a <b>(÷) Margem</b> — o símbolo de divisão
+          porque ela é o Resultado dividido pela Receita.
           Depois a conta continua: <b>(−) Subvenção</b> <b>(=) Resultado Operacional</b> e a
-          <b>Margem Oper.</b> — que divide esse resultado pela receita <i>sem</i> subvenção.
+          <b>(÷) Margem Oper.</b> — que divide esse resultado pela receita <i>sem</i> subvenção.
           É ela que mostra se a escola se sustenta pela mensalidade.
           A margem fica como "—" quando a base é pequena demais ou a razão sai de escala;
           nesses casos vale o valor em R$ ao lado.</p>
@@ -2403,9 +2404,9 @@ function renderRentEscolas(porEscola) {
   el.innerHTML = `<thead><tr>
       <th>Escola</th>
       <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
-      <th class="num">(=) Resultado</th><th class="num">Margem</th>
+      <th class="num">(=) Resultado</th><th class="num">(÷) Margem</th>
       <th class="num">(−) Subvenção</th><th class="num">(=) Result. Operacional</th>
-      <th class="num">Margem Oper.</th>
+      <th class="num">(÷) Margem Oper.</th>
       <th class="num">% da Receita</th><th class="num">% do Resultado</th>
     </tr></thead><tbody>` +
     ord.map(r => `<tr class="dre-n1-lite">
@@ -2447,9 +2448,9 @@ function renderRentServicos(linhas) {
   el.innerHTML = `<thead><tr>
       <th>Serviço</th>
       <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
-      <th class="num">(=) Resultado</th><th class="num">Margem</th>
+      <th class="num">(=) Resultado</th><th class="num">(÷) Margem</th>
       <th class="num">(−) Subvenção</th><th class="num">(=) Result. Operacional</th>
-      <th class="num">Margem Oper.</th><th class="num">% da Receita</th>
+      <th class="num">(÷) Margem Oper.</th><th class="num">% da Receita</th>
     </tr></thead><tbody>` +
     itens.map(r => `<tr class="dre-n1-lite">
       <td>${r.servico}</td>
