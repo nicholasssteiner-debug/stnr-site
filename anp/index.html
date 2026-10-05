@@ -344,9 +344,13 @@
       </div>
       <div id="rent-corpo">
         <div class="legenda" style="justify-content:flex-start; margin-bottom:0; gap:8px; flex-wrap:wrap">
-          <label style="align-self:center">Escola:&nbsp;</label>
+          <label style="align-self:center">Escolas na tela:&nbsp;</label>
           <div id="rent-escolas" style="display:flex; gap:5px; flex-wrap:wrap"></div>
         </div>
+        <p class="fer-desc" style="margin:6px 0 0">
+          Clique nas escolas para <b>mostrar ou esconder</b> cada uma — vale para as três tabelas
+          e para os cartões ao mesmo tempo. O primeiro clique isola a escola; depois é liga/desliga.
+          <b>Todas</b> volta ao conjunto completo.</p>
         <p class="fer-desc" style="margin:6px 0 0">
           <b>Receita</b> = Prestação de Serviços + Subvenções + Outras Receitas + Doações.
           <b>Resultado</b> = receita − despesas do próprio departamento.
@@ -2203,7 +2207,7 @@ const RENT_ESCOLAS = {
 // barra percentual sem sentido é o limite de escala (RENT_MAX_MARGEM).
 const RENT_MIN_RECEITA = 5000;
 let rentOrdem = "res";
-let rentEscola = "__todas";
+let rentSel = null;   // Set das escolas visíveis; null = todas
 
 /* "CAM - Fundamental II" -> { escola:"CAM", servico:"Fundamental II" }
    Um código de projeto na frente ("900241118177 - CALGP - Construção") é
@@ -2281,32 +2285,57 @@ function renderRentabilidade() {
   aviso.style.display = temDep ? "none" : "";
   if (!temDep) return;
 
-  const linhas = rentLinhas();
-  const porEscola = rentAgrupar(linhas, l => rentPartes(l.dep, l.depNome).escola);
+  const todasLinhas = rentLinhas();
+  // lista completa de escolas do recorte — define quais botões existem
+  const universo = rentAgrupar(todasLinhas, l => rentPartes(l.dep, l.depNome).escola);
+  const nomes = [...universo.keys()].sort((a, b) => (universo.get(b).rec - universo.get(a).rec));
 
-  // ----- seletor de escola -----
+  // escola que sumiu do recorte sai da seleção; seleção vazia volta a ser "todas"
+  if (rentSel) {
+    rentSel = new Set([...rentSel].filter(e => universo.has(e)));
+    if (!rentSel.size || rentSel.size === nomes.length) rentSel = null;
+  }
+  const visivel = e => !rentSel || rentSel.has(e);
+
+  // ----- seletor: multi-seleção, marca o que aparece na tela -----
   const seletor = document.getElementById("rent-escolas");
-  const nomes = [...porEscola.keys()].sort((a, b) => (porEscola.get(b).rec - porEscola.get(a).rec));
-  if (rentEscola !== "__todas" && !porEscola.has(rentEscola)) rentEscola = "__todas";
   seletor.innerHTML = "";
-  for (const [valor, rotulo] of [["__todas", "Todas"], ...nomes.map(e => [e, e])]) {
+  const btnTodas = document.createElement("button");
+  btnTodas.type = "button";
+  btnTodas.className = "rent-esc" + (rentSel ? "" : " ativo");
+  btnTodas.textContent = "Todas";
+  btnTodas.addEventListener("click", () => { rentSel = null; renderRentabilidade(); });
+  seletor.appendChild(btnTodas);
+  for (const e of nomes) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "rent-esc" + (rentEscola === valor ? " ativo" : "");
-    b.textContent = rotulo;
-    b.addEventListener("click", () => { rentEscola = valor; renderRentabilidade(); });
+    b.className = "rent-esc" + (visivel(e) ? " ativo" : "");
+    b.textContent = e;
+    b.title = "Clique para mostrar ou esconder " + e;
+    b.addEventListener("click", () => {
+      // primeiro clique saindo de "todas" isola a escola; depois é liga/desliga
+      if (!rentSel) rentSel = new Set([e]);
+      else if (rentSel.has(e)) rentSel.delete(e);
+      else rentSel.add(e);
+      renderRentabilidade();
+    });
     seletor.appendChild(b);
   }
 
-  // ----- cartões (respeitam a escola selecionada) -----
-  const foco = rentEscola === "__todas"
-    ? rentFecha([...porEscola.values()].reduce((acc, r) => {
-        acc.rec += r.rec; acc.desp += r.desp; acc.res += r.res; acc.subv += r.subv; return acc;
-      }, rentZero()))
-    : porEscola.get(rentEscola);
+  // daqui para baixo tudo enxerga só as escolas marcadas
+  const linhas = rentSel
+    ? todasLinhas.filter(l => visivel(rentPartes(l.dep, l.depNome).escola))
+    : todasLinhas;
+  const porEscola = rentAgrupar(linhas, l => rentPartes(l.dep, l.depNome).escola);
+  const rotuloSel = !rentSel ? "" : (rentSel.size === 1 ? " — " + [...rentSel][0] : ` — ${rentSel.size} escolas`);
+
+  // ----- cartões (somam só o que está marcado) -----
+  const foco = rentFecha([...porEscola.values()].reduce((acc, r) => {
+    acc.rec += r.rec; acc.desp += r.desp; acc.res += r.res; acc.subv += r.subv; return acc;
+  }, rentZero()));
   const elC = document.getElementById("rent-cartoes");
   elC.innerHTML = `
-    <div class="cartao"><div class="titulo">Receita${rentEscola === "__todas" ? "" : " — " + rentEscola}</div>
+    <div class="cartao"><div class="titulo">Receita${rotuloSel}</div>
       <div class="valor" data-tipo="num" data-valor="${foco.rec}"></div>
       <div class="faixa">subvenções: ${n(foco.subv)}</div></div>
     <div class="cartao"><div class="titulo">Resultado</div>
@@ -2390,13 +2419,14 @@ function renderRentEscolas(porEscola) {
 }
 
 function renderRentServicos(linhas) {
+  // `linhas` já chega filtrado pelas escolas marcadas no seletor
   const el = document.getElementById("rent-servico");
-  const alvo = rentEscola === "__todas" ? linhas
-    : linhas.filter(l => rentPartes(l.dep, l.depNome).escola === rentEscola);
   document.getElementById("rent-serv-titulo").textContent =
-    "🎓 Rentabilidade por Serviço" + (rentEscola === "__todas" ? " — todas as escolas" : " — " + rentEscola);
+    "🎓 Rentabilidade por Serviço" + (!rentSel ? " — todas as escolas"
+      : rentSel.size === 1 ? " — " + [...rentSel][0]
+      : " — " + [...rentSel].join(", "));
 
-  const porServico = rentAgrupar(alvo, l => rentPartes(l.dep, l.depNome).servico);
+  const porServico = rentAgrupar(linhas, l => rentPartes(l.dep, l.depNome).servico);
   const itens = [...porServico.entries()].map(([servico, r]) => ({ servico, ...r }))
     .sort((a, b) => b.rec - a.rec);
   if (!itens.length) { el.innerHTML = `<tbody><tr><td class="vazio">Sem dados neste recorte.</td></tr></tbody>`; return; }
