@@ -352,11 +352,15 @@
           e para os cartões ao mesmo tempo. O primeiro clique isola a escola; depois é liga/desliga.
           <b>Todas</b> volta ao conjunto completo.</p>
         <p class="fer-desc" style="margin:6px 0 0">
-          <b>Receita</b> = Prestação de Serviços + Subvenções + Outras Receitas + Doações.
-          <b>Resultado</b> = receita − despesas do próprio departamento.
-          A coluna <b>Operacional</b> tira as subvenções dos dois lados — é ela que mostra se a
-          escola se sustenta pela mensalidade. Margem fica como "—" quando a receita é pequena
-          demais para o percentual significar algo.</p>
+          As colunas leem como uma DRE:
+          <b>(+) Receita</b> (Prestação de Serviços + Subvenções + Outras Receitas + Doações)
+          <b>(−) Despesa</b> (Pessoal, Adm e Gerais, Educ./Assistência e Outorgamentos lançados no
+          próprio departamento) <b>(=) Resultado</b>, e daí a <b>Margem</b>.
+          Depois a conta continua: <b>(−) Subvenção</b> <b>(=) Resultado Operacional</b> e a
+          <b>Margem Oper.</b> — que divide esse resultado pela receita <i>sem</i> subvenção.
+          É ela que mostra se a escola se sustenta pela mensalidade.
+          A margem fica como "—" quando a base é pequena demais ou a razão sai de escala;
+          nesses casos vale o valor em R$ ao lado.</p>
         <div class="cartoes" style="grid-template-columns:repeat(4,1fr)" id="rent-cartoes"></div>
         <div id="rent-insight"></div>
 
@@ -2391,30 +2395,37 @@ function renderRentEscolas(porEscola) {
   }
   box.innerHTML = txt ? `<p class="fer-desc" style="margin:4px 6px 10px">${txt}</p>` : "";
 
+  // Ordem das colunas segue a leitura de uma DRE, de cima para baixo:
+  //   (+) Receita − (−) Despesa = (=) Resultado → Margem
+  //   e então (−) Subvenção = (=) Result. Operacional → Margem Oper.
+  // A subvenção vem DEPOIS da margem porque ela é a ponte entre o resultado
+  // total e o operacional, não um detalhe da receita.
   el.innerHTML = `<thead><tr>
-      <th>Escola</th><th class="num">Receita</th><th class="num">(−) Subvenção</th>
-      <th class="num">Despesa</th><th class="num">Resultado</th><th class="num">Margem</th>
-      <th class="num">Result. Operacional</th><th class="num">Margem Oper.</th>
+      <th>Escola</th>
+      <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
+      <th class="num">(=) Resultado</th><th class="num">Margem</th>
+      <th class="num">(−) Subvenção</th><th class="num">(=) Result. Operacional</th>
+      <th class="num">Margem Oper.</th>
       <th class="num">% da Receita</th><th class="num">% do Resultado</th>
     </tr></thead><tbody>` +
     ord.map(r => `<tr class="dre-n1-lite">
       <td><b>${r.escola}</b></td>
       <td class="num">${n(r.rec)}</td>
-      <td class="num">${n(r.subv)}</td>
       <td class="num">${n(r.desp)}</td>
       <td class="num total-col">${n(r.res)}</td>
       <td class="num" style="${rentCor(r.margem)}"><b>${rentPct(r.margem)}</b></td>
-      <td class="num">${n(r.resOp)}</td>
+      <td class="num">${n(r.subv)}</td>
+      <td class="num total-col">${n(r.resOp)}</td>
       <td class="num" style="${rentCor(r.margemOp)}"><b>${rentPct(r.margemOp)}</b></td>
       <td class="num">${pct(totRec ? r.rec / totRec : 0)}</td>
       <td class="num">${pct(totRes ? r.res / totRes : 0)}</td>
     </tr>`).join("") +
     `<tr class="dre-resultado"><td>TOTAL</td>
       <td class="num">${n(totRec)}</td>
-      <td class="num">${n(itens.reduce((s, r) => s + r.subv, 0))}</td>
       <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
       <td class="num total-col">${n(totRes)}</td><td></td>
-      <td class="num">${n(itens.reduce((s, r) => s + r.resOp, 0))}</td>
+      <td class="num">${n(itens.reduce((s, r) => s + r.subv, 0))}</td>
+      <td class="num total-col">${n(itens.reduce((s, r) => s + r.resOp, 0))}</td>
       <td></td><td></td><td></td></tr></tbody>`;
 }
 
@@ -2434,8 +2445,10 @@ function renderRentServicos(linhas) {
   const totRes = itens.reduce((s, r) => s + r.res, 0);
 
   el.innerHTML = `<thead><tr>
-      <th>Serviço</th><th class="num">Receita</th><th class="num">Despesa</th>
-      <th class="num">Resultado</th><th class="num">Margem</th>
+      <th>Serviço</th>
+      <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
+      <th class="num">(=) Resultado</th><th class="num">Margem</th>
+      <th class="num">(−) Subvenção</th><th class="num">(=) Result. Operacional</th>
       <th class="num">Margem Oper.</th><th class="num">% da Receita</th>
     </tr></thead><tbody>` +
     itens.map(r => `<tr class="dre-n1-lite">
@@ -2444,12 +2457,17 @@ function renderRentServicos(linhas) {
       <td class="num">${n(r.desp)}</td>
       <td class="num total-col">${n(r.res)}</td>
       <td class="num" style="${rentCor(r.margem)}"><b>${rentPct(r.margem)}</b></td>
+      <td class="num">${n(r.subv)}</td>
+      <td class="num total-col">${n(r.resOp)}</td>
       <td class="num" style="${rentCor(r.margemOp)}">${rentPct(r.margemOp)}</td>
       <td class="num">${pct(totRec ? r.rec / totRec : 0)}</td>
     </tr>`).join("") +
     `<tr class="dre-resultado"><td>TOTAL</td><td class="num">${n(totRec)}</td>
       <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
-      <td class="num total-col">${n(totRes)}</td><td></td><td></td><td></td></tr></tbody>`;
+      <td class="num total-col">${n(totRes)}</td><td></td>
+      <td class="num">${n(itens.reduce((s, r) => s + r.subv, 0))}</td>
+      <td class="num total-col">${n(itens.reduce((s, r) => s + r.resOp, 0))}</td>
+      <td></td><td></td></tr></tbody>`;
 }
 
 function renderRentMatriz(linhas) {
