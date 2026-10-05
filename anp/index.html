@@ -361,7 +361,10 @@
           <b>(÷) Margem Oper.</b> — que divide esse resultado pela receita <i>sem</i> subvenção.
           É ela que mostra se a escola se sustenta pela mensalidade.
           A margem fica como "—" quando a base é pequena demais ou a razão sai de escala;
-          nesses casos vale o valor em R$ ao lado.</p>
+          nesses casos vale o valor em R$ ao lado.
+          As duas últimas colunas são <b>(AV)</b> — análise vertical: a fatia de cada linha no
+          conjunto que está na tela. A barra atrás do número mostra essa fatia; em vermelho,
+          quem puxa o total para baixo.</p>
         <div class="cartoes" style="grid-template-columns:repeat(4,1fr)" id="rent-cartoes"></div>
         <div id="rent-insight"></div>
 
@@ -2274,6 +2277,16 @@ function rentAgrupar(linhas, chave) {
 }
 
 const rentPct = v => v == null ? "—" : pct(v);
+
+/* Barra discreta atrás do número nas colunas de análise vertical: largura
+   proporcional à participação, crescendo da direita para a esquerda (mesmo
+   lado do alinhamento). Azul para quem soma, vermelho para quem subtrai. */
+function rentBarra(v, max) {
+  if (!isFinite(v) || !max) return "";
+  const w = Math.min(100, Math.abs(v) / max * 100).toFixed(1);
+  const cor = v < 0 ? "rgba(179,66,58,0.28)" : "rgba(44,95,124,0.18)";
+  return `background:linear-gradient(to left, ${cor} ${w}%, transparent ${w}%)`;
+}
 /* verde para margem positiva, vermelho para negativa; intensidade pelo módulo */
 function rentCor(m) {
   if (m == null) return "";
@@ -2377,6 +2390,11 @@ function renderRentEscolas(porEscola) {
     nome: (a, b) => a.escola.localeCompare(b.escola, "pt-BR"),
   }[rentOrdem];
   const ord = [...itens].sort(criterio);
+  // escala das barras de análise vertical: a maior participação ocupa a célula
+  const parRec = r => totRec ? r.rec / totRec : 0;
+  const parRes = r => totRes ? r.res / totRes : 0;
+  const maxParRec = Math.max(...itens.map(r => Math.abs(parRec(r))), 0);
+  const maxParRes = Math.max(...itens.map(r => Math.abs(parRes(r))), 0);
 
   // leitura automática: líder de volume x líder de margem (operacional)
   const box = document.getElementById("rent-insight");
@@ -2407,7 +2425,7 @@ function renderRentEscolas(porEscola) {
       <th class="num">(=) Resultado</th><th class="num">(÷) Margem</th>
       <th class="num">(−) Subvenção</th><th class="num">(=) Result. Operacional</th>
       <th class="num">(÷) Margem Oper.</th>
-      <th class="num">% da Receita</th><th class="num">% do Resultado</th>
+      <th class="num">(AV) % da Receita</th><th class="num">(AV) % do Resultado</th>
     </tr></thead><tbody>` +
     ord.map(r => `<tr class="dre-n1-lite">
       <td><b>${r.escola}</b></td>
@@ -2418,8 +2436,8 @@ function renderRentEscolas(porEscola) {
       <td class="num">${n(r.subv)}</td>
       <td class="num total-col">${n(r.resOp)}</td>
       <td class="num" style="${rentCor(r.margemOp)}"><b>${rentPct(r.margemOp)}</b></td>
-      <td class="num">${pct(totRec ? r.rec / totRec : 0)}</td>
-      <td class="num">${pct(totRes ? r.res / totRes : 0)}</td>
+      <td class="num" style="${rentBarra(parRec(r), maxParRec)}">${pct(parRec(r))}</td>
+      <td class="num" style="${rentBarra(parRes(r), maxParRes)}">${pct(parRes(r))}</td>
     </tr>`).join("") +
     `<tr class="dre-resultado"><td>TOTAL</td>
       <td class="num">${n(totRec)}</td>
@@ -2444,13 +2462,15 @@ function renderRentServicos(linhas) {
   if (!itens.length) { el.innerHTML = `<tbody><tr><td class="vazio">Sem dados neste recorte.</td></tr></tbody>`; return; }
   const totRec = itens.reduce((s, r) => s + r.rec, 0);
   const totRes = itens.reduce((s, r) => s + r.res, 0);
+  const parRec = r => totRec ? r.rec / totRec : 0;
+  const maxParRec = Math.max(...itens.map(r => Math.abs(parRec(r))), 0);
 
   el.innerHTML = `<thead><tr>
       <th>Serviço</th>
       <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
       <th class="num">(=) Resultado</th><th class="num">(÷) Margem</th>
       <th class="num">(−) Subvenção</th><th class="num">(=) Result. Operacional</th>
-      <th class="num">(÷) Margem Oper.</th><th class="num">% da Receita</th>
+      <th class="num">(÷) Margem Oper.</th><th class="num">(AV) % da Receita</th>
     </tr></thead><tbody>` +
     itens.map(r => `<tr class="dre-n1-lite">
       <td>${r.servico}</td>
@@ -2461,7 +2481,7 @@ function renderRentServicos(linhas) {
       <td class="num">${n(r.subv)}</td>
       <td class="num total-col">${n(r.resOp)}</td>
       <td class="num" style="${rentCor(r.margemOp)}">${rentPct(r.margemOp)}</td>
-      <td class="num">${pct(totRec ? r.rec / totRec : 0)}</td>
+      <td class="num" style="${rentBarra(parRec(r), maxParRec)}">${pct(parRec(r))}</td>
     </tr>`).join("") +
     `<tr class="dre-resultado"><td>TOTAL</td><td class="num">${n(totRec)}</td>
       <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
