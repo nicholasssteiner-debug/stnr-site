@@ -2587,9 +2587,14 @@ document.getElementById("fer-busca").addEventListener("input", renderBusca);
 
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
-  document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  for (const aba of ["visao", "dre", "comp", "proj", "subv", "bp", "fer"])
-    document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
+  // A classe .aba-btn também é usada por botões de ação (carregar planilha,
+  // baixar CSV, meses da Movimentação); só os que têm data-aba trocam de aba.
+  if (!btn.dataset.aba) return;
+  document.querySelectorAll(".aba-btn[data-aba]").forEach(b => b.classList.toggle("ativa", b === btn));
+  // A lista sai do próprio DOM: aba nova passa a funcionar sem precisar ser
+  // cadastrada aqui (era isso que deixava a aba Rentabilidade em branco).
+  document.querySelectorAll(".conteudo-aba").forEach(div =>
+    div.style.display = div.id === "aba-" + btn.dataset.aba ? "" : "none");
 }));
 
 /* ---------- Inicialização ---------- */
