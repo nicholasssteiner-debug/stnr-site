@@ -84,6 +84,7 @@
   .selo.aprovada { background:rgba(236,131,90,.16); color:#a3441f; }
   .selo.concluida { background:rgba(12,163,12,.12); color:var(--bom); }
   .selo.rejeitada, .selo.cancelada { background:rgba(208,59,59,.12); color:var(--critico); }
+  .selo.anulada { background:rgba(11,11,11,.10); color:var(--ink); text-decoration:line-through; }
   .acoes { display:flex; gap:6px; flex-wrap:wrap; }
   .barra-sel { position:sticky; bottom:12px; background:var(--ink); color:var(--plano); border-radius:10px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 8px 30px rgba(0,0,0,.2); }
   .grade2 { display:grid; grid-template-columns:340px minmax(0,1fr); gap:14px; }
@@ -203,7 +204,7 @@
   <section class="painel-aba" id="aba-hist">
     <div class="card">
       <div class="filtros">
-        <div class="campo"><label for="h-status">Situação</label><select id="h-status"><option value="">Todas</option><option value="enviada">Aguardando aceite</option><option value="aceita">Em aprovação</option><option value="aprovada">Aguardando contábil</option><option value="concluida">Concluída</option><option value="rejeitada">Rejeitada</option><option value="cancelada">Cancelada</option></select></div>
+        <div class="campo"><label for="h-status">Situação</label><select id="h-status"><option value="">Todas</option><option value="enviada">Aguardando aceite</option><option value="aceita">Em aprovação</option><option value="aprovada">Aguardando contábil</option><option value="concluida">Concluída</option><option value="rejeitada">Rejeitada</option><option value="cancelada">Cancelada</option><option value="anulada">Anulada</option></select></div>
         <div class="campo"><label for="h-dep">Departamento (origem ou destino)</label><select id="h-dep" class="largo"></select></div>
         <div class="campo"><label for="h-de">De</label><input type="date" id="h-de"></div>
         <div class="campo"><label for="h-ate">Até</label><input type="date" id="h-ate"></div>
@@ -264,6 +265,24 @@
   <h2 id="mm-titulo">Rejeitar transferência</h2>
   <div class="campo"><label for="mm-texto">Motivo</label><textarea id="mm-texto" rows="3"></textarea></div>
   <div class="rodape"><button class="btn" data-fecha>Voltar</button><button class="btn btn-nao" id="mm-ok">Confirmar</button></div>
+</div></div>
+
+<!-- modal anular (exige um segundo administrador) -->
+<div class="modal-fundo" id="m-anular"><div class="modal" style="width:min(560px,100%)">
+  <h2>Anular transferência</h2>
+  <p class="nota" id="ma-resumo"></p>
+  <p class="nota">A transferência já foi aprovada e está aguardando o lançamento no sistema contábil.
+    Anular desfaz isso: os bens voltam a ficar livres e nada deve ser lançado no AASI.
+    <b>Por ser um passo que desfaz uma aprovação, precisa da autorização de outro administrador.</b></p>
+  <div class="campo"><label for="ma-motivo">Motivo da anulação</label>
+    <textarea id="ma-motivo" rows="2" placeholder="ex.: bem enviado ao setor errado"></textarea></div>
+  <div class="campo"><label for="ma-quem">Autorização de outro administrador</label>
+    <select id="ma-quem"></select></div>
+  <div class="campo"><label for="ma-senha">Senha desse administrador</label>
+    <input type="password" id="ma-senha" autocomplete="off"></div>
+  <div class="msg erro" id="ma-erro"></div>
+  <div class="rodape"><button class="btn" data-fecha>Voltar</button>
+    <button class="btn btn-nao" id="ma-ok">Confirmar anulação</button></div>
 </div></div>
 
 <!-- modal termo -->
@@ -344,7 +363,7 @@ const brl = v => (v || 0).toLocaleString("pt-BR", { minimumFractionDigits:2, max
 const dataBR = iso => iso ? iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(0,4) : "";
 const agora = () => new Date().toISOString();
 const dhBR = iso => iso ? new Date(iso).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "";
-const STATUS = { enviada:"Aguardando aceite", aceita:"Em aprovação", aprovada:"Aguardando contábil", concluida:"Concluída", rejeitada:"Rejeitada", cancelada:"Cancelada" };
+const STATUS = { enviada:"Aguardando aceite", aceita:"Em aprovação", aprovada:"Aguardando contábil", concluida:"Concluída", rejeitada:"Rejeitada", cancelada:"Cancelada", anulada:"Anulada" };
 const TIPOS = { admin:"Administrador", moderador:"Moderador", chefe:"Chefe de setor" };
 const ABERTAS = ["enviada", "aceita", "aprovada"];
 
@@ -596,6 +615,59 @@ let motivoCb = null;
 function pedirMotivo(titulo, cb) { el("mm-titulo").textContent = titulo; el("mm-texto").value = ""; motivoCb = cb; el("m-motivo").classList.add("aberto"); }
 el("mm-ok").addEventListener("click", async () => { const m = el("mm-texto").value.trim(); if (!m) return; el("m-motivo").classList.remove("aberto"); if (motivoCb) await motivoCb(m); });
 
+/* ======================= anular (aguardando contábil) =======================
+   Desfazer uma transferência já aprovada é o passo mais sério do fluxo: por
+   isso exige DUAS pessoas. O administrador abre o pedido e um segundo
+   administrador digita a senha dele para autorizar. A senha é conferida
+   abrindo o envelope daquele usuário — se abrir, a senha confere.
+   Tudo fica no histórico do protocolo e no termo. */
+let anulandoId = null;
+window.pedirAnulacao = id => {
+  const t = transfs.find(x => x.id === id); if (!t) return;
+  if (!ehAdmin()) return alert("Só administradores podem anular.");
+  const outros = usuarios.filter(u => u.tipo === "admin" && u.login !== sessao.login && u.env);
+  if (!outros.length) {
+    return alert("A anulação precisa da autorização de um segundo administrador, e hoje você é o único cadastrado.\n\n" +
+                 "Cadastre outro administrador na aba Usuários e tente de novo.");
+  }
+  anulandoId = id;
+  el("ma-resumo").innerHTML = `Transferência <b>nº ${t.numero}</b> · ${esc(nomeDep(t.origem))} → <b>${esc(nomeDep(t.destino))}</b> · ${t.itens.length} bem(ns)`;
+  el("ma-quem").innerHTML = outros.map(u => `<option value="${esc(u.login)}">${esc(u.nome || u.login)}</option>`).join("");
+  el("ma-motivo").value = ""; el("ma-senha").value = ""; el("ma-erro").textContent = "";
+  el("m-anular").classList.add("aberto");
+};
+el("ma-ok").addEventListener("click", async () => {
+  const t = transfs.find(x => x.id === anulandoId);
+  const motivo = el("ma-motivo").value.trim(), login = el("ma-quem").value, senha = el("ma-senha").value;
+  const erro = el("ma-erro"), btn = el("ma-ok");
+  if (!t) return;
+  if (!motivo) { erro.textContent = "Escreva o motivo da anulação."; return; }
+  if (!senha) { erro.textContent = "Digite a senha do administrador que está autorizando."; return; }
+  if (t.status !== "aprovada") { erro.textContent = "Esta transferência não está mais aguardando o contábil."; return; }
+
+  erro.textContent = ""; btn.disabled = true; btn.textContent = "Conferindo…";
+  const outro = usuarios.find(u => u.login === login && u.tipo === "admin" && u.env);
+  const ok = outro ? await abrirEnvelope(senha, outro.env) : null;   // senha errada = null
+  if (!ok) {
+    btn.disabled = false; btn.textContent = "Confirmar anulação";
+    erro.textContent = "Senha incorreta para " + (outro ? (outro.nome || outro.login) : login) + ".";
+    el("ma-senha").value = ""; el("ma-senha").focus();
+    return;
+  }
+  const quando = agora();
+  const c = { ...t, status: "anulada",
+    anulacao: { quem: sessao.login, nome: sessao.nome || sessao.login, quando, motivo,
+                autorizadoPor: outro.login, autorizadoNome: outro.nome || outro.login },
+    historico: [...(t.historico || []), { quando, quem: sessao.login, nome: sessao.nome || sessao.login,
+      acao: "anulada", motivo: `${motivo} — autorizado por ${outro.nome || outro.login}` }] };
+  try {
+    await salvarTransf(c);
+    await notificar("anulada", c, motivo);
+    el("m-anular").classList.remove("aberto");
+  } catch (e) { erro.textContent = "Não consegui gravar: " + e.message; }
+  btn.disabled = false; btn.textContent = "Confirmar anulação";
+});
+
 /* Concluída sozinha: se, nos dados atuais, todos os bens já estão no destino. */
 async function concluirAutomaticas() {
   for (const t of transfs.filter(x => x.status === "aprovada")) {
@@ -653,7 +725,10 @@ function renderTransf() {
   v = ordena(aprovar, "aprovar"); qtd("q-aprovar", aprovar, v);
   el("tr-aprovar").innerHTML = v.length ? v.map(t => cartaoTransf(t, ehAdmin() ? b(t, "✔ Aprovar", "btn-ok", "aprovada") + b(t, "✖ Rejeitar", "btn-nao", "rejeitada") : `<span class="pct">aguardando o administrador</span>`)).join("") : `<div class="vazio">${aprovar.length ? "Nada no filtro." : "Nada em aprovação."}</div>`;
   v = ordena(contabil, "contabil"); qtd("q-contabil", contabil, v);
-  el("tr-contabil").innerHTML = v.length ? v.map(t => cartaoTransf(t, `<span class="pct">aprovada por ${esc(t.aprovacao?.nome || "")} em ${dhBR(t.aprovacao?.quando)}</span>`)).join("") : `<div class="vazio">${contabil.length ? "Nada no filtro." : "Nada aguardando o contábil."}</div>`;
+  el("tr-contabil").innerHTML = v.length ? v.map(t => cartaoTransf(t,
+    `<span class="pct">aprovada por ${esc(t.aprovacao?.nome || "")} em ${dhBR(t.aprovacao?.quando)}</span>` +
+    (ehAdmin() ? `<button class="btn btn-mini btn-nao" onclick="pedirAnulacao('${t.id}')" title="Desfazer esta transferência — precisa da senha de outro administrador">⨯ Anular</button>` : "")
+  )).join("") : `<div class="vazio">${contabil.length ? "Nada no filtro." : "Nada aguardando o contábil."}</div>`;
   v = ordena(enviadas, "enviadas"); qtd("q-enviadas", enviadas, v);
   el("tr-enviadas").innerHTML = v.length ? v.map(t => cartaoTransf(t, podeCancelar(t) ? b(t, "Cancelar", "", "cancelada") : "")).join("") : `<div class="vazio">${enviadas.length ? "Nada no filtro." : "Nenhuma enviada pendente."}</div>`;
   const n = aceitar.length + (ehAdmin() ? transfs.filter(t => t.status === "aceita").length : 0);
@@ -707,6 +782,11 @@ window.abrirTermo = async id => {
     <div class="assin">${ass("Envio (origem)", { nome: t.criadoNome, quem: t.criadoPor, quando: t.criadoEm })}${ass("Aceite (destino)", t.aceite)}${ass("Aprovação (contabilidade)", t.aprovacao)}</div>
     ${t.rejeicao ? `<p style="color:#b00; margin-top:14px"><b>Rejeitada</b> por ${esc(t.rejeicao.nome)} em ${dhBR(t.rejeicao.quando)}: ${esc(t.rejeicao.motivo)}</p>` : ""}
     ${t.conclusao ? `<p style="color:#0a7a0a; margin-top:14px"><b>Confirmada no sistema contábil</b> — detectada em ${dhBR(t.conclusao.quando)} (dados de ${esc(t.conclusao.dados)}).</p>` : ""}
+    ${t.anulacao ? `<div style="margin-top:16px; border:2px solid #b00; padding:10px 12px">
+      <b style="color:#b00; font-size:14px">TRANSFERÊNCIA ANULADA — este termo perdeu a validade</b>
+      <div style="margin-top:4px">Anulada por <b>${esc(t.anulacao.nome)}</b> em ${dhBR(t.anulacao.quando)}.</div>
+      <div>Autorizada por <b>${esc(t.anulacao.autorizadoNome)}</b> (segundo administrador).</div>
+      <div>Motivo: ${esc(t.anulacao.motivo)}</div></div>` : ""}
     <div class="hist"><b>Histórico:</b> ${(t.historico || []).map(h => `${dhBR(h.quando)} ${esc(h.nome)}: ${STATUS[h.acao] || h.acao}${h.motivo ? " (" + esc(h.motivo) + ")" : ""}`).join(" · ")}</div>
     <div class="verif">Situação: ${STATUS[t.status]} · Código de verificação: ${await codigoVerif(t)} · Os aceites acima são eletrônicos, registrados com usuário, data e hora no sistema de controle.</div>
   </div>`;
@@ -722,6 +802,7 @@ const REGRAS_PADRAO = [
   { ev: "rejeitada", ativo: true, para: ["remetente", "destino"], texto: "Transferência nº {n} foi rejeitada por {quem}: {motivo}" },
   { ev: "concluida", ativo: true, para: ["remetente", "destino", "admin"], texto: "Transferência nº {n} ({origem} → {destino}) confirmada no sistema contábil." },
   { ev: "cancelada", ativo: true, para: ["destino"],              texto: "Transferência nº {n} de {origem} foi cancelada por {quem}." },
+  { ev: "anulada",   ativo: true, para: ["remetente", "destino", "origem", "admin"], texto: "ATENÇÃO: a transferência nº {n} ({origem} → {destino}), que estava aprovada, foi ANULADA por {quem}. Motivo: {motivo}. Não faça o lançamento no sistema contábil." },
 ];
 const PARA_ROT = { destino: "chefes do destino", origem: "chefes da origem", remetente: "quem enviou", admin: "administradores", moderador: "moderadores" };
 function destinatarios(t, para) {
@@ -756,7 +837,15 @@ el("n-lidas").addEventListener("click", async () => { for (const n of notifs.fil
 window.aplicarNotifsDaNuvem = lista => { notifs = lista; if (sessao) renderNotifs(); };
 
 /* ============================ CONFIG DE NOTIFICAÇÕES (admin) ============================ */
-window.aplicarRegrasDaNuvem = lista => { regras = lista && lista.length ? lista : null; if (sessao) renderConfig(); };
+window.aplicarRegrasDaNuvem = lista => {
+  // completa com os eventos que ainda não existem na configuração salva
+  // (assim um evento novo aparece sem precisar refazer as regras à mão)
+  if (lista && lista.length) {
+    const tem = new Set(lista.map(r => r.ev));
+    regras = [...lista, ...REGRAS_PADRAO.filter(r => !tem.has(r.ev))];
+  } else regras = null;
+  if (sessao) renderConfig();
+};
 function renderConfig() {
   if (!ehAdmin()) return;
   const rs = regras || REGRAS_PADRAO;
