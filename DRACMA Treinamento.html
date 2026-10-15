@@ -769,7 +769,7 @@ function novoPag(){return {forma:'',benef:'',venc:'',periodo:'',parcelas:1,desco
 function novoServico(regime){return {valor:0,semIss:false,regime:regime||'',atualizado:'',tipo:'',cod:'',cnae:'',dispInss:'Não',issRet:false,issAliq:5}}
 function novoFiscal(){return {status:'pendente',servico:null,sim:null,ret:[],guias:[]}}
 function novoDoc(){return {id:uid(),codigo:'',tipo:'',forn:'',emissao:'',serie:'',numero:'',chave:'',valor:0,finalidade:'',
-  requisitante:EU,mine:true,criadoEm:nowIso(),enviadoEm:'',etapa:'criacao',salvo:false,liberado:false,anexo:null,origemXml:false,
+  requisitante:EU,mine:true,criadoEm:nowIso(),enviadoEm:'',etapa:'criacao',salvo:false,liberado:false,anexos:[],anxSel:0,origemXml:false,
   rateio:[],pag:novoPag(),fiscal:novoFiscal(),contabil:{status:'aguardando',lanc:[],motivo:''},loteId:null,devolucao:null,coments:[],hist:[]}}
 function hist(d,t){d.hist.unshift({em:nowIso(),por:EU,t})}
 
@@ -788,8 +788,9 @@ function checkMissoes(){}
 function status(d){
   if(d.etapa==='criacao') return {txt:d.devolucao?'Devolvido ao Requisitante':'Em Criação',cls:d.devolucao?'dev':'wait',i:d.devolucao?'&#8617;':'&#9998;'};
   const C=d.contabil.status;
-  if(C==='concluida')return {txt:'Análise Contábil Concluída - Pronto para Pagamento',cls:'ok',i:'&#10004;'};
-  if(C==='nao')return {txt:'Não Contabilizar - Pronto para Pagamento',cls:'ok',i:'&#10004;'};
+  const pg=d.pagos&&typeof situacaoPagamento==='function'?situacaoPagamento(d):'';
+  if(C==='concluida')return {txt:'Análise Contábil Concluída - '+(pg||'Pronto para Pagamento'),cls:'ok',i:'&#10004;'};
+  if(C==='nao')return {txt:'Não Contabilizar - '+(pg||'Pronto para Pagamento'),cls:'ok',i:'&#10004;'};
   if(d.fiscal.status==='pendente')return {txt:'Aprovado - Aguardando Análise Fiscal',cls:'wait',i:'&#9719;'};
   return {txt:'Análise Fiscal Concluída - Aguardando Análise Contábil - Pronto para Pagamento',cls:'ok',i:'&#10004;'};
 }
@@ -844,34 +845,47 @@ function errosLinhas(linhas){const E=[];linhas.forEach((x,i)=>{const p=PL[x.cont
   if(x.conta&&exigeSub(x.conta)){const sc=(x.sub||'').split(' - ')[0].trim();if(!sc)E.push(`Linha ${i+1}: conta ${x.conta} exige sub conta`);
     else if(SUBS[x.conta]&&SUBS[x.conta].length&&!SUBS[x.conta].some(s=>s.sub===sc))E.push(`Linha ${i+1}: sub conta ${sc} não existe em ${x.conta} no SysContábil (sincronize)`)}});return E}
 
-/* =============== ANEXO =============== */
-function anexoHtml(d){
-  const a=d.anexo;if(!a) return '<div class="muted">Sem anexo.</div>';
-  if(a.arquivo) return `<div class="card">&#128206; <b>${esc(a.nome)}</b><div class="muted">Arquivo do seu computador (fica só neste navegador).</div>${a.url&&/^image\//.test(a.mime)?`<img src="${a.url}" style="max-width:100%;margin-top:10px">`:''}</div>`;
-  const f=pessoa(a.forn||d.forn);const D=a.dados||{};const v=D.valorReal??(a.valor??d.valor);
-  const num=a.numero??d.numero, emi=a.emissao??d.emissao, venc=a.venc??d.pag.venc;const tom=ENT;
-  if(a.tipo==='bol') return `<div class="anexo"><div class="h">BOLETO BANCÁRIO — DOCUMENTO DE TREINAMENTO</div>
-    Beneficiário: ${esc(f.nome)}<br>CNPJ: ${esc(f.doc)}<br>Nº documento: ${esc(num)}<br>Data do documento: ${dt(emi)}<br>
-    Vencimento: <b>${dt(venc)}</b><br>Valor do documento: <b>${brl(v)}</b><br><br>Linha digitável:<br><b>${esc(a.linha??d.pag.linha)}</b></div>`;
-  if(a.tipo==='fat'||a.tipo==='agua') return `<div class="anexo"><div class="h">${a.tipo==='agua'?'FATURA DE ÁGUA E ESGOTO':'FATURA DE ENERGIA ELÉTRICA'} — TREINAMENTO</div>${esc(f.nome)} — CNPJ ${esc(f.doc)}<br>
-    Fatura nº ${esc(num)} · Emissão ${dt(emi)}<br>Vencimento: ${dt(venc)}<br>TOTAL A PAGAR: <b>${brl(v)}</b></div>`;
-  if(a.tipo==='nfe'){const it=D.itens||[];const ch=a.chave??d.chave;return `<div class="anexo"><div class="h">${d.tipo==='NFCe'?'DANFE NFC-e — CUPOM':'DANFE — NOTA FISCAL ELETRÔNICA'} (TREINAMENTO)</div>
-    Emitente: ${esc(f.nome)}<br>CNPJ: ${esc(f.doc)}<br>Nº <b>${esc(num)}</b> · Série ${esc(a.serie??d.serie??'1')} · Emissão <b>${dt(emi)}</b><br>
-    ${ch?`Chave de acesso: <b style="word-break:break-all">${esc(digits(ch).replace(/(\d{4})/g,'$1 ').trim())}</b><br>`:''}
-    Destinatário: ${tom}<table><tr><td><b>Produto</b></td><td><b>Qtd</b></td><td><b>Unit.</b></td><td><b>Total</b></td></tr>
-    ${it.map(i=>`<tr><td>${esc(i[0])}</td><td>${i[1]}</td><td>${brl(i[2])}</td><td>${brl(i[1]*i[2])}</td></tr>`).join('')}</table>
-    VALOR TOTAL DA NOTA: <b>${brl(v)}</b></div>`}
-  if(a.tipo==='nfse'){const R=D.ret||{};const tr=r2((R.IRRF||0)+(R.CSRF||0)+(R.INSS||0)+(R.ISS||0));return `<div class="anexo"><div class="h">NOTA FISCAL DE SERVIÇO ELETRÔNICA — NFS-e (TREINAMENTO)</div>
-    Número: <b>${esc(num)}</b> · Emissão: <b>${dt(emi)}</b><br>Prestador: ${esc(f.nome)} — CNPJ ${esc(f.doc)}<br>
-    Simples Nacional na data de competência: <b>${f.regime==='Simples Nacional'?'Optante':'Não optante'}</b> · Regime: ${esc(f.regime||'')}<br>
-    Tomador: ${tom}<br><br>Discriminação: ${esc(D.servico||'')}<br><br>
-    Valor dos serviços: <b>${brl(v)}</b><table><tr><td>IRRF</td><td>${brl(R.IRRF||0)}</td><td>PIS/COFINS/CSLL</td><td>${brl(R.CSRF||0)}</td></tr>
-    <tr><td>INSS</td><td>${brl(R.INSS||0)}</td><td>ISS retido</td><td>${brl(R.ISS||0)}</td></tr></table>
-    Total de retenções: ${brl(tr)}<br>VALOR LÍQUIDO: <b>${brl(v-tr)}</b></div>`}
-  if(a.tipo==='rec') return `<div class="anexo"><div class="h">RECIBO Nº ${esc(num)} (TREINAMENTO)</div>
-    Recebi de ${tom} a importância de <b>${brl(v)}</b> referente a: ${esc(D.servico||'')}.<br><br>${esc(f.nome)} — ${esc(f.doc)} (${esc(f.regime||'')})<br>Data: ${dt(emi)}</div>`;
-  return '';
-}
+/* =============== ANEXOS: arquivos do computador, guardados no IndexedDB deste navegador =============== */
+// d.anexos = [{id, nome, mime, tam, em, xml?}] (o primeiro é o Anexo Principal); o conteúdo fica no banco "dracma-anexos".
+const ANX_MAX = 25*1024*1024;
+let anxDb=null;const anxUrl={};
+function anxOpen(){if(anxDb)return Promise.resolve(anxDb);return new Promise((res,rej)=>{const r=indexedDB.open('dracma-anexos',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>{anxDb=r.result;res(anxDb)};r.onerror=()=>rej(r.error)})}
+// Sem IndexedDB (janela anônima, armazenamento bloqueado): guarda só enquanto a página estiver aberta
+const anxMem={};let anxAvisado=false;
+async function anxPut(id,blob){try{const db=await anxOpen();return await new Promise((res,rej)=>{const t=db.transaction('f','readwrite');t.objectStore('f').put(blob,id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+  catch(e){anxMem[id]=blob;if(!anxAvisado){anxAvisado=true;toast('&#9888; Este navegador não permite guardar arquivos: os anexos ficam só até fechar a página.')}}}
+async function anxBlob(id){if(anxMem[id])return anxMem[id];try{const db=await anxOpen();return await new Promise((res,rej)=>{const q=db.transaction('f').objectStore('f').get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}catch(e){return null}}
+async function anxUrlDe(id){if(anxUrl[id])return anxUrl[id];const b=await anxBlob(id);return b?(anxUrl[id]=URL.createObjectURL(b)):null}
+async function anxDel(id){delete anxMem[id];try{const db=await anxOpen();db.transaction('f','readwrite').objectStore('f').delete(id)}catch(e){}if(anxUrl[id]){URL.revokeObjectURL(anxUrl[id]);delete anxUrl[id]}}
+const tamTxt = n => n>=1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB';
+async function anexarArquivos(d,files,extra){let n=0;d.anexos=d.anexos||[];
+  for(const file of files){if(file.size>ANX_MAX){toast(`${esc(file.name)}: arquivo maior que 25 MB.`);continue}
+    const id=uid()+uid();try{await anxPut(id,file)}catch(e){toast('Não foi possível guardar '+esc(file.name)+' neste navegador.');continue}
+    d.anexos.push({id,nome:file.name,mime:file.type||'',tam:file.size,em:nowIso(),...(extra||{})});n++}
+  if(n){hist(d,n===1?'Anexo adicionado: '+d.anexos.at(-1).nome:n+' anexos adicionados');save();rerender()}return n}
+function anexosHtml(d,editavel){const L=d.anexos||[];const sel=Math.min(d.anxSel||0,Math.max(0,L.length-1));const a=L[sel];
+  const add=`<label class="btn sm dark" style="margin:0">&#65291; Adicionar<input type="file" multiple data-act-change="anxadd" data-doc="${d.id}" hidden></label>`;
+  if(!L.length)return editavel?`<label class="drop" data-drop="${d.id}"><input type="file" multiple data-act-change="anxadd" data-doc="${d.id}" hidden><div style="font-size:40px">&#128196;</div>Clique ou arraste um arquivo para anexar<div class="muted" style="font-weight:400;margin-top:6px">PDF, imagem, XML... (até 25 MB). Fica guardado neste navegador.</div></label>`
+    :'<div class="muted">Sem anexos.</div>';
+  return `<div ${editavel?`data-drop="${d.id}"`:''}>
+   <div class="row" style="gap:6px;margin-bottom:8px">${L.map((x,i)=>`<span class="tag ${i===sel?'green':''}" style="cursor:pointer;padding:5px 10px" data-act="anxsel" data-doc="${d.id}" data-i="${i}" title="${esc(tamTxt(x.tam))}">${i===0?'&#9733; ':''}${esc(x.nome)}${editavel?` <span data-act="anxdel" data-doc="${d.id}" data-i="${i}" style="color:var(--red);margin-left:4px" title="Excluir anexo">&times;</span>`:''}</span>`).join('')}
+    <span class="sp"></span>${editavel?add:''}</div>
+   <div class="anx-view" data-anx="${a.id}" data-mime="${esc(a.mime)}" data-nome="${esc(a.nome)}" style="border:1px solid var(--line);border-radius:4px;background:#fafafa;min-height:120px">
+    <div class="muted" style="padding:16px">Carregando ${esc(a.nome)}...</div></div>
+   <div class="row" style="margin-top:6px"><span class="muted">${esc(a.nome)} · ${tamTxt(a.tam)}${sel===0?' · Anexo Principal':''}</span><span class="sp"></span>
+    ${sel!==0&&editavel?`<button class="btn sm" data-act="anxprinc" data-doc="${d.id}" data-i="${sel}">Tornar principal</button>`:''}
+    <a class="btn sm anx-down" data-anx-down="${a.id}" download="${esc(a.nome)}" href="#">&#8681; Baixar</a></div></div>`}
+// carrega o conteúdo dos anexos visíveis na tela
+async function hidratarAnexos(){for(const el of document.querySelectorAll('.anx-view[data-anx]')){const id=el.dataset.anx,mime=el.dataset.mime||'',nome=el.dataset.nome||'';
+    const url=await anxUrlDe(id).catch(()=>null);const down=document.querySelector(`[data-anx-down="${id}"]`);
+    if(!url){el.innerHTML='<div class="errbox" style="margin:10px">Arquivo não encontrado neste navegador (foi anexado em outro computador ou os dados do site foram limpos).</div>';continue}
+    if(down)down.href=url;
+    if(/pdf/i.test(mime)||/\.pdf$/i.test(nome))el.innerHTML=`<iframe src="${url}" title="${esc(nome)}" style="width:100%;height:640px;border:0"></iframe>`;
+    else if(/^image\//.test(mime))el.innerHTML=`<img src="${url}" alt="${esc(nome)}" style="max-width:100%;display:block;margin:auto">`;
+    else if(/xml|text/.test(mime)||/\.(xml|txt|csv)$/i.test(nome)){const t=await (await anxBlob(id)).text();el.innerHTML=`<pre style="white-space:pre-wrap;margin:0;padding:12px;max-height:520px;overflow:auto;font-size:12px">${esc(t.slice(0,60000))}</pre>`}
+    else el.innerHTML=`<div style="padding:16px">Pré-visualização indisponível para este tipo de arquivo. Use <b>Baixar</b> para abrir.</div>`}}
+async function apagarAnexosDoc(d){for(const a of d.anexos||[])await anxDel(a.id)}
 
 /* =============== ROTEAMENTO =============== */
 let route={p:'inicio'}, ui={draft:null,filtro:'todos',busca:'',mine:false,tab:null,edit:null,pBusca:'',pFiltro:'todas',dBusca:'',srvEdit:false};
@@ -892,7 +906,7 @@ function side(){const on=(...p)=>p.includes(route.p)?'on':'';$('#side').innerHTM
   <div class="grp" style="margin-top:20px;font-weight:400;font-size:12.5px;color:#888">Os demais menus do DRACMA não fazem parte deste treinamento.</div>`}
 function render(keep){if(!keep)parseRoute();side();$('#side').classList.remove('open');ui.edit=null;ui.srvEdit=false;$('#app').innerHTML=(VIEWS[route.p]||VIEWS.inicio)();window.scrollTo(0,0);after()}
 function rerender(){const y=window.scrollY;side();$('#app').innerHTML=(VIEWS[route.p]||VIEWS.inicio)();window.scrollTo(0,y);after()}
-function after(){if(route.p==='cadastrar')resumoEnvio();if(route.p==='lote')checarImportacao()}
+function after(){if(route.p==='cadastrar')resumoEnvio();if(route.p==='lote')checarImportacao();hidratarAnexos()}
 function crumb(...p){return `<div class="crumb">Home &rsaquo; ${p.map((x,i)=>i===p.length-1?`<b>${esc(x)}</b>`:esc(x)).join(' &rsaquo; ')}</div>`}
 
 /* =============== MODAIS =============== */
@@ -955,12 +969,10 @@ function vCadastrar(){
     </div>
    </div>
    <div>
-    <div class="row" style="margin-bottom:10px"><h3 style="margin:0">Anexos</h3><span class="sp"></span>
-     <label class="btn dark" style="margin:0">&#65291; Adicionar<input type="file" data-act-change="arquivo" hidden></label></div>
-    ${d.anexo?`<div style="margin-bottom:10px">${anexoHtml(d)}<div class="row" style="margin-top:8px"><span class="muted">${esc(d.anexo.nome)}</span><span class="sp"></span><button class="btn sm red" data-act="rmanexo">Remover</button></div></div>`
-      :`<label class="drop"><input type="file" data-act-change="arquivo" hidden><div style="font-size:40px">&#128196;</div>Clique para anexar um arquivo<div class="muted" style="font-weight:400;margin-top:6px">o arquivo fica só neste navegador</div></label>`}
-    <div class="info" style="margin-top:14px"><div class="ic">i</div><div><b>Preenchimento Automático</b><br>Para preencher automaticamente os dados do documento, anexe a nota fiscal ou cupom fiscal e selecione a opção abaixo.<br>
-     <button class="btn ${d.anexo?'blue':'grey'} sm" style="margin-top:8px" data-act="processar" ${d.anexo?'':'disabled'}>&#9881; Processar</button></div></div>
+    <h3 style="margin:0 0 10px">Anexos</h3>
+    ${anexosHtml(d,true)}
+    <div class="info" style="margin-top:14px"><div class="ic">i</div><div><b>Preenchimento Automático</b><br>Para preencher automaticamente os dados do documento, use <b>Importar XML</b> com o XML da NF-e: o XML fica anexado e os dados são preenchidos.<br>
+     <button class="btn ${(d.anexos||[]).some(a=>a.xml)?'blue':'grey'} sm" style="margin-top:8px" data-act="processar" ${(d.anexos||[]).length?'':'disabled'}>&#9881; Processar</button></div></div>
     ${similares(d)}
    </div>
   </div>
@@ -1028,7 +1040,7 @@ function pendencias(d){const P=[];
     if(p.forma==='Transferência Bancária'&&(!p.banco||!p.ag||!p.conta))P.push('informar banco, agência e conta');
     if(liquido(d)<=0)P.push('revisar desconto (líquido ficou zerado)');
   }
-  if(!d.anexo)P.push('anexar o documento');
+  if(!(d.anexos||[]).length)P.push('anexar o documento');
   return P}
 function resumoEnvio(){const d=curDraft();const P=pendencias(d);const el=$('#pend');if(!el)return;
   el.innerHTML=P.length?'<b>Para enviar falta:</b> '+P.join('; ')+'.':'<b style="color:var(--ok)">Tudo pronto para enviar.</b>';$('#btnEnviar').disabled=!!P.length}
@@ -1098,8 +1110,8 @@ function vDoc(){
    <div><div class="k">Desconto</div><div class="v">${brl(d.pag.desconto)}</div></div><div><div class="k">Multa e Juros</div><div class="v">${brl(d.pag.multa)}</div></div>
    <div><div class="k">Valor Líquido</div><div class="v"><b>${brl(liquido(d))}</b></div></div><div><div class="k">Valor em Aberto</div><div class="v">${brl(liquido(d))}</div></div></div>
   <div class="tw" style="margin-top:10px"><table class="t"><tr><th>Parcela</th><th>Forma de Pagamento</th><th>Vencimento</th><th>Dados</th><th class="num">Valor</th></tr>
-   ${parcelas(d).map(p=>{const [l1,l2]=dadosPagamento(d);return `<tr><td>${p.n}ª Parcela</td><td>${esc(d.pag.forma)}</td><td>${dt(p.venc)}</td><td>${esc(l1)}<br><span class="muted">${esc(l2)}</span></td><td class="num">${brl(p.valor)}</td></tr>`}).join('')}</table></div>
-  <h3 style="margin-top:22px">Anexo Principal</h3>${anexoHtml(d)}
+   ${parcelas(d).map(p=>{const [l1,l2]=dadosPagamento(d);return `<tr><td>${p.n}ª Parcela${(()=>{const pg=pagoEm(d,p.n);return pg?`<br><span class="tag green">Pago em ${dt(pg.data)} · ${esc(loteNum(pg.loteId))}</span>`:''})()}</td><td>${esc(d.pag.forma)}</td><td>${dt(p.venc)}</td><td>${esc(l1)}<br><span class="muted">${esc(l2)}</span></td><td class="num">${brl(p.valor)}</td></tr>`}).join('')}</table></div>
+  <h3 style="margin-top:22px">Anexos</h3>${anexosHtml(d,true)}
   <div class="tabs">${[['contabil','Contábil'],['fiscal','Fiscal'],['coment','Comentários ('+d.coments.length+')'],['hist','Histórico']].map(t=>`<button class="${ui.tab===t[0]?'on':''}" data-act="tab" data-t="${t[0]}">${t[1]}</button>`).join('')}</div>
   ${ui.tab==='fiscal'?tFiscal(d):ui.tab==='contabil'?tContabil(d):ui.tab==='coment'?tComent(d):tHist(d)}`;
 }
@@ -1199,33 +1211,74 @@ function tComent(d){return `<div class="card">${d.coments.map(c=>`<div style="pa
   <textarea id="cmt" placeholder="Escreva um comentário" style="margin-top:10px"></textarea><div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn dark" data-act="cmt">Adicionar Comentário</button></div></div>`}
 function tHist(d){return `<div class="card">${d.hist.map(h=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="muted">${dth(h.em)}</span> — <b>${esc(h.por)}</b>: ${esc(h.t)}</div>`).join('')}</div>`}
 
-/* =============== LOTE CONTÁBIL =============== */
+/* =============== LOTE CONTÁBIL: Provisionamento → Pagamento, com estorno =============== */
+// provisionamento: lançamentos da análise contábil dos documentos (despesa x fornecedor/reembolso)
+// pagamento: baixa das parcelas de documentos já provisionados (fornecedor/reembolso x banco)
+// estorno: inverte um lote contabilizado; provisionamento estornado devolve os documentos para a análise contábil,
+//          pagamento estornado devolve as parcelas para "a pagar"
+const TIPO_LOTE = {provisionamento:'Provisionamento',pagamento:'Pagamento',estorno:'Estorno'};
+const tipoLote = l => l.tipo||'provisionamento';
+const loteAtivo = l => l && l.status==='contabilizado' && !l.estornadoPor;
+const descLote = l => tipoLote(l)==='pagamento'?`Dracma - Pagamento - ${dt(l.dataPag).slice(0,5)}`:tipoLote(l)==='estorno'?'Dracma - Estorno':'Dracma - Provisionamento';
 const elegiveis = () => S.docs.filter(d=>d.etapa==='revisao'&&d.contabil.status==='concluida'&&d.contabil.lanc.length&&!d.loteId);
-const docsLote = l => l.docs.map(id=>S.docs.find(d=>d.id===id)).filter(Boolean);
+const docsLote = l => (l.docs||[]).map(id=>S.docs.find(d=>d.id===id)).filter(Boolean);
+const loteNum = id => {const l=S.lotes.find(x=>x.id===id);return l?(l.numero||'lote em aberto'):''};
+// grupos de lançamentos do lote (um por documento)
+function grupos(l){
+  if(l.grupos&&(tipoLote(l)!=='provisionamento'||l.status==='contabilizado'))return l.grupos;   // contabilizado: como foi exportado
+  if(tipoLote(l)==='provisionamento')return docsLote(l).map(d=>({docId:d.id,titulo:`${dt(d.contabil.lanc[0]?.criado)} - Documento do Contas a Pagar - Id - ${d.codigo} · ${d.tipo} ${d.numero}`,linhas:d.contabil.lanc.flatMap(x=>x.linhas)}));
+  return l.grupos||[]}
+// parcelas pagas por lotes de pagamento ativos
+function pagoEm(d,n){const p=d.pagos&&d.pagos[n];return p&&loteAtivo(S.lotes.find(x=>x.id===p.loteId))?p:null}
+function situacaoPagamento(d){const ps=parcelas(d);const pg=ps.filter(p=>pagoEm(d,p.n)).length;return !pg?'':pg===ps.length?'Pago':'Pago Parcialmente'}
+const emLoteAberto = (docId,n) => S.lotes.some(l=>l.status!=='contabilizado'&&tipoLote(l)==='pagamento'&&(l.itens||[]).some(i=>i.docId===docId&&i.n===n));
+function parcelasAPagar(){const out=[];
+  S.docs.forEach(d=>{if(!loteAtivo(S.lotes.find(x=>x.id===d.loteId)))return;
+    parcelas(d).forEach(p=>{if(!pagoEm(d,p.n)&&!emLoteAberto(d.id,p.n))out.push({docId:d.id,n:p.n,total:parcelas(d).length,venc:p.venc,valor:p.valor})})});
+  return out.sort((a,b)=>(a.venc||'').localeCompare(b.venc||''))}
+const contasBanco = () => S.plano.filter(p=>p.a&&p.c.startsWith('1.1.01'));
+// conta e subconta creditadas no provisionamento para a parcela (o pagamento debita a mesma)
+function contaProvisionada(d,p){const b=pessoa(d.pag.benef||d.forn);const padrao=b.func?cReemb():C_FORN;
+  const linhas=d.contabil.lanc.flatMap(x=>x.linhas).filter(x=>x.valor<0&&exigeSub(x.conta));
+  const l=linhas.find(x=>x.venc===p.venc&&r2(-x.valor)===r2(p.valor))||linhas.find(x=>x.conta===padrao);
+  return l?{conta:l.conta,sub:l.sub}:{conta:padrao,sub:subDe(padrao,b)}}
+function gruposPagamento(itens,data,banco){const porDoc={};
+  itens.forEach(i=>{(porDoc[i.docId]=porDoc[i.docId]||[]).push(i)});
+  return Object.entries(porDoc).map(([docId,its])=>{const d=S.docs.find(x=>x.id===docId);const f=pessoa(d.forn);const ps=parcelas(d);const L=[];
+    its.forEach(i=>{const p=ps.find(x=>x.n===i.n);if(!p)return;const cp=contaProvisionada(d,p);const desc=`Pagto ${d.tipo} ${d.numero} ${f.nome} - ${p.n}/${ps.length}`;
+      L.push({id:uid(),conta:cp.conta,sub:cp.sub,depto:SEDE,restr:'0A',valor:r2(p.valor),venc:data,desc,fin:d.finalidade,aviso:'N'});
+      L.push({id:uid(),conta:banco,sub:'',depto:SEDE,restr:'0A',valor:-r2(p.valor),venc:data,desc,fin:d.finalidade,aviso:'N'})});
+    return {docId,titulo:`${dt(data)} - Pagamento - Id - ${d.codigo} · ${d.tipo} ${d.numero} · ${its.map(i=>i.n+'ª').join(', ')} parcela`,linhas:L}})}
 function vLotes(){
-  const L=[...S.lotes].sort((a,b)=>b.criado.localeCompare(a.criado));const pend=elegiveis().length;
+  const L=[...S.lotes].sort((a,b)=>b.criado.localeCompare(a.criado));const pend=elegiveis().length;const apagar=parcelasAPagar().length;
   return `${crumb('Contábil','Lote Contábil')}<h1>Lote Contábil</h1>
-  <div class="row"><button class="btn dark" data-act="novolote">&#65291; Novo Lote</button><span class="sp"></span><span class="muted">${pend} documento(s) contabilizado(s) fora de lote</span></div>
-  <div class="hint" style="margin-top:12px"><b>Exportar</b> gera o CSV (1ª linha: entidade ${ENT}; depois conta;subconta;fundo;departamento;restrição;valor em centavos;aviso;descrição;vencimento)${vinculado()?` e envia o lote para a atividade <b>${ATIVIDADE}</b> do SysContábil`:'. Vinculando ao SysContábil, o lote também é enviado para lá'}.</div>
+  <div class="row"><button class="btn dark" data-act="novolote" data-t="provisionamento">&#65291; Lote de Provisionamento</button><button class="btn blue" data-act="novolote" data-t="pagamento">&#65291; Lote de Pagamento</button><span class="sp"></span>
+   <span class="muted">${pend} documento(s) a provisionar · ${apagar} parcela(s) a pagar</span></div>
+  <div class="hint" style="margin-top:12px">Ordem: primeiro o <b>Provisionamento</b> (despesa a pagar), depois o <b>Pagamento</b> (baixa do fornecedor contra o banco), que só aceita parcelas de documentos com provisionamento contabilizado. Um lote contabilizado pode ser <b>estornado</b>: o estorno gera um lote com os valores invertidos. Exportar gera o CSV (1ª linha: ${ENT})${vinculado()?` e envia o lote para a atividade <b>${ATIVIDADE}</b> do SysContábil`:''}.</div>
   <h3 style="margin-top:18px">Lotes</h3>
-  ${L.length?`<div class="tw"><table class="t"><tr><th>Descrição</th><th>Número</th><th>Criação</th><th>Período</th><th>Status</th><th>Tipo</th><th>SysContábil</th><th class="num">Documentos</th><th class="num">Total</th></tr>
-   ${L.map(l=>{const docs=docsLote(l);return `<tr class="click" data-act="abrirlote" data-id="${l.id}"><td>Dracma - Provisionamento</td><td>${esc(l.numero||'-')}</td><td>${dth(l.criado)}</td><td>${mesTxt(l.mes)}</td>
-   <td>${l.status==='contabilizado'?'<span class="tag green">Contabilizado</span>':'<span class="tag yel">Aguardando Contabilização</span>'}</td><td>Provisionamento</td><td>${sysTag(l)}</td><td class="num">${docs.length}</td><td class="num">${brl(docs.reduce((a,d)=>a+d.contabil.lanc.reduce((s,x)=>s+somaL(x,1),0),0))}</td></tr>`}).join('')}</table></div>`
+  ${L.length?`<div class="tw"><table class="t"><tr><th>Descrição</th><th>Número</th><th>Criação</th><th>Período</th><th>Status</th><th>Tipo</th><th>SysContábil</th><th class="num">Itens</th><th class="num">Total</th></tr>
+   ${L.map(l=>{const g=grupos(l);return `<tr class="click" data-act="abrirlote" data-id="${l.id}"><td>${esc(descLote(l))}</td><td>${esc(l.numero||'-')}</td><td>${dth(l.criado)}</td><td>${mesTxt(l.mes)}</td>
+   <td>${l.status!=='contabilizado'?'<span class="tag yel">Aguardando Contabilização</span>':l.estornadoPor?`<span class="tag red">Estornado (${esc(loteNum(l.estornadoPor))})</span>`:'<span class="tag green">Contabilizado</span>'}</td>
+   <td>${TIPO_LOTE[tipoLote(l)]}</td><td>${sysTag(l)}</td><td class="num">${g.length}</td><td class="num">${brl(g.reduce((a,x)=>a+x.linhas.filter(y=>y.valor>0).reduce((s,y)=>s+y.valor,0),0))}</td></tr>`}).join('')}</table></div>`
    :'<div class="card na" style="min-height:100px;font-size:16px">Não há itens para exibir</div>'}`;
 }
 function sysTag(l){if(!l.sys)return '<span class="muted">—</span>';if(l.sys.erro)return '<span class="tag red">erro no envio</span>';return l.sys.importado?'<span class="tag green">importado</span>':'<span class="tag yel">aguardando importação</span>'}
 function vLote(){
   const l=S.lotes.find(x=>x.id===route.id);if(!l)return `${crumb('Contábil','Lote Contábil')}<h1>Lote não encontrado</h1><a class="btn" href="#/lotes">Voltar</a>`;
-  const docs=docsLote(l);const ab=l.status!=='contabilizado';
-  const deb=r2(docs.reduce((a,d)=>a+d.contabil.lanc.reduce((s,x)=>s+somaL(x,1),0),0)),cred=r2(docs.reduce((a,d)=>a+d.contabil.lanc.reduce((s,x)=>s+somaL(x,-1),0),0));
+  const t=tipoLote(l);const g=grupos(l);const ab=l.status!=='contabilizado';const ln=g.flatMap(x=>x.linhas);
+  const deb=r2(ln.filter(x=>x.valor>0).reduce((a,x)=>a+x.valor,0)),cred=r2(ln.filter(x=>x.valor<0).reduce((a,x)=>a+x.valor,0));
   return `${crumb('Contábil','Lote Contábil','Detalhes do Lote')}
-  <h1>Detalhes do Lote ${esc(l.id)}</h1><div style="margin:-8px 0 14px">${ENT}</div>
+  <h1>Detalhes do Lote ${esc(l.id)}</h1><div style="margin:-8px 0 14px">${ENT} · ${esc(descLote(l))}</div>
   <div class="row"><a class="btn" href="#/lotes">&#8592; Voltar</a><span class="sp"></span>
    ${ab?`<button class="btn blue" data-act="verificar">&#10004; Verificar Lote</button><button class="btn red" data-act="dellote">&#128465; Excluir Lote</button><button class="btn dark" data-act="exportar">&#8681; Exportar</button>`
-       :`<button class="btn dark" data-act="baixar">&#8681; Baixar CSV novamente</button>${vinculado()&&(!l.sys||l.sys.erro)?'<button class="btn blue" data-act="reenviar">Enviar ao SysContábil</button>':''}`}</div>
+       :`<button class="btn dark" data-act="baixar">&#8681; Baixar CSV novamente</button>${t!=='estorno'&&!l.estornadoPor?'<button class="btn red" data-act="estornar">&#8634; Estornar Lote</button>':''}${vinculado()&&(!l.sys||l.sys.erro)?'<button class="btn blue" data-act="reenviar">Enviar ao SysContábil</button>':''}`}</div>
+  ${l.estornadoPor?`<div class="warnbox">Lote estornado pelo lote <a href="#/lote/${esc(l.estornadoPor)}">${esc(loteNum(l.estornadoPor))}</a>.</div>`:''}
+  ${t==='estorno'?`<div class="warnbox">Estorno do lote <a href="#/lote/${esc(l.ref)}">${esc(loteNum(l.ref))}</a> (${esc(TIPO_LOTE[l.refTipo]||'')}).</div>`:''}
   <div class="kv card" style="margin-top:14px">
-   <div><div class="k">Status</div><div class="v">${ab?'Aguardando Contabilização':'Contabilizado'}</div></div>
+   <div><div class="k">Status</div><div class="v">${ab?'Aguardando Contabilização':l.estornadoPor?'Estornado':'Contabilizado'}</div></div>
    <div><div class="k">Status Verificação</div><div class="v">${!l.verif?'Lote não verificado':l.verif.ok?'<span style="color:var(--ok)">Lote verificado</span>':'<span style="color:var(--red)">Lote com erros</span>'}</div></div>
+   <div><div class="k">Tipo</div><div class="v">${TIPO_LOTE[t]}</div></div>
+   ${t==='pagamento'?`<div><div class="k">Data do Pagamento</div><div class="v">${dt(l.dataPag)}</div></div><div><div class="k">Conta Bancária</div><div class="v">${esc(contaTxt(l.banco))}</div></div>`:''}
    <div><div class="k">Conexão</div><div class="v">${vinculado()?`SysContábil · ${esc(ATIVIDADE)}`:'Sem conexão (só CSV)'}</div></div>
    <div><div class="k">SysContábil</div><div class="v">${sysTag(l)}${l.sys?.erro?' '+esc(l.sys.erro):''}</div></div>
    <div><div class="k">Número</div><div class="v">${esc(l.numero||'-')}</div></div>
@@ -1237,44 +1290,65 @@ function vLote(){
   ${l.verif&&!l.verif.ok?`<div class="errbox"><b>Erros encontrados na verificação:</b><br>${l.verif.erros.map(esc).join('<br>')}</div>`:''}
   ${l.verif&&l.verif.ok&&ab?'<div class="okbox">Lote verificado. Pode exportar.</div>':''}
   <h3 style="margin-top:18px">Lançamentos</h3>
-  ${docs.map(d=>`<div class="lanc"><div class="hd"><b>${dt(d.contabil.lanc[0]?.criado)} - Documento do Contas a Pagar - Id - ${esc(d.codigo)} · ${esc(d.tipo)} ${esc(d.numero)}</b>
-    <a class="btn sm" href="#/doc/${d.id}">Documento</a>${ab?`<button class="btn sm red" data-act="tiradoc" data-id="${d.id}">Excluir</button>`:''}</div>
+  ${g.map((x,gi)=>`<div class="lanc"><div class="hd"><b>${esc(x.titulo)}</b>
+    ${x.docId?`<a class="btn sm" href="#/doc/${x.docId}">Documento</a>`:''}${ab&&t!=='estorno'?`<button class="btn sm red" data-act="tiragrupo" data-i="${gi}">Excluir</button>`:''}</div>
     <div class="tw" style="border:0;border-radius:0"><table class="t"><tr><th>Conta</th><th>Sub Conta</th><th>Fundo</th><th>Departamento</th><th>Restrição</th><th class="num">Valor</th><th>Vencimento</th><th>Descrição</th><th>Enviar Aviso</th></tr>
-    ${d.contabil.lanc.flatMap(x=>x.linhas).map(x=>`<tr><td>${esc(contaTxt(x.conta))}</td><td>${esc(x.sub)}</td><td>${FUNDO_TXT}</td><td>${esc(deptoTxt(x.depto))}</td><td>${esc(RESTR[x.restr]||x.restr)}</td>
-     <td class="num" style="color:${x.valor<0?'var(--red)':'inherit'}">${brl(x.valor)}</td><td>${dt(x.venc)}</td><td>${esc(x.desc)}</td><td>${x.aviso==='S'?'Sim':'Não'}</td></tr>`).join('')}</table></div></div>`).join('')||'<div class="muted">Lote vazio.</div>'}
-  ${ab?`<div class="row" style="margin-top:14px"><button class="btn" data-act="addlote">&#65291; Incluir mais documentos</button></div>`:''}
+    ${x.linhas.map(y=>`<tr><td>${esc(contaTxt(y.conta))}</td><td>${esc(y.sub)}</td><td>${FUNDO_TXT}</td><td>${esc(deptoTxt(y.depto))}</td><td>${esc(RESTR[y.restr]||y.restr)}</td>
+     <td class="num" style="color:${y.valor<0?'var(--red)':'inherit'}">${brl(y.valor)}</td><td>${dt(y.venc)}</td><td>${esc(y.desc)}</td><td>${y.aviso==='S'?'Sim':'Não'}</td></tr>`).join('')}</table></div></div>`).join('')||'<div class="muted">Lote vazio.</div>'}
+  ${ab&&t==='provisionamento'?`<div class="row" style="margin-top:14px"><button class="btn" data-act="addlote">&#65291; Incluir mais documentos</button></div>`:''}
   <h3 style="margin-top:22px">Prévia do CSV</h3><pre class="card" style="overflow:auto;font-size:12.5px;white-space:pre">${esc(csvLote(l))}</pre>`;
 }
-function verificarLote(l){const E=[];const docs=docsLote(l);
-  if(!docs.length)E.push('O lote não tem documentos.');
-  docs.forEach(d=>{const pre=`${d.codigo} (${d.tipo} ${d.numero}): `;
-    if(d.contabil.status!=='concluida')E.push(pre+'análise contábil não está concluída.');
-    d.contabil.lanc.forEach(x=>{const s=r2(somaL(x,1)+somaL(x,-1));if(s)E.push(pre+'lançamento com saldo '+brl(s)+'.');errosLinhas(x.linhas).forEach(e=>E.push(pre+e))})});
+function verificarLote(l){const E=[];const t=tipoLote(l);const g=grupos(l);
+  if(!g.length)E.push('O lote não tem lançamentos.');
+  if(t==='provisionamento')docsLote(l).forEach(d=>{if(d.contabil.status!=='concluida')E.push(`${d.codigo}: análise contábil não está concluída.`)});
+  if(t==='pagamento'){if(!l.dataPag)E.push('Informe a data do pagamento.');
+    (l.itens||[]).forEach(i=>{const d=S.docs.find(x=>x.id===i.docId);if(!d)return E.push('Documento removido.');
+      if(!loteAtivo(S.lotes.find(x=>x.id===d.loteId)))E.push(`${d.codigo}: provisionamento não está contabilizado (ou foi estornado).`);
+      if(pagoEm(d,i.n))E.push(`${d.codigo}: ${i.n}ª parcela já está paga.`)})}
+  g.forEach(x=>{const s=r2(x.linhas.reduce((a,y)=>a+y.valor,0));const pre=x.titulo.split(' · ').slice(-2).join(' · ')+': ';
+    if(s)E.push(pre+'saldo '+brl(s)+'.');errosLinhas(x.linhas).forEach(e=>E.push(pre+e))});
   l.verif={ok:!E.length,erros:E,em:nowIso()};return l.verif}
 const csvTxt = s => String(s||'').replace(/[;\r\n]+/g,' ').trim();
 function csvLote(l){const out=[`${ENT};;;;;;;;`];
-  docsLote(l).forEach(d=>d.contabil.lanc.forEach(x=>x.linhas.forEach(y=>{
-    out.push([digits(y.conta),(y.sub||'').split(' - ')[0].trim(),FUNDO,y.depto,y.restr,String(Math.round(y.valor*100)),y.aviso==='S'?'S':'N',csvTxt(y.desc),y.venc?dt(y.venc):''].join(';'))})));
+  grupos(l).forEach(x=>x.linhas.forEach(y=>{
+    out.push([digits(y.conta),(y.sub||'').split(' - ')[0].trim(),FUNDO,y.depto,y.restr,String(Math.round(y.valor*100)),y.aviso==='S'?'S':'N',csvTxt(y.desc),y.venc?dt(y.venc):''].join(';'))}));
   return out.join('\r\n')+'\r\n'}
 function baixarCsv(l){const txt=csvLote(l);const map={'–':'-','—':'-','“':'"','”':'"','‘':"'",'’':"'",'…':'...'};
   const bytes=new Uint8Array([...txt].map(ch=>{const c=(map[ch]||ch).charCodeAt(0);return c<256?c:63}));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'text/csv;charset=windows-1252'}));
-  a.download=`Lote_${(l.numero||l.id).replace(/\W+/g,'')}_${ENT}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
-// Lote no formato de lote do SysContábil (uma partida por linha; D/C e valor positivo)
-function lotesParaSys(l){return docsLote(l).flatMap(d=>d.contabil.lanc.map((x,i)=>({
-  id:`DRACMA-${(l.numero||l.id).replace(/\W+/g,'')}-${d.codigo.replace(/\W+/g,'')}${d.contabil.lanc.length>1?'-'+(i+1):''}`,
-  date:(l.exportado||nowIso()).slice(0,10),description:`DRACMA ${l.numero} - ${d.tipo} ${d.numero} ${pessoa(d.forn).nome} - ${d.finalidade}`.slice(0,180),createdAt:Date.now(),
-  entries:x.linhas.map(y=>{const sub=(y.sub||'').split(' - ')[0].trim();const comSub=sub&&exigeSub(y.conta);
-    return {accountCode:y.conta+(comSub?'.'+sub:''),ccId:y.depto,type:y.valor<0?'C':'D',value:Math.abs(r2(y.valor))}})})))}
-function modalLote(l){const docs=elegiveis();
-  modal(`<h2>${l?'Incluir documentos no lote':'Novo Lote'}</h2>
+  a.download=`Lote_${TIPO_LOTE[tipoLote(l)]}_${(l.numero||l.id).replace(/\W+/g,'')}_${ENT}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+// Lote no formato de lote do SysContábil (um lote por documento; D/C e valor positivo)
+function lotesParaSys(l){const num=(l.numero||l.id).replace(/\W+/g,'');
+  return grupos(l).map((x,i)=>{const d=S.docs.find(z=>z.id===x.docId);
+    return {id:`DRACMA-${num}-${d?d.codigo.replace(/\W+/g,''):i+1}`,date:(tipoLote(l)==='pagamento'?l.dataPag:(l.exportado||nowIso())).slice(0,10),
+      description:`DRACMA ${l.numero} ${TIPO_LOTE[tipoLote(l)]} - ${d?`${d.tipo} ${d.numero} ${pessoa(d.forn).nome} - ${d.finalidade}`:x.titulo}`.slice(0,180),createdAt:Date.now(),
+      entries:x.linhas.map(y=>{const sub=(y.sub||'').split(' - ')[0].trim();const comSub=sub&&exigeSub(y.conta);
+        return {accountCode:y.conta+(comSub?'.'+sub:''),ccId:y.depto,type:y.valor<0?'C':'D',value:Math.abs(r2(y.valor))}})}})}
+function modalLote(l,tipo){
+  if((l?tipoLote(l):tipo)==='pagamento'){const its=parcelasAPagar();const bancos=contasBanco();
+    return modal(`<h2>Novo Lote de Pagamento</h2>
+     <div class="hint">Baixa das parcelas: débito na conta do fornecedor/reembolso (a mesma do provisionamento) e crédito na conta bancária.</div>
+     <div class="cols" style="gap:10px"><div><label class="f req">Data do Pagamento</label><input type="date" id="nlData" value="${isoDay(0)}"></div>
+     <div><label class="f req">Conta Bancária</label><select id="nlBanco">${bancos.map(b=>`<option value="${esc(b.c)}" ${b.c==='1.1.01.003'?'selected':''}>${esc(b.c+' - '+b.n)}</option>`).join('')}</select></div></div>
+     <label class="f">Parcelas de documentos provisionados</label>
+     ${its.length?`<div class="tw"><table class="t"><tr><th></th><th>Código</th><th>Documento</th><th>Beneficiário</th><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th></tr>${its.map((i,k)=>{const d=S.docs.find(x=>x.id===i.docId);return `<tr><td><input type="checkbox" class="nlPar" value="${k}" checked></td><td>${esc(d.codigo)}</td><td>${esc(d.tipo)} ${esc(d.numero)} - ${esc(pessoa(d.forn).nome)}</td><td>${esc(pessoa(d.pag.benef||d.forn).nome)}</td><td>${i.n}/${i.total}</td><td>${dt(i.venc)}</td><td class="num">${brl(i.valor)}</td></tr>`}).join('')}</table></div>`
+      :'<div class="warnbox">Nenhuma parcela a pagar. O pagamento só aceita documentos cujo lote de provisionamento já foi exportado (contabilizado).</div>'}
+     <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="novopagok" ${its.length?'':'disabled'}>Criar Lote de Pagamento</button></div>`,true)}
+  const docs=elegiveis();
+  modal(`<h2>${l?'Incluir documentos no lote':'Novo Lote de Provisionamento'}</h2>
    ${l?'':`<label class="f req">Entidade</label><select disabled><option>${ENT}</option></select>
    <label class="f req">Mês Contábil</label><input type="month" id="nlMes" value="${isoDay(0).slice(0,7)}">`}
    <label class="f">Documentos com análise contábil concluída e fora de lote</label>
    ${docs.length?`<div class="tw"><table class="t"><tr><th></th><th>Código</th><th>Documento</th><th class="num">Valor</th></tr>${docs.map(d=>`<tr><td><input type="checkbox" class="nlDoc" value="${d.id}" checked></td><td>${esc(d.codigo)}</td><td>${esc(d.tipo)} ${esc(d.numero)} - ${esc(pessoa(d.forn).nome)}</td><td class="num">${brl(d.valor)}</td></tr>`).join('')}</table></div>`
     :'<div class="warnbox">Nenhum documento disponível. Conclua a análise contábil de algum documento na Revisão.</div>'}
    <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="${l?'addloteok':'novoloteok'}" ${docs.length?'':'disabled'}>${l?'Incluir':'Criar Lote'}</button></div>`,true)}
-
+// efeitos de um lote ao ser contabilizado (exportado) e ao ser estornado
+function aoContabilizar(l){const t=tipoLote(l);
+  if(t==='pagamento')(l.itens||[]).forEach(i=>{const d=S.docs.find(x=>x.id===i.docId);if(!d)return;d.pagos=d.pagos||{};d.pagos[i.n]={loteId:l.id,data:l.dataPag};hist(d,`${i.n}ª parcela paga em ${dt(l.dataPag)} (${l.numero})`)});
+  else if(t==='provisionamento')docsLote(l).forEach(d=>hist(d,'Provisionamento contabilizado: lote '+l.numero))}
+function aoEstornar(orig,est){const t=tipoLote(orig);
+  if(t==='provisionamento')docsLote(orig).forEach(d=>{d.loteId=null;d.contabil.status='aguardando';d.contabil.lanc.forEach(x=>x.pronto=false);hist(d,`Provisionamento estornado (${est.numero}): documento volta para a análise contábil`)});
+  if(t==='pagamento')(orig.itens||[]).forEach(i=>{const d=S.docs.find(x=>x.id===i.docId);if(d&&d.pagos&&d.pagos[i.n]?.loteId===orig.id){delete d.pagos[i.n];hist(d,`Pagamento da ${i.n}ª parcela estornado (${est.numero})`)}})}
 /* =============== PLANO DE CONTAS =============== */
 function vPlano(){
   const q=ui.pBusca.toLowerCase();const F=ui.pFiltro;
@@ -1408,7 +1482,7 @@ const A={
   reset(){confirmar('Apagar documentos e lotes','Remove todos os documentos e lotes deste navegador. Pessoas, plano de contas, centros de custo e vínculo com o SysContábil continuam.',()=>{const k={plano:S.plano,deptos:S.deptos,subs:S.subs,integ:S.integ,cfg:S.cfg,pessoas:S.pessoas,seq:S.seq,loteSeq:S.loteSeq};S=seed();Object.assign(S,k);indexar();save();render()},'Apagar')},
   novo(){const d=novoDoc();S.docs.push(d);ui.draft=d.id;save();rerender()},
   seldraft(el){ui.draft=el.dataset.id;rerender()},
-  descartar(){const d=curDraft();confirmar('Atenção!','Deseja realmente descartar o documento em criação?',()=>{S.docs=S.docs.filter(x=>x.id!==d.id);ui.draft=null;save();rerender()})},
+  descartar(){const d=curDraft();confirmar('Atenção!','Deseja realmente descartar o documento em criação?',()=>{S.docs=S.docs.filter(x=>x.id!==d.id);apagarAnexosDoc(d);ui.draft=null;save();rerender()})},
   novoforn(el,e){e.preventDefault();modal(`<h2>Adicionar pessoa</h2><div class="hint">No DRACMA o cadastro de pessoas fica em Cadastros Gerais. Aqui é só para o treinamento. Com o SysContábil vinculado, a pessoa vira subconta lá ao sincronizar.</div>
     <label class="f req">Nome / Razão social</label><input id="nfNome"><label class="f req">CNPJ ou CPF</label><input id="nfDoc">
     <label class="f">Código (sub conta)</label><input id="nfCod" placeholder="Gerado automaticamente se vazio">
@@ -1426,9 +1500,12 @@ const A={
     const eu=$('#nfEu').checked;if(eu)S.pessoas.forEach(p=>p.eu=false);
     const f={id:'u'+uid(),cod,nome:n,doc:fmtDoc(dd),regime:$('#nfReg').value,func:$('#nfFunc').checked||eu,...(eu?{eu:true}:{}),...(banco?{banco}:{})};S.pessoas.push(f);
     const d=curDraft();if(!eu||!d.forn){d.forn=f.id;d.salvo=false}save();closeModal();rerender()},
-  rmanexo(){const d=curDraft();d.anexo=null;save();rerender()},
-  processar(){const d=curDraft();const a=d.anexo;if(!a)return;
-    if(a.xml)toast('Os dados do XML já foram preenchidos na importação.');
+  anxsel(el,e){if(e.target.closest('[data-act="anxdel"]')!==null&&e.target.closest('[data-act="anxdel"]')!==el)return;const d=S.docs.find(x=>x.id===el.dataset.doc);if(!d)return;d.anxSel=+el.dataset.i;rerender()},
+  anxdel(el,e){e.stopPropagation();const d=S.docs.find(x=>x.id===el.dataset.doc);const i=+el.dataset.i;const a=d?.anexos[i];if(!a)return;
+    confirmar('Atenção!',`Deseja excluir o anexo <b>${esc(a.nome)}</b>?`,async()=>{d.anexos.splice(i,1);d.anxSel=0;await anxDel(a.id);hist(d,'Anexo excluído: '+a.nome);save();rerender()},'Excluir')},
+  anxprinc(el){const d=S.docs.find(x=>x.id===el.dataset.doc);const i=+el.dataset.i;const [a]=d.anexos.splice(i,1);d.anexos.unshift(a);d.anxSel=0;hist(d,'Anexo principal: '+a.nome);save();rerender()},
+  processar(){const d=curDraft();const a=(d.anexos||[]).find(x=>x.xml);
+    if(a)toast('Os dados do XML já foram preenchidos na importação.');
     else alerta('Processar','O preenchimento automático funciona com o XML da NF-e (botão Importar XML). Para PDF ou imagem, digite os dados olhando o anexo.','warn')},
   xml(){modal(`<h2>Importar XML</h2><p>Selecione o XML de uma NF-e. Ele é lido só aqui no navegador, nada é enviado.</p>
     <label class="btn dark">Escolher arquivo XML<input type="file" accept=".xml,text/xml" data-act-change="xmlfile" hidden></label>
@@ -1463,7 +1540,7 @@ const A={
   abrir(el){ui.tab=null;go('#/doc/'+el.dataset.id)},
   proxima(){const d=docAtual();const L=listaFiltrada();const i=L.findIndex(x=>x.id===d.id);const n=L[i+1]||L[0];if(n&&n.id!==d.id){ui.tab=null;go('#/doc/'+n.id)}else toast('Não há outro documento na lista.')},
   tab(el){ui.tab=el.dataset.t;ui.srvEdit=false;rerender()},
-  excluirdoc(){const d=docAtual();confirmar('Excluir documento','O documento será excluído.',()=>{S.docs=S.docs.filter(x=>x!==d);save();go('#/revisao')},'Excluir')},
+  excluirdoc(){const d=docAtual();confirmar('Excluir documento','O documento e seus anexos serão excluídos.',()=>{S.docs=S.docs.filter(x=>x!==d);apagarAnexosDoc(d);save();go('#/revisao')},'Excluir')},
   cancaprov(){const d=docAtual();confirmar('Cancelar Aprovação','O documento volta para Cadastrar Documento, em criação.',()=>{devolverDoc(d,'',true);save();go('#/revisao')},'Cancelar Aprovação')},
   // Fiscal
   validar(){const d=docAtual();d.fiscal.validacao=validarChave(d);save();rerender()},
@@ -1522,19 +1599,40 @@ const A={
   reabrirCont(){const d=docAtual();confirmar('Cancelar Análise Contábil','O documento volta para "Aguardando Análise Contábil".',()=>{d.contabil.status='aguardando';d.contabil.lanc.forEach(l=>l.pronto=false);hist(d,'Análise contábil cancelada');save();rerender()},'Cancelar Análise Contábil')},
   cmt(){const t=$('#cmt').value.trim();if(!t)return;const d=docAtual();d.coments.push({por:EU,em:nowIso(),t});hist(d,'Comentário adicionado');save();rerender()},
   // Lotes
-  novolote(){modalLote(null)},
+  novolote(el){modalLote(null,el.dataset.t||'provisionamento')},
   novoloteok(){const ids=[...document.querySelectorAll('.nlDoc:checked')].map(c=>c.value);if(!ids.length)return toast('Selecione ao menos um documento.');
-    const l={id:String(Date.now())+'0'.repeat(6),numero:'',mes:$('#nlMes').value||isoDay(0).slice(0,7),criado:nowIso(),por:EU,status:'aguardando',verif:null,docs:ids};
-    S.lotes.push(l);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;hist(d,'Incluído no lote '+l.id)});save();closeModal();go('#/lote/'+l.id)},
+    const l={id:String(Date.now())+'0'.repeat(6),tipo:'provisionamento',numero:'',mes:$('#nlMes').value||isoDay(0).slice(0,7),criado:nowIso(),por:EU,status:'aguardando',verif:null,docs:ids};
+    S.lotes.push(l);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;hist(d,'Incluído no lote de provisionamento '+l.id)});save();closeModal();go('#/lote/'+l.id)},
+  novopagok(){const its=parcelasAPagar();const sel=[...document.querySelectorAll('.nlPar:checked')].map(c=>its[+c.value]).filter(Boolean);
+    if(!sel.length)return toast('Selecione ao menos uma parcela.');const data=$('#nlData').value,banco=$('#nlBanco').value;if(!data||!banco)return toast('Informe a data do pagamento e a conta bancária.');
+    const l={id:String(Date.now())+'0'.repeat(6),tipo:'pagamento',numero:'',mes:data.slice(0,7),criado:nowIso(),por:EU,status:'aguardando',verif:null,dataPag:data,banco,
+      itens:sel.map(i=>({docId:i.docId,n:i.n})),grupos:gruposPagamento(sel,data,banco)};
+    S.lotes.push(l);save();closeModal();go('#/lote/'+l.id)},
   addlote(){modalLote(loteAtual())},
-  addloteok(){const l=loteAtual();const ids=[...document.querySelectorAll('.nlDoc:checked')].map(c=>c.value);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;l.docs.push(id);hist(d,'Incluído no lote '+l.id)});l.verif=null;save();closeModal();rerender()},
+  addloteok(){const l=loteAtual();const ids=[...document.querySelectorAll('.nlDoc:checked')].map(c=>c.value);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;l.docs.push(id);hist(d,'Incluído no lote de provisionamento '+l.id)});l.verif=null;save();closeModal();rerender()},
   abrirlote(el){go('#/lote/'+el.dataset.id)},
-  tiradoc(el){const l=loteAtual();const d=S.docs.find(x=>x.id===el.dataset.id);confirmar('Atenção!','Retirar este documento do lote? Ele volta a ficar disponível para outro lote.',()=>{l.docs=l.docs.filter(x=>x!==d.id);d.loteId=null;l.verif=null;hist(d,'Retirado do lote '+l.id);save();rerender()},'Retirar')},
-  dellote(){const l=loteAtual();confirmar('Excluir Lote','Os documentos voltam a ficar disponíveis para outro lote.',()=>{l.docs.forEach(id=>{const d=S.docs.find(x=>x.id===id);if(d){d.loteId=null;hist(d,'Lote '+l.id+' excluído')}});S.lotes=S.lotes.filter(x=>x!==l);save();go('#/lotes')},'Excluir')},
+  tiragrupo(el){const l=loteAtual();const i=+el.dataset.i;const g=grupos(l)[i];if(!g)return;
+    confirmar('Atenção!','Retirar este documento do lote? Ele volta a ficar disponível para outro lote.',()=>{
+      if(tipoLote(l)==='provisionamento'){l.docs=l.docs.filter(x=>x!==g.docId);const d=S.docs.find(x=>x.id===g.docId);if(d){d.loteId=null;hist(d,'Retirado do lote '+l.id)}}
+      else{l.grupos.splice(i,1);l.itens=(l.itens||[]).filter(x=>x.docId!==g.docId)}
+      l.verif=null;save();rerender()},'Retirar')},
+  dellote(){const l=loteAtual();confirmar('Excluir Lote',tipoLote(l)==='provisionamento'?'Os documentos voltam a ficar disponíveis para outro lote.':'As parcelas voltam a ficar disponíveis para outro lote de pagamento.',()=>{
+    if(tipoLote(l)==='provisionamento')docsLote(l).forEach(d=>{d.loteId=null;hist(d,'Lote '+l.id+' excluído')});
+    S.lotes=S.lotes.filter(x=>x!==l);save();go('#/lotes')},'Excluir')},
   verificar(){const l=loteAtual();const v=verificarLote(l);save();rerender();toast(v.ok?'Lote verificado sem erros.':'Foram encontrados '+v.erros.length+' erro(s).')},
   exportar(){const l=loteAtual();const v=verificarLote(l);if(!v.ok){save();rerender();return alerta('Lote com erros','Corrija os erros listados antes de exportar.')}
-    confirmar('Exportar lote',`Será gerado o arquivo CSV${vinculado()?` e o lote será enviado para a atividade <b>${ATIVIDADE}</b> do SysContábil`:''}. O lote passa para <b>Contabilizado</b>.`,async()=>{S.loteSeq++;l.numero='PG - '+S.loteSeq;l.status='contabilizado';l.exportado=nowIso();
-      docsLote(l).forEach(d=>hist(d,'Lote '+l.numero+' exportado'));save();baixarCsv(l);toast('CSV gerado: '+esc(l.numero));await enviarLoteSys(l);rerender()},'Exportar')},
+    confirmar('Exportar lote',`Será gerado o arquivo CSV${vinculado()?` e o lote será enviado para a atividade <b>${ATIVIDADE}</b> do SysContábil`:''}. O lote passa para <b>Contabilizado</b>.`,async()=>{
+      l.grupos=JSON.parse(JSON.stringify(grupos(l)));   // guarda os lançamentos como foram contabilizados
+      S.loteSeq++;l.numero='PG - '+S.loteSeq;l.status='contabilizado';l.exportado=nowIso();
+      aoContabilizar(l);save();baixarCsv(l);toast('CSV gerado: '+esc(l.numero));await enviarLoteSys(l);rerender()},'Exportar')},
+  estornar(){const l=loteAtual();const t=tipoLote(l);
+    if(t==='provisionamento'){const pagos=new Set();docsLote(l).forEach(d=>parcelas(d).forEach(p=>{const pg=pagoEm(d,p.n);if(pg)pagos.add(loteNum(pg.loteId))}));
+      if(pagos.size)return alerta('Estornar Lote',`Há parcelas destes documentos pagas pelo(s) lote(s) <b>${[...pagos].map(esc).join(', ')}</b>. Estorne o pagamento antes do provisionamento.`);
+      if(S.lotes.some(x=>x.status!=='contabilizado'&&tipoLote(x)==='pagamento'&&(x.itens||[]).some(i=>(l.docs||[]).includes(i.docId))))return alerta('Estornar Lote','Há lote de pagamento em aberto com estes documentos. Exclua esse lote antes de estornar.')}
+    confirmar('Estornar Lote',`Será gerado um lote de <b>Estorno</b> com os valores invertidos de <b>${esc(l.numero)}</b>, já contabilizado (CSV${vinculado()?' e envio ao SysContábil':''}).<br><br>${t==='provisionamento'?'Os documentos voltam para "Aguardando Análise Contábil" e podem ser corrigidos e provisionados de novo.':'As parcelas voltam a ficar a pagar.'}`,async()=>{
+      S.loteSeq++;const e={id:String(Date.now())+'0'.repeat(6),tipo:'estorno',ref:l.id,refTipo:t,numero:'PG - '+S.loteSeq,mes:isoDay(0).slice(0,7),criado:nowIso(),por:EU,status:'contabilizado',exportado:nowIso(),verif:null,
+        grupos:grupos(l).map(g=>({docId:g.docId,titulo:`Estorno ${l.numero} - ${g.titulo}`,linhas:g.linhas.map(y=>({...y,id:uid(),valor:-y.valor,desc:'Estorno '+y.desc}))}))};
+      S.lotes.push(e);l.estornadoPor=e.id;aoEstornar(l,e);save();baixarCsv(e);toast('Lote estornado: '+esc(e.numero));await enviarLoteSys(e);go('#/lote/'+e.id)},'Estornar')},
   baixar(){baixarCsv(loteAtual())},
   async reenviar(){await enviarLoteSys(loteAtual());rerender()},
   // Centros de custo (antes do vínculo; depois vêm do SysContábil)
@@ -1567,7 +1665,7 @@ function enviarDoc(d){if(!d.codigo)d.codigo=novoCodigo();d.etapa='revisao';d.env
   modal(`<h2>Documento enviado</h2><div class="okbox">${esc(d.tipo)} ${esc(d.numero)} — ${brl(d.valor)} foi enviado com o código <b>${esc(d.codigo)}</b>.<br>
    ${d.fiscal.status==='pendente'?'Status: <b>Aprovado - Aguardando Análise Fiscal</b>.':'Esse tipo não passa por análise fiscal. Próxima etapa: <b>Análise Contábil</b>.'}</div>
    <div class="row"><span class="sp"></span><button class="btn" data-act="mclose">Continuar cadastrando</button><a class="btn dark" href="#/doc/${d.id}" data-act="mclose">Abrir na Revisão</a></div>`)}
-function importarXml(txt,nome){let x;try{x=new DOMParser().parseFromString(txt,'text/xml')}catch(e){}
+function importarXml(txt,nome,file){let x;try{x=new DOMParser().parseFromString(txt,'text/xml')}catch(e){}
   const g=t=>x?.getElementsByTagName(t)[0]?.textContent?.trim()||'';
   const emit=x?.getElementsByTagName('emit')[0];const cnpj=emit?(emit.getElementsByTagName('CNPJ')[0]||emit.getElementsByTagName('CPF')[0])?.textContent.trim():'';
   const nomeE=emit?.getElementsByTagName('xNome')[0]?.textContent.trim();const vNF=parseFloat(g('vNF'));
@@ -1576,8 +1674,7 @@ function importarXml(txt,nome){let x;try{x=new DOMParser().parseFromString(txt,'
   const d=curDraft();d.tipo='NFe';d.forn=f.id;d.numero=g('nNF');d.serie=g('serie');d.emissao=(g('dhEmi')||g('dEmi')).slice(0,10);d.valor=r2(vNF);
   d.chave=digits(x.getElementsByTagName('infNFe')[0]?.getAttribute('Id')||g('chNFe'));d.salvo=false;d.origemXml=true;
   const it=[...x.getElementsByTagName('prod')].map(p=>[p.getElementsByTagName('xProd')[0]?.textContent,+p.getElementsByTagName('qCom')[0]?.textContent,+p.getElementsByTagName('vUnCom')[0]?.textContent]);
-  d.anexo={tipo:'nfe',xml:true,nome,forn:f.id,numero:d.numero,serie:d.serie,chave:d.chave,emissao:d.emissao,valor:d.valor,dados:{itens:it}};
-  save();closeModal();rerender();toast('XML importado: emitente, série, número, chave, emissão e valor preenchidos. Complete a Finalidade e salve.')}
+  save();closeModal();if(file)anexarArquivos(d,[file],{xml:true});else rerender();toast('XML importado: emitente, série, número, chave, emissão e valor preenchidos. Complete a Finalidade e salve.')}
 
 /* =============== EVENTOS =============== */
 document.addEventListener('click',e=>{const ln=e.target.closest('a[href^="#/"]');if(ln){e.preventDefault();if(ln.dataset.act==='mclose')closeModal();go(ln.getAttribute('href'));return}
@@ -1586,8 +1683,8 @@ document.addEventListener('change',e=>{const el=e.target;const k=el.dataset.actC
   if(k==='next'){S.prefs.next=el.checked;save()}
   else if(k==='pfiltro'){ui.pFiltro=el.value;rerender()}
   else if(k==='reemb'){S.cfg=S.cfg||{};S.cfg.reemb=el.value;indexar();save();rerender();toast('Reembolsos a funcionário passam a creditar '+esc(contaTxt(el.value))+'.')}
-  else if(k==='arquivo'){const file=el.files[0];if(!file)return;const d=curDraft();d.anexo={arquivo:true,nome:file.name,mime:file.type,url:/^image\//.test(file.type)?URL.createObjectURL(file):''};save();rerender()}
-  else if(k==='xmlfile'){const file=el.files[0];if(!file)return;file.text().then(t=>importarXml(t,file.name))}
+  else if(k==='anxadd'){const d=S.docs.find(x=>x.id===el.dataset.doc);if(d&&el.files.length)anexarArquivos(d,[...el.files])}
+  else if(k==='xmlfile'){const file=el.files[0];if(!file)return;file.text().then(t=>importarXml(t,file.name,file))}
   else if(['tipo','emissao'].includes(el.dataset.b)){const d=curDraft();d[el.dataset.b]=el.value;d.salvo=false;save();rerender()}
   else if(el.dataset.b==='forn'){const d=curDraft();const v=el.value.trim().toLowerCase();const f=S.pessoas.find(z=>(z.nome+' - '+z.doc).toLowerCase()===v)||S.pessoas.find(z=>v&&(z.nome.toLowerCase().includes(v)||digits(z.doc)===digits(v)&&digits(v).length>=11));
     d.forn=f?f.id:'';d.salvo=false;if(d.liberado&&f&&!d.pag.benef)d.pag.benef=f.id;save();rerender();if(!f&&v)toast('Emitente não encontrado. Selecione da lista ou adicione a pessoa.')}
@@ -1624,6 +1721,11 @@ document.addEventListener('input',e=>{const el=e.target;
   else if(el.dataset.p&&['linha','pix','ag','agDv','conta','contaDv'].includes(el.dataset.p)){const d=curDraft();d.pag[el.dataset.p]=el.value;save();resumoEnvio()}
   else if(['busca','pBusca','dBusca'].includes(el.id)){ui[el.id]=el.value;const pos=el.selectionStart;rerender();const b=$('#'+el.id);b.focus();b.setSelectionRange(pos,pos)}
 });
+// Arrastar e soltar arquivos na área de anexos
+document.addEventListener('dragover',e=>{const z=e.target.closest('[data-drop]');if(z){e.preventDefault();z.style.outline='2px dashed var(--blue)'}});
+document.addEventListener('dragleave',e=>{const z=e.target.closest('[data-drop]');if(z)z.style.outline=''});
+document.addEventListener('drop',e=>{const z=e.target.closest('[data-drop]');if(!z)return;e.preventDefault();z.style.outline='';
+  const d=S.docs.find(x=>x.id===z.dataset.drop);if(d&&e.dataTransfer.files.length)anexarArquivos(d,[...e.dataTransfer.files])});
 window.addEventListener('popstate',()=>render());window.addEventListener('hashchange',()=>render());
 
 load();checkMissoes();render();fb();carregarPlanoSys();
