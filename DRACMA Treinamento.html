@@ -702,35 +702,7 @@ const RESTR={'0A':'0A - Ativo e Passivo ou Sem Restrição','0E':'0E - Despesas 
 const SEDE='3310000';
 const EU='Você (Treinamento)';
 
-const PESSOAS0 = [
- {id:'f1',cod:'1201',nome:'Papelaria Horizonte Ltda',doc:'11.222.333/0001-01',regime:'Simples Nacional'},
- {id:'f2',cod:'1202',nome:'Clima Certo Manutenção de Ar Condicionado Ltda',doc:'22.333.444/0001-02',regime:'Lucro Real ou Presumido'},
- {id:'f3',cod:'1203',nome:'Condomínio Edifício Exemplo',doc:'33.444.555/0001-03',regime:'Imune e Isenta'},
- {id:'f4',cod:'1204',nome:'Distribuidora Limpa Bem Ltda',doc:'44.555.666/0001-04',regime:'Lucro Real ou Presumido'},
- {id:'f6',cod:'1206',nome:'Companhia de Energia Exemplo S.A.',doc:'55.666.777/0001-05',regime:'Lucro Real ou Presumido'},
- {id:'f7',cod:'1207',nome:'Saneamento Exemplo S.A.',doc:'66.777.888/0001-06',regime:'Lucro Real ou Presumido'},
- {id:'f8',cod:'1208',nome:'Condomínio Residencial Jardim Modelo',doc:'77.888.999/0001-07',regime:'Imune e Isenta'},
- {id:'f9',cod:'1209',nome:'TecnoServ Soluções em TI Ltda',doc:'88.999.000/0001-08',regime:'Lucro Real ou Presumido'},
- {id:'f10',cod:'1210',nome:'Gráfica Ponto Final Ltda',doc:'99.000.111/0001-09',regime:'Simples Nacional'},
- {id:'f11',cod:'1211',nome:'Ana Paula Fotografias ME',doc:'10.203.040/0001-10',regime:'Simples Nacional'},
- {id:'f13',cod:'1213',nome:'Mercado Bom Preço Ltda',doc:'20.304.050/0001-20',regime:'Lucro Real ou Presumido'},
- {id:'f12',cod:'4501',nome:'Ana Exemplo',doc:'987.654.321-00',func:true,banco:{banco:'341 - Itaú Unibanco S.A.',tipo:'Corrente',ag:'0123',agDv:'',conta:'45678',contaDv:'9'}},
- {id:'f14',cod:'4502',nome:'Bruno Treino',doc:'876.543.210-00',func:true,banco:{banco:'001 - Banco do Brasil S.A.',tipo:'Corrente',ag:'1234',agDv:'5',conta:'98765',contaDv:'0'}},
- {id:'fEU',cod:'4999',nome:EU,doc:'111.222.333-44',func:true,banco:{banco:'756 - Banco Cooperativo Sicoob S.A.',tipo:'Corrente',ag:'4321',agDv:'',conta:'11223',contaDv:'4'}}
-];
-const PESSOA_REQ = {[EU]:'fEU','Ana Exemplo':'f12','Bruno Treino':'f14'};
-const AMOSTRAS = {
- a1:{titulo:'Boleto de condomínio (Jardim Modelo)',tipo:'Bol',forn:'f8',numero:'88214',emissaoOff:-2,valor:640.00,vencOff:10,
-     linha:'23790.12345 60000.123456 78901.234567 8 99990000064000',finalidade:'Locação - Condomínio - Apartamentos Professores',
-     dica:'Rateie: R$ 400,00 em 3312001 (CAM - Sede Escola) e R$ 240,00 em 3315001 (EAA - Sede Escola), categoria Condomínios.'},
- a2:{titulo:'NFSe de suporte de TI (TecnoServ)',tipo:'NFSe',forn:'f9',numero:'2318',emissaoOff:-1,valor:2400.00,vencOff:15,
-     servico:'Suporte técnico em informática - setembro',ret:{IRRF:36.00,CSRF:111.60},finalidade:'Suporte de TI - setembro'},
- a3:{titulo:'NFe de material de escritório (Papelaria Horizonte)',tipo:'NFe',forn:'f1',numero:'4791',serie:'1',emissaoOff:-3,valor:389.90,vencOff:20,
-     itens:[['Papel A4 75g (cx 10 resmas)',1,259.90],['Caneta esferográfica azul (cx 50)',2,45.00],['Grampos 26/6 (cx)',4,10.00]],finalidade:'Material de escritório - secretaria'},
- a4:{titulo:'NFCe do mercado paga por você (reembolso)',tipo:'NFCe',forn:'f13',numero:'383101',serie:'2',emissaoOff:0,valor:126.40,vencOff:2,
-     itens:[['Bolo e salgados - reunião pedagógica',1,126.40]],finalidade:'Reembolso - lanche reunião pedagógica',
-     dica:'O emitente é o mercado, mas quem recebe é você: no Pagamento use "Reembolso Padrão".'}
-};
+const AMOSTRAS = {};   // sem documentos de exemplo
 
 /* =============== UTIL =============== */
 const $ = s => document.querySelector(s);
@@ -774,14 +746,14 @@ const ehLancavel = (c,role) => /^\d+(\.\d+)*$/.test(c) && digits(c).length===7 &
 const contaDoChart = a => ({c:String(a.code),n:String(a.name),a:ehLancavel(String(a.code),a.role),on:true,t:a.type||tipoConta(String(a.code)),...(a.role?{role:a.role}:{})});
 
 /* =============== ESTADO =============== */
-const KEY='dracma-treino-v4';
+const KEY='dracma-treino-v5';
 let S;
 const planoPadrao = () => parseLista('planoPadrao').map(([code,n])=>{const [name,role]=n.split(' | ');return contaDoChart({code,name,role})});
 // No site, lê o plano padrão direto do SysContábil (garante que é o mesmo); localmente fica a cópia embutida
 async function carregarPlanoSys(){if(vinculado())return;try{const m=await import('./syscontabil/js/chartOfAccounts.js');
   const novo=m.FULL_CHART.map(contaDoChart);const k=p=>p.map(x=>x.c+'|'+x.n).join('\n');
   if(novo.length&&!vinculado()&&k(novo)!==k(S.plano)){S.plano=novo;indexar();save();rerender()}}catch(e){}}
-const deptosPadrao = () => parseLista('deptosPadrao').map(([c,n],i)=>({c,n,orc:[1850000,-42000,18500,96000,12400,5300,-8700,3900,27000,6100,51000][i%11],on:true}));
+const deptosPadrao = () => parseLista('deptosPadrao').map(([c,n],i)=>({c,n,orc:null,on:true}));
 let PL={},DP={},SUBS={};
 function indexar(){PL=Object.fromEntries(S.plano.map(p=>[p.c,p]));DP=Object.fromEntries(S.deptos.map(p=>[p.c,p]));
   SUBS={};(S.subs||[]).forEach(s=>(SUBS[s.c]=SUBS[s.c]||[]).push(s));
@@ -802,78 +774,15 @@ function novoDoc(){return {id:uid(),codigo:'',tipo:'',forn:'',emissao:'',serie:'
 function hist(d,t){d.hist.unshift({em:nowIso(),por:EU,t})}
 
 function seed(){
-  const s={seq:3400100,loteSeq:178,pessoas:JSON.parse(JSON.stringify(PESSOAS0)),docs:[],lotes:[],flags:{done:{}},prefs:{next:true},plano:planoPadrao(),deptos:deptosPadrao(),subs:[],integ:null};
+  const s={seq:3400100,loteSeq:0,pessoas:[],docs:[],lotes:[],flags:{},prefs:{next:true},plano:planoPadrao(),deptos:deptosPadrao(),subs:[],integ:null};
   S=s;indexar();
-  const mk=(o)=>{const d=Object.assign(novoDoc(),o);d.pag=Object.assign(novoPag(),o.pag);d.codigo=novoCodigo();d.etapa='revisao';d.salvo=d.liberado=true;d.mine=false;
-    d.criadoEm=isoDay(o._c||-1)+'T09:'+pad(10+s.docs.length*6);d.enviadoEm=isoDay(o._c||-1)+'T09:'+pad(12+s.docs.length*6);
-    d.fiscal.status=FISCAL.has(d.tipo)?'pendente':'nao_aplica';d.pag.benef=d.pag.benef||d.forn;
-    if(MODELO[d.tipo]&&!d.chave)d.chave=gerarChave(pessoa(d.forn).doc,d.emissao,MODELO[d.tipo],d.serie,d.numero);
-    d.hist=[{em:d.enviadoEm,por:d.requisitante,t:'Documento aprovado e enviado para revisão'},{em:d.criadoEm,por:d.requisitante,t:'Documento criado'}];
-    s.docs.push(d);return d};
-  mk({seedKey:'nfe',tipo:'NFe',forn:'f1',numero:'4512',serie:'1',emissao:isoDay(-3),valor:846.30,finalidade:'Material de escritório - coordenação',
-     requisitante:'Ana Exemplo',rateio:[{cat:'Material de Escritório',cc:'3312002',valor:846.30,desc:''}],
-     pag:{forma:'Boleto',venc:isoDay(7),linha:'34191.79001 01043.510047 91020.150008 1 99990000084630'},
-     anexo:{tipo:'nfe',nome:'DANFE 4512 Papelaria Horizonte.pdf',dados:{itens:[['Papel A4 75g (cx 10 resmas)',2,259.90],['Pasta suspensa (cx 50)',1,189.50],['Toner compatível',1,137.00]]}}});
-  // chave com número errado: o fiscal deve corrigir o número ou a chave
-  const n2=mk({seedKey:'chave',tipo:'NFe',forn:'f10',numero:'10552',serie:'1',emissao:isoDay(-2),valor:1180.00,finalidade:'Banners e folders - Mostra Cultural',
-     requisitante:'Bruno Treino',rateio:[{cat:'Material de Publicidade',cc:'3312900',valor:1180,desc:''}],
-     pag:{forma:'PIX',venc:isoDay(9),pix:'99.000.111/0001-09'},
-     anexo:{tipo:'nfe',nome:'DANFE 10525 Gráfica Ponto Final.pdf',numero:'10525',dados:{itens:[['Banner lona 90x120',4,95.00],['Folder A4 (milheiro)',2,400.00]]}}});
-  n2.chave=gerarChave(pessoa('f10').doc,n2.emissao,'55','1','10525');
-  mk({seedKey:'nfse',tipo:'NFSe',forn:'f2',numero:'1208',emissao:isoDay(-2),valor:3200.00,finalidade:'Manutenção preventiva ar-condicionado - bloco B',
-     requisitante:'Bruno Treino',rateio:[{cat:'Conservação de Máquinas e Equipamentos',cc:'3311001',valor:3200,desc:''}],
-     pag:{forma:'PIX',venc:isoDay(10),pix:'22.333.444/0001-02'},
-     anexo:{tipo:'nfse',nome:'NFSe 1208 Clima Certo.pdf',dados:{servico:'Manutenção preventiva e limpeza de 16 aparelhos de ar-condicionado (item 14.01)',ret:{IRRF:32.00,CSRF:148.80}}}});
-  mk({seedKey:'bol',tipo:'Bol',forn:'f3',numero:'16090',emissao:isoDay(-1),valor:512.40,finalidade:'Locação - Condomínio - Tesouraria',
-     requisitante:'Ana Exemplo',rateio:[{cat:'Condomínios',cc:'3310000',valor:12.40,desc:''},{cat:'Condomínios',cc:'3315001',valor:500,desc:''}],
-     pag:{forma:'Boleto',venc:isoDay(5),linha:'74891.16009 02906.407230 14917.821085 4 99990000051240'},
-     anexo:{tipo:'bol',nome:'Boleto Condomínio Edifício Exemplo.pdf',dados:{}}});
-  mk({seedKey:'div',tipo:'NFe',forn:'f4',numero:'77301',serie:'1',emissao:isoDay(-4),valor:1520.00,finalidade:'Material de limpeza - outubro',
-     requisitante:'Ana Exemplo',rateio:[{cat:'Material de Higiene e Limpeza',cc:'3312002',valor:1520,desc:''}],
-     pag:{forma:'Boleto',venc:isoDay(12),linha:'10490.00012 34567.800019 23456.780123 6 99990000152000'},
-     anexo:{tipo:'nfe',nome:'DANFE 77301 Limpa Bem.pdf',dados:{valorReal:1250.00,itens:[['Detergente neutro 5L',10,38.50],['Papel toalha interfolha (fardo)',8,62.00],['Saco de lixo 100L (pct)',15,25.00],['Álcool 70% 5L',3,72.00]]}}});
-  mk({seedKey:'reemb',tipo:'NFCe',forn:'f13',numero:'383097',serie:'2',emissao:isoDay(-1),valor:89.90,finalidade:'Reembolso - materiais para reunião de pais',
-     requisitante:'Ana Exemplo',rateio:[{cat:'Material de Consumo',cc:'3315002',valor:89.90,desc:''}],
-     pag:{forma:'Transferência Bancária',venc:isoDay(2),benef:'f12',...pessoa('f12').banco,tipoConta:'Corrente',padrao:true},
-     anexo:{tipo:'nfe',nome:'NFCe 383097 Mercado Bom Preço.pdf',dados:{itens:[['Copos, pratos e guardanapos',1,89.90]]}}});
-  mk({seedKey:'rec',tipo:'REC',forn:'f11',numero:'208',emissao:isoDay(-1),valor:780.00,finalidade:'Fotografia - formatura infantil',
-     requisitante:'Bruno Treino',rateio:[{cat:'Prestação de Serviços PJ',cc:'3312705',valor:780,desc:''}],
-     pag:{forma:'Transferência Bancária',venc:isoDay(3),banco:'001 - Banco do Brasil S.A.',ag:'2233',agDv:'1',conta:'55443',contaDv:'2'},
-     anexo:{tipo:'rec',nome:'Recibo 208.pdf',dados:{servico:'Cobertura fotográfica da formatura do infantil (Simples Nacional)'}}});
-  const e=mk({seedKey:'fat',tipo:'Fat',forn:'f6',numero:'550012',emissao:isoDay(-6),valor:2180.55,finalidade:'Energia elétrica - setembro',
-     requisitante:'Ana Exemplo',_c:-5,rateio:[{cat:'Energia Elétrica',cc:'3312001',valor:2180.55,desc:''}],
-     pag:{forma:'Débito Automático',venc:isoDay(4)},anexo:{tipo:'fat',nome:'Fatura Energia 550012.pdf',dados:{}}});
-  e.fiscal.status='nao_aplica';const L=gerarLanc(e);L.linhas[0].conta='4.2.02.003';L.pronto=true;e.contabil.lanc=[L];e.contabil.status='concluida';
-  e.hist.unshift({em:isoDay(-4)+'T14:20',por:'Ana Exemplo',t:'Análise contábil confirmada'});
-  mk({seedKey:'agua',tipo:'FAT-AE',forn:'f7',numero:'7712093',emissao:isoDay(-1),valor:418.73,finalidade:'Água e esgoto - setembro',
-     requisitante:'Ana Exemplo',rateio:[{cat:'Água e Esgoto',cc:'3314001',valor:418.73,desc:''}],
-     pag:{forma:'Pagamento de Contas e Tributos com Código de Barras',venc:isoDay(8),linha:'82670000004 1 18730123456 7 77120930001 2 20261000000 4'},anexo:{tipo:'agua',nome:'Fatura Água 7712093.pdf',dados:{}}});
   return s;
 }
 function load(){try{const j=localStorage.getItem(KEY);if(j){S=JSON.parse(j);indexar();return}}catch(e){}S=seed()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}checkMissoes()}
 
-/* =============== MISSÕES =============== */
-const MISSOES = [
- {id:'m1',t:'Cadastre um boleto com rateio',d:'Em Cadastrar Documento, anexe o exemplo "Boleto de condomínio", use Processar, rateie em dois centros de custo, informe o pagamento e envie.',
-  ok:()=>S.docs.some(d=>d.mine&&d.etapa==='revisao'&&d.tipo==='Bol'&&d.rateio.length>=2)},
- {id:'m2',t:'Cadastre um reembolso',d:'Use o exemplo "NFCe do mercado paga por você": o emitente é o mercado e o pagamento vai para você. Use "Reembolso Padrão" no Pagamento e envie.',
-  ok:()=>S.docs.some(d=>d.mine&&d.etapa==='revisao'&&d.pag.benef&&d.pag.benef!==d.forn&&pessoa(d.pag.benef).func)},
- {id:'m3',t:'Importe um XML de NF-e',d:'Use "Importar XML" (arquivo real ou o exemplo), complete rateio e pagamento e envie.',
-  ok:()=>S.docs.some(d=>d.mine&&d.etapa==='revisao'&&d.origemXml)},
- {id:'m4',t:'Confirme os dados de uma nota',d:'Na Revisão, a NFe da Gráfica Ponto Final tem o número digitado diferente da nota. Valide a chave de acesso, corrija o número na aba Fiscal e confirme a análise fiscal.',
-  ok:()=>!!S.flags.m4},
- {id:'m5',t:'Cadastre o serviço e simule as retenções',d:'Abra a NFSe da Clima Certo, cadastre o serviço (regime e serviço fiscal), simule, aplique as retenções e confira com o que está destacado na nota.',
-  ok:()=>!!S.flags.m5},
- {id:'m6',t:'Devolva um documento divergente',d:'Um documento foi lançado com valor diferente do anexo. Encontre-o e use "Devolver" com o motivo.',
-  ok:()=>!!S.flags.m6},
- {id:'m7',t:'Contabilize e conclua',d:'Gere a contabilização, escolha as contas de débito, confira débito = crédito, marque como pronto e confirme a análise contábil.',
-  ok:()=>S.docs.some(d=>d.contabil.status==='concluida'&&d.contabil.porMim)},
- {id:'m8',t:'Exporte um lote contábil',d:'Em Contábil > Lote Contábil, crie um lote, verifique e exporte. Com o SysContábil vinculado, o lote também é enviado para a atividade STNR - DRACMA.',
-  ok:()=>S.lotes.some(l=>l.status==='contabilizado')}
-];
-function checkMissoes(){S.flags.done=S.flags.done||{};MISSOES.forEach(m=>{if(!S.flags.done[m.id]&&m.ok()){S.flags.done[m.id]=true;
-  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}setTimeout(()=>toast('&#127942; Missão concluída: <b>'+esc(m.t)+'</b>'),400)}})}
+/* =============== MISSÕES (sem exemplos, sem missões) =============== */
+function checkMissoes(){}
 
 /* =============== STATUS / VALORES =============== */
 function status(d){
@@ -996,9 +905,8 @@ function confirmar(titulo,msg,cb,btn='Confirmar'){confirmCb=cb;modal(`<h2>${esc(
 
 /* =============== INÍCIO =============== */
 function vInicio(){
-  const done=MISSOES.filter(m=>S.flags.done?.[m.id]).length;
   return `${crumb('Treinamento')}<h1>Treinamento DRACMA — Contas a Pagar</h1>
-  <div class="warnbox"><b>Ambiente de treinamento — entidade STNR.</b> Nada feito aqui chega ao DRACMA real. Pessoas e valores são fictícios. ${vinculado()?`Plano de contas e centros de custo vêm do SysContábil (atividade <b>${ATIVIDADE}</b>).`:'Vincule ao SysContábil em Integração para usar o plano e os centros de custo de lá.'}</div>
+  <div class="warnbox"><b>Ambiente de treinamento — entidade STNR.</b> Nada feito aqui chega ao DRACMA real. Os dados ficam salvos neste navegador. ${vinculado()?`Plano de contas e centros de custo vêm do SysContábil (atividade <b>${ATIVIDADE}</b>).`:'Vincule ao SysContábil em Integração para usar o plano, as subcontas e os centros de custo de lá.'}</div>
   <div class="card" style="margin:16px 0"><h3>Como o documento anda</h3>
    <div class="flow">
     <div><b>1. Cadastro</b>Informações Básicas, anexo e Salvar.</div>
@@ -1006,15 +914,11 @@ function vInicio(){
     <div><b>3. Análise Fiscal</b>Confirma os dados da nota, cadastra o serviço, simula e aplica as retenções.</div>
     <div><b>4. Análise Contábil</b>Escolhe as contas de débito, confere o saldo e confirma.</div>
     <div><b>5. Lote Contábil</b>Verifica e exporta: CSV e envio para o SysContábil.</div>
-   </div></div>
-  <div class="card"><div class="row"><h3 style="margin:0">Missões</h3><span class="sp"></span><b>${done} de ${MISSOES.length}</b></div>
-   <div class="bar" style="margin:10px 0"><i style="width:${done/MISSOES.length*100}%"></i></div>
-   ${MISSOES.map((m,i)=>{const ok=S.flags.done?.[m.id];return `<div class="miss ${ok?'done':''}"><div class="ck">${ok?'&#10003;':''}</div><div><b>${i+1}. ${esc(m.t)}</b><div class="muted" style="margin-top:3px">${esc(m.d)}</div></div></div>`}).join('')}
-   <div class="row" style="margin-top:14px"><a class="btn dark" href="#/cadastrar">Começar pelo cadastro</a><a class="btn blue" href="#/revisao">Ir para a revisão</a><span class="sp"></span>
-   <button class="btn red" data-act="reset">Reiniciar treinamento</button></div>
-   <div class="muted" style="margin-top:8px">Reiniciar apaga documentos, lotes e missões. Plano de contas, centros de custo e vínculo com o SysContábil continuam.</div></div>`;
+   </div>
+   <div class="row" style="margin-top:14px"><a class="btn dark" href="#/cadastrar">Cadastrar documento</a><a class="btn blue" href="#/revisao">Revisão Fiscal e Contábil</a><span class="sp"></span>
+   <button class="btn red" data-act="reset">Apagar documentos e lotes</button></div>
+   <div class="muted" style="margin-top:8px">Apagar remove documentos e lotes deste navegador. Pessoas, plano de contas, centros de custo e vínculo com o SysContábil continuam.</div></div>`;
 }
-
 /* =============== CADASTRAR =============== */
 function drafts(){return S.docs.filter(d=>d.etapa==='criacao')}
 function curDraft(){let ds=drafts();if(!ds.length){const d=novoDoc();S.docs.push(d);save();ds=[d]}
@@ -1052,10 +956,9 @@ function vCadastrar(){
    </div>
    <div>
     <div class="row" style="margin-bottom:10px"><h3 style="margin:0">Anexos</h3><span class="sp"></span>
-     <label class="btn dark" style="margin:0">&#65291; Adicionar<input type="file" data-act-change="arquivo" hidden></label>
-     <button class="btn blue" data-act="amostra">Anexo de exemplo</button></div>
+     <label class="btn dark" style="margin:0">&#65291; Adicionar<input type="file" data-act-change="arquivo" hidden></label></div>
     ${d.anexo?`<div style="margin-bottom:10px">${anexoHtml(d)}<div class="row" style="margin-top:8px"><span class="muted">${esc(d.anexo.nome)}</span><span class="sp"></span><button class="btn sm red" data-act="rmanexo">Remover</button></div></div>`
-      :`<div class="drop" data-act="amostra"><div style="font-size:40px">&#128196;</div>Clique para anexar um documento de exemplo<div class="muted" style="font-weight:400;margin-top:6px">ou use "Adicionar" para um arquivo seu</div></div>`}
+      :`<label class="drop"><input type="file" data-act-change="arquivo" hidden><div style="font-size:40px">&#128196;</div>Clique para anexar um arquivo<div class="muted" style="font-weight:400;margin-top:6px">o arquivo fica só neste navegador</div></label>`}
     <div class="info" style="margin-top:14px"><div class="ic">i</div><div><b>Preenchimento Automático</b><br>Para preencher automaticamente os dados do documento, anexe a nota fiscal ou cupom fiscal e selecione a opção abaixo.<br>
      <button class="btn ${d.anexo?'blue':'grey'} sm" style="margin-top:8px" data-act="processar" ${d.anexo?'':'disabled'}>&#9881; Processar</button></div></div>
     ${similares(d)}
@@ -1502,7 +1405,7 @@ const A={
   'mclose-bg'(el,e){if(e.target===el)closeModal()}, mclose:closeModal,
   mok(){const cb=confirmCb;confirmCb=null;closeModal();if(cb)cb()},
   fora(){toast('Esta função existe no DRACMA real, mas não faz parte deste treinamento.')},
-  reset(){confirmar('Reiniciar treinamento','Apaga documentos, lotes e missões deste navegador e volta aos exemplos. Plano de contas, centros de custo e vínculo continuam.',()=>{const k={plano:S.plano,deptos:S.deptos,subs:S.subs,integ:S.integ,cfg:S.cfg};S=seed();Object.assign(S,k);indexar();save();render()},'Reiniciar')},
+  reset(){confirmar('Apagar documentos e lotes','Remove todos os documentos e lotes deste navegador. Pessoas, plano de contas, centros de custo e vínculo com o SysContábil continuam.',()=>{const k={plano:S.plano,deptos:S.deptos,subs:S.subs,integ:S.integ,cfg:S.cfg,pessoas:S.pessoas,seq:S.seq,loteSeq:S.loteSeq};S=seed();Object.assign(S,k);indexar();save();render()},'Apagar')},
   novo(){const d=novoDoc();S.docs.push(d);ui.draft=d.id;save();rerender()},
   seldraft(el){ui.draft=el.dataset.id;rerender()},
   descartar(){const d=curDraft();confirmar('Atenção!','Deseja realmente descartar o documento em criação?',()=>{S.docs=S.docs.filter(x=>x.id!==d.id);ui.draft=null;save();rerender()})},
@@ -1511,33 +1414,25 @@ const A={
     <label class="f">Código (sub conta)</label><input id="nfCod" placeholder="Gerado automaticamente se vazio">
     <label class="f">Regime tributário</label><select id="nfReg"><option value="">—</option>${REGIMES.map(r=>`<option>${r}</option>`).join('')}</select>
     <label class="row" style="gap:8px;margin-top:12px"><input type="checkbox" id="nfFunc"> É funcionário (reembolso em ${esc(contaTxt(cReemb()))})</label>
+    <label class="row" style="gap:8px;margin-top:6px"><input type="checkbox" id="nfEu"> Sou eu (requisitante): usado no Reembolso Padrão</label>
+    <div class="card" style="margin-top:12px"><b>Conta bancária padrão</b> <span class="muted">(opcional)</span>
+     <label class="f">Instituição financeira</label><select id="nfBanco"><option value="">—</option>${BANCOS.map(b=>`<option>${b}</option>`).join('')}</select>
+     <div class="c3"><div><label class="f">Agência</label><input id="nfAg"></div><div><label class="f">Conta</label><input id="nfConta"></div><div><label class="f">Dígito</label><input id="nfDv"></div></div></div>
     <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="nfok">Cadastrar</button></div>`)},
   nfok(){const n=$('#nfNome').value.trim(),dd=digits($('#nfDoc').value);
     if(!n||![11,14].includes(dd.length))return toast('Informe o nome e um CNPJ (14 dígitos) ou CPF (11 dígitos).');
     const cod=digits($('#nfCod').value)||String(5000+S.pessoas.length);if(S.pessoas.some(p=>p.cod===cod))return toast('Já existe uma pessoa com o código '+cod+'.');
-    const f={id:'u'+uid(),cod,nome:n,doc:fmtDoc(dd),regime:$('#nfReg').value,func:$('#nfFunc').checked};S.pessoas.push(f);const d=curDraft();d.forn=f.id;d.salvo=false;save();closeModal();rerender()},
-  amostra(){modal(`<h2>Anexar documento de exemplo</h2><p class="muted">Escolha um documento fictício. Depois use <b>Processar</b> para preencher automaticamente, ou digite os dados olhando o anexo.</p>
-    ${Object.entries(AMOSTRAS).map(([k,a])=>`<button class="btn" style="width:100%;margin:5px 0;justify-content:flex-start" data-act="amostraok" data-k="${k}">&#128196; ${esc(a.titulo)}</button>`).join('')}
-    <div class="row" style="margin-top:10px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button></div>`)},
-  amostraok(el){const k=el.dataset.k,a=AMOSTRAS[k],d=curDraft();const emi=isoDay(a.emissaoOff);
-    d.anexo={amostra:k,tipo:{Bol:'bol',NFSe:'nfse',NFe:'nfe',NFCe:'nfe',REC:'rec'}[a.tipo],nome:a.titulo+'.pdf',forn:a.forn,numero:a.numero,serie:a.serie,emissao:emi,valor:a.valor,
-      venc:isoDay(a.vencOff),linha:a.linha,chave:MODELO[a.tipo]?gerarChave(pessoa(a.forn).doc,emi,MODELO[a.tipo],a.serie,a.numero):'',dados:{itens:a.itens,servico:a.servico,ret:a.ret}};
-    save();closeModal();rerender();if(a.dica)toast('Dica: '+esc(a.dica))},
+    const banco=$('#nfBanco').value&&$('#nfAg').value.trim()&&$('#nfConta').value.trim()?{banco:$('#nfBanco').value,tipo:'Corrente',ag:$('#nfAg').value.trim(),agDv:'',conta:$('#nfConta').value.trim(),contaDv:$('#nfDv').value.trim()}:null;
+    const eu=$('#nfEu').checked;if(eu)S.pessoas.forEach(p=>p.eu=false);
+    const f={id:'u'+uid(),cod,nome:n,doc:fmtDoc(dd),regime:$('#nfReg').value,func:$('#nfFunc').checked||eu,...(eu?{eu:true}:{}),...(banco?{banco}:{})};S.pessoas.push(f);
+    const d=curDraft();if(!eu||!d.forn){d.forn=f.id;d.salvo=false}save();closeModal();rerender()},
   rmanexo(){const d=curDraft();d.anexo=null;save();rerender()},
   processar(){const d=curDraft();const a=d.anexo;if(!a)return;
-    if(a.amostra){preencherDeAmostra(d,a.amostra);save();rerender();toast('Dados preenchidos a partir do anexo. <b>Confira</b> e clique em Salvar.')}
-    else if(a.xml){toast('Os dados do XML já foram preenchidos na importação.')}
-    else alerta('Processar','No treinamento o preenchimento automático funciona com os anexos de exemplo e com XML de NF-e. Para arquivos seus, digite os dados.','warn')},
+    if(a.xml)toast('Os dados do XML já foram preenchidos na importação.');
+    else alerta('Processar','O preenchimento automático funciona com o XML da NF-e (botão Importar XML). Para PDF ou imagem, digite os dados olhando o anexo.','warn')},
   xml(){modal(`<h2>Importar XML</h2><p>Selecione o XML de uma NF-e. Ele é lido só aqui no navegador, nada é enviado.</p>
     <label class="btn dark">Escolher arquivo XML<input type="file" accept=".xml,text/xml" data-act-change="xmlfile" hidden></label>
-    <button class="btn blue" data-act="xmlex" style="margin-left:6px">Usar XML de exemplo</button>
     <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button></div>`)},
-  xmlex(){const n=String(5000+Math.floor(Math.random()*4000));const emi=isoDay(-1);const ch=gerarChave('99000111000109',emi,'55','1',n);importarXml(`<?xml version="1.0" encoding="UTF-8"?>
-<nfeProc><NFe><infNFe Id="NFe${ch}"><ide><serie>1</serie><nNF>${n}</nNF><dhEmi>${emi}T10:15:00-03:00</dhEmi></ide>
-<emit><CNPJ>99000111000109</CNPJ><xNome>Grafica Ponto Final Ltda</xNome></emit>
-<det nItem="1"><prod><xProd>Folder A4 4x4 cores (milheiro)</xProd><qCom>2</qCom><vUnCom>310.00</vUnCom></prod></det>
-<det nItem="2"><prod><xProd>Banner lona 90x120</xProd><qCom>3</qCom><vUnCom>85.00</vUnCom></prod></det>
-<total><ICMSTot><vNF>875.00</vNF></ICMSTot></total></infNFe></NFe></nfeProc>`,'NFe '+n+' Grafica Ponto Final.xml')},
   salvar(){const d=curDraft();const E=[];
     if(!d.tipo)E.push('Tipo de Documento');if(!d.forn)E.push('Emitente (selecione da lista)');if(!d.emissao)E.push('Data de Emissão');
     if(!d.numero.trim())E.push('Número');if(!(d.valor>0))E.push('Valor');if(!d.finalidade.trim())E.push('Finalidade');
@@ -1555,8 +1450,9 @@ const A={
   radd(){const d=curDraft();const soma=r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0));d.rateio.push({cat:d.rateio.at(-1)?.cat||'',cc:'',valor:Math.max(0,r2(d.valor-soma)),desc:''});save();rerender()},
   rdel(el){const d=curDraft();d.rateio.splice(+el.dataset.i,1);save();rerender()},
   rfill(){const d=curDraft();const soma=r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0));const last=d.rateio.at(-1);last.valor=r2(last.valor+d.valor-soma);save();rerender()},
-  reembolso(){const d=curDraft();const pid=PESSOA_REQ[d.requisitante];const p=pessoa(pid);if(!pid||!p.banco)return toast('O requisitante não tem conta bancária padrão cadastrada.');
-    d.pag.benef=pid;d.pag.forma='Transferência Bancária';d.pag.padrao=true;aplicarBancoPadrao(d);save();rerender();
+  reembolso(){const d=curDraft();const p=S.pessoas.find(x=>x.eu);
+    if(!p||!p.banco)return alerta('Reembolso Padrão','Cadastre você mesmo em <b>Adicionar pessoa</b>, marcando <b>Sou eu (requisitante)</b> e informando sua conta bancária. O Reembolso Padrão paga essa pessoa nessa conta.','warn');
+    d.pag.benef=p.id;d.pag.forma='Transferência Bancária';d.pag.padrao=true;aplicarBancoPadrao(d);save();rerender();
     toast('Reembolso padrão: pagamento para <b>'+esc(p.nome)+'</b> na conta bancária padrão.')},
   enviar(){const d=curDraft();const P=pendencias(d);if(P.length)return alerta('Ainda não dá para enviar','Falta: '+P.join('; ')+'.');
     if(d.anexo&&d.anexo.amostra){const a=d.anexo;if(r2(a.valor)!==r2(d.valor)||a.forn!==d.forn||digits(a.numero)!==digits(d.numero))
@@ -1588,14 +1484,14 @@ const A={
     const fin=()=>{F.status='concluida';F.por=EU;F.em=nowIso();
       F.guias=F.ret.map(r=>({tipo:r.tipo,guia:RET[r.tipo].guia,valor:r.valor,venc:diaMesSeguinte(d.emissao,RET[r.tipo].dia)}));
       hist(d,'Análise fiscal confirmada'+(F.ret.length?' com retenções de '+brl(totRet(d)):' sem retenções'));
-      if(d.seedKey==='chave')S.flags.m4=true;if(d.seedKey==='nfse'&&retConfere(d)&&F.servico?.cod)S.flags.m5=true;depoisDeConcluir(d)};
+      depoisDeConcluir(d)};
     if(D.ret&&!retConfere(d)){const R=D.ret;return confirmar('Retenções não conferem',`A nota destaca: ${Object.entries(R).map(([k,v])=>RET[k].nome+' '+brl(v)).join(' + ')}. Você aplicou: ${F.ret.map(r=>RET[r.tipo].nome+' '+brl(r.valor)).join(' + ')||'nenhuma'}.<br><br>Confirmar mesmo assim?`,fin,'Confirmar mesmo assim')}
     fin()},
   devolver(){modal(`<h2>Devolver</h2><p>O documento volta para "Cadastrar Documento" de quem lançou, com o motivo.</p>
     <label class="f req">Insira uma Justificativa</label><textarea id="motivo" maxlength="300" placeholder="Ex.: valor lançado (R$ X) diferente da nota (R$ Y)"></textarea>
     <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn red" data-act="devok">Devolver</button></div>`)},
   devok(){const m=$('#motivo').value.trim();if(m.length<8)return toast('Escreva um motivo claro (o requisitante precisa entender o que corrigir).');
-    const d=docAtual();devolverDoc(d,m);if(d.seedKey==='div')S.flags.m6=true;closeModal();toast('Documento devolvido ao requisitante.');depoisDeConcluir(d)},
+    const d=docAtual();devolverDoc(d,m);closeModal();toast('Documento devolvido ao requisitante.');depoisDeConcluir(d)},
   reabrirFiscal(el,e){e&&e.preventDefault();const d=docAtual();confirmar('Reabrir análise fiscal','Os lançamentos contábeis gerados serão excluídos, porque dependem das retenções.',()=>{d.fiscal.status='pendente';d.fiscal.guias=[];d.contabil.lanc=[];hist(d,'Análise fiscal reaberta');save();rerender()})},
   // Contábil
   gerar(){const d=docAtual();const go2=()=>{d.contabil.lanc=[gerarLanc(d)];ui.edit=0;hist(d,'Contabilização gerada');save();redrawDoc();toast('Lançamento gerado. Escolha as contas de débito nas linhas marcadas.')};
