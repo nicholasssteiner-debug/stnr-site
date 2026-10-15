@@ -51,8 +51,10 @@ workspaces ─► firebase, state, utils, ui
 - Datas `AAAA-MM-DD` são interpretadas no fuso local (sem "voltar um dia").
 - Código de conta é identificador fixo: não há renumeração em cascata.
 - Conta ou centro de custo com lançamentos não pode ser excluído.
-- Conta sintética (com filhas) não recebe lançamento; o formulário exige a subconta
-  analítica, em qualquer profundidade do plano.
+- Lançamento só em conta de **7 dígitos** (padrão 0.0.00.000, `isPostingAccount`): grupos
+  (1, 1.1, 1.1.01) e a conta automática de resultado ficam fora da lista "Conta" do lançamento.
+  Se a conta de 7 dígitos tiver subcontas, a subconta é obrigatória. Não se cria conta com mais
+  de 7 dígitos (para detalhar, use subconta) e subconta só em conta de 7 dígitos.
 - Número de lote vem de um contador persistido (`nextBatchSeq`); IDs nunca se repetem,
   mesmo após exclusões.
 - Conta automática "Superávit ou Déficit do Exercício" (`role: 'result'`, 2.3.02, logo após o
@@ -92,6 +94,23 @@ workspaces ─► firebase, state, utils, ui
   mostram. Para desfazer, exclua o lote na Consulta de Lotes.
 - Relatórios aceitam período (De/Até). Razão e Balancete mostram saldo anterior;
   o Balanço usa a posição até a data final.
+
+## Integração DRACMA (`dracma.js`)
+
+Liga o `DRACMA Treinamento.html` ao SysContábil pelo **mesmo usuário** do Firebase. Entidade fixa: STNR.
+
+1. No DRACMA → Integração, o usuário entra e clica em "Solicitar vínculo": grava
+   `users/{uid}/integrations/dracma` com os centros de custo do DRACMA.
+2. Aqui, Configurações → Integração DRACMA → "Vincular": cria (ou reaproveita) a atividade
+   **STNR - DRACMA** com o plano de contas padrão deste sistema e esses centros de custo, e grava
+   `status: 'vinculado'` e `wsId`. O DRACMA usa exatamente esse plano (mesmos códigos; no CSV a conta
+   sai só com os números, 4.2.02.003 → 4202003).
+3. Daí em diante a atividade é a fonte: o botão Sincronizar do DRACMA lê `users/{uid}/workspaces/{wsId}`
+   e puxa contas, subcontas e centros de custo. Pessoas do DRACMA vão como subcontas
+   (fornecedores em 2.1.01.002, funcionários em 2.1.07.001) no campo `subcontas` do pedido.
+4. Lotes exportados no DRACMA ficam em `users/{uid}/integrations/dracma/lotes/{id}` e são importados
+   (ids `DRACMA-PG...`) ao abrir a atividade, no "Sincronizar agora" ou ao vincular. Lote com conta ou
+   centro de custo inexistente não é importado e recebe `erroImportacao`.
 
 ## Firestore
 

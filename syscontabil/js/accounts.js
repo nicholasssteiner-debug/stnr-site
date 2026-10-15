@@ -38,6 +38,14 @@ export const getSubAccounts = (code) => sortedAccounts().filter(a => a.parent ==
 // true se `code` for igual a `parentCode` ou estiver abaixo dele (1.1.01 ⊂ 1.1, mas 1.10 ⊄ 1.1)
 export const isSelfOrDescendant = (code, parentCode) => code === parentCode || code.startsWith(parentCode + '.');
 
+// Conta que recebe lançamento: só as de 7 dígitos do plano (padrão 0.0.00.000), nunca grupo nem a conta
+// automática de resultado. Se ela tiver subcontas, o lançamento vai na subconta (escolhida ao lado).
+export const POSTING_DIGITS = 7;
+export const isPostingAccount = (code) => {
+    const acc = getAccount(code);
+    return !!acc && !acc.sub && acc.role !== 'result' && /^\d+(\.\d+)*$/.test(acc.code) && acc.code.replace(/\./g, '').length === POSTING_DIGITS;
+};
+
 export const hasChildren = (code) => state.accounts.some(a => a.code.startsWith(code + '.'));
 export const isAnalytic = (code) => !hasChildren(code);
 
@@ -72,8 +80,8 @@ export const updateDatalists = () => {
     document.getElementById('dl-contas').innerHTML = all.map(a => opt(a.code, a.name)).join('');
     // Seletores "Conta" dos relatórios: só contas do padrão (as subcontas vão no campo ao lado)
     document.getElementById('dl-contas-padrao').innerHTML = all.filter(a => !isSubAccountCode(a.code)).map(a => opt(a.code, hasChildren(a.code) ? `${a.name} (sintética)` : a.name)).join('');
-    // Lançamento: escolhe-se a conta; a subconta (quando houver) vai no campo ao lado
-    document.getElementById('dl-contas-lancamento').innerHTML = all.filter(a => a.role !== 'result' && !a.sub).map(a => opt(a.code, hasChildren(a.code) ? `${a.name} (sintética)` : a.name)).join('');
+    // Lançamento: só contas de 7 dígitos; a subconta (quando houver) vai no campo ao lado
+    document.getElementById('dl-contas-lancamento').innerHTML = all.filter(a => isPostingAccount(a.code)).map(a => opt(a.code, getSubAccounts(a.code).length ? `${a.name} (com subcontas)` : a.name)).join('');
     document.getElementById('dl-cc').innerHTML = state.costCenters.map(c => opt(c.id, c.name)).join('');
 };
 
@@ -125,8 +133,9 @@ export const renderPlanoContas = () => {
         const isResult = acc.role === 'result';
         // Conta do último nível com lançamentos (ou a conta automática) não pode ganhar subcontas
         const isSub = !!acc.sub;
-        const subBlocked = isResult || isSub || (!synthetic && entries > 0);
-        const subTitle = isResult ? 'Conta automática: não recebe subcontas' : isSub ? 'Subconta é o último nível' : subBlocked ? 'Conta com lançamentos não pode receber subcontas' : 'Adicionar subconta (código livre)';
+        const posting = isPostingAccount(acc.code);
+        const subBlocked = isResult || isSub || !posting || (!synthetic && entries > 0);
+        const subTitle = isResult ? 'Conta automática: não recebe subcontas' : isSub ? 'Subconta é o último nível' : !posting ? `Subconta só em conta de ${POSTING_DIGITS} dígitos` : subBlocked ? 'Conta com lançamentos não pode receber subcontas' : 'Adicionar subconta (código livre)';
         return `
             <tr class="${synthetic ? 'row-synth' : (isSub ? 'row-sub' : '')}">
                 <td class="font-mono" style="padding-left:${0.75 + (level - 1) * 0.9}rem" title="${isSub ? 'Subconta de ' + escapeHtml(acc.parent) : ''}">${escapeHtml(isSub ? acc.sub : acc.code)}</td>
@@ -193,6 +202,7 @@ export const promptSubAccount = (parentCode) => {
     if (!parent) return;
     if (parent.sub) { showToast('Subconta é o último nível: não recebe outras subcontas.', 'error'); return; }
     if (parent.role === 'result') { showToast('A conta de resultado do exercício é automática e não recebe subcontas.', 'error'); return; }
+    if (!isPostingAccount(parentCode)) { showToast(`Subconta só pode ser criada em conta de ${POSTING_DIGITS} dígitos (0.0.00.000).`, 'error'); return; }
     if (isAnalytic(parentCode) && hasDirectEntries(parentCode)) {
         showToast(`A conta ${parentCode} já possui lançamentos diretos e não pode receber subcontas.`, 'error');
         return;
@@ -250,6 +260,10 @@ export const addAccount = (e) => {
     }
     if (getAccount(code)) {
         showToast(`Já existe a conta ${code}. Escolha outro código.`, 'error');
+        return;
+    }
+    if (code.replace(/\./g, '').length > POSTING_DIGITS) {
+        showToast(`A conta vai até ${POSTING_DIGITS} dígitos (0.0.00.000). Para detalhar abaixo dela, use o "+" e crie uma subconta.`, 'error');
         return;
     }
     const parentCode = code.includes('.') ? code.slice(0, code.lastIndexOf('.')) : null;

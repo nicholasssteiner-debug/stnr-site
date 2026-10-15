@@ -11,6 +11,7 @@ import { initRazao, renderRazaoContent, onRazaoContaChange, onRazaoSubChange, re
 import { openClosingModal, closeClosingModal, onClosingDateChange, onClosingDestChange, confirmClosing } from './closing.js';
 import { renderConfiguracaoDRE, toggleDreConfig, renderDRE } from './dre.js';
 import { initConciliacao, setConciliacaoAccount, setConciliacaoSub, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible } from './reconcile.js';
+import { renderDracmaPanel, linkDracma, syncDracmaNow, openDracmaWorkspace, autoSyncDracma } from './dracma.js';
 
 // ---------- Telas ----------
 registerView('planoContas', renderPlanoContas);
@@ -21,12 +22,14 @@ registerView('razao', initRazao);
 registerView('balancete', renderBalancete);
 registerView('balanco', renderBalanco);
 registerView('dre', renderDRE);
-registerView('configuracao', () => { renderWorkspacesList(); renderConfiguracaoDRE(); renderCCConfig(); });
+registerView('configuracao', () => { renderWorkspacesList(); renderConfiguracaoDRE(); renderCCConfig(); renderDracmaPanel(); });
 
-// Ao abrir uma atividade: atualiza as listas de pesquisa e abre a última tela usada
+// Ao abrir uma atividade: atualiza as listas de pesquisa e abre a última tela usada;
+// na atividade STNR - DRACMA, aplica as subcontas e os lotes enviados pelo DRACMA
 setOnWorkspaceLoaded(() => {
     updateDatalists();
     navigate(state.activeTab || 'planoContas');
+    autoSyncDracma();
 });
 
 // ---------- Handlers usados no HTML ----------
@@ -52,6 +55,8 @@ Object.assign(window, {
     toggleDreConfig,
     // conciliação
     setConciliacaoAccount, setConciliacaoSub, setConciliacaoFilter, onStatementInput, toggleReconcile, reconcileAllVisible,
+    // integração DRACMA
+    renderDracmaPanel, linkDracma, syncDracmaNow, openDracmaWorkspace,
 });
 
 // Acesso ao estado pelo console do navegador (diagnóstico)

@@ -485,6 +485,16 @@
                         <button onclick="switchConfigTab('dados')" id="tab-btn-dados" class="tab-btn active">Atividades / Nuvem</button>
                         <button onclick="switchConfigTab('dre')" id="tab-btn-dre" class="tab-btn">Estrutura da DRE</button>
                         <button onclick="switchConfigTab('cc')" id="tab-btn-cc" class="tab-btn">Centros de Custo</button>
+                        <button onclick="switchConfigTab('dracma'); renderDracmaPanel()" id="tab-btn-dracma" class="tab-btn">Integração DRACMA</button>
+                    </div>
+
+                    <!-- Integração DRACMA -->
+                    <div id="config-area-dracma" class="hidden">
+                        <div class="mb-6">
+                            <h2 class="text-lg font-bold">Integração com o DRACMA</h2>
+                            <p class="muted text-sm">Vincula o DRACMA Treinamento ao seu usuário. O vínculo cria a atividade <b>STNR - DRACMA</b>, que passa a ser a fonte do plano de contas, das subcontas e dos centros de custo do DRACMA. Os lotes exportados no DRACMA entram nessa atividade.</p>
+                        </div>
+                        <div id="dracma-panel"></div>
                     </div>
 
                     <!-- Atividades -->

@@ -4,7 +4,7 @@ import { state } from './state.js';
 import { toCents, fromCents, formatCents, formatCentsPlain, applyMoneyMask, todayISO, formatDateBR, escapeHtml, padSeq } from './utils.js';
 import { showToast, showConfirm, navigate, refreshIcons } from './ui.js';
 import { persistBatch, removeBatch } from './workspaces.js';
-import { getAccount, getAccountName, hasChildren, getAnalyticDescendants, codeFromInput, isResultAccount, displayCode } from './accounts.js';
+import { getAccount, getAccountName, codeFromInput, displayCode, isPostingAccount, getSubAccounts, POSTING_DIGITS } from './accounts.js';
 import { getCostCenter, getCostCenterName } from './costCenters.js';
 
 const form = { editingId: null, lines: [] };
@@ -98,10 +98,10 @@ const renderNovoLoteLines = () => {
     tbody.innerHTML = form.lines.map(line => {
         if (ccLocked && defaultCc && !line.ccId) { line.ccId = defaultCc.id; line.ccInput = ccText(defaultCc.id); }
 
-        const synthetic = line.accountCode && hasChildren(line.accountCode);
-        const subs = synthetic ? getAnalyticDescendants(line.accountCode) : [];
+        const subs = line.accountCode ? getSubAccounts(line.accountCode) : [];
+        const synthetic = subs.length > 0;   // conta com subcontas: o lançamento vai na subconta
         const subOptions = synthetic
-            ? '<option value="">Selecione a subconta...</option>' + subs.filter(s => s.role !== 'result').map(s => `<option value="${escapeHtml(s.code)}" ${line.subAccountCode === s.code ? 'selected' : ''}>${escapeHtml(displayCode(s.code))} - ${escapeHtml(s.name)}</option>`).join('')
+            ? '<option value="">Selecione a subconta...</option>' + subs.map(s => `<option value="${escapeHtml(s.code)}" ${line.subAccountCode === s.code ? 'selected' : ''}>${escapeHtml(displayCode(s.code))} - ${escapeHtml(s.name)}</option>`).join('')
             : '<option value="">Não exigida</option>';
 
         return `
@@ -130,6 +130,14 @@ export const handleLineContaSearch = (id, textValue) => {
     const line = form.lines.find(l => l.id === id);
     if (!line) return;
     const found = getAccount(codeFromInput(textValue));
+    if (found && !isPostingAccount(found.code)) {
+        line.accountCode = '';
+        line.textInput = '';
+        line.subAccountCode = '';
+        showToast(`${found.code} - ${found.name} não recebe lançamento. Escolha uma conta de ${POSTING_DIGITS} dígitos (0.0.00.000).`, 'error');
+        renderNovoLoteLines();
+        return;
+    }
     if (found) {
         line.accountCode = found.code;
         line.textInput = accText(found.code);
@@ -193,11 +201,10 @@ export const saveNovoLote = async () => {
         if (!l.accountCode) { showToast('Há linha sem conta selecionada.', 'error'); return; }
         if (!l.ccId) { showToast('Há linha sem centro de custo.', 'error'); return; }
         if (l.cents <= 0) { showToast('Há linha sem valor.', 'error'); return; }
-        const synthetic = hasChildren(l.accountCode);
-        if (synthetic && !l.subAccountCode) { showToast(`A conta ${l.accountCode} é sintética: selecione a subconta.`, 'error'); return; }
-        const finalCode = synthetic ? l.subAccountCode : l.accountCode;
-        if (hasChildren(finalCode)) { showToast(`A conta ${finalCode} é sintética e não aceita lançamentos.`, 'error'); return; }
-        if (isResultAccount(finalCode)) { showToast(`A conta ${finalCode} (resultado do exercício) é automática e não aceita lançamentos manuais.`, 'error'); return; }
+        if (!isPostingAccount(l.accountCode)) { showToast(`A conta ${l.accountCode} não recebe lançamento: use uma conta de ${POSTING_DIGITS} dígitos (0.0.00.000).`, 'error'); return; }
+        const subs = getSubAccounts(l.accountCode);
+        if (subs.length && !subs.some(s => s.code === l.subAccountCode)) { showToast(`A conta ${l.accountCode} tem subcontas: selecione a subconta.`, 'error'); return; }
+        const finalCode = subs.length ? l.subAccountCode : l.accountCode;
         entries.push({ accountCode: finalCode, ccId: l.ccId, type: l.type, value: fromCents(l.cents) });
     }
     if (!totals().balanced) { showToast('Débitos e créditos precisam ser iguais.', 'error'); return; }

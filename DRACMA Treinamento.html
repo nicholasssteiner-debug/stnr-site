@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRACMA Treinamento</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --g1:#22352a; --g2:#3e5f46; --dark:#2c3e31; --blue:#3f7f95; --red:#e53935; --bg:#f6f6f6; --card:#fff;
+    --line:#e1e1e1; --txt:#222; --muted:#6e6e6e; --ok:#3aa757; --warn:#c98a00; --info:#eaf8fb; --infoline:#a8dae5; --sel:#e2e2e2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:Lato,'Segoe UI',Arial,sans-serif;font-size:15px}
+  a{color:inherit}
+  .top{position:sticky;top:0;z-index:30;height:54px;display:flex;align-items:center;gap:14px;padding:0 16px;color:#fff;
+       background:linear-gradient(90deg,var(--g1),var(--g2) 45%,var(--g1))}
+  .top .ham{background:none;border:0;color:#fff;font-size:22px;cursor:pointer;padding:6px}
+  .logo{font-weight:400;letter-spacing:.12em;font-size:22px}
+  .pill{background:#f2c94c;color:#3a2e00;font-weight:900;font-size:11px;letter-spacing:.08em;padding:4px 9px;border-radius:20px}
+  .top .sp{flex:1}
+  .top .user{font-size:13px;opacity:.85}
+  @media(max-width:600px){.top .user{display:none}}
+  .side{position:fixed;top:54px;left:0;bottom:0;width:280px;background:#fff;border-right:1px solid var(--line);z-index:25;
+        transform:translateX(-100%);transition:transform .2s;overflow:auto;box-shadow:4px 0 16px rgba(0,0,0,.08)}
+  .side.open{transform:none}
+  .side .grp{padding:14px 18px 8px;font-weight:700;color:#333}
+  .side a{display:block;padding:10px 18px 10px 34px;text-decoration:none;font-size:14px;color:#333}
+  .side a.root{padding-left:18px;font-weight:700}
+  .side a.on{background:var(--dark);color:#fff;font-weight:700}
+  .side a:hover:not(.on){background:#f0f0f0}
+  .main{max-width:1200px;margin:0 auto;padding:18px 16px 80px}
+  .crumb{color:var(--muted);font-size:14px;margin:6px 0 8px}
+  .crumb b{color:#444}
+  h1{font-size:28px;margin:0 0 16px;font-weight:700}
+  h2{font-size:21px;margin:0 0 12px}
+  h3{font-size:17px;margin:0 0 10px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;color:#333;border-radius:4px;
+       padding:9px 16px;font:inherit;font-size:14px;cursor:pointer;font-weight:700;text-decoration:none}
+  .btn:hover{filter:brightness(.96)}
+  .btn.dark{background:var(--dark);border-color:var(--dark);color:#fff}
+  .btn.red{background:var(--red);border-color:var(--red);color:#fff}
+  .btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.grey{background:#ddd;border-color:#ddd;color:#555}
+  .btn.sm{padding:5px 10px;font-size:13px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row .sp{flex:1}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .c3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  @media(max-width:560px){.c3{grid-template-columns:1fr 1fr}}
+  label.f{display:block;font-size:13px;color:#555;margin:12px 0 5px}
+  label.f.req::after{content:" *";color:var(--red)}
+  input,select,textarea{width:100%;border:1px solid #d5d5d5;border-radius:4px;padding:10px 12px;font:inherit;font-size:14px;background:#fff;color:#222}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(63,127,149,.15)}
+  input[type=checkbox]{width:auto}
+  textarea{min-height:64px;resize:vertical}
+  .muted{color:var(--muted);font-size:13px}
+  .na{display:flex;align-items:center;justify-content:center;min-height:180px;font-size:19px;font-weight:700;color:#333}
+  .info{background:var(--info);border:1px solid var(--infoline);border-radius:4px;padding:14px;color:#2b6576;font-size:14px;display:flex;gap:14px}
+  .info .ic{flex:none;width:38px;height:38px;border-radius:50%;background:#3f7f95;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}
+  .warnbox{background:#fff7e0;border:1px solid #f0d58a;color:#7a5a00;border-radius:4px;padding:10px 12px;font-size:14px;margin:10px 0}
+  .errbox{background:#fdecec;border:1px solid #f3b4b4;color:#9b1c1c;border-radius:4px;padding:10px 12px;font-size:14px;margin:10px 0}
+  .okbox{background:#e8f6ec;border:1px solid #a8dbb6;color:#1f6b35;border-radius:4px;padding:10px 12px;font-size:14px;margin:10px 0}
+  .drop{border:2px dashed #ccc;border-radius:4px;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        text-align:center;padding:16px;cursor:pointer;font-weight:700;font-size:16px}
+  .drop:hover{border-color:var(--blue)}
+  table.t{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+  table.t th{text-align:left;padding:9px 8px;border-bottom:2px solid var(--line);white-space:nowrap;font-weight:700}
+  table.t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.t tr.click{cursor:pointer}
+  table.t tr.click:hover td{background:#f4f8f5}
+  table.t tr.cur td{background:var(--sel)}
+  table.t tr.sint td{font-weight:700;background:#fafafa}
+  table.t tr.off td{color:#aaa}
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+  .num{text-align:right;white-space:nowrap}
+  .st{display:inline-flex;gap:6px;align-items:flex-start;font-size:13px}
+  .st .i{font-weight:900}
+  .st.ok .i{color:var(--ok)} .st.wait .i{color:var(--warn)} .st.dev .i{color:var(--red)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 16px;flex-wrap:wrap}
+  .tabs button{background:none;border:0;padding:10px 14px;font:inherit;font-size:15px;color:#888;cursor:pointer;border-bottom:3px solid transparent}
+  .tabs button.on{color:#222;font-weight:700;border-bottom-color:var(--dark)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0}
+  .chips button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer}
+  .chips button.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+  .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px 22px}
+  .kv .k{font-size:12.5px;color:var(--muted)} .kv .v{font-size:15px;margin-top:2px}
+  .big{font-size:21px;font-weight:700}
+  .lanc{border:1px solid var(--line);border-radius:4px;margin-top:12px;overflow:hidden;background:#fff}
+  .lanc .hd{background:#3a3a3a;color:#fff;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .lanc .hd b{flex:1;min-width:200px;font-weight:700}
+  .lanc .meta{padding:10px 14px;font-size:13px;color:#444;display:flex;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+  .tot{padding:10px 14px;display:flex;gap:22px;flex-wrap:wrap;font-weight:700;font-size:14px}
+  .anexo{background:#fff;border:1px solid #bbb;padding:18px;font-family:'Courier New',monospace;font-size:13px;line-height:1.45;max-width:640px}
+  .anexo .h{font-weight:900;font-size:15px;border-bottom:1px solid #999;padding-bottom:6px;margin-bottom:8px;font-family:Lato,Arial}
+  .anexo table{width:100%;border-collapse:collapse;margin:6px 0}
+  .anexo td{border:1px solid #ccc;padding:3px 6px}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal{background:#fff;border-radius:6px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:20px}
+  .modal.wide{max-width:760px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2c3e31;color:#fff;padding:12px 18px;border-radius:6px;z-index:60;
+         font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:92vw}
+  .miss{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .miss .ck{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid #bbb;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}
+  .miss.done .ck{background:var(--ok);border-color:var(--ok)}
+  .bar{height:10px;background:#e6e6e6;border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:12px;background:#eee;color:#555}
+  .tag.red{background:#fdecec;color:#9b1c1c}.tag.green{background:#e8f6ec;color:#1f6b35}.tag.yel{background:#fff3cd;color:#7a5a00}
+  .hint{font-size:12.5px;color:#2b6576;background:var(--info);border-left:3px solid var(--blue);padding:7px 10px;margin:8px 0;border-radius:2px}
+  .rbox{border:1px solid var(--line);border-radius:4px;padding:12px;margin-bottom:10px;background:#fcfcfc}
+  .x{background:none;border:0;color:var(--red);font-size:20px;cursor:pointer}
+  .flow{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:10px 0}
+  .flow div{flex:1;min-width:140px;background:#fff;border:1px solid var(--line);border-top:4px solid var(--dark);padding:10px;border-radius:4px;font-size:13.5px}
+  .flow b{display:block;margin-bottom:4px}
+  .sticky-send{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 16px;margin:20px -16px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;z-index:5}
+  .mob-card{display:none}
+  .inp-sm{padding:6px 8px;font-size:13px}
+  @media(max-width:760px){
+    .desk-only{display:none}
+    .mob-card{display:block;background:#fff;border:1px solid var(--line);border-radius:4px;padding:12px;margin-bottom:10px;cursor:pointer;font-size:14px}
+    .mob-card div{margin:2px 0}
+  }
+</style>
+</head>
+<body>
+<div class="top">
+  <button class="ham" data-act="menu" aria-label="Menu">&#9776;</button>
+  <span class="logo">DRACMA</span>
+  <span class="pill">TREINAMENTO</span>
+  <span class="sp"></span>
+  <span class="user">Usuário em treinamento</span>
+</div>
+<nav class="side" id="side"></nav>
+<main class="main" id="app"></main>
+<div id="layer"></div>
+<datalist id="dlcontas"></datalist>
+
+<!-- Plano de contas: cópia do plano padrão do SysContábil (syscontabil/js/chartOfAccounts.js). No site, o próprio arquivo é carregado; após o vínculo, o plano vem da atividade STNR - DRACMA -->
+<script type="text/plain" id="planoPadrao">
+1 - ATIVO
+1.1 - ATIVO CIRCULANTE
+1.1.01 - Caixa e Equivalentes de Caixa
+1.1.01.001 - Caixa Geral
+1.1.01.002 - Fundo Fixo (Caixa Pequeno)
+1.1.01.003 - Bancos Conta Movimento
+1.1.01.004 - Bancos Conta Poupança
+1.1.01.005 - Aplicações Financeiras de Liquidez Imediata
+1.1.01.006 - Carteiras Digitais e Adquirentes (a liberar)
+1.1.02 - Contas a Receber de Clientes
+1.1.02.001 - Clientes - Vendas de Mercadorias
+1.1.02.002 - Clientes - Prestação de Serviços
+1.1.02.003 - Cartões de Crédito a Receber
+1.1.02.004 - Cartões de Débito a Receber
+1.1.02.005 - Cheques a Receber
+1.1.02.006 - Boletos e Duplicatas a Receber
+1.1.02.007 - Contratos de Serviços a Faturar
+1.1.02.008 - (-) Duplicatas Descontadas
+1.1.02.009 - (-) Perdas Estimadas com Créditos de Liquidação Duvidosa
+1.1.03 - Estoques
+1.1.03.001 - Mercadorias para Revenda
+1.1.03.002 - Mercadorias em Trânsito
+1.1.03.003 - Mercadorias em Poder de Terceiros
+1.1.03.004 - Materiais Aplicados em Serviços
+1.1.03.005 - Materiais de Consumo e Almoxarifado
+1.1.03.006 - Embalagens
+1.1.03.007 - Adiantamentos a Fornecedores de Estoque
+1.1.03.008 - (-) Provisão para Perdas e Obsolescência de Estoques
+1.1.04 - Tributos a Recuperar
+1.1.04.001 - ICMS a Recuperar
+1.1.04.002 - ICMS-ST a Recuperar
+1.1.04.003 - IPI a Recuperar
+1.1.04.004 - PIS a Recuperar
+1.1.04.005 - COFINS a Recuperar
+1.1.04.006 - IRRF Retido na Fonte a Compensar
+1.1.04.007 - CSLL Retida na Fonte a Compensar
+1.1.04.008 - PIS/COFINS Retidos na Fonte a Compensar
+1.1.04.009 - INSS Retido a Compensar
+1.1.04.010 - ISS Retido na Fonte a Compensar
+1.1.04.011 - IRPJ e CSLL Antecipados (Estimativas)
+1.1.04.012 - Saldo Negativo de IRPJ/CSLL
+1.1.05 - Adiantamentos
+1.1.05.001 - Adiantamentos a Fornecedores
+1.1.05.002 - Adiantamentos a Prestadores de Serviços
+1.1.05.003 - Adiantamentos a Funcionários
+1.1.05.004 - Adiantamentos de Viagem
+1.1.05.005 - Adiantamentos a Sócios
+1.1.06 - Despesas Antecipadas
+1.1.06.001 - Seguros a Apropriar
+1.1.06.002 - Aluguéis Pagos Antecipadamente
+1.1.06.003 - Assinaturas e Licenças a Apropriar
+1.1.06.004 - Juros a Apropriar
+1.1.06.005 - Outras Despesas Antecipadas
+1.1.07 - Outros Créditos
+1.1.07.001 - Empréstimos a Funcionários
+1.1.07.002 - Créditos com Empresas Ligadas
+1.1.07.003 - Valores a Receber por Venda de Imobilizado
+1.1.07.004 - Depósitos e Cauções de Curto Prazo
+1.1.07.005 - Outros Valores a Receber
+1.2 - ATIVO NÃO CIRCULANTE
+1.2.01 - Realizável a Longo Prazo
+1.2.01.001 - Clientes - Longo Prazo
+1.2.01.002 - Depósitos Judiciais
+1.2.01.003 - Empréstimos a Sócios e Coligadas
+1.2.01.004 - Tributos a Recuperar - Longo Prazo
+1.2.01.005 - Cauções e Garantias Contratuais
+1.2.02 - Investimentos
+1.2.02.001 - Participações em Outras Empresas
+1.2.02.002 - Imóveis para Renda
+1.2.02.003 - Aplicações Financeiras de Longo Prazo
+1.2.02.004 - Outros Investimentos
+1.2.03 - Imobilizado
+1.2.03.001 - Terrenos
+1.2.03.002 - Edificações
+1.2.03.003 - Instalações
+1.2.03.004 - Máquinas e Equipamentos
+1.2.03.005 - Ferramentas e Equipamentos de Serviço
+1.2.03.006 - Móveis e Utensílios
+1.2.03.007 - Computadores e Periféricos
+1.2.03.008 - Veículos
+1.2.03.009 - Benfeitorias em Imóveis de Terceiros
+1.2.03.010 - Imobilizado em Andamento
+1.2.03.011 - (-) Depreciação Acumulada - Edificações
+1.2.03.012 - (-) Depreciação Acumulada - Instalações
+1.2.03.013 - (-) Depreciação Acumulada - Máquinas e Equipamentos
+1.2.03.014 - (-) Depreciação Acumulada - Ferramentas
+1.2.03.015 - (-) Depreciação Acumulada - Móveis e Utensílios
+1.2.03.016 - (-) Depreciação Acumulada - Computadores
+1.2.03.017 - (-) Depreciação Acumulada - Veículos
+1.2.03.018 - (-) Amortização Acumulada - Benfeitorias
+1.2.04 - Intangível
+1.2.04.001 - Softwares e Licenças de Uso
+1.2.04.002 - Marcas e Patentes
+1.2.04.003 - Desenvolvimento de Sistemas e Sites
+1.2.04.004 - Fundo de Comércio (Ágio)
+1.2.04.005 - (-) Amortização Acumulada - Intangível
+2 - PASSIVO E PATRIMÔNIO LÍQUIDO
+2.1 - PASSIVO CIRCULANTE
+2.1.01 - Fornecedores
+2.1.01.001 - Fornecedores Nacionais - Mercadorias
+2.1.01.002 - Fornecedores Nacionais - Materiais e Serviços
+2.1.01.003 - Fornecedores Estrangeiros
+2.1.01.004 - Prestadores de Serviços a Pagar (Subcontratação)
+2.1.01.005 - Fretes e Transportadoras a Pagar
+2.1.02 - Empréstimos e Financiamentos
+2.1.02.001 - Empréstimos Bancários
+2.1.02.002 - Financiamentos de Veículos e Equipamentos
+2.1.02.003 - Cartão de Crédito Empresarial
+2.1.02.004 - Cheque Especial / Conta Garantida
+2.1.02.005 - Antecipação de Recebíveis
+2.1.02.006 - Juros a Pagar sobre Empréstimos
+2.1.03 - Obrigações Trabalhistas
+2.1.03.001 - Salários a Pagar
+2.1.03.002 - Pró-labore a Pagar
+2.1.03.003 - Comissões a Pagar
+2.1.03.004 - Férias a Pagar
+2.1.03.005 - 13º Salário a Pagar
+2.1.03.006 - Rescisões a Pagar
+2.1.03.007 - Provisão de Férias e Encargos
+2.1.03.008 - Provisão de 13º Salário e Encargos
+2.1.03.009 - Vale-transporte e Alimentação a Pagar
+2.1.04 - Obrigações Sociais
+2.1.04.001 - INSS a Recolher
+2.1.04.002 - FGTS a Recolher
+2.1.04.003 - IRRF sobre Folha a Recolher
+2.1.04.004 - Contribuição Sindical a Recolher
+2.1.04.005 - Plano de Saúde e Odontológico a Pagar
+2.1.05 - Obrigações Tributárias
+2.1.05.001 - Simples Nacional a Recolher
+2.1.05.002 - ICMS a Recolher
+2.1.05.003 - ICMS-ST a Recolher
+2.1.05.004 - ICMS DIFAL a Recolher
+2.1.05.005 - IPI a Recolher
+2.1.05.006 - PIS a Recolher
+2.1.05.007 - COFINS a Recolher
+2.1.05.008 - ISS a Recolher
+2.1.05.009 - IRPJ a Recolher
+2.1.05.010 - CSLL a Recolher
+2.1.05.011 - IRRF Retido de Terceiros a Recolher
+2.1.05.012 - INSS Retido de Terceiros a Recolher
+2.1.05.013 - ISS Retido de Terceiros a Recolher
+2.1.05.014 - PIS/COFINS/CSLL Retidos de Terceiros a Recolher
+2.1.05.015 - Parcelamentos Tributários - Curto Prazo
+2.1.05.016 - Taxas e Contribuições a Recolher
+2.1.06 - Adiantamentos de Clientes
+2.1.06.001 - Adiantamentos de Clientes - Vendas
+2.1.06.002 - Adiantamentos de Clientes - Serviços
+2.1.06.003 - Receitas de Serviços a Apropriar (Contratos)
+2.1.06.004 - Vale-presente e Créditos de Clientes
+2.1.07 - Outras Obrigações
+2.1.07.001 - Contas a Pagar Diversas
+2.1.07.002 - Aluguéis e Condomínios a Pagar
+2.1.07.003 - Energia, Água e Telecomunicações a Pagar
+2.1.07.004 - Honorários e Serviços Profissionais a Pagar
+2.1.07.005 - Seguros a Pagar
+2.1.07.006 - Provisão para Garantias de Produtos e Serviços
+2.1.07.007 - Lucros e Dividendos a Pagar
+2.1.07.008 - Devoluções e Reembolsos a Clientes
+2.1.07.009 - Empréstimos de Sócios - Curto Prazo
+2.2 - PASSIVO NÃO CIRCULANTE
+2.2.01 - Empréstimos e Financiamentos - Longo Prazo
+2.2.01.001 - Empréstimos Bancários - Longo Prazo
+2.2.01.002 - Financiamentos - Longo Prazo
+2.2.02 - Parcelamentos Tributários - Longo Prazo
+2.2.02.001 - Parcelamento Simples Nacional / Federais
+2.2.02.002 - Parcelamentos Estaduais e Municipais
+2.2.03 - Provisões para Contingências
+2.2.03.001 - Contingências Trabalhistas
+2.2.03.002 - Contingências Cíveis
+2.2.03.003 - Contingências Tributárias
+2.2.04 - Outras Obrigações de Longo Prazo
+2.2.04.001 - Empréstimos de Sócios - Longo Prazo
+2.2.04.002 - Receitas Diferidas de Longo Prazo
+2.3 - PATRIMÔNIO LÍQUIDO
+2.3.01 - Capital Social
+2.3.01.001 - Capital Social Subscrito
+2.3.01.002 - (-) Capital Social a Integralizar
+2.3.02 - Superávit ou Déficit do Exercício | result
+2.3.03 - Reservas
+2.3.03.001 - Reserva Legal
+2.3.03.002 - Reserva de Lucros
+2.3.03.003 - Reserva de Capital
+2.3.03.004 - Reserva para Investimentos
+2.3.04 - Lucros ou Prejuízos Acumulados
+2.3.04.001 - Lucros Acumulados de Exercícios Anteriores | retainedEarnings
+2.3.04.002 - (-) Prejuízos Acumulados | accumulatedLosses
+2.3.04.003 - (-) Lucros Distribuídos aos Sócios
+2.3.05 - Ajustes de Avaliação Patrimonial
+2.3.05.001 - Ajustes de Avaliação Patrimonial
+3 - RECEITAS
+3.1 - RECEITA OPERACIONAL BRUTA
+3.1.01 - Receita de Vendas de Mercadorias
+3.1.01.001 - Vendas à Vista
+3.1.01.002 - Vendas a Prazo
+3.1.01.003 - Vendas com Cartão de Crédito/Débito
+3.1.01.004 - Vendas por E-commerce e Marketplaces
+3.1.01.005 - Vendas para Revenda (Atacado)
+3.1.01.006 - Vendas Interestaduais
+3.1.02 - Receita de Prestação de Serviços
+3.1.02.001 - Serviços à Vista
+3.1.02.002 - Serviços a Prazo
+3.1.02.003 - Contratos de Manutenção e Serviços Recorrentes
+3.1.02.004 - Consultoria, Projetos e Assessoria
+3.1.02.005 - Instalação, Montagem e Assistência Técnica
+3.1.02.006 - Serviços Prestados a Outros Municípios
+3.1.03 - Outras Receitas Operacionais
+3.1.03.001 - Receita de Fretes e Entregas Cobradas
+3.1.03.002 - Receita de Garantia Estendida e Seguros
+3.1.03.003 - Bonificações e Verbas de Fornecedores
+3.2 - DEDUÇÕES DA RECEITA BRUTA
+3.2.01 - Devoluções e Cancelamentos
+3.2.01.001 - (-) Devoluções de Vendas
+3.2.01.002 - (-) Cancelamentos de Serviços
+3.2.01.003 - (-) Abatimentos sobre Vendas e Serviços
+3.2.02 - Descontos Incondicionais
+3.2.02.001 - (-) Descontos Incondicionais sobre Vendas
+3.2.02.002 - (-) Descontos Incondicionais sobre Serviços
+3.2.03 - Impostos sobre Vendas e Serviços
+3.2.03.001 - (-) Simples Nacional sobre Faturamento
+3.2.03.002 - (-) ICMS sobre Vendas
+3.2.03.003 - (-) ICMS-ST e DIFAL sobre Vendas
+3.2.03.004 - (-) IPI sobre Vendas
+3.2.03.005 - (-) PIS sobre Faturamento
+3.2.03.006 - (-) COFINS sobre Faturamento
+3.2.03.007 - (-) ISS sobre Serviços
+3.3 - RECEITAS FINANCEIRAS
+3.3.01 - Receitas Financeiras
+3.3.01.001 - Rendimentos de Aplicações Financeiras
+3.3.01.002 - Juros Recebidos de Clientes
+3.3.01.003 - Descontos Obtidos
+3.3.01.004 - Variação Cambial Ativa
+3.3.01.005 - Outras Receitas Financeiras
+3.4 - OUTRAS RECEITAS
+3.4.01 - Outras Receitas Não Operacionais
+3.4.01.001 - Ganho na Venda de Imobilizado
+3.4.01.002 - Aluguéis e Arrendamentos Recebidos
+3.4.01.003 - Recuperação de Despesas e Créditos
+3.4.01.004 - Reversão de Provisões
+3.4.01.005 - Indenizações e Sinistros Recebidos
+3.4.01.006 - Receitas Eventuais
+4 - CUSTOS E DESPESAS
+4.1 - CUSTOS DAS VENDAS E DOS SERVIÇOS
+4.1.01 - Custo das Mercadorias Vendidas
+4.1.01.001 - CMV - Custo das Mercadorias Vendidas
+4.1.01.002 - Fretes e Seguros sobre Compras
+4.1.01.003 - Perdas, Quebras e Obsolescência de Estoque
+4.1.01.004 - Embalagens Aplicadas nas Vendas
+4.1.02 - Custo dos Serviços Prestados
+4.1.02.001 - Mão de Obra Direta - Salários
+4.1.02.002 - Mão de Obra Direta - Encargos Sociais
+4.1.02.003 - Mão de Obra Direta - Benefícios
+4.1.02.004 - Materiais e Peças Aplicados nos Serviços
+4.1.02.005 - Serviços de Terceiros e Subcontratação
+4.1.02.006 - Deslocamento, Viagens e Diárias Operacionais
+4.1.02.007 - Depreciação de Equipamentos Operacionais
+4.1.02.008 - Manutenção de Equipamentos e Ferramentas de Serviço
+4.1.02.009 - Softwares e Licenças Aplicados nos Serviços
+4.1.02.010 - Outros Custos Diretos dos Serviços
+4.2 - DESPESAS OPERACIONAIS
+4.2.01 - Despesas com Pessoal
+4.2.01.001 - Salários e Ordenados
+4.2.01.002 - Pró-labore
+4.2.01.003 - Horas Extras e Adicionais
+4.2.01.004 - Férias e Abono de Férias
+4.2.01.005 - 13º Salário
+4.2.01.006 - INSS - Parte Empresa
+4.2.01.007 - FGTS
+4.2.01.008 - Rescisões e Indenizações Trabalhistas
+4.2.01.009 - Vale-transporte
+4.2.01.010 - Vale-alimentação e Refeição
+4.2.01.011 - Assistência Médica e Odontológica
+4.2.01.012 - Seguro de Vida em Grupo
+4.2.01.013 - Treinamento e Capacitação
+4.2.01.014 - Uniformes e EPI
+4.2.01.015 - Exames Médicos Ocupacionais e Medicina do Trabalho
+4.2.01.016 - Estagiários e Aprendizes
+4.2.02 - Despesas Administrativas
+4.2.02.001 - Aluguel de Imóveis
+4.2.02.002 - Condomínio e IPTU
+4.2.02.003 - Energia Elétrica
+4.2.02.004 - Água e Esgoto
+4.2.02.005 - Telefonia e Internet
+4.2.02.006 - Material de Escritório e Expediente
+4.2.02.007 - Material de Limpeza, Copa e Cozinha
+4.2.02.008 - Honorários Contábeis
+4.2.02.009 - Honorários Advocatícios e Jurídicos
+4.2.02.010 - Consultorias e Serviços Profissionais
+4.2.02.011 - Assinaturas, Softwares e Serviços em Nuvem
+4.2.02.012 - Manutenção e Reparos de Instalações
+4.2.02.013 - Manutenção de Máquinas, Equipamentos e Informática
+4.2.02.014 - Manutenção e Combustível de Veículos
+4.2.02.015 - Seguros Diversos
+4.2.02.016 - Correios, Cartório e Autenticações
+4.2.02.017 - Viagens, Hospedagens e Passagens
+4.2.02.018 - Lanches, Refeições e Recepções
+4.2.02.019 - Segurança, Vigilância e Monitoramento
+4.2.02.020 - Associações, Sindicatos e Anuidades
+4.2.02.021 - Depreciação
+4.2.02.022 - Amortização
+4.2.02.023 - Despesas com Copa, Água Mineral e Gás
+4.2.02.024 - Despesas Administrativas Diversas
+4.2.03 - Despesas Comerciais e com Vendas
+4.2.03.001 - Comissões sobre Vendas e Serviços
+4.2.03.002 - Propaganda e Publicidade
+4.2.03.003 - Marketing Digital e Anúncios Online
+4.2.03.004 - Brindes, Amostras e Promoções
+4.2.03.005 - Fretes e Entregas sobre Vendas
+4.2.03.006 - Embalagens e Materiais de Expedição
+4.2.03.007 - Taxas de Cartão de Crédito e Débito
+4.2.03.008 - Taxas de Marketplace e Plataformas de Venda
+4.2.03.009 - Feiras, Eventos e Representações
+4.2.03.010 - Perdas com Clientes (PECLD)
+4.2.03.011 - Garantias e Assistência Pós-venda
+4.2.03.012 - Despesas Comerciais Diversas
+4.2.04 - Despesas Tributárias
+4.2.04.001 - IPVA e Licenciamento de Veículos
+4.2.04.002 - Taxas Municipais, Estaduais e Federais
+4.2.04.003 - Alvarás e Licenças de Funcionamento
+4.2.04.004 - Multas e Juros Fiscais
+4.2.04.005 - IOF sobre Operações
+4.2.04.006 - Outros Impostos e Contribuições
+4.2.05 - Despesas Financeiras
+4.2.05.001 - Juros sobre Empréstimos e Financiamentos
+4.2.05.002 - Juros e Multas por Atraso de Pagamento
+4.2.05.003 - Tarifas e Despesas Bancárias
+4.2.05.004 - Descontos Concedidos (Financeiros)
+4.2.05.005 - Deságio em Antecipação de Recebíveis
+4.2.05.006 - Variação Cambial Passiva
+4.2.05.007 - Outras Despesas Financeiras
+4.3 - OUTRAS DESPESAS
+4.3.01 - Outras Despesas Não Operacionais
+4.3.01.001 - Perda na Venda ou Baixa de Imobilizado
+4.3.01.002 - Doações e Contribuições
+4.3.01.003 - Provisões para Contingências
+4.3.01.004 - Sinistros e Perdas Extraordinárias
+4.3.01.005 - Despesas Eventuais
+4.4 - IMPOSTOS SOBRE O LUCRO
+4.4.01 - Provisão para IRPJ e CSLL
+4.4.01.001 - Provisão para Imposto de Renda (IRPJ)
+4.4.01.002 - Provisão para Contribuição Social (CSLL)
+3.1 - receitaBruta
+3.2 - deducoes
+3.3 - resultadoFinanceiro
+3.4 - outrasReceitasDespesas
+4.1 - custos
+4.2.05 - resultadoFinanceiro
+4.2 - despesasOperacionais
+4.3 - outrasReceitasDespesas
+4.4 - impostosResultado
+</script>
+
+<!-- Departamentos (centros de custo) da entidade 1622 no DRACMA -->
+<script type="text/plain" id="deptosPadrao">
+3310000 - Departamento Sede
+3310103 - Informática
+3310104 - Patrimônio
+3311001 - CAL - Sede Escola
+3311002 - CAL - Caixa Escola
+3311101 - CAL - Educação Infantil
+3311102 - CAL - Fundamental I
+3311103 - CAL - Fundamental II
+3311104 - CAL - Ensino Médio
+3311705 - CAL - Formaturas
+3311802 - CAL - Viagens, Passeios e Excursões
+3311805 - CAL - Missão Alunos
+3311807 - CAL - Jogos e Atividades Esportivas
+3311808 - CAL - Atividades Pedagógicas e Preparatórias
+3311900 - CAL - Taxa de Eventos Extracurriculares
+3311901 - CAL - Taxa Dia dos Pais
+3311902 - CAL - Taxa Dia das Mães
+3311903 - CAL - Taxa Dia dos Estudantes
+3311904 - CAL - Taxa Aniversariantes
+3311905 - CAL - Taxa Dia das Mulheres
+3311906 - CAL - Taxa Dia das Crianças
+3311907 - CAL - Taxa Páscoa
+3311908 - CAL - Taxa Jogos Interséries
+3311909 - CAL - Taxa Capelania
+3311910 - CAL - Taxa Coordenação
+3311911 - CAL - Taxa Orientação
+3311912 - CAL - Taxa Capelania Projetos
+3312001 - CAM - Sede Escola
+3312002 - CAM - Caixa Escola
+3312101 - CAM - Educação Infantil
+3312102 - CAM - Fundamental I
+3312103 - CAM - Fundamental II
+3312104 - CAM - Ensino Médio
+3312705 - CAM - Formaturas
+3312802 - CAM - Viagens, Passeios e Excursões
+3312805 - CAM - Missão Alunos
+3312807 - CAM - Jogos e Atividades Esportivas
+3312808 - CAM - Atividades Pedagógicas e Preparatórias
+3312900 - CAM - Taxa de Eventos Extracurriculares
+3312901 - CAM - Taxa Dia dos Pais
+3312902 - CAM - Taxa Dia das Mães
+3312903 - CAM - Taxa Dia dos Estudantes
+3312904 - CAM - Taxa Aniversariantes
+3312905 - CAM - Taxa Dia das Mulheres
+3312906 - CAM - Taxa Dia das Crianças
+3312907 - CAM - Taxa Páscoa
+3312908 - CAM - Taxa Jogos Interséries
+3312909 - CAM - Taxa Capelania
+3312910 - CAM - Taxa Coordenação
+3312911 - CAM - Taxa Orientação
+3313001 - EAM - Sede Escola
+3313002 - EAM - Caixa Escola
+3313101 - EAM - Educação Infantil
+3313102 - EAM - Fundamental I
+3313103 - EAM - Fundamental II
+3313705 - EAM - Formaturas
+3313802 - EAM - Viagens, Passeios e Excursões
+3313805 - EAM - Missão Alunos
+3313807 - EAM - Jogos e Atividades Esportivas
+3313808 - EAM - Atividades Pedagógicas e Preparatórias
+3313900 - EAM - Taxa de Eventos Extracurric
+3313901 - EAM - Taxa Dia dos Pais
+3313902 - EAM - Taxa Dia das Mães
+3313903 - EAM - Taxa Dia dos Estudantes
+3313904 - EAM - Taxa Aniversariantes
+3313905 - EAM - Taxa Dia das Mulheres
+3313906 - EAM - Taxa Dia das Crianças
+3313907 - EAM - Taxa Páscoa
+3313908 - EAM - Taxa Jogos Interséries
+3313909 - EAM - Taxa Capelania
+3313910 - EAM - Taxa Coordenação
+3313911 - EAM - Taxa Orientação
+3314001 - EAC - Sede Escola
+3314002 - EAC - Caixa Escola
+3314101 - EAC - Educação Infantil
+3314102 - EAC - Fundamental I
+3314705 - EAC - Formaturas
+3314802 - EAC - Viagens, Passeios e Excursões
+3314805 - EAC - Missão Alunos
+3314807 - EAC - Jogos e Atividades Esportivas
+3314808 - EAC - Atividades Pedagógicas e Preparatórias
+3314900 - EAC - Taxa de Eventos Extracurriculares
+3314901 - EAC - Taxa Dia dos Pais
+3314902 - EAC - Taxa Dia das Mães
+3314903 - EAC - Taxa Dia dos Estudantes
+3314904 - EAC - Taxa Aniversariantes
+3314905 - EAC - Taxa Dia das Mulheres
+3314906 - EAC - Taxa Dia das Crianças
+3314907 - EAC - Taxa Páscoa
+3314908 - EAC - Taxa Jogos Interséries
+3314909 - EAC - Taxa Capelania
+3314910 - EAC - Taxa Coordenação
+3314911 - EAC - Taxa Orientação
+3315001 - EAA - Sede Escola
+3315002 - EAA - Caixa Escola
+3315101 - EAA - Educação Infantil
+3315102 - EAA - Fundamental I
+3315705 - EAA - Formaturas
+3315802 - EAA - Viagens, Passeios e Excursões
+3315805 - EAA - Missão Alunos
+3315807 - EAA - Jogos e Atividades Esportivas
+3315808 - EAA - Atividades Pedagógicas e Preparatórias
+3315900 - EAA - Taxa de Eventos Extracurriculares
+3315901 - EAA - Taxa Dia dos Pais
+3315902 - EAA - Taxa Dia das Mães
+3315903 - EAA - Taxa Dia dos Estudantes
+3315904 - EAA - Taxa Aniversariantes
+3315905 - EAA - Taxa Dia das Mulheres
+3315906 - EAA - Taxa Dia das Crianças
+3315907 - EAA - Taxa Páscoa
+3315908 - EAA - Taxa Jogos Interséries
+3315909 - EAA - Taxa Capelania
+3315910 - EAA - Taxa Coordenação
+3315911 - EAA - Taxa Orientação
+3316001 - CALGP - Sede Escola
+3316009 - CALGP - Construção
+3316010 - CALGP - Pav. Asfáltica
+3317001 - CAME - Sede Escola
+33190 - Promoção e Eventos
+33191 - CADEC - Londrina
+33192 - CADEC - Apucarana
+33193 - Lar dos Menores Paul Harris
+33910 - IASBE - Escritório
+33911 - IASBE - Externo
+33921 - Lar dos Menores Paul Harris - Administrativo
+33922 - Casa Lar da Adolescente Talita
+33923 - Creche Ana Proveller
+33924 - Creche - Foz do Iguaçu
+33931 - CADEC - Londrina
+33932 - CADEC - Apucarana
+33941 - CATRE - Escritório
+33942 - Acampamento - Terra Roxa
+</script>
+
+<script>
+/* =============== DADOS FIXOS =============== */
+const ENT = 'STNR';                       // entidade do DRACMA de treinamento: sempre STNR
+const ATIVIDADE = 'STNR - DRACMA';        // nome da atividade no SysContábil
+const FB_CFG = {apiKey:'AIzaSyDn_eoBdLbAKyYanNWubHGF6GK0PDTtKmY',authDomain:'fap--syscont.firebaseapp.com',projectId:'fap--syscont',
+  storageBucket:'fap--syscont.firebasestorage.app',messagingSenderId:'433456787681',appId:'1:433456787681:web:61ded632b1b2ea1ce7c7a0'};
+const TIPOS = [
+ ['Adto','Adiantamento'],['BPe','Bilhete de Passagem Eletrônico'],['Bol','Boleto'],['CC','Comprovante do Cliente - Correios'],
+ ['CTRC','Conhecimento de Transporte Rodoviário de Cargas'],['CTe','Conhecimento Transporte Eletrônico'],['CTeOS','Conhecimento Transporte Eletrônico - Outros Serviços'],
+ ['CCE','Conta Corrente - Entidades'],['Contr','Contrato'],['CF','Cupom Fiscal'],['DD','Devolução Diversa (mensalidade e outros)'],['DA','Documento Agrupado'],
+ ['DARF','Documento de Arrecadação - Tributos com Código de Barras'],['DARF SCB','Documento de Arrecadação - Tributos sem Código de Barras'],
+ ['DAE/GARE','Documento de Arrecadação Estadual - ICMS'],['DAM-T','Documento de Arrecadação Municipal - Taxas e Tributos'],['Fat','Fatura'],
+ ['FAT-AE','Fatura Serviço de Água e Esgoto'],['GPS','Guia da Previdência Social'],['GA','Guia de Arrecadação'],['GRF','Guia de Recolhimento do FGTS'],
+ ['GFD','Guia do FGTS Digital'],['INV','Invoice'],['MB','Movimento Bancário'],['NF','Nota Fiscal'],['NFa','Nota Fiscal Avulsa'],
+ ['NFCe','Nota Fiscal Consumidor Eletrônica'],['NFCEE','Nota Fiscal Conta de Energia Elétrica'],['NFPR','Nota Fiscal de Produtor Rural'],
+ ['NFe','Nota Fiscal Eletrônica'],['NFSC','Nota Fiscal Eletrônica de Serviço de Comunicação'],['NFFST','Nota Fiscal Fatura de Serviços de Telecomunicações'],
+ ['NFFS','Nota Fiscal Fatura de Serviços'],['NFSe','Nota Fiscal Serviço Eletrônica'],['PLoc','Pagamento de Locação (Aluguéis, Contratos e Boletos)'],
+ ['PRDE','Pagamento Residentes ou Domiciliados no Exterior'],['REC','Recibo'],['REC ADTO','Recibo de Adiantamento'],['RPS - APS','Recibo Pagamento de Serviços - APS'],
+ ['RPS','Recibo Provisório de Serviço'],['RV','Reembolso de Viagem'],['RP','Remessa de Pagamento'],['Tarf','Tarifa']
+];
+const TIPO_NOME = Object.fromEntries(TIPOS);
+const FISCAL = new Set(['NFe','NFSe','NF','NFa','NFCe','CF','CTe','CTeOS','CTRC','NFCEE','NFPR','NFSC','NFFST','NFFS','PLoc','PRDE','REC','RPS','RPS - APS','INV']);
+const SERV = new Set(['NFSe','RPS','RPS - APS','REC','NFFS','NFa']);           // têm cadastro de serviço na análise fiscal
+const MODELO = {NFe:'55',NFCe:'65',CTe:'57',CTeOS:'67'};                        // têm chave de acesso de 44 dígitos
+const CATS = ['Adiantamento à Fornecedores','Adto Viagens','Água e Esgoto','Aluguéis','Aluguéis - Entidade','Aquisição de Móveis, Máquinas ou Equipamentos',
+ 'Assistência Social e Médicas','Aviso Entidades Congêneres','Aviso Entidades Internas','Bolsa Confessional IACS','Brindes e Prêmios','Combustíveis',
+ 'Concretagem e Argamassa - Bens em Formação (1231005)','Condomínios','Conservação de Edifícios','Conservação de Jardins','Conservação de Máquinas e Equipamentos',
+ 'Conservação de Móveis e Utensílios','Conservação de Veículos','Consórcio - Fundo Comum','Consórcio - Fundo de Reserva','Consórcio - Taxa de Administração',
+ 'Construção de Edifícios','Construtora - Concretagem e Argamassa - Bens em Formação (1231005)','Construtora - Mão de Obra - Bens em Formação (1231005)',
+ 'Construtora - Material - Bens em Formação (1231005)','Construtora - Pré-moldado - Bens em Formação (1231005)','Conta Corrente','Contribuição Sindical','Correios',
+ 'Despesas Antecipadas - Matrícula 2027','Devolução 7Edu','Devolução de Depósito','Devolução de Mensalidade','Devolução de Taxa de Eventos','Devoluções Diversas',
+ 'DP/RH - Adiantamento 13º Salário APS','DP/RH - Adiantamento Férias APS','DP/RH - Adiantamento Mensal APS','DP/RH - Dental Uni','DP/RH - FGTS Mensal',
+ 'DP/RH - FGTS Rescisório','DP/RH - Mensalidade Sindical','DP/RH - Pagamento Salário Mensal/Rescisão (APS)','DP/RH - Relatório de Viagem APS',
+ 'DP/RH - RPS Pessoa Física APS','DP/RH - Seguro de Vida','DP/RH - Uniforme','DP/RH - Unimed','DP/RH - Vale Alimentação APS','DP/RH - Vale Transporte APS',
+ 'Embalagens','Encargos USB','Energia Elétrica','Estacionamentos','Exames e Diagnósticos','Fatura Cartão Corporativo','Fotocópias','Fretes de Mercadorias','Gás',
+ 'Gêneros Alimentícios','Hospedagem de Terceiros','IAJA','Imposto sobre Serviços - ISS','Indenizações de Processos Judiciais','Internet','Jurídicas e Legais',
+ 'Licença de Softwares','Livros e Periódicos','Mão de Obra - Bens em Formação (1231005)','Material - Bens em Formação (1231005)','Material de Consumo',
+ 'Material de Escritório','Material de Higiene e Limpeza','Material de Informática','Material de Publicidade','Material Didático','Medicamentos',
+ 'Medicina do Trabalho - CLAC','Mudanças','Pedágios','Pré-moldado - Bens em Formação (1231005)','Prestação de Serviços PJ','PROASA','Rateio TIM','Refeições',
+ 'RP - Remessa de Pagamento entre Entidades','Segurança e Vigilância','Seguro Alunos','Telefonia','Totalização de Retenções','Transporte Individual','Uniforme'];
+const FORMAS = ['Boleto','PIX','Transferência Bancária','Pagamento de Contas e Tributos com Código de Barras','Débito Automático','Débito Direto Autorizado',
+ 'Cheque','Dinheiro','Cartão Corporativo Crédito','Cartão Corporativo Débito'];
+const BANCOS = ['001 - Banco do Brasil S.A.','033 - Banco Santander (Brasil) S.A.','104 - Caixa Econômica Federal','237 - Banco Bradesco S.A.','341 - Itaú Unibanco S.A.','748 - Banco Cooperativo Sicredi S.A.','756 - Banco Cooperativo Sicoob S.A.','260 - Nu Pagamentos S.A.','077 - Banco Inter S.A.'];
+const REGIMES = ['Lucro Real ou Presumido','Simples Nacional','Microempreendedor Individual','Imune e Isenta','Cooperativa'];
+// Serviços fiscais (amostra para treinamento): alíquota de IRRF e incidência de CSRF quando o prestador é do Lucro Real/Presumido
+const SERVICOS = [
+ {cod:'1.05',n:'Licenciamento ou cessão de direito de uso de programas de computação',ir:1.5,csrf:true},
+ {cod:'1.07',n:'Suporte técnico em informática',ir:1.5,csrf:true},
+ {cod:'4.03',n:'Hospitais, clínicas, laboratórios e congêneres',ir:1.5,csrf:true},
+ {cod:'7.02',n:'Execução de obras de construção civil (empreitada)',ir:1.2,csrf:false},
+ {cod:'7.10',n:'Limpeza, manutenção e conservação de imóveis',ir:1.0,csrf:true},
+ {cod:'8.02',n:'Instrução, treinamento, orientação pedagógica',ir:1.5,csrf:true},
+ {cod:'11.02',n:'Vigilância, segurança ou monitoramento',ir:1.0,csrf:true},
+ {cod:'13.03',n:'Fotografia e cinematografia',ir:1.5,csrf:true},
+ {cod:'14.01',n:'Lubrificação, limpeza, revisão e manutenção de máquinas e equipamentos',ir:1.0,csrf:true},
+ {cod:'17.01',n:'Assessoria ou consultoria de qualquer natureza',ir:1.5,csrf:true}
+];
+// Contas do plano do SysContábil usadas na contabilização automática (créditos)
+const RET = {
+  IRRF:{nome:'IRRF',conta:'2.1.05.011',guia:'DARF 1708',dia:20},
+  CSRF:{nome:'PIS/COFINS/CSLL (CSRF)',conta:'2.1.05.014',guia:'DARF 5952',dia:20},
+  INSS:{nome:'INSS',conta:'2.1.05.012',guia:'DCTFWeb (INSS retido)',dia:20},
+  ISS:{nome:'ISS',conta:'2.1.05.013',guia:'Guia ISS municipal',dia:10}
+};
+const C_FORN='2.1.01.002', REEMB_PADRAO='2.1.07.001', C_DESC='3.3.01.003', C_JUROS='4.2.05.002';
+// Conta de reembolso a funcionário: escolhida no Plano de Contas (pode ser uma conta criada no SysContábil)
+const cReemb = () => (S&&S.cfg&&S.cfg.reemb)||REEMB_PADRAO;
+const FUNDO='10', FUNDO_TXT='10 - Fundo Operativo';
+const RESTR={'0A':'0A - Ativo e Passivo ou Sem Restrição','0E':'0E - Despesas e Transferências'};
+const SEDE='3310000';
+const EU='Você (Treinamento)';
+
+const PESSOAS0 = [
+ {id:'f1',cod:'1201',nome:'Papelaria Horizonte Ltda',doc:'11.222.333/0001-01',regime:'Simples Nacional'},
+ {id:'f2',cod:'1202',nome:'Clima Certo Manutenção de Ar Condicionado Ltda',doc:'22.333.444/0001-02',regime:'Lucro Real ou Presumido'},
+ {id:'f3',cod:'1203',nome:'Condomínio Edifício Exemplo',doc:'33.444.555/0001-03',regime:'Imune e Isenta'},
+ {id:'f4',cod:'1204',nome:'Distribuidora Limpa Bem Ltda',doc:'44.555.666/0001-04',regime:'Lucro Real ou Presumido'},
+ {id:'f6',cod:'1206',nome:'Companhia de Energia Exemplo S.A.',doc:'55.666.777/0001-05',regime:'Lucro Real ou Presumido'},
+ {id:'f7',cod:'1207',nome:'Saneamento Exemplo S.A.',doc:'66.777.888/0001-06',regime:'Lucro Real ou Presumido'},
+ {id:'f8',cod:'1208',nome:'Condomínio Residencial Jardim Modelo',doc:'77.888.999/0001-07',regime:'Imune e Isenta'},
+ {id:'f9',cod:'1209',nome:'TecnoServ Soluções em TI Ltda',doc:'88.999.000/0001-08',regime:'Lucro Real ou Presumido'},
+ {id:'f10',cod:'1210',nome:'Gráfica Ponto Final Ltda',doc:'99.000.111/0001-09',regime:'Simples Nacional'},
+ {id:'f11',cod:'1211',nome:'Ana Paula Fotografias ME',doc:'10.203.040/0001-10',regime:'Simples Nacional'},
+ {id:'f13',cod:'1213',nome:'Mercado Bom Preço Ltda',doc:'20.304.050/0001-20',regime:'Lucro Real ou Presumido'},
+ {id:'f12',cod:'4501',nome:'Ana Exemplo',doc:'987.654.321-00',func:true,banco:{banco:'341 - Itaú Unibanco S.A.',tipo:'Corrente',ag:'0123',agDv:'',conta:'45678',contaDv:'9'}},
+ {id:'f14',cod:'4502',nome:'Bruno Treino',doc:'876.543.210-00',func:true,banco:{banco:'001 - Banco do Brasil S.A.',tipo:'Corrente',ag:'1234',agDv:'5',conta:'98765',contaDv:'0'}},
+ {id:'fEU',cod:'4999',nome:EU,doc:'111.222.333-44',func:true,banco:{banco:'756 - Banco Cooperativo Sicoob S.A.',tipo:'Corrente',ag:'4321',agDv:'',conta:'11223',contaDv:'4'}}
+];
+const PESSOA_REQ = {[EU]:'fEU','Ana Exemplo':'f12','Bruno Treino':'f14'};
+const AMOSTRAS = {
+ a1:{titulo:'Boleto de condomínio (Jardim Modelo)',tipo:'Bol',forn:'f8',numero:'88214',emissaoOff:-2,valor:640.00,vencOff:10,
+     linha:'23790.12345 60000.123456 78901.234567 8 99990000064000',finalidade:'Locação - Condomínio - Apartamentos Professores',
+     dica:'Rateie: R$ 400,00 em 3312001 (CAM - Sede Escola) e R$ 240,00 em 3315001 (EAA - Sede Escola), categoria Condomínios.'},
+ a2:{titulo:'NFSe de suporte de TI (TecnoServ)',tipo:'NFSe',forn:'f9',numero:'2318',emissaoOff:-1,valor:2400.00,vencOff:15,
+     servico:'Suporte técnico em informática - setembro',ret:{IRRF:36.00,CSRF:111.60},finalidade:'Suporte de TI - setembro'},
+ a3:{titulo:'NFe de material de escritório (Papelaria Horizonte)',tipo:'NFe',forn:'f1',numero:'4791',serie:'1',emissaoOff:-3,valor:389.90,vencOff:20,
+     itens:[['Papel A4 75g (cx 10 resmas)',1,259.90],['Caneta esferográfica azul (cx 50)',2,45.00],['Grampos 26/6 (cx)',4,10.00]],finalidade:'Material de escritório - secretaria'},
+ a4:{titulo:'NFCe do mercado paga por você (reembolso)',tipo:'NFCe',forn:'f13',numero:'383101',serie:'2',emissaoOff:0,valor:126.40,vencOff:2,
+     itens:[['Bolo e salgados - reunião pedagógica',1,126.40]],finalidade:'Reembolso - lanche reunião pedagógica',
+     dica:'O emitente é o mercado, mas quem recebe é você: no Pagamento use "Reembolso Padrão".'}
+};
+
+/* =============== UTIL =============== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const r2 = v => Math.round((+v||0)*100)/100;
+const brl = v => (v<0?'-':'')+'R$ '+Math.abs(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dt = iso => iso ? iso.slice(0,10).split('-').reverse().join('/') : '';
+const dth = iso => iso ? dt(iso)+' '+iso.slice(11,16) : '';
+const pad = n => String(n).padStart(2,'0');
+function isoDay(off=0,base){const d=base?new Date(base+'T12:00:00'):new Date();d.setDate(d.getDate()+off);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function addMonths(iso,n){const d=new Date(iso+'T12:00:00');d.setMonth(d.getMonth()+n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function diaMesSeguinte(iso,dia){const d=new Date((iso||isoDay(0)).slice(0,7)+'-01T12:00:00');d.setMonth(d.getMonth()+1);d.setDate(dia);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function nowIso(){const d=new Date();return isoDay(0)+'T'+pad(d.getHours())+':'+pad(d.getMinutes())}
+const mesTxt = ym => new Date(ym.slice(0,7)+'-15T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+const uid = () => Math.random().toString(36).slice(2,10);
+const digits = s => String(s||'').replace(/\D/g,'');
+function parseMoney(s){const d=digits(s);return d?r2(parseInt(d,10)/100):0}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.innerHTML=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4200)}
+function parseLista(id){return $('#'+id).textContent.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf(' - ');return [l.slice(0,i).trim(),l.slice(i+3).trim()]})}
+const fmtDoc = dd => dd.length===14?dd.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'):dd.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+
+/* Chave de acesso (NF-e/NFC-e/CT-e): cUF AAMM CNPJ mod série nNF tpEmis cNF DV */
+function dvMod11(s){let p=2,t=0;for(let i=s.length-1;i>=0;i--){t+=+s[i]*p;p=p===9?2:p+1}const r=11-(t%11);return r>=10?0:r}
+function gerarChave(cnpj,emissao,modelo,serie,numero){const b='41'+emissao.slice(2,4)+emissao.slice(5,7)+digits(cnpj).padStart(14,'0').slice(-14)+modelo+
+  digits(serie||'1').padStart(3,'0').slice(-3)+digits(numero).padStart(9,'0').slice(-9)+'1'+String(10000000+(+digits(numero)*7919)%89999999).slice(-8);return b+dvMod11(b)}
+function validarChave(d){const E=[],k=digits(d.chave),f=pessoa(d.forn);
+  if(!k)return ['Chave de acesso não informada.'];
+  if(k.length!==44)return ['A chave deve ter 44 dígitos (tem '+k.length+').'];
+  if(dvMod11(k.slice(0,43))!==+k[43])E.push('Dígito verificador inválido.');
+  if(k.slice(6,20)!==digits(f.doc).padStart(14,'0'))E.push('CNPJ da chave ('+fmtDoc(k.slice(6,20))+') diferente do emitente ('+f.doc+').');
+  if(MODELO[d.tipo]&&k.slice(20,22)!==MODELO[d.tipo])E.push('Modelo da chave ('+k.slice(20,22)+') não corresponde ao tipo '+d.tipo+'.');
+  if(+k.slice(22,25)!==+digits(d.serie||'0'))E.push('Série da chave ('+(+k.slice(22,25))+') diferente da série informada ('+(d.serie||'vazia')+').');
+  if(+k.slice(25,34)!==+digits(d.numero))E.push('Número da chave ('+(+k.slice(25,34))+') diferente do número informado ('+d.numero+').');
+  if(d.emissao&&k.slice(2,6)!==d.emissao.slice(2,4)+d.emissao.slice(5,7))E.push('Ano/mês da chave ('+k.slice(4,6)+'/20'+k.slice(2,4)+') diferente da emissão ('+dt(d.emissao).slice(3)+').');
+  return E}
+
+/* =============== PLANO: o mesmo do SysContábil =============== */
+// Lançamento só em conta de 7 dígitos (0.0.00.000). Grupos (1, 1.1, 1.1.01) e a conta automática de resultado não recebem.
+const tipoConta = c => ({'1':'Ativo','2':'Passivo','3':'Receita','4':'Despesa'})[c[0]]||'Ativo';
+const ehLancavel = (c,role) => /^\d+(\.\d+)*$/.test(c) && digits(c).length===7 && role!=='result';
+const contaDoChart = a => ({c:String(a.code),n:String(a.name),a:ehLancavel(String(a.code),a.role),on:true,t:a.type||tipoConta(String(a.code)),...(a.role?{role:a.role}:{})});
+
+/* =============== ESTADO =============== */
+const KEY='dracma-treino-v4';
+let S;
+const planoPadrao = () => parseLista('planoPadrao').map(([code,n])=>{const [name,role]=n.split(' | ');return contaDoChart({code,name,role})});
+// No site, lê o plano padrão direto do SysContábil (garante que é o mesmo); localmente fica a cópia embutida
+async function carregarPlanoSys(){if(vinculado())return;try{const m=await import('./syscontabil/js/chartOfAccounts.js');
+  const novo=m.FULL_CHART.map(contaDoChart);const k=p=>p.map(x=>x.c+'|'+x.n).join('\n');
+  if(novo.length&&!vinculado()&&k(novo)!==k(S.plano)){S.plano=novo;indexar();save();rerender()}}catch(e){}}
+const deptosPadrao = () => parseLista('deptosPadrao').map(([c,n],i)=>({c,n,orc:[1850000,-42000,18500,96000,12400,5300,-8700,3900,27000,6100,51000][i%11],on:true}));
+let PL={},DP={},SUBS={};
+function indexar(){PL=Object.fromEntries(S.plano.map(p=>[p.c,p]));DP=Object.fromEntries(S.deptos.map(p=>[p.c,p]));
+  SUBS={};(S.subs||[]).forEach(s=>(SUBS[s.c]=SUBS[s.c]||[]).push(s));
+  $('#dlcontas').innerHTML=S.plano.filter(p=>p.a&&p.on).map(p=>`<option value="${esc(p.c+' - '+p.n)}">`).join('')}
+const vinculado = () => !!(S.integ&&S.integ.wsId);
+const contaTxt = c => c ? c+' - '+(PL[c]?.n||'(conta não existe no plano)') : '';
+const deptoTxt = c => c ? c+' - '+(DP[c]?.n||'(departamento não existe)') : '';
+const deptosAtivos = () => S.deptos.filter(d=>d.on);
+function pessoa(id){return S.pessoas.find(f=>f.id===id)||{nome:'—',doc:'',cod:''}}
+function pessoaTxt(id){const f=pessoa(id);return f.nome+(f.doc?' - '+f.doc:'')}
+function novoCodigo(){S.seq++;return S.seq+'.'+String(new Date().getFullYear()).slice(2)}
+function novoPag(){return {forma:'',benef:'',venc:'',periodo:'',parcelas:1,desconto:0,multa:0,linha:'',pix:'',banco:'',tipoConta:'Corrente',ag:'',agDv:'',conta:'',contaDv:'',padrao:false}}
+function novoServico(regime){return {valor:0,semIss:false,regime:regime||'',atualizado:'',tipo:'',cod:'',cnae:'',dispInss:'Não',issRet:false,issAliq:5}}
+function novoFiscal(){return {status:'pendente',servico:null,sim:null,ret:[],guias:[]}}
+function novoDoc(){return {id:uid(),codigo:'',tipo:'',forn:'',emissao:'',serie:'',numero:'',chave:'',valor:0,finalidade:'',
+  requisitante:EU,mine:true,criadoEm:nowIso(),enviadoEm:'',etapa:'criacao',salvo:false,liberado:false,anexo:null,origemXml:false,
+  rateio:[],pag:novoPag(),fiscal:novoFiscal(),contabil:{status:'aguardando',lanc:[],motivo:''},loteId:null,devolucao:null,coments:[],hist:[]}}
+function hist(d,t){d.hist.unshift({em:nowIso(),por:EU,t})}
+
+function seed(){
+  const s={seq:3400100,loteSeq:178,pessoas:JSON.parse(JSON.stringify(PESSOAS0)),docs:[],lotes:[],flags:{done:{}},prefs:{next:true},plano:planoPadrao(),deptos:deptosPadrao(),subs:[],integ:null};
+  S=s;indexar();
+  const mk=(o)=>{const d=Object.assign(novoDoc(),o);d.pag=Object.assign(novoPag(),o.pag);d.codigo=novoCodigo();d.etapa='revisao';d.salvo=d.liberado=true;d.mine=false;
+    d.criadoEm=isoDay(o._c||-1)+'T09:'+pad(10+s.docs.length*6);d.enviadoEm=isoDay(o._c||-1)+'T09:'+pad(12+s.docs.length*6);
+    d.fiscal.status=FISCAL.has(d.tipo)?'pendente':'nao_aplica';d.pag.benef=d.pag.benef||d.forn;
+    if(MODELO[d.tipo]&&!d.chave)d.chave=gerarChave(pessoa(d.forn).doc,d.emissao,MODELO[d.tipo],d.serie,d.numero);
+    d.hist=[{em:d.enviadoEm,por:d.requisitante,t:'Documento aprovado e enviado para revisão'},{em:d.criadoEm,por:d.requisitante,t:'Documento criado'}];
+    s.docs.push(d);return d};
+  mk({seedKey:'nfe',tipo:'NFe',forn:'f1',numero:'4512',serie:'1',emissao:isoDay(-3),valor:846.30,finalidade:'Material de escritório - coordenação',
+     requisitante:'Ana Exemplo',rateio:[{cat:'Material de Escritório',cc:'3312002',valor:846.30,desc:''}],
+     pag:{forma:'Boleto',venc:isoDay(7),linha:'34191.79001 01043.510047 91020.150008 1 99990000084630'},
+     anexo:{tipo:'nfe',nome:'DANFE 4512 Papelaria Horizonte.pdf',dados:{itens:[['Papel A4 75g (cx 10 resmas)',2,259.90],['Pasta suspensa (cx 50)',1,189.50],['Toner compatível',1,137.00]]}}});
+  // chave com número errado: o fiscal deve corrigir o número ou a chave
+  const n2=mk({seedKey:'chave',tipo:'NFe',forn:'f10',numero:'10552',serie:'1',emissao:isoDay(-2),valor:1180.00,finalidade:'Banners e folders - Mostra Cultural',
+     requisitante:'Bruno Treino',rateio:[{cat:'Material de Publicidade',cc:'3312900',valor:1180,desc:''}],
+     pag:{forma:'PIX',venc:isoDay(9),pix:'99.000.111/0001-09'},
+     anexo:{tipo:'nfe',nome:'DANFE 10525 Gráfica Ponto Final.pdf',numero:'10525',dados:{itens:[['Banner lona 90x120',4,95.00],['Folder A4 (milheiro)',2,400.00]]}}});
+  n2.chave=gerarChave(pessoa('f10').doc,n2.emissao,'55','1','10525');
+  mk({seedKey:'nfse',tipo:'NFSe',forn:'f2',numero:'1208',emissao:isoDay(-2),valor:3200.00,finalidade:'Manutenção preventiva ar-condicionado - bloco B',
+     requisitante:'Bruno Treino',rateio:[{cat:'Conservação de Máquinas e Equipamentos',cc:'3311001',valor:3200,desc:''}],
+     pag:{forma:'PIX',venc:isoDay(10),pix:'22.333.444/0001-02'},
+     anexo:{tipo:'nfse',nome:'NFSe 1208 Clima Certo.pdf',dados:{servico:'Manutenção preventiva e limpeza de 16 aparelhos de ar-condicionado (item 14.01)',ret:{IRRF:32.00,CSRF:148.80}}}});
+  mk({seedKey:'bol',tipo:'Bol',forn:'f3',numero:'16090',emissao:isoDay(-1),valor:512.40,finalidade:'Locação - Condomínio - Tesouraria',
+     requisitante:'Ana Exemplo',rateio:[{cat:'Condomínios',cc:'3310000',valor:12.40,desc:''},{cat:'Condomínios',cc:'3315001',valor:500,desc:''}],
+     pag:{forma:'Boleto',venc:isoDay(5),linha:'74891.16009 02906.407230 14917.821085 4 99990000051240'},
+     anexo:{tipo:'bol',nome:'Boleto Condomínio Edifício Exemplo.pdf',dados:{}}});
+  mk({seedKey:'div',tipo:'NFe',forn:'f4',numero:'77301',serie:'1',emissao:isoDay(-4),valor:1520.00,finalidade:'Material de limpeza - outubro',
+     requisitante:'Ana Exemplo',rateio:[{cat:'Material de Higiene e Limpeza',cc:'3312002',valor:1520,desc:''}],
+     pag:{forma:'Boleto',venc:isoDay(12),linha:'10490.00012 34567.800019 23456.780123 6 99990000152000'},
+     anexo:{tipo:'nfe',nome:'DANFE 77301 Limpa Bem.pdf',dados:{valorReal:1250.00,itens:[['Detergente neutro 5L',10,38.50],['Papel toalha interfolha (fardo)',8,62.00],['Saco de lixo 100L (pct)',15,25.00],['Álcool 70% 5L',3,72.00]]}}});
+  mk({seedKey:'reemb',tipo:'NFCe',forn:'f13',numero:'383097',serie:'2',emissao:isoDay(-1),valor:89.90,finalidade:'Reembolso - materiais para reunião de pais',
+     requisitante:'Ana Exemplo',rateio:[{cat:'Material de Consumo',cc:'3315002',valor:89.90,desc:''}],
+     pag:{forma:'Transferência Bancária',venc:isoDay(2),benef:'f12',...pessoa('f12').banco,tipoConta:'Corrente',padrao:true},
+     anexo:{tipo:'nfe',nome:'NFCe 383097 Mercado Bom Preço.pdf',dados:{itens:[['Copos, pratos e guardanapos',1,89.90]]}}});
+  mk({seedKey:'rec',tipo:'REC',forn:'f11',numero:'208',emissao:isoDay(-1),valor:780.00,finalidade:'Fotografia - formatura infantil',
+     requisitante:'Bruno Treino',rateio:[{cat:'Prestação de Serviços PJ',cc:'3312705',valor:780,desc:''}],
+     pag:{forma:'Transferência Bancária',venc:isoDay(3),banco:'001 - Banco do Brasil S.A.',ag:'2233',agDv:'1',conta:'55443',contaDv:'2'},
+     anexo:{tipo:'rec',nome:'Recibo 208.pdf',dados:{servico:'Cobertura fotográfica da formatura do infantil (Simples Nacional)'}}});
+  const e=mk({seedKey:'fat',tipo:'Fat',forn:'f6',numero:'550012',emissao:isoDay(-6),valor:2180.55,finalidade:'Energia elétrica - setembro',
+     requisitante:'Ana Exemplo',_c:-5,rateio:[{cat:'Energia Elétrica',cc:'3312001',valor:2180.55,desc:''}],
+     pag:{forma:'Débito Automático',venc:isoDay(4)},anexo:{tipo:'fat',nome:'Fatura Energia 550012.pdf',dados:{}}});
+  e.fiscal.status='nao_aplica';const L=gerarLanc(e);L.linhas[0].conta='4.2.02.003';L.pronto=true;e.contabil.lanc=[L];e.contabil.status='concluida';
+  e.hist.unshift({em:isoDay(-4)+'T14:20',por:'Ana Exemplo',t:'Análise contábil confirmada'});
+  mk({seedKey:'agua',tipo:'FAT-AE',forn:'f7',numero:'7712093',emissao:isoDay(-1),valor:418.73,finalidade:'Água e esgoto - setembro',
+     requisitante:'Ana Exemplo',rateio:[{cat:'Água e Esgoto',cc:'3314001',valor:418.73,desc:''}],
+     pag:{forma:'Pagamento de Contas e Tributos com Código de Barras',venc:isoDay(8),linha:'82670000004 1 18730123456 7 77120930001 2 20261000000 4'},anexo:{tipo:'agua',nome:'Fatura Água 7712093.pdf',dados:{}}});
+  return s;
+}
+function load(){try{const j=localStorage.getItem(KEY);if(j){S=JSON.parse(j);indexar();return}}catch(e){}S=seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}checkMissoes()}
+
+/* =============== MISSÕES =============== */
+const MISSOES = [
+ {id:'m1',t:'Cadastre um boleto com rateio',d:'Em Cadastrar Documento, anexe o exemplo "Boleto de condomínio", use Processar, rateie em dois centros de custo, informe o pagamento e envie.',
+  ok:()=>S.docs.some(d=>d.mine&&d.etapa==='revisao'&&d.tipo==='Bol'&&d.rateio.length>=2)},
+ {id:'m2',t:'Cadastre um reembolso',d:'Use o exemplo "NFCe do mercado paga por você": o emitente é o mercado e o pagamento vai para você. Use "Reembolso Padrão" no Pagamento e envie.',
+  ok:()=>S.docs.some(d=>d.mine&&d.etapa==='revisao'&&d.pag.benef&&d.pag.benef!==d.forn&&pessoa(d.pag.benef).func)},
+ {id:'m3',t:'Importe um XML de NF-e',d:'Use "Importar XML" (arquivo real ou o exemplo), complete rateio e pagamento e envie.',
+  ok:()=>S.docs.some(d=>d.mine&&d.etapa==='revisao'&&d.origemXml)},
+ {id:'m4',t:'Confirme os dados de uma nota',d:'Na Revisão, a NFe da Gráfica Ponto Final tem o número digitado diferente da nota. Valide a chave de acesso, corrija o número na aba Fiscal e confirme a análise fiscal.',
+  ok:()=>!!S.flags.m4},
+ {id:'m5',t:'Cadastre o serviço e simule as retenções',d:'Abra a NFSe da Clima Certo, cadastre o serviço (regime e serviço fiscal), simule, aplique as retenções e confira com o que está destacado na nota.',
+  ok:()=>!!S.flags.m5},
+ {id:'m6',t:'Devolva um documento divergente',d:'Um documento foi lançado com valor diferente do anexo. Encontre-o e use "Devolver" com o motivo.',
+  ok:()=>!!S.flags.m6},
+ {id:'m7',t:'Contabilize e conclua',d:'Gere a contabilização, escolha as contas de débito, confira débito = crédito, marque como pronto e confirme a análise contábil.',
+  ok:()=>S.docs.some(d=>d.contabil.status==='concluida'&&d.contabil.porMim)},
+ {id:'m8',t:'Exporte um lote contábil',d:'Em Contábil > Lote Contábil, crie um lote, verifique e exporte. Com o SysContábil vinculado, o lote também é enviado para a atividade STNR - DRACMA.',
+  ok:()=>S.lotes.some(l=>l.status==='contabilizado')}
+];
+function checkMissoes(){S.flags.done=S.flags.done||{};MISSOES.forEach(m=>{if(!S.flags.done[m.id]&&m.ok()){S.flags.done[m.id]=true;
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}setTimeout(()=>toast('&#127942; Missão concluída: <b>'+esc(m.t)+'</b>'),400)}})}
+
+/* =============== STATUS / VALORES =============== */
+function status(d){
+  if(d.etapa==='criacao') return {txt:d.devolucao?'Devolvido ao Requisitante':'Em Criação',cls:d.devolucao?'dev':'wait',i:d.devolucao?'&#8617;':'&#9998;'};
+  const C=d.contabil.status;
+  if(C==='concluida')return {txt:'Análise Contábil Concluída - Pronto para Pagamento',cls:'ok',i:'&#10004;'};
+  if(C==='nao')return {txt:'Não Contabilizar - Pronto para Pagamento',cls:'ok',i:'&#10004;'};
+  if(d.fiscal.status==='pendente')return {txt:'Aprovado - Aguardando Análise Fiscal',cls:'wait',i:'&#9719;'};
+  return {txt:'Análise Fiscal Concluída - Aguardando Análise Contábil - Pronto para Pagamento',cls:'ok',i:'&#10004;'};
+}
+const stHtml=d=>{const s=status(d);return `<span class="st ${s.cls}"><span class="i">${s.i}</span><span>${esc(s.txt)}</span></span>`};
+const totRet=d=>r2(d.fiscal.ret.reduce((a,r)=>a+r.valor,0));
+const liquido=d=>r2(d.valor-totRet(d)-(+d.pag.desconto||0)+(+d.pag.multa||0));
+function periodoLista(p){return String(p||'').split(/[,;\s]+/).map(x=>parseInt(x,10)).filter(n=>n>0)}
+function parcelas(d){const per=periodoLista(d.pag.periodo);const n=per.length>1?per.length:Math.max(1,+d.pag.parcelas||1);const L=liquido(d);const base=r2(L/n);const out=[];
+  for(let i=0;i<n;i++){let venc='';
+    if(per.length>1&&d.emissao)venc=isoDay(per[i],d.emissao);
+    else if(d.pag.venc)venc=per.length===1?isoDay(per[0]*i,d.pag.venc):addMonths(d.pag.venc,i);
+    out.push({n:i+1,venc,valor:i===n-1?r2(L-base*(n-1)):base})}
+  return out}
+function dadosPagamento(d){const p=d.pag,b=pessoa(p.benef||d.forn);
+  if(p.forma==='Transferência Bancária')return [`Transferência Bancária para ${b.nome} - ${digits(b.doc)}`,`${p.banco} - Ag. ${p.ag}${p.agDv?'-'+p.agDv:''} - Conta ${p.tipoConta} ${p.conta}${p.contaDv?'-'+p.contaDv:''} - BRL`];
+  if(p.forma==='PIX')return [`PIX para ${b.nome} - ${digits(b.doc)}`,`Chave: ${p.pix}`];
+  if(p.linha)return [`${b.nome} - ${digits(b.doc)}`,p.linha];
+  return [`${b.nome} - ${digits(b.doc)}`,''];}
+
+/* =============== FISCAL: simulação de retenções =============== */
+function simular(d){const s=d.fiscal.servico;const sv=SERVICOS.find(x=>x.cod===s.cod);const base=r2(s.valor||d.valor);const R=[];
+  const lr=s.regime==='Lucro Real ou Presumido'||s.regime==='Cooperativa';
+  const lim=(t,al,cond,obsNao)=>{const v=cond?r2(base*al/100):0;R.push({tipo:t,aliq:cond?al:0,base,valor:v&&v<10?0:v,obs:!cond?obsNao:(v<10?'Dispensado: retenção menor que R$ 10,00':'')})};
+  lim('IRRF',sv?.ir||0,!!sv&&lr,!sv?'Serviço fiscal não informado':'Não se aplica ao regime '+(s.regime||'—'));
+  lim('CSRF',4.65,!!sv&&lr&&sv.csrf,!sv?'Serviço fiscal não informado':!lr?'Não se aplica ao regime '+(s.regime||'—'):'Serviço sem CSRF');
+  const inss=(s.tipo==='Cessão de Mão de Obra'||s.tipo==='Empreitada')&&s.dispInss!=='Sim'&&s.regime!=='Microempreendedor Individual';
+  R.push({tipo:'INSS',aliq:inss?11:0,base,valor:inss?r2(base*0.11):0,obs:inss?'':s.dispInss==='Sim'?'Dispensa de INSS':'Sem cessão de mão de obra ou empreitada'});
+  const iss=!s.semIss&&s.issRet;R.push({tipo:'ISS',aliq:iss?(+s.issAliq||0):0,base,valor:iss?r2(base*(+s.issAliq||0)/100):0,obs:s.semIss?'Não possui ISS':iss?'':'ISS não retido pelo tomador'});
+  return R}
+function retConfere(d){const R=d.anexo?.dados?.ret;if(!R)return true;const mine={};d.fiscal.ret.forEach(r=>mine[r.tipo]=r2(r.valor));
+  return [...new Set([...Object.keys(R),...Object.keys(mine)])].every(k=>r2(R[k]||0)===r2(mine[k]||0))}
+
+/* =============== CONTABILIZAÇÃO =============== */
+function subDe(conta,p){const lst=SUBS[conta];if(lst&&lst.length){const s=lst.find(x=>x.sub===p.cod);return s?s.sub+' - '+s.n:''}return (p.cod||digits(p.doc))+' - '+p.nome}
+function gerarLanc(d){
+  const f=pessoa(d.forn);const ref=`${d.tipo} ${d.numero} ${f.nome} ${dt(d.emissao)}`;const L=[];const fin=d.finalidade;
+  d.rateio.forEach(r=>L.push({id:uid(),conta:'',sub:'',depto:r.cc,restr:'0E',valor:r2(r.valor),venc:'',desc:ref,fin:r.desc?fin+' - '+r.desc:fin,aviso:'N'}));
+  if(+d.pag.multa)L.push({id:uid(),conta:C_JUROS,sub:'',depto:SEDE,restr:'0E',valor:r2(d.pag.multa),venc:'',desc:'Multa/Juros - '+ref,fin,aviso:'N'});
+  d.fiscal.ret.forEach(t=>L.push({id:uid(),conta:RET[t.tipo].conta,sub:'',depto:SEDE,restr:'0A',valor:-r2(t.valor),
+    venc:diaMesSeguinte(d.emissao,RET[t.tipo].dia),desc:`Retenção ${RET[t.tipo].nome} - ${ref}`,fin,aviso:'N'}));
+  if(+d.pag.desconto)L.push({id:uid(),conta:C_DESC,sub:'',depto:SEDE,restr:'0E',valor:-r2(d.pag.desconto),venc:'',desc:'Desconto obtido - '+ref,fin,aviso:'N'});
+  const b=pessoa(d.pag.benef||d.forn);const cc=b.func?cReemb():C_FORN;const ps=parcelas(d);
+  ps.forEach(p=>L.push({id:uid(),conta:cc,sub:subDe(cc,b),depto:SEDE,restr:'0A',valor:-p.valor,venc:p.venc,
+    desc:`${d.tipo} ${d.numero} ${f.nome} Vcto. ${dt(p.venc)} - ${p.n}/${ps.length}`,fin,aviso:'N'}));
+  return {id:String(Date.now())+String(Math.floor(Math.random()*1e6)).padStart(6,'0'),tipo:'Provisionamento',criado:nowIso(),pronto:false,linhas:L};
+}
+const somaL=(l,sinal)=>r2(l.linhas.filter(x=>sinal>0?x.valor>0:x.valor<0).reduce((a,x)=>a+x.valor,0));
+const exigeSub = c => c===C_FORN||c===cReemb()||!!(SUBS[c]&&SUBS[c].length);
+function errosLinhas(linhas){const E=[];linhas.forEach((x,i)=>{const p=PL[x.conta];
+  if(!x.conta)E.push(`Linha ${i+1}: sem conta`);else if(!p)E.push(`Linha ${i+1}: conta ${x.conta} não existe no plano`);else if(!p.a)E.push(`Linha ${i+1}: conta ${x.conta} não recebe lançamento (só contas de 7 dígitos, 0.0.00.000)`);else if(!p.on)E.push(`Linha ${i+1}: conta ${x.conta} está inativa`);
+  if(!DP[x.depto])E.push(`Linha ${i+1}: departamento ${x.depto} não existe`);else if(!DP[x.depto].on)E.push(`Linha ${i+1}: departamento ${x.depto} inativo`);
+  if(x.conta&&exigeSub(x.conta)){const sc=(x.sub||'').split(' - ')[0].trim();if(!sc)E.push(`Linha ${i+1}: conta ${x.conta} exige sub conta`);
+    else if(SUBS[x.conta]&&SUBS[x.conta].length&&!SUBS[x.conta].some(s=>s.sub===sc))E.push(`Linha ${i+1}: sub conta ${sc} não existe em ${x.conta} no SysContábil (sincronize)`)}});return E}
+
+/* =============== ANEXO =============== */
+function anexoHtml(d){
+  const a=d.anexo;if(!a) return '<div class="muted">Sem anexo.</div>';
+  if(a.arquivo) return `<div class="card">&#128206; <b>${esc(a.nome)}</b><div class="muted">Arquivo do seu computador (fica só neste navegador).</div>${a.url&&/^image\//.test(a.mime)?`<img src="${a.url}" style="max-width:100%;margin-top:10px">`:''}</div>`;
+  const f=pessoa(a.forn||d.forn);const D=a.dados||{};const v=D.valorReal??(a.valor??d.valor);
+  const num=a.numero??d.numero, emi=a.emissao??d.emissao, venc=a.venc??d.pag.venc;const tom=ENT;
+  if(a.tipo==='bol') return `<div class="anexo"><div class="h">BOLETO BANCÁRIO — DOCUMENTO DE TREINAMENTO</div>
+    Beneficiário: ${esc(f.nome)}<br>CNPJ: ${esc(f.doc)}<br>Nº documento: ${esc(num)}<br>Data do documento: ${dt(emi)}<br>
+    Vencimento: <b>${dt(venc)}</b><br>Valor do documento: <b>${brl(v)}</b><br><br>Linha digitável:<br><b>${esc(a.linha??d.pag.linha)}</b></div>`;
+  if(a.tipo==='fat'||a.tipo==='agua') return `<div class="anexo"><div class="h">${a.tipo==='agua'?'FATURA DE ÁGUA E ESGOTO':'FATURA DE ENERGIA ELÉTRICA'} — TREINAMENTO</div>${esc(f.nome)} — CNPJ ${esc(f.doc)}<br>
+    Fatura nº ${esc(num)} · Emissão ${dt(emi)}<br>Vencimento: ${dt(venc)}<br>TOTAL A PAGAR: <b>${brl(v)}</b></div>`;
+  if(a.tipo==='nfe'){const it=D.itens||[];const ch=a.chave??d.chave;return `<div class="anexo"><div class="h">${d.tipo==='NFCe'?'DANFE NFC-e — CUPOM':'DANFE — NOTA FISCAL ELETRÔNICA'} (TREINAMENTO)</div>
+    Emitente: ${esc(f.nome)}<br>CNPJ: ${esc(f.doc)}<br>Nº <b>${esc(num)}</b> · Série ${esc(a.serie??d.serie??'1')} · Emissão <b>${dt(emi)}</b><br>
+    ${ch?`Chave de acesso: <b style="word-break:break-all">${esc(digits(ch).replace(/(\d{4})/g,'$1 ').trim())}</b><br>`:''}
+    Destinatário: ${tom}<table><tr><td><b>Produto</b></td><td><b>Qtd</b></td><td><b>Unit.</b></td><td><b>Total</b></td></tr>
+    ${it.map(i=>`<tr><td>${esc(i[0])}</td><td>${i[1]}</td><td>${brl(i[2])}</td><td>${brl(i[1]*i[2])}</td></tr>`).join('')}</table>
+    VALOR TOTAL DA NOTA: <b>${brl(v)}</b></div>`}
+  if(a.tipo==='nfse'){const R=D.ret||{};const tr=r2((R.IRRF||0)+(R.CSRF||0)+(R.INSS||0)+(R.ISS||0));return `<div class="anexo"><div class="h">NOTA FISCAL DE SERVIÇO ELETRÔNICA — NFS-e (TREINAMENTO)</div>
+    Número: <b>${esc(num)}</b> · Emissão: <b>${dt(emi)}</b><br>Prestador: ${esc(f.nome)} — CNPJ ${esc(f.doc)}<br>
+    Simples Nacional na data de competência: <b>${f.regime==='Simples Nacional'?'Optante':'Não optante'}</b> · Regime: ${esc(f.regime||'')}<br>
+    Tomador: ${tom}<br><br>Discriminação: ${esc(D.servico||'')}<br><br>
+    Valor dos serviços: <b>${brl(v)}</b><table><tr><td>IRRF</td><td>${brl(R.IRRF||0)}</td><td>PIS/COFINS/CSLL</td><td>${brl(R.CSRF||0)}</td></tr>
+    <tr><td>INSS</td><td>${brl(R.INSS||0)}</td><td>ISS retido</td><td>${brl(R.ISS||0)}</td></tr></table>
+    Total de retenções: ${brl(tr)}<br>VALOR LÍQUIDO: <b>${brl(v-tr)}</b></div>`}
+  if(a.tipo==='rec') return `<div class="anexo"><div class="h">RECIBO Nº ${esc(num)} (TREINAMENTO)</div>
+    Recebi de ${tom} a importância de <b>${brl(v)}</b> referente a: ${esc(D.servico||'')}.<br><br>${esc(f.nome)} — ${esc(f.doc)} (${esc(f.regime||'')})<br>Data: ${dt(emi)}</div>`;
+  return '';
+}
+
+/* =============== ROTEAMENTO =============== */
+let route={p:'inicio'}, ui={draft:null,filtro:'todos',busca:'',mine:false,tab:null,edit:null,pBusca:'',pFiltro:'todas',dBusca:'',srvEdit:false};
+function go(h){parseRoute(h);try{if(location.hash!==h)history.pushState(null,'',h)}catch(e){}render(true)}
+function parseRoute(src){const h=String(src??location.hash).replace(/^#\/?/,'').split('/');route={p:h[0]||'inicio',id:h[1]};}
+const VIEWS={inicio:()=>vInicio(),cadastrar:()=>vCadastrar(),revisao:()=>vRevisao(),doc:()=>vDoc(),lotes:()=>vLotes(),lote:()=>vLote(),plano:()=>vPlano(),deptos:()=>vDeptos(),integracao:()=>vIntegracao()};
+function side(){const on=(...p)=>p.includes(route.p)?'on':'';$('#side').innerHTML=`
+  <a class="root ${on('inicio')}" href="#/inicio">&#127891; Início do Treinamento</a>
+  <div class="grp">$ Contas a Pagar</div>
+  <a class="${on('cadastrar')}" href="#/cadastrar">Cadastrar Documento</a>
+  <a class="${on('revisao','doc')}" href="#/revisao">Revisão Fiscal e Contábil</a>
+  <div class="grp">&#128200; Contábil</div>
+  <a class="${on('lotes','lote')}" href="#/lotes">Lote Contábil</a>
+  <a class="${on('deptos')}" href="#/deptos">Centros de Custo</a>
+  <a class="${on('plano')}" href="#/plano">Plano de Contas Entidade</a>
+  <div class="grp">&#128279; Integração</div>
+  <a class="${on('integracao')}" href="#/integracao">SysContábil ${vinculado()?'<span class="tag green">vinculado</span>':''}</a>
+  <div class="grp" style="margin-top:20px;font-weight:400;font-size:12.5px;color:#888">Os demais menus do DRACMA não fazem parte deste treinamento.</div>`}
+function render(keep){if(!keep)parseRoute();side();$('#side').classList.remove('open');ui.edit=null;ui.srvEdit=false;$('#app').innerHTML=(VIEWS[route.p]||VIEWS.inicio)();window.scrollTo(0,0);after()}
+function rerender(){const y=window.scrollY;side();$('#app').innerHTML=(VIEWS[route.p]||VIEWS.inicio)();window.scrollTo(0,y);after()}
+function after(){if(route.p==='cadastrar')resumoEnvio();if(route.p==='lote')checarImportacao()}
+function crumb(...p){return `<div class="crumb">Home &rsaquo; ${p.map((x,i)=>i===p.length-1?`<b>${esc(x)}</b>`:esc(x)).join(' &rsaquo; ')}</div>`}
+
+/* =============== MODAIS =============== */
+function modal(html,wide){$('#layer').innerHTML=`<div class="modal-bg" data-act="mclose-bg"><div class="modal ${wide?'wide':''}">${html}</div></div>`}
+function closeModal(){$('#layer').innerHTML=''}
+function alerta(titulo,msg,tipo='err'){modal(`<h2>${esc(titulo)}</h2><div class="${tipo==='ok'?'okbox':tipo==='warn'?'warnbox':'errbox'}">${msg}</div><div class="row"><span class="sp"></span><button class="btn dark" data-act="mclose">OK</button></div>`)}
+let confirmCb=null;
+function confirmar(titulo,msg,cb,btn='Confirmar'){confirmCb=cb;modal(`<h2>${esc(titulo)}</h2><div>${msg}</div>
+  <div class="row" style="margin-top:16px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="mok">${esc(btn)}</button></div>`)}
+
+/* =============== INÍCIO =============== */
+function vInicio(){
+  const done=MISSOES.filter(m=>S.flags.done?.[m.id]).length;
+  return `${crumb('Treinamento')}<h1>Treinamento DRACMA — Contas a Pagar</h1>
+  <div class="warnbox"><b>Ambiente de treinamento — entidade STNR.</b> Nada feito aqui chega ao DRACMA real. Pessoas e valores são fictícios. ${vinculado()?`Plano de contas e centros de custo vêm do SysContábil (atividade <b>${ATIVIDADE}</b>).`:'Vincule ao SysContábil em Integração para usar o plano e os centros de custo de lá.'}</div>
+  <div class="card" style="margin:16px 0"><h3>Como o documento anda</h3>
+   <div class="flow">
+    <div><b>1. Cadastro</b>Informações Básicas, anexo e Salvar.</div>
+    <div><b>2. Rateio e Pagamento</b>Categoria, centro de custo, forma, beneficiário (nem sempre é o emitente).</div>
+    <div><b>3. Análise Fiscal</b>Confirma os dados da nota, cadastra o serviço, simula e aplica as retenções.</div>
+    <div><b>4. Análise Contábil</b>Escolhe as contas de débito, confere o saldo e confirma.</div>
+    <div><b>5. Lote Contábil</b>Verifica e exporta: CSV e envio para o SysContábil.</div>
+   </div></div>
+  <div class="card"><div class="row"><h3 style="margin:0">Missões</h3><span class="sp"></span><b>${done} de ${MISSOES.length}</b></div>
+   <div class="bar" style="margin:10px 0"><i style="width:${done/MISSOES.length*100}%"></i></div>
+   ${MISSOES.map((m,i)=>{const ok=S.flags.done?.[m.id];return `<div class="miss ${ok?'done':''}"><div class="ck">${ok?'&#10003;':''}</div><div><b>${i+1}. ${esc(m.t)}</b><div class="muted" style="margin-top:3px">${esc(m.d)}</div></div></div>`}).join('')}
+   <div class="row" style="margin-top:14px"><a class="btn dark" href="#/cadastrar">Começar pelo cadastro</a><a class="btn blue" href="#/revisao">Ir para a revisão</a><span class="sp"></span>
+   <button class="btn red" data-act="reset">Reiniciar treinamento</button></div>
+   <div class="muted" style="margin-top:8px">Reiniciar apaga documentos, lotes e missões. Plano de contas, centros de custo e vínculo com o SysContábil continuam.</div></div>`;
+}
+
+/* =============== CADASTRAR =============== */
+function drafts(){return S.docs.filter(d=>d.etapa==='criacao')}
+function curDraft(){let ds=drafts();if(!ds.length){const d=novoDoc();S.docs.push(d);save();ds=[d]}
+  if(!ui.draft||!ds.find(d=>d.id===ui.draft))ui.draft=ds[0].id;return ds.find(d=>d.id===ui.draft)}
+function vCadastrar(){
+  const d=curDraft();const ds=drafts();const temChave=!!MODELO[d.tipo];const temSerie=temChave||['NF','NFa','NFFS'].includes(d.tipo);
+  return `${crumb('Contas a Pagar','Cadastrar Documento')}<h1>Cadastrar Documento</h1>
+  <div class="row"><button class="btn dark" data-act="novo">&#65291; Novo Documento</button><span class="sp"></span>
+   <button class="btn" data-act="fora">Vincular Documento Fiscal</button><button class="btn" data-act="fora">&#9881; Modo Básico</button></div>
+  <div class="tw" style="margin:14px 0 22px"><table class="t"><tr><th>Entidade</th><th>Tipo</th><th>Número</th><th>Emitente</th><th>Valor</th><th>Beneficiário</th><th>Finalidade</th><th>Situação</th></tr>
+   ${ds.map((x,i)=>`<tr class="click ${x.id===d.id?'cur':''}" data-act="seldraft" data-id="${x.id}"><td>${ENT}</td><td>${esc(x.tipo)}</td><td>${esc(x.numero)}</td>
+   <td>${esc(x.forn?pessoa(x.forn).nome:'')}</td><td class="num">${x.valor?brl(x.valor):''}</td><td>${esc(x.pag.benef?pessoa(x.pag.benef).nome:'')}</td><td>${esc(x.finalidade)}</td>
+   <td>${x.devolucao?'<span class="tag red">Devolvido</span>':`Documento ${i+1} - Em Criação`}</td></tr>`).join('')}</table></div>
+  ${d.devolucao?`<div class="errbox"><b>Devolvido por ${esc(d.devolucao.por)} em ${dth(d.devolucao.em)}:</b> ${esc(d.devolucao.motivo)}<br>Corrija, salve e envie novamente.</div>`:''}
+  <h2>Documento</h2>
+  <div class="cols">
+   <div>
+    <div class="row" style="margin-bottom:10px"><button class="btn red" data-act="descartar">&#128465; Descartar</button>
+     <button class="btn dark" data-act="xml">&#8679; Importar XML</button><button class="btn" data-act="fora">Vincular XML</button></div>
+    <div class="card">
+     <div class="row"><h3 style="margin:0">Informações Básicas</h3><span class="sp"></span><button class="btn ${d.salvo?'grey':'dark'}" data-act="salvar">&#128190; Salvar</button></div>
+     ${d.salvo?'<div class="okbox" style="margin-top:10px">Documento salvo. Categorias, Centros de Custo e Pagamento liberados.</div>':d.liberado?'<div class="warnbox">Há alterações não salvas nas Informações Básicas.</div>':''}
+     <label class="f req">Entidade</label><select disabled><option>${ENT}</option></select>
+     <label class="f req">Tipo de Documento</label><select data-b="tipo"><option value="">Selecione</option>${TIPOS.map(t=>`<option value="${esc(t[0])}" ${t[0]===d.tipo?'selected':''}>${esc(t[0]+' - '+t[1])}</option>`).join('')}</select>
+     <label class="f req">Emitente <a href="#" data-act="novoforn" style="font-weight:400;margin-left:8px">Adicionar pessoa</a></label><input list="dlforn" data-b="forn" placeholder="Buscar por nome ou CNPJ/CPF" value="${esc(d.forn?pessoaTxt(d.forn):'')}">
+     <label class="f req">Data de Emissão</label><input type="date" data-b="emissao" value="${esc(d.emissao)}">
+     <div class="cols" style="gap:10px;grid-template-columns:${temSerie?'1fr 2fr':'1fr'}">${temSerie?`<div><label class="f">Série</label><input data-b="serie" value="${esc(d.serie)}"></div>`:''}
+     <div><label class="f req">Número</label><input data-b="numero" value="${esc(d.numero)}"></div></div>
+     ${temChave?`<label class="f">Chave de Acesso</label><input data-b="chave" inputmode="numeric" value="${esc(d.chave)}" placeholder="44 dígitos">`:''}
+     <label class="f req">Valor</label><input inputmode="numeric" data-b="valor" data-money value="${d.valor?brl(d.valor):''}" placeholder="R$ 0,00">
+     <label class="f req">Finalidade</label><textarea data-b="finalidade" placeholder="Descreva o que está sendo pago e para quem">${esc(d.finalidade)}</textarea>
+     <div class="hint">Finalidade boa = o quê + referência + setor/pessoa. Ex.: "Locação - Condomínio - Tesouraria".</div>
+     <datalist id="dlforn">${S.pessoas.map(f=>`<option value="${esc(f.nome+' - '+f.doc)}">`).join('')}</datalist>
+    </div>
+   </div>
+   <div>
+    <div class="row" style="margin-bottom:10px"><h3 style="margin:0">Anexos</h3><span class="sp"></span>
+     <label class="btn dark" style="margin:0">&#65291; Adicionar<input type="file" data-act-change="arquivo" hidden></label>
+     <button class="btn blue" data-act="amostra">Anexo de exemplo</button></div>
+    ${d.anexo?`<div style="margin-bottom:10px">${anexoHtml(d)}<div class="row" style="margin-top:8px"><span class="muted">${esc(d.anexo.nome)}</span><span class="sp"></span><button class="btn sm red" data-act="rmanexo">Remover</button></div></div>`
+      :`<div class="drop" data-act="amostra"><div style="font-size:40px">&#128196;</div>Clique para anexar um documento de exemplo<div class="muted" style="font-weight:400;margin-top:6px">ou use "Adicionar" para um arquivo seu</div></div>`}
+    <div class="info" style="margin-top:14px"><div class="ic">i</div><div><b>Preenchimento Automático</b><br>Para preencher automaticamente os dados do documento, anexe a nota fiscal ou cupom fiscal e selecione a opção abaixo.<br>
+     <button class="btn ${d.anexo?'blue':'grey'} sm" style="margin-top:8px" data-act="processar" ${d.anexo?'':'disabled'}>&#9881; Processar</button></div></div>
+    ${similares(d)}
+   </div>
+  </div>
+  <div class="cols" style="margin-top:22px">
+   <div><h2>Categorias e Centros de Custo</h2>${d.liberado?rateioHtml(d):'<div class="card na">Não Disponível</div>'}</div>
+   <div><h2>Pagamento</h2>${d.liberado?pagHtml(d):'<div class="card na">Não Disponível</div>'}</div>
+  </div>
+  <div class="sticky-send"><div id="pend" class="muted" style="flex:1"></div><button class="btn dark" id="btnEnviar" data-act="enviar">Enviar &#10148;</button></div>`;
+}
+function similares(d){if(!d.forn)return'';const s=S.docs.filter(x=>x.id!==d.id&&x.etapa!=='criacao'&&x.forn===d.forn);if(!s.length)return'';
+  return `<div class="card" style="margin-top:14px"><h3>Documentos Similares</h3>${s.map(x=>`<div class="muted">${esc(x.tipo)} ${esc(x.numero)} · ${brl(x.valor)} · ${dt(x.emissao)} · ${esc(x.codigo)}</div>`).join('')}
+  <div class="hint">Confira se não está lançando o mesmo documento duas vezes.</div></div>`}
+function deptoOpts(sel){return deptosAtivos().map(c=>`<option value="${esc(c.c)}" ${c.c===sel?'selected':''}>${esc(c.c)} - ${esc(c.n)}</option>`).join('')}
+function rateioHtml(d){
+  const falta=r2(d.valor-d.rateio.reduce((a,r)=>a+(+r.valor||0),0));
+  return `<div class="card"><div><b>Rateio</b><br><span class="muted">Valor do Documento: ${brl(d.valor)}</span></div><div style="margin-top:10px">
+   ${d.rateio.map((r,i)=>{const c=DP[r.cc];const estouro=c&&c.orc!=null&&c.orc-r.valor<0;return `<div class="rbox">
+    <div class="row"><b style="flex:1">Linha ${i+1}</b><button class="x" data-act="rdel" data-i="${i}" title="Remover">&times;</button></div>
+    <label class="f req">Categorias de Gasto</label><select data-r="${i}" data-rf="cat"><option value="">Selecione</option>${CATS.map(c=>`<option ${c===r.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <label class="f req">Centros de Custo</label><select data-r="${i}" data-rf="cc"><option value="">Buscar</option>${deptoOpts(r.cc)}</select>
+    ${c&&c.orc!=null?`<div class="muted" style="margin-top:4px">Orçamento disponível: <b style="color:${estouro?'var(--red)':'inherit'}">${brl(c.orc)}</b>${estouro?' — sem orçamento suficiente':''}</div>`:''}
+    <div class="cols" style="gap:10px"><div><label class="f req">Valor</label><input inputmode="numeric" data-money data-r="${i}" data-rf="valor" value="${r.valor?brl(r.valor):''}" placeholder="R$ 0,00"></div>
+    <div><label class="f">Descrição</label><input data-r="${i}" data-rf="desc" value="${esc(r.desc||'')}"></div></div></div>`}).join('')}</div>
+   <div class="row"><button class="btn sm dark" data-act="radd">&#65291; Adicionar rateio</button><button class="btn sm" data-act="rfill" ${falta>0&&d.rateio.length?'':'disabled'}>Lançar restante na última linha</button></div>
+   <div id="rsum" style="margin-top:10px">${rsum(d)}</div>
+   <div class="hint">A soma do rateio precisa ser igual ao valor do documento. O centro de custo vira o departamento do lançamento de débito.</div></div>`}
+function rsum(d){const soma=r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0));const falta=r2(d.valor-soma);
+  return `<b>Rateado:</b> ${brl(soma)} de ${brl(d.valor)} ${falta===0&&d.valor?'<span class="tag green">OK</span>':`<span class="tag red">${falta>0?'Falta '+brl(falta):'Excede '+brl(-falta)}</span>`}`}
+const COD_BARRAS = f => f==='Boleto'||f==='Pagamento de Contas e Tributos com Código de Barras';
+function pagHtml(d){const p=d.pag;const b=pessoa(p.benef||d.forn);const per=periodoLista(p.periodo);
+  const fo=S.pessoas.map(f=>`<option value="${f.id}" ${f.id===(p.benef||d.forn)?'selected':''}>${esc(f.nome+' - '+f.doc)}${f.func?' (funcionário)':''}</option>`).join('');
+  const lock=p.padrao&&b.banco?'disabled':'';
+  return `<div class="card">
+   <div class="row" style="margin-bottom:6px"><button class="btn sm" data-act="reembolso" title="Pagamento para o requisitante, na conta bancária padrão dele">&#128176; Reembolso Padrão</button></div>
+   <label class="f req">Forma de Pagamento</label><select data-p="forma"><option value="">Selecione</option>${FORMAS.map(f=>`<option ${f===p.forma?'selected':''}>${f}</option>`).join('')}</select>
+   <label class="f">Período do Parcelamento</label><input data-p="periodo" value="${esc(p.periodo)}" placeholder="10, 15, 20, 45">
+   <div class="muted" style="margin-top:4px">Dias contados da emissão para cada parcela (ex.: 30, 60, 90). Vazio = parcelas mensais a partir do vencimento.</div>
+   <div class="cols" style="gap:10px"><div><label class="f">Parcelas</label><input type="number" min="1" max="60" data-p="parcelas" value="${per.length>1?per.length:p.parcelas}" ${per.length>1?'disabled':''}></div>
+   <div><label class="f ${per.length>1?'':'req'}">Vencimento</label><input type="date" data-p="venc" value="${esc(p.venc)}" ${per.length>1?'disabled':''}></div></div>
+   <div class="cols" style="gap:10px"><div><label class="f">Desconto</label><input inputmode="numeric" data-money data-p="desconto" value="${+p.desconto?brl(p.desconto):''}" placeholder="R$ 0,00"></div>
+   <div><label class="f">Multa e Juros/Acrescimos</label><input inputmode="numeric" data-money data-p="multa" value="${+p.multa?brl(p.multa):''}" placeholder="R$ 0,00"></div></div>
+   <label class="f req">Beneficiário</label><select data-p="benef">${fo}</select>
+   ${p.benef&&d.forn&&p.benef!==d.forn?`<div class="warnbox"><b>Troca de Emitente</b><br>O Emitente selecionado é diferente do beneficiário do pagamento. Por favor revisar o beneficiário do pagamento.${b.func?'<br>Beneficiário funcionário: o crédito vai para <b>'+esc(contaTxt(cReemb()))+'</b>, com o funcionário como subconta.':''}</div>`:''}
+   ${COD_BARRAS(p.forma)?`<label class="f req">Linha digitável / código de barras</label><input data-p="linha" value="${esc(p.linha)}" placeholder="47 ou 48 dígitos">`:''}
+   ${p.forma==='PIX'?`<label class="f req">Chave PIX</label><input data-p="pix" value="${esc(p.pix)}">`:''}
+   ${p.forma==='Transferência Bancária'?`
+     ${b.banco?`<label class="row" style="gap:8px;margin-top:12px"><input type="checkbox" data-p="padrao" ${p.padrao?'checked':''}> Conta Bancária Padrão de ${esc(b.nome)}</label>`:''}
+     <label class="f req">Instituição financeira</label><select data-p="banco" ${lock}><option value="">Selecione</option>${BANCOS.map(x=>`<option ${x===p.banco?'selected':''}>${x}</option>`).join('')}</select>
+     <label class="f req">Tipo de conta</label><select data-p="tipoConta" ${lock}>${['Corrente','Poupança','Pagamento'].map(t=>`<option ${t===p.tipoConta?'selected':''}>${t}</option>`).join('')}</select>
+     <div class="c3" style="grid-template-columns:2fr 1fr"><div><label class="f req">Agência</label><input data-p="ag" value="${esc(p.ag)}" ${lock}></div><div><label class="f">Dígito</label><input data-p="agDv" value="${esc(p.agDv)}" ${lock}></div></div>
+     <div class="c3" style="grid-template-columns:2fr 1fr"><div><label class="f req">Número da Conta</label><input data-p="conta" value="${esc(p.conta)}" ${lock}></div><div><label class="f">Dígito</label><input data-p="contaDv" value="${esc(p.contaDv)}" ${lock}></div></div>`:''}
+   ${d.valor&&(p.venc||per.length>1)?`<div class="tw" style="margin-top:12px"><table class="t"><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th></tr>${parcelas(d).map(x=>`<tr><td>${x.n}ª</td><td>${dt(x.venc)}</td><td class="num">${brl(x.valor)}</td></tr>`).join('')}</table></div>
+     <div class="muted" style="margin-top:6px">Valor líquido: <b>${brl(liquido(d))}</b>${+p.desconto||+p.multa?' (valor − desconto + multa/juros)':''}. Retenções são aplicadas pelo fiscal.</div>`:''}
+   ${p.venc&&p.venc<isoDay(0)?'<div class="errbox">Vencimento no passado.</div>':p.venc&&p.venc<isoDay(3)?'<div class="warnbox">Vencimento muito próximo: o documento ainda passa pelas análises fiscal e contábil.</div>':''}
+  </div>`}
+function pendencias(d){const P=[];
+  if(!d.salvo)P.push('salvar as Informações Básicas');
+  if(d.liberado){
+    if(!d.rateio.length)P.push('incluir o rateio');
+    if(d.rateio.some(r=>!r.cat||!r.cc||!(r.valor>0)))P.push('completar categoria, centro de custo e valor do rateio');
+    if(r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0))!==r2(d.valor))P.push('fechar o rateio no valor do documento');
+    const p=d.pag;const per=periodoLista(p.periodo);if(!p.forma)P.push('escolher a forma de pagamento');if(per.length<2&&!p.venc)P.push('informar o vencimento');
+    if(COD_BARRAS(p.forma)&&![44,47,48].includes(digits(p.linha).length))P.push('informar a linha digitável (47/48 dígitos)');
+    if(p.forma==='PIX'&&!String(p.pix).trim())P.push('informar a chave PIX');
+    if(p.forma==='Transferência Bancária'&&(!p.banco||!p.ag||!p.conta))P.push('informar banco, agência e conta');
+    if(liquido(d)<=0)P.push('revisar desconto (líquido ficou zerado)');
+  }
+  if(!d.anexo)P.push('anexar o documento');
+  return P}
+function resumoEnvio(){const d=curDraft();const P=pendencias(d);const el=$('#pend');if(!el)return;
+  el.innerHTML=P.length?'<b>Para enviar falta:</b> '+P.join('; ')+'.':'<b style="color:var(--ok)">Tudo pronto para enviar.</b>';$('#btnEnviar').disabled=!!P.length}
+
+/* =============== REVISÃO (lista) =============== */
+function listaFiltrada(){const q=ui.busca.toLowerCase();return S.docs.filter(d=>d.etapa==='revisao').filter(d=>{
+   if(ui.mine&&!d.mine)return false;
+   if(ui.filtro==='fiscal'&&d.fiscal.status!=='pendente')return false;
+   if(ui.filtro==='contabil'&&(d.fiscal.status==='pendente'||d.contabil.status!=='aguardando'))return false;
+   if(ui.filtro==='concl'&&d.contabil.status==='aguardando')return false;
+   if(q){const f=pessoa(d.forn),b=pessoa(d.pag.benef);const hay=[d.numero,f.nome,f.doc,b.nome,d.requisitante,d.valor.toFixed(2).replace('.',','),d.codigo,d.finalidade].join(' ').toLowerCase();if(!hay.includes(q))return false}
+   return true}).sort((a,b)=>b.enviadoEm.localeCompare(a.enviadoEm))}
+function vRevisao(){
+  const L=listaFiltrada();const all=S.docs.filter(d=>d.etapa==='revisao').length;
+  const cnt=k=>S.docs.filter(d=>d.etapa==='revisao'&&(k==='fiscal'?d.fiscal.status==='pendente':k==='contabil'?d.fiscal.status!=='pendente'&&d.contabil.status==='aguardando':d.contabil.status!=='aguardando')).length;
+  return `${crumb('Contas a Pagar','Revisão Fiscal e Contábil')}<h1>Revisão Fiscal e Contábil</h1>
+  <div class="row"><a class="btn dark" href="#/cadastrar">&#65291; Adicionar Documento</a><button class="btn blue" data-act="revisar">&#128196; Revisão</button><span class="sp"></span>
+   <button class="btn" data-act="fora">Preferências</button></div>
+  <label class="f">Entidade</label><select disabled><option>${ENT}</option></select>
+  <div class="chips">
+   ${[['todos','Todos'],['fiscal','Aguardando Fiscal ('+cnt('fiscal')+')'],['contabil','Aguardando Contábil ('+cnt('contabil')+')'],['concl','Concluídos ('+cnt('concl')+')']].map(c=>`<button class="${ui.filtro===c[0]?'on':''}" data-act="filtro" data-f="${c[0]}">${c[1]}</button>`).join('')}
+   <button class="${ui.mine?'on':''}" data-act="mine">Meus Itens</button></div>
+  <input id="busca" placeholder="&#128269; Número, Fornecedor, Requisitante, Valor, Código..." value="${esc(ui.busca)}">
+  <div class="muted" style="text-align:right;margin:10px 0">Exibindo ${L.length} de ${all}</div>
+  <div class="tw desk-only"><table class="t"><tr><th>Status</th><th>Entidade</th><th>Código</th><th>Requisitante</th><th>Data de Envio</th><th>Emissão</th><th>Tipo</th><th>Número</th><th>Emitente</th><th class="num">Valor</th><th>Finalidade</th><th>Beneficiário</th><th>Vencimento</th><th>Centros de Custo</th><th>Forma de Pagamento</th><th>Lote</th></tr>
+   ${L.map(d=>`<tr class="click" data-act="abrir" data-id="${d.id}"><td style="min-width:230px">${stHtml(d)}</td><td>${ENT}</td><td>${esc(d.codigo)}</td><td>${esc(d.requisitante)}</td><td>${dth(d.enviadoEm)}</td><td>${dt(d.emissao)}</td>
+   <td>${esc(d.tipo)}</td><td>${esc(d.numero)}</td><td>${esc(pessoaTxt(d.forn))}</td><td class="num">${brl(d.valor)}</td><td>${esc(d.finalidade)}</td><td>${esc(pessoaTxt(d.pag.benef||d.forn))}</td><td>${dt(parcelas(d)[0]?.venc)}</td>
+   <td>${[...new Set(d.rateio.map(r=>deptoTxt(r.cc)))].map(esc).join(', ')}</td><td>${esc(d.pag.forma)}</td><td>${loteTag(d)}</td></tr>`).join('')||'<tr><td colspan="16" class="muted">Nenhum documento.</td></tr>'}</table></div>
+  ${L.map(d=>`<div class="mob-card" data-act="abrir" data-id="${d.id}">${stHtml(d)}<div><b>${esc(d.tipo)} ${esc(d.numero)}</b> · ${esc(d.codigo)} ${loteTag(d)}</div><div>${esc(pessoaTxt(d.forn))}</div>
+   ${d.pag.benef&&d.pag.benef!==d.forn?`<div class="muted">Pagar a: ${esc(pessoa(d.pag.benef).nome)}</div>`:''}
+   <div><b>${brl(d.valor)}</b> · venc. ${dt(parcelas(d)[0]?.venc)} · ${esc(d.pag.forma)}</div><div class="muted">${esc(d.finalidade)} — ${esc(d.requisitante)}</div></div>`).join('')}`;
+}
+function loteTag(d){const l=d.loteId&&S.lotes.find(x=>x.id===d.loteId);if(!l)return '';return `<span class="tag ${l.status==='contabilizado'?'green':'yel'}">${l.numero||'Lote em aberto'}</span>`}
+
+/* =============== DETALHE =============== */
+function vDoc(){
+  const d=S.docs.find(x=>x.id===route.id);if(!d)return `${crumb('Revisão')}<h1>Documento não encontrado</h1><a class="btn" href="#/revisao">Voltar</a>`;
+  if(!ui.tab||ui.tabDoc!==d.id){ui.tabDoc=d.id;ui.tab=d.fiscal.status==='pendente'?'fiscal':'contabil'}
+  const f=pessoa(d.forn),b=pessoa(d.pag.benef||d.forn);const l=d.loteId&&S.lotes.find(x=>x.id===d.loteId);const C=d.contabil.status;
+  const acoes=d.etapa!=='revisao'?'':[
+    d.fiscal.status==='pendente'&&C==='aguardando'?'<button class="btn sm red" data-act="excluirdoc">&#128465; Excluir</button><button class="btn sm" data-act="cancaprov">Cancelar Aprovação</button>':'',
+    C==='concluida'&&!d.loteId?'<button class="btn sm" data-act="reabrirCont">Cancelar Análise Contábil</button>':'',
+    C==='aguardando'?'<button class="btn sm red" data-act="devolver">&#8617; Devolver</button>':''].join('');
+  return `${crumb('Contas a Pagar','Revisão Fiscal e Contábil','Detalhes do Documento')}
+  <div class="row"><h1 style="margin:0">Detalhes do Documento</h1><span class="sp"></span><button class="btn" data-act="proxima" title="Próximo documento">&#10140;</button></div>
+  <div class="row" style="margin:10px 0 14px">${stHtml(d)} <span class="muted">· ${esc(d.codigo)}</span> ${l?`<a href="#/lote/${l.id}" class="tag ${l.status==='contabilizado'?'green':'yel'}" style="text-decoration:none">${l.numero?'Ver Lote '+l.numero:'Lote em aberto'}</a>`:''}<span class="sp"></span>${acoes}</div>
+  <label class="row muted" style="gap:6px;cursor:pointer"><input type="checkbox" data-act-change="next" ${S.prefs.next?'checked':''}> Ir para a próxima despesa</label>
+  <div class="kv" style="margin-top:16px">
+   <div style="grid-column:1/-1"><div class="k">Entidade</div><div class="v">${ENT}</div></div>
+   <div style="grid-column:1/-1"><div class="k">Emitente</div><div class="v big">${esc(f.nome)} - ${esc(f.doc)}</div></div>
+   <div><div class="k">Tipo</div><div class="v">${esc(d.tipo+' - '+(TIPO_NOME[d.tipo]||''))}</div></div>
+   ${MODELO[d.tipo]||d.serie?`<div><div class="k">Série</div><div class="v">${esc(d.serie)}</div></div>`:''}
+   <div><div class="k">Número</div><div class="v">${esc(d.numero)}</div></div>
+   <div><div class="k">Data de Emissão</div><div class="v">${dt(d.emissao)}</div></div>
+   <div><div class="k">Valor Total</div><div class="v big">${brl(d.valor)}</div></div>
+   <div style="grid-column:1/-1"><div class="k">Beneficiário</div><div class="v">${esc(b.nome)} - ${esc(b.doc)} ${b.func?'<span class="tag yel">funcionário</span>':''} ${b!==f&&d.pag.benef&&d.pag.benef!==d.forn?'<span class="tag red">diferente do emitente</span>':''}</div></div>
+   ${MODELO[d.tipo]?`<div style="grid-column:1/-1"><div class="k">Chave de Acesso</div><div class="v" style="word-break:break-all">${d.chave?esc(digits(d.chave).replace(/(\d{4})/g,'$1 ').trim()):'Não informada'}</div></div>`:''}
+   <div><div class="k">Data de Criação</div><div class="v">${dt(d.criadoEm)}</div></div>
+   <div><div class="k">Requisitante</div><div class="v">${esc(d.requisitante)}</div></div>
+   <div style="grid-column:1/-1"><div class="k">Finalidade</div><div class="v">${esc(d.finalidade)}</div></div>
+  </div>
+  <h3 style="margin-top:22px">Categorias e Centros de Custo</h3>
+  <div class="tw"><table class="t"><tr><th class="num">Valor</th><th>Categoria</th><th>Centro de Custo</th><th class="num">Orçamento Disponível</th><th>Descrição</th></tr>
+   ${d.rateio.map(r=>`<tr><td class="num">${brl(r.valor)}</td><td>${esc(r.cat)}</td><td>${esc(deptoTxt(r.cc))}</td><td class="num" style="color:${DP[r.cc]?.orc<0?'var(--red)':'inherit'}">${DP[r.cc]?.orc!=null?brl(DP[r.cc].orc):''}</td><td>${esc(r.desc||'')}</td></tr>`).join('')}</table></div>
+  <h3 style="margin-top:22px">Pagamento</h3>
+  <div class="kv"><div><div class="k">Valor do Documento</div><div class="v">${brl(d.valor)}</div></div><div><div class="k">Retenções</div><div class="v">${brl(totRet(d))}</div></div>
+   <div><div class="k">Desconto</div><div class="v">${brl(d.pag.desconto)}</div></div><div><div class="k">Multa e Juros</div><div class="v">${brl(d.pag.multa)}</div></div>
+   <div><div class="k">Valor Líquido</div><div class="v"><b>${brl(liquido(d))}</b></div></div><div><div class="k">Valor em Aberto</div><div class="v">${brl(liquido(d))}</div></div></div>
+  <div class="tw" style="margin-top:10px"><table class="t"><tr><th>Parcela</th><th>Forma de Pagamento</th><th>Vencimento</th><th>Dados</th><th class="num">Valor</th></tr>
+   ${parcelas(d).map(p=>{const [l1,l2]=dadosPagamento(d);return `<tr><td>${p.n}ª Parcela</td><td>${esc(d.pag.forma)}</td><td>${dt(p.venc)}</td><td>${esc(l1)}<br><span class="muted">${esc(l2)}</span></td><td class="num">${brl(p.valor)}</td></tr>`}).join('')}</table></div>
+  <h3 style="margin-top:22px">Anexo Principal</h3>${anexoHtml(d)}
+  <div class="tabs">${[['contabil','Contábil'],['fiscal','Fiscal'],['coment','Comentários ('+d.coments.length+')'],['hist','Histórico']].map(t=>`<button class="${ui.tab===t[0]?'on':''}" data-act="tab" data-t="${t[0]}">${t[1]}</button>`).join('')}</div>
+  ${ui.tab==='fiscal'?tFiscal(d):ui.tab==='contabil'?tContabil(d):ui.tab==='coment'?tComent(d):tHist(d)}`;
+}
+function tFiscal(d){
+  const F=d.fiscal;
+  if(F.status==='nao_aplica')return `<h2>Informações Fiscais</h2><div class="okbox">O tipo de documento selecionado não possui informações fiscais.</div>
+   <div class="hint">Boletos, guias, faturas de consumo, conta corrente e afins não passam pela análise fiscal.</div>`;
+  const done=F.status==='concluida';const ro=done?'disabled':'';const temChave=!!MODELO[d.tipo];
+  const s=F.servico;
+  return `<div class="row"><h2 style="margin:0;flex:1">Informações Fiscais</h2>${done?'':'<button class="btn dark" data-act="confFiscal">&#10004; Confirmar Análise Fiscal</button>'}</div>
+  ${done?`<div class="okbox">Análise fiscal concluída por ${esc(F.por||'')} em ${dth(F.em)}.${d.contabil.status==='aguardando'?' <a href="#" data-act="reabrirFiscal">Reabrir análise fiscal</a>':''}</div>`:''}
+  <div class="lanc"><div class="hd"><b>Dados do Documento</b>${temChave&&!done?'<button class="btn sm" data-act="validar">Validar</button>':''}</div><div style="padding:14px">
+   <div class="hint" style="margin-top:0">Confirme os dados com a nota (anexo). Se estiverem diferentes, corrija aqui. Para alterar valor ou emitente, devolva ao requisitante.</div>
+   <div class="c3">${temChave||d.serie?`<div><label class="f">Série</label><input data-fd="serie" value="${esc(d.serie)}" ${ro}></div>`:''}
+    <div><label class="f">Número</label><input data-fd="numero" value="${esc(d.numero)}" ${ro}></div>
+    <div><label class="f">Data de Emissão</label><input type="date" data-fd="emissao" value="${esc(d.emissao)}" ${ro}></div></div>
+   ${temChave?`<label class="f">Chave de Acesso</label><input data-fd="chave" inputmode="numeric" value="${esc(d.chave)}" ${ro}>`:''}
+   <div class="muted" style="margin-top:8px">Emitente: ${esc(pessoaTxt(d.forn))} · Valor: ${brl(d.valor)}</div>
+   ${F.validacao?(F.validacao.length?`<div class="errbox"><b>Validação da chave:</b><br>${F.validacao.map(esc).join('<br>')}</div>`:'<div class="okbox">Chave de acesso válida e coerente com os dados do documento.</div>'):''}
+  </div></div>
+  ${SERV.has(d.tipo)?`<div class="lanc"><div class="hd"><b>Serviços</b>${done?'':s&&!ui.srvEdit?'<button class="btn sm" data-act="srvedit">&#9998;</button>':!s?'<button class="btn sm" data-act="srvnovo">&#65291;</button>':''}</div><div style="padding:14px">
+   ${!s?'<div class="na" style="min-height:80px;font-size:15px">Sem serviços cadastrados</div>':ui.srvEdit&&!done?srvForm(d,s):`<div class="kv">
+     <div><div class="k">Valor do Serviço</div><div class="v">${brl(s.valor||d.valor)}</div></div><div><div class="k">Regime do Prestador</div><div class="v">${esc(s.regime)}</div></div>
+     <div><div class="k">Tipo de Serviço Executado</div><div class="v">${esc(s.tipo||'—')}</div></div><div><div class="k">Serviço Fiscal</div><div class="v">${esc(s.cod?s.cod+' - '+(SERVICOS.find(x=>x.cod===s.cod)?.n||''):'—')}</div></div>
+     <div><div class="k">CNAE</div><div class="v">${esc(s.cnae||'Nenhum CNAE Selecionado')}</div></div><div><div class="k">ISS</div><div class="v">${s.semIss?'Não possui ISS':s.issRet?'Retido '+String(s.issAliq).replace('.',',')+'%':'Não retido'}</div></div>
+     <div><div class="k">Dispensa INSS</div><div class="v">${esc(s.dispInss)}</div></div></div>`}
+  </div></div>
+  <div class="lanc"><div class="hd"><b>Simulação</b>${done?'':`<button class="btn sm blue" data-act="simular" ${s?'':'disabled'}>Simular</button>`}</div><div style="padding:14px">
+   ${F.sim?`<div class="tw"><table class="t"><tr><th>Imposto</th><th class="num">Alíquota</th><th class="num">Base de Cálculo</th><th class="num">Retenção</th><th>Observação</th></tr>
+    ${F.sim.map(r=>`<tr><td>${esc(RET[r.tipo].nome)}</td><td class="num">${String(r.aliq).replace('.',',')}%</td><td class="num">${brl(r.base)}</td><td class="num"><b>${brl(r.valor)}</b></td><td class="muted">${esc(r.obs)}</td></tr>`).join('')}</table></div>
+    ${done?'':'<div class="row" style="margin-top:10px"><span class="sp"></span><button class="btn dark sm" data-act="aplicarsim">Aplicar retenções da simulação</button></div>'}`
+    :`<div class="muted">${s?'Clique em Simular para calcular as retenções.':'Cadastre o serviço para simular as retenções.'}</div>`}
+  </div></div>`:''}
+  <div class="lanc"><div class="hd"><b>Retenções</b></div><div style="padding:14px">
+   ${F.ret.length?`<div class="tw"><table class="t"><tr><th>Imposto</th><th>Conta</th><th class="num">Alíq.</th><th class="num">Valor</th><th></th></tr>
+   ${F.ret.map((r,i)=>`<tr><td>${esc(RET[r.tipo].nome)}</td><td>${esc(contaTxt(RET[r.tipo].conta))}</td><td class="num">${String(r.aliq).replace('.',',')}%</td><td class="num">${done?brl(r.valor):`<input data-money data-ret="${i}" value="${brl(r.valor)}" style="width:120px;text-align:right" class="inp-sm">`}</td><td>${done?'':`<button class="x" data-act="retdel" data-i="${i}">&times;</button>`}</td></tr>`).join('')}</table></div>`:'<div class="muted">Nenhuma retenção.</div>'}
+   <div style="margin-top:10px"><b>Total retido:</b> ${brl(totRet(d))} · <b>Líquido a pagar:</b> ${brl(liquido(d))}</div>
+   ${SERV.has(d.tipo)&&!done?'<div class="hint">Confira o resultado com o que está <b>destacado na nota</b>. Se a nota não destacou uma retenção devida, devolva ou consulte o fiscal.</div>':''}
+  </div></div>
+  <div class="lanc"><div class="hd"><b>Documentos de Arrecadação</b></div><div style="padding:14px">
+   ${F.guias.length?`<div class="tw"><table class="t"><tr><th>Guia</th><th>Imposto</th><th class="num">Valor</th><th>Vencimento</th></tr>${F.guias.map(g=>`<tr><td>${esc(g.guia)}</td><td>${esc(RET[g.tipo].nome)}</td><td class="num">${brl(g.valor)}</td><td>${dt(g.venc)}</td></tr>`).join('')}</table></div>`:'<div class="muted">Nada para exibir</div>'}
+  </div></div>`;
+}
+function srvForm(d,s){return `<div class="cols" style="gap:10px"><div><label class="f">Valor do Serviço</label><input inputmode="numeric" data-money data-sv="valor" value="${brl(s.valor||d.valor)}"></div>
+   <div><label class="row" style="gap:8px;margin-top:34px"><input type="checkbox" data-sv="semIss" ${s.semIss?'checked':''}> Não possui ISS</label></div></div>
+   <label class="f req">Regime do Prestador</label><select data-sv="regime"><option value="">Selecione</option>${REGIMES.map(r=>`<option ${r===s.regime?'selected':''}>${r}</option>`).join('')}</select>
+   <div class="muted">Última Atualização: ${s.atualizado?dth(s.atualizado):'—'} · confira na consulta de optantes do Simples Nacional.</div>
+   <label class="f">Tipo de Serviço Executado</label><div class="row">${['','Cessão de Mão de Obra','Empreitada'].map(t=>`<label class="row" style="gap:6px"><input type="radio" name="svtipo" data-sv="tipo" value="${t}" ${s.tipo===t?'checked':''}> ${t||'Nenhum'}</label>`).join('')}</div>
+   <label class="f req">Serviço Fiscal</label><select data-sv="cod"><option value="">Digite para pesquisar</option>${SERVICOS.map(x=>`<option value="${x.cod}" ${x.cod===s.cod?'selected':''}>${x.cod} - ${esc(x.n)}</option>`).join('')}</select>
+   <label class="f">CNAE</label><input data-sv="cnae" value="${esc(s.cnae)}" placeholder="Nenhum CNAE Selecionado">
+   <div class="cols" style="gap:10px"><div><label class="f">Dispensa INSS</label><select data-sv="dispInss">${['Não','Sim'].map(x=>`<option ${x===s.dispInss?'selected':''}>${x}</option>`).join('')}</select></div>
+   <div><label class="f">ISS retido pelo tomador</label><div class="row"><input type="checkbox" data-sv="issRet" ${s.issRet?'checked':''} ${s.semIss?'disabled':''}><input data-sv="issAliq" value="${String(s.issAliq).replace('.',',')}" style="width:80px" ${s.semIss?'disabled':''}> %</div></div></div>
+   <div class="row" style="margin-top:12px"><span class="sp"></span><button class="btn sm" data-act="srvcancel">Cancelar</button><button class="btn sm dark" data-act="srvsalvar">&#128190; Salvar</button></div>`}
+function tContabil(d){
+  const C=d.contabil;const fin=C.status!=='aguardando';const bloq=d.fiscal.status==='pendente';
+  return `<div class="row" style="align-items:flex-start"><div style="flex:1;min-width:220px"><h2 style="margin-bottom:4px">Informações Contábeis</h2><div><b>Entidade para Contabilizar:</b> ${ENT}</div></div>
+   <div class="row" style="justify-content:flex-end">
+    ${fin?'':`
+    <button class="btn red" data-act="lancdelall" ${C.lanc.length?'':'disabled'}>&#128465; Excluir Lançamentos</button>
+    <button class="btn" data-act="sincronizar">&#8635; Sincronizar</button>
+    <button class="btn dark" data-act="naocont">&times; Não Contabilizar</button>
+    <button class="btn blue" data-act="gerar" ${bloq?'disabled':''}>&#128196; Gerar Contabilização</button>
+    <button class="btn dark" data-act="confCont">&#10004; Confirmar Análise Contábil</button>`}</div></div>
+  ${bloq?'<div class="warnbox">Aguardando a análise fiscal. Conclua a aba Fiscal primeiro: as retenções mudam os lançamentos.</div>':''}
+  ${C.status==='concluida'?`<div class="okbox">Análise contábil concluída${C.por?' por '+esc(C.por):''}.${d.loteId?' Documento já está em lote.':''}</div>`:''}
+  ${C.status==='nao'?`<div class="warnbox"><b>Não Contabilizar:</b> ${esc(C.motivo)}</div>`:''}
+  <div class="muted" style="text-align:right;margin-top:8px">Exibindo ${C.lanc.length} de ${C.lanc.length}</div>
+  ${C.lanc.map((l,li)=>lancHtml(d,l,li,fin)).join('')}
+  ${!C.lanc.length&&!fin?'<div class="card na" style="min-height:120px;font-size:16px">Sem itens para exibir</div>':''}
+  <div class="hint" style="margin-top:12px">O sistema monta os créditos (fornecedor ou reembolso do <b>beneficiário</b>, retenções, desconto) e deixa os <b>débitos sem conta</b>: clique no lápis e escolha a conta no plano de contas. O saldo precisa fechar em R$ 0,00.</div>`;
+}
+function subOpts(conta,val){const lst=SUBS[conta]||[];const cur=(val||'').split(' - ')[0];return '<option value="">Selecione</option>'+lst.map(s=>`<option value="${esc(s.sub+' - '+s.n)}" ${s.sub===cur?'selected':''}>${esc(s.sub+' - '+s.n)}</option>`).join('')}
+function lancHtml(d,l,li,fin){const deb=somaL(l,1),cred=somaL(l,-1),saldo=r2(deb+cred);const ed=ui.edit===li&&!fin;const lote=S.lotes.find(x=>x.id===d.loteId);
+  return `<div class="lanc">
+   <div class="hd"><b>Lançamento ${esc(l.id)} - ${ENT}</b>
+    ${fin?`<span class="tag ${l.pronto?'green':''}">${l.pronto?'Pronto':'Não Pronto'}</span>`:`<button class="btn sm ${l.pronto?'blue':'grey'}" data-act="pronto" data-l="${li}">${l.pronto?'&#10004; Pronto':'Marcar como Pronto'}</button>
+    <button class="btn sm" data-act="linadd" data-l="${li}" title="Adicionar linha">&#65291;</button>
+    <button class="btn sm" data-act="lanedit" data-l="${li}" title="Editar">&#9998;</button><button class="btn sm red" data-act="landel" data-l="${li}" title="Excluir">&#128465;</button>`}</div>
+   <div class="meta"><span><b>Tipo:</b> ${esc(l.tipo)}</span><span><b>Data de Criação:</b> ${dth(l.criado)}</span><span><b>Mês Contábil:</b> ${mesTxt(l.criado)}</span><span><b>Status:</b> ${lote?.status==='contabilizado'?'Contabilizado':d.contabil.status==='concluida'?'Confirmado':'Novo'}</span><span><b>Lote:</b> ${esc(lote?.numero||'N/A')}</span></div>
+   <div class="tw" style="border:0;border-radius:0"><table class="t"><tr><th>#</th><th>Conta</th><th>Sub Conta</th><th>Fundo</th><th>Departamento</th><th>Restrição</th><th class="num">Valor</th><th>Vencimento</th><th>Descrição</th><th>Finalidade</th><th>Enviar Aviso</th>${ed?'<th></th>':''}</tr>
+   ${l.linhas.map((x,i)=>ed?`<tr><td>${i+1}</td>
+     <td><input list="dlcontas" class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="conta" value="${esc(contaTxt(x.conta))}" placeholder="Buscar conta" style="min-width:260px"></td>
+     <td>${SUBS[x.conta]?.length?`<select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="sub" style="min-width:180px">${subOpts(x.conta,x.sub)}</select>`:`<input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="sub" value="${esc(x.sub)}" style="min-width:150px">`}</td><td>${FUNDO_TXT}</td>
+     <td><select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="depto" style="min-width:200px">${deptoOpts(x.depto)}</select></td>
+     <td><select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="restr">${Object.entries(RESTR).map(([k,v])=>`<option value="${k}" ${x.restr===k?'selected':''}>${v}</option>`).join('')}</select></td>
+     <td><input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="valor" value="${String(x.valor).replace('.',',')}" style="width:110px;text-align:right"></td>
+     <td><input type="date" class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="venc" value="${esc(x.venc)}"></td>
+     <td><input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="desc" value="${esc(x.desc)}" style="min-width:220px"></td>
+     <td><input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="fin" value="${esc(x.fin||'')}" style="min-width:180px"></td>
+     <td><select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="aviso"><option value="N" ${x.aviso!=='S'?'selected':''}>Não</option><option value="S" ${x.aviso==='S'?'selected':''}>Sim</option></select></td>
+     <td><button class="x" data-act="lindel" data-l="${li}" data-i="${i}">&times;</button></td></tr>`
+    :`<tr><td>${i+1}</td><td>${x.conta?esc(contaTxt(x.conta)):'<span class="tag red">escolher conta</span>'}</td><td>${esc(x.sub)}</td><td>${FUNDO_TXT}</td><td>${esc(deptoTxt(x.depto))}</td><td>${esc(RESTR[x.restr]||x.restr)}</td>
+     <td class="num" style="color:${x.valor<0?'var(--red)':'inherit'}">${brl(x.valor)}</td><td>${dt(x.venc)}</td><td>${esc(x.desc)}</td><td>${esc(x.fin||'')}</td><td>${x.aviso==='S'?'Sim':'Não'}</td></tr>`).join('')}</table></div>
+   ${ed?'<div style="padding:8px 14px"><button class="btn sm dark" data-act="lanok">Concluir edição</button> <span class="muted">Débito positivo, crédito negativo. Só contas de 7 dígitos (0.0.00.000) recebem lançamento.</span></div>':''}
+   <div class="tot"><span>Total Crédito: <span style="color:var(--red)">${brl(cred)}</span></span><span>Total Débito: ${brl(deb)}</span><span>Saldo: <span style="color:${saldo?'var(--red)':'var(--ok)'}">${brl(saldo)}</span></span></div></div>`}
+function tComent(d){return `<div class="card">${d.coments.map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>${esc(c.por)}</b> <span class="muted">${dth(c.em)}</span><div>${esc(c.t)}</div></div>`).join('')||'<div class="muted">Sem comentários.</div>'}
+  <textarea id="cmt" placeholder="Escreva um comentário" style="margin-top:10px"></textarea><div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn dark" data-act="cmt">Adicionar Comentário</button></div></div>`}
+function tHist(d){return `<div class="card">${d.hist.map(h=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="muted">${dth(h.em)}</span> — <b>${esc(h.por)}</b>: ${esc(h.t)}</div>`).join('')}</div>`}
+
+/* =============== LOTE CONTÁBIL =============== */
+const elegiveis = () => S.docs.filter(d=>d.etapa==='revisao'&&d.contabil.status==='concluida'&&d.contabil.lanc.length&&!d.loteId);
+const docsLote = l => l.docs.map(id=>S.docs.find(d=>d.id===id)).filter(Boolean);
+function vLotes(){
+  const L=[...S.lotes].sort((a,b)=>b.criado.localeCompare(a.criado));const pend=elegiveis().length;
+  return `${crumb('Contábil','Lote Contábil')}<h1>Lote Contábil</h1>
+  <div class="row"><button class="btn dark" data-act="novolote">&#65291; Novo Lote</button><span class="sp"></span><span class="muted">${pend} documento(s) contabilizado(s) fora de lote</span></div>
+  <div class="hint" style="margin-top:12px"><b>Exportar</b> gera o CSV (1ª linha: entidade ${ENT}; depois conta;subconta;fundo;departamento;restrição;valor em centavos;aviso;descrição;vencimento)${vinculado()?` e envia o lote para a atividade <b>${ATIVIDADE}</b> do SysContábil`:'. Vinculando ao SysContábil, o lote também é enviado para lá'}.</div>
+  <h3 style="margin-top:18px">Lotes</h3>
+  ${L.length?`<div class="tw"><table class="t"><tr><th>Descrição</th><th>Número</th><th>Criação</th><th>Período</th><th>Status</th><th>Tipo</th><th>SysContábil</th><th class="num">Documentos</th><th class="num">Total</th></tr>
+   ${L.map(l=>{const docs=docsLote(l);return `<tr class="click" data-act="abrirlote" data-id="${l.id}"><td>Dracma - Provisionamento</td><td>${esc(l.numero||'-')}</td><td>${dth(l.criado)}</td><td>${mesTxt(l.mes)}</td>
+   <td>${l.status==='contabilizado'?'<span class="tag green">Contabilizado</span>':'<span class="tag yel">Aguardando Contabilização</span>'}</td><td>Provisionamento</td><td>${sysTag(l)}</td><td class="num">${docs.length}</td><td class="num">${brl(docs.reduce((a,d)=>a+d.contabil.lanc.reduce((s,x)=>s+somaL(x,1),0),0))}</td></tr>`}).join('')}</table></div>`
+   :'<div class="card na" style="min-height:100px;font-size:16px">Não há itens para exibir</div>'}`;
+}
+function sysTag(l){if(!l.sys)return '<span class="muted">—</span>';if(l.sys.erro)return '<span class="tag red">erro no envio</span>';return l.sys.importado?'<span class="tag green">importado</span>':'<span class="tag yel">aguardando importação</span>'}
+function vLote(){
+  const l=S.lotes.find(x=>x.id===route.id);if(!l)return `${crumb('Contábil','Lote Contábil')}<h1>Lote não encontrado</h1><a class="btn" href="#/lotes">Voltar</a>`;
+  const docs=docsLote(l);const ab=l.status!=='contabilizado';
+  const deb=r2(docs.reduce((a,d)=>a+d.contabil.lanc.reduce((s,x)=>s+somaL(x,1),0),0)),cred=r2(docs.reduce((a,d)=>a+d.contabil.lanc.reduce((s,x)=>s+somaL(x,-1),0),0));
+  return `${crumb('Contábil','Lote Contábil','Detalhes do Lote')}
+  <h1>Detalhes do Lote ${esc(l.id)}</h1><div style="margin:-8px 0 14px">${ENT}</div>
+  <div class="row"><a class="btn" href="#/lotes">&#8592; Voltar</a><span class="sp"></span>
+   ${ab?`<button class="btn blue" data-act="verificar">&#10004; Verificar Lote</button><button class="btn red" data-act="dellote">&#128465; Excluir Lote</button><button class="btn dark" data-act="exportar">&#8681; Exportar</button>`
+       :`<button class="btn dark" data-act="baixar">&#8681; Baixar CSV novamente</button>${vinculado()&&(!l.sys||l.sys.erro)?'<button class="btn blue" data-act="reenviar">Enviar ao SysContábil</button>':''}`}</div>
+  <div class="kv card" style="margin-top:14px">
+   <div><div class="k">Status</div><div class="v">${ab?'Aguardando Contabilização':'Contabilizado'}</div></div>
+   <div><div class="k">Status Verificação</div><div class="v">${!l.verif?'Lote não verificado':l.verif.ok?'<span style="color:var(--ok)">Lote verificado</span>':'<span style="color:var(--red)">Lote com erros</span>'}</div></div>
+   <div><div class="k">Conexão</div><div class="v">${vinculado()?`SysContábil · ${esc(ATIVIDADE)}`:'Sem conexão (só CSV)'}</div></div>
+   <div><div class="k">SysContábil</div><div class="v">${sysTag(l)}${l.sys?.erro?' '+esc(l.sys.erro):''}</div></div>
+   <div><div class="k">Número</div><div class="v">${esc(l.numero||'-')}</div></div>
+   <div><div class="k">Criado Por</div><div class="v">${esc(l.por)}</div></div>
+   <div><div class="k">Data de Criação</div><div class="v">${dth(l.criado)}</div></div>
+   <div><div class="k">Mês Contábil</div><div class="v">${mesTxt(l.mes)}</div></div>
+   <div><div class="k">Totais</div><div class="v">Débito ${brl(deb)} · Crédito ${brl(cred)}</div></div>
+  </div>
+  ${l.verif&&!l.verif.ok?`<div class="errbox"><b>Erros encontrados na verificação:</b><br>${l.verif.erros.map(esc).join('<br>')}</div>`:''}
+  ${l.verif&&l.verif.ok&&ab?'<div class="okbox">Lote verificado. Pode exportar.</div>':''}
+  <h3 style="margin-top:18px">Lançamentos</h3>
+  ${docs.map(d=>`<div class="lanc"><div class="hd"><b>${dt(d.contabil.lanc[0]?.criado)} - Documento do Contas a Pagar - Id - ${esc(d.codigo)} · ${esc(d.tipo)} ${esc(d.numero)}</b>
+    <a class="btn sm" href="#/doc/${d.id}">Documento</a>${ab?`<button class="btn sm red" data-act="tiradoc" data-id="${d.id}">Excluir</button>`:''}</div>
+    <div class="tw" style="border:0;border-radius:0"><table class="t"><tr><th>Conta</th><th>Sub Conta</th><th>Fundo</th><th>Departamento</th><th>Restrição</th><th class="num">Valor</th><th>Vencimento</th><th>Descrição</th><th>Enviar Aviso</th></tr>
+    ${d.contabil.lanc.flatMap(x=>x.linhas).map(x=>`<tr><td>${esc(contaTxt(x.conta))}</td><td>${esc(x.sub)}</td><td>${FUNDO_TXT}</td><td>${esc(deptoTxt(x.depto))}</td><td>${esc(RESTR[x.restr]||x.restr)}</td>
+     <td class="num" style="color:${x.valor<0?'var(--red)':'inherit'}">${brl(x.valor)}</td><td>${dt(x.venc)}</td><td>${esc(x.desc)}</td><td>${x.aviso==='S'?'Sim':'Não'}</td></tr>`).join('')}</table></div></div>`).join('')||'<div class="muted">Lote vazio.</div>'}
+  ${ab?`<div class="row" style="margin-top:14px"><button class="btn" data-act="addlote">&#65291; Incluir mais documentos</button></div>`:''}
+  <h3 style="margin-top:22px">Prévia do CSV</h3><pre class="card" style="overflow:auto;font-size:12.5px;white-space:pre">${esc(csvLote(l))}</pre>`;
+}
+function verificarLote(l){const E=[];const docs=docsLote(l);
+  if(!docs.length)E.push('O lote não tem documentos.');
+  docs.forEach(d=>{const pre=`${d.codigo} (${d.tipo} ${d.numero}): `;
+    if(d.contabil.status!=='concluida')E.push(pre+'análise contábil não está concluída.');
+    d.contabil.lanc.forEach(x=>{const s=r2(somaL(x,1)+somaL(x,-1));if(s)E.push(pre+'lançamento com saldo '+brl(s)+'.');errosLinhas(x.linhas).forEach(e=>E.push(pre+e))})});
+  l.verif={ok:!E.length,erros:E,em:nowIso()};return l.verif}
+const csvTxt = s => String(s||'').replace(/[;\r\n]+/g,' ').trim();
+function csvLote(l){const out=[`${ENT};;;;;;;;`];
+  docsLote(l).forEach(d=>d.contabil.lanc.forEach(x=>x.linhas.forEach(y=>{
+    out.push([digits(y.conta),(y.sub||'').split(' - ')[0].trim(),FUNDO,y.depto,y.restr,String(Math.round(y.valor*100)),y.aviso==='S'?'S':'N',csvTxt(y.desc),y.venc?dt(y.venc):''].join(';'))})));
+  return out.join('\r\n')+'\r\n'}
+function baixarCsv(l){const txt=csvLote(l);const map={'–':'-','—':'-','“':'"','”':'"','‘':"'",'’':"'",'…':'...'};
+  const bytes=new Uint8Array([...txt].map(ch=>{const c=(map[ch]||ch).charCodeAt(0);return c<256?c:63}));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:'text/csv;charset=windows-1252'}));
+  a.download=`Lote_${(l.numero||l.id).replace(/\W+/g,'')}_${ENT}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+// Lote no formato de lote do SysContábil (uma partida por linha; D/C e valor positivo)
+function lotesParaSys(l){return docsLote(l).flatMap(d=>d.contabil.lanc.map((x,i)=>({
+  id:`DRACMA-${(l.numero||l.id).replace(/\W+/g,'')}-${d.codigo.replace(/\W+/g,'')}${d.contabil.lanc.length>1?'-'+(i+1):''}`,
+  date:(l.exportado||nowIso()).slice(0,10),description:`DRACMA ${l.numero} - ${d.tipo} ${d.numero} ${pessoa(d.forn).nome} - ${d.finalidade}`.slice(0,180),createdAt:Date.now(),
+  entries:x.linhas.map(y=>{const sub=(y.sub||'').split(' - ')[0].trim();const comSub=sub&&exigeSub(y.conta);
+    return {accountCode:y.conta+(comSub?'.'+sub:''),ccId:y.depto,type:y.valor<0?'C':'D',value:Math.abs(r2(y.valor))}})})))}
+function modalLote(l){const docs=elegiveis();
+  modal(`<h2>${l?'Incluir documentos no lote':'Novo Lote'}</h2>
+   ${l?'':`<label class="f req">Entidade</label><select disabled><option>${ENT}</option></select>
+   <label class="f req">Mês Contábil</label><input type="month" id="nlMes" value="${isoDay(0).slice(0,7)}">`}
+   <label class="f">Documentos com análise contábil concluída e fora de lote</label>
+   ${docs.length?`<div class="tw"><table class="t"><tr><th></th><th>Código</th><th>Documento</th><th class="num">Valor</th></tr>${docs.map(d=>`<tr><td><input type="checkbox" class="nlDoc" value="${d.id}" checked></td><td>${esc(d.codigo)}</td><td>${esc(d.tipo)} ${esc(d.numero)} - ${esc(pessoa(d.forn).nome)}</td><td class="num">${brl(d.valor)}</td></tr>`).join('')}</table></div>`
+    :'<div class="warnbox">Nenhum documento disponível. Conclua a análise contábil de algum documento na Revisão.</div>'}
+   <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="${l?'addloteok':'novoloteok'}" ${docs.length?'':'disabled'}>${l?'Incluir':'Criar Lote'}</button></div>`,true)}
+
+/* =============== PLANO DE CONTAS =============== */
+function vPlano(){
+  const q=ui.pBusca.toLowerCase();const F=ui.pFiltro;
+  const L=S.plano.filter(p=>(!q||(p.c+' '+digits(p.c)+' '+p.n).toLowerCase().includes(q))&&(F==='todas'||(F==='anal'&&p.a)||(F==='sint'&&!p.a)));
+  const tipoBadge={Ativo:'green',Passivo:'yel',Receita:'',Despesa:'red'};
+  return `${crumb('Contábil','Plano de Contas da Entidade')}<h1>Plano de Contas da Entidade</h1>
+  <div class="muted">Entidade ${ENT} · ${S.plano.length} contas (${S.plano.filter(p=>p.a).length} de 7 dígitos, que recebem lançamento) · ${(S.subs||[]).length} subcontas</div>
+  ${vinculado()?`<div class="okbox">Plano de contas e subcontas da atividade <b>${ATIVIDADE}</b> do SysContábil, sincronizado em ${dth(S.integ.syncedAt)}. Altere lá e clique em <a href="#/integracao">Sincronizar</a>.</div>`
+      :'<div class="hint">Plano de contas padrão do SysContábil. Depois de vincular, passa a ser o da atividade <b>'+ATIVIDADE+'</b>, com as alterações e subcontas feitas lá.</div>'}
+  <div class="hint">Lançamento só em conta de <b>7 dígitos</b> (0.0.00.000). Os grupos acima dela não recebem lançamento; quando a conta tem subcontas, escolha também a subconta. No CSV a conta sai só com os números (ex.: 4.2.02.003 → 4202003).</div>
+  <div class="card" style="margin:12px 0"><label class="f" style="margin-top:0"><b>Conta de reembolso a funcionário</b> (crédito quando o beneficiário é funcionário; ele vira subconta dela)</label>
+   <select data-act-change="reemb">${S.plano.filter(p=>p.a&&p.t==='Passivo').map(p=>`<option value="${esc(p.c)}" ${p.c===cReemb()?'selected':''}>${esc(p.c+' - '+p.n)}</option>`).join('')}</select>
+   <div class="muted" style="margin-top:4px">Se precisar de uma conta própria, crie no SysContábil (atividade ${ATIVIDADE}), sincronize e escolha aqui. Fornecedores usam ${esc(contaTxt(C_FORN))}.</div></div>
+  <div class="row" style="margin:12px 0"><input id="pBusca" placeholder="&#128269; Buscar contas" value="${esc(ui.pBusca)}" style="flex:1;min-width:200px">
+   <select data-act-change="pfiltro" style="width:auto">${[['todas','Todas'],['anal','Recebem lançamento (7 dígitos)'],['sint','Grupos']].map(o=>`<option value="${o[0]}" ${F===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+  <div class="muted" style="text-align:right;margin-bottom:6px">Exibindo ${L.length} de ${S.plano.length}</div>
+  <div class="tw"><table class="t"><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Lançamento</th></tr>
+  ${L.map(p=>{const lvl=p.c.split('.').length;const subs=SUBS[p.c]||[];return `<tr class="${p.a?'':'sint'}"><td style="padding-left:${8+(lvl-1)*14}px;font-family:monospace">${esc(p.c)}</td><td>${esc(p.n)}</td>
+   <td><span class="tag ${tipoBadge[p.t]||''}">${esc(p.t)}</span></td><td>${p.role==='result'?'<span class="muted">Automática</span>':p.a?(subs.length?`Sim, com subconta <span class="tag">${subs.length}</span>`:'Sim'):'<span class="muted">Grupo</span>'}</td></tr>
+   ${subs.map(s=>`<tr><td style="padding-left:${8+lvl*14}px;font-family:monospace" class="muted">${esc(s.sub)}</td><td class="muted">${esc(s.n)}</td><td></td><td class="muted">subconta</td></tr>`).join('')}`}).join('')}</table></div>`;
+}
+
+/* =============== CENTROS DE CUSTO =============== */
+function vDeptos(){
+  const q=ui.dBusca.toLowerCase();const L=S.deptos.filter(d=>!q||(d.c+' '+d.n).toLowerCase().includes(q));const ro=vinculado();
+  return `${crumb('Contábil','Centros de Custo')}<h1>Centros de Custo</h1>
+  <div class="muted">Entidade ${ENT} · ${S.deptos.length} departamentos (${deptosAtivos().length} ativos)</div>
+  ${ro?`<div class="okbox">Os centros de custo vêm do SysContábil (atividade <b>${ATIVIDADE}</b>). Cadastre ou altere lá e clique em <a href="#/integracao">Sincronizar</a>. O orçamento disponível é só do treinamento e pode ser ajustado aqui.</div>`
+      :'<div class="hint">Lista padrão do DRACMA. Depois de vincular ao SysContábil, os centros de custo passam a vir de lá. Orçamento vazio = não controla.</div>'}
+  <div class="row" style="margin:12px 0"><input id="dBusca" placeholder="&#128269; Buscar" value="${esc(ui.dBusca)}" style="flex:1;min-width:200px">
+   ${ro?'':'<button class="btn dark" data-act="novodepto">&#65291; Novo departamento</button><button class="btn" data-act="restdeptos">Restaurar padrão</button>'}</div>
+  <div class="tw"><table class="t"><tr><th>Código</th><th>Nome</th><th class="num">Orçamento Disponível</th><th>Ativo</th>${ro?'':'<th></th>'}</tr>
+  ${L.map(d=>`<tr class="${d.on?'':'off'}"><td>${esc(d.c)}</td><td>${ro?esc(d.n):`<input class="inp-sm" data-dp="${esc(d.c)}" data-df="n" value="${esc(d.n)}">`}</td>
+   <td class="num"><input class="inp-sm" data-dp="${esc(d.c)}" data-df="orc" value="${d.orc==null?'':String(d.orc).replace('.',',')}" style="width:140px;text-align:right"></td>
+   <td><input type="checkbox" data-dp="${esc(d.c)}" data-df="on" ${d.on?'checked':''} ${ro?'disabled':''}></td>
+   ${ro?'':`<td><button class="x" data-act="deldepto" data-c="${esc(d.c)}" title="Excluir">&times;</button></td>`}</tr>`).join('')}</table></div>`;
+}
+
+/* =============== INTEGRAÇÃO SYSCONTÁBIL (Firebase, mesmo usuário) =============== */
+// users/{uid}/integrations/dracma           pedido de vínculo + plano/centros iniciais + subcontas a criar (lidos pelo SysContábil)
+// users/{uid}/integrations/dracma/lotes/{id} lotes exportados aguardando importação no SysContábil
+// users/{uid}/workspaces/{wsId}              atividade STNR - DRACMA (fonte do plano e dos centros de custo)
+const INT={user:null,doc:null,busy:false,erro:'',pronto:false};
+let FB=null;
+function fb(){if(FB)return FB;if(!window.firebase)return null;
+  try{const app=firebase.apps.length?firebase.app():firebase.initializeApp(FB_CFG);FB={auth:firebase.auth(),db:firebase.firestore()};
+    FB.auth.onAuthStateChanged(u=>{INT.user=u;INT.pronto=true;if(u)lerIntegracao();else{INT.doc=null;if(route.p==='integracao')rerender()}})}catch(e){INT.erro=e.message;return null}
+  return FB}
+const intRef=()=>FB.db.collection('users').doc(INT.user.uid).collection('integrations').doc('dracma');
+async function lerIntegracao(){try{const s=await intRef().get();INT.doc=s.exists?s.data():null;
+  if(INT.doc&&INT.doc.status==='vinculado'&&INT.doc.wsId){if(!S.integ||S.integ.wsId!==INT.doc.wsId){S.integ={wsId:INT.doc.wsId,email:INT.user.email,syncedAt:''};save()}}
+  INT.erro=''}catch(e){INT.erro='Não foi possível ler a integração: '+e.message}
+  if(route.p==='integracao'||route.p==='inicio')rerender();else side()}
+// O plano de contas da atividade é o padrão do próprio SysContábil; do DRACMA vão só os centros de custo iniciais
+function payloadVinculo(){
+  const sede=S.deptos.find(d=>d.c===SEDE);const centros=[...(sede?[sede]:[]),...S.deptos.filter(d=>d.on&&d.c!==SEDE)].map(d=>({id:d.c,name:d.n}));
+  return {centros}}
+function payloadSubcontas(){return S.pessoas.filter(p=>p.cod).map(p=>({parent:p.func?cReemb():C_FORN,sub:String(p.cod),name:p.nome}))}
+function vIntegracao(){
+  const f=fb();const D=INT.doc;
+  if(!f)return `${crumb('Integração','SysContábil')}<h1>Integração com o SysContábil</h1><div class="errbox">Não foi possível carregar o Firebase. Verifique a internet e abra a página pelo site (https://stnr.com.br), não pelo arquivo local.</div>`;
+  const head=`${crumb('Integração','SysContábil')}<h1>Integração com o SysContábil</h1>
+   <div class="hint">Entre com o <b>mesmo usuário do SysContábil</b>. O vínculo cria lá a atividade <b>${ATIVIDADE}</b> (entidade ${ENT}). Depois disso, o plano de contas, as subcontas e os centros de custo do DRACMA passam a vir dessa atividade, e os lotes exportados vão para ela.</div>
+   ${INT.erro?`<div class="errbox">${esc(INT.erro)}</div>`:''}`;
+  if(!INT.pronto)return head+'<div class="card">Conectando...</div>';
+  if(!INT.user)return head+`<div class="card" style="max-width:420px"><h3>Entrar com o usuário do SysContábil</h3>
+   <label class="f req">E-mail</label><input id="fbEmail" type="email" autocomplete="username">
+   <label class="f req">Senha</label><input id="fbSenha" type="password" autocomplete="current-password">
+   <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn dark" data-act="fblogin" ${INT.busy?'disabled':''}>Entrar</button></div></div>`;
+  const st=!D?'nenhum':D.status;
+  const passos=`<div class="flow">
+    <div style="${st!=='nenhum'?'border-top-color:var(--ok)':''}"><b>1. Solicitar vínculo (aqui)</b>Envia o plano de contas e os centros de custo do DRACMA para o seu usuário.</div>
+    <div style="${st==='vinculado'?'border-top-color:var(--ok)':''}"><b>2. Vincular (no SysContábil)</b>Configurações → Integração DRACMA → Vincular. Cria a atividade ${ATIVIDADE}.</div>
+    <div style="${S.integ?.syncedAt?'border-top-color:var(--ok)':''}"><b>3. Sincronizar (aqui)</b>Puxa contas, subcontas e centros de custo da atividade.</div></div>`;
+  return head+`<div class="card"><div class="row"><div style="flex:1">Conectado como <b>${esc(INT.user.email)}</b></div><button class="btn sm" data-act="fblogout">Sair</button></div>
+   ${passos}
+   ${st==='nenhum'||st==='desvinculado'?`<div class="row"><span class="sp"></span><button class="btn dark" data-act="solicitar" ${INT.busy?'disabled':''}>Solicitar vínculo</button></div>`:''}
+   ${st==='pendente'?`<div class="warnbox">Vínculo solicitado em ${dth(new Date(D.solicitadoEm).toISOString())}. Agora abra o <b>SysContábil</b> com o mesmo usuário → <b>Configurações → Integração DRACMA</b> → <b>Vincular</b>.</div>
+     <div class="row"><button class="btn sm" data-act="relerint">Verificar novamente</button><span class="sp"></span><button class="btn sm" data-act="solicitar">Reenviar solicitação</button></div>`:''}
+   ${st==='vinculado'?`<div class="okbox">Vinculado à atividade <b>${esc(D.atividade||ATIVIDADE)}</b> em ${D.vinculadoEm?dth(new Date(D.vinculadoEm).toISOString()):''}. ${S.integ?.syncedAt?'Última sincronização: '+dth(S.integ.syncedAt)+'.':'Ainda não sincronizado.'}</div>
+     <div class="row"><button class="btn dark" data-act="sincronizar" ${INT.busy?'disabled':''}>&#8635; Sincronizar contas e subcontas</button><span class="sp"></span><button class="btn sm red" data-act="desvincular">Desvincular</button></div>
+     <div class="muted" style="margin-top:8px">Sincronizar também envia ao SysContábil as pessoas cadastradas aqui que ainda não existem como subconta (fornecedores em ${esc(contaTxt(C_FORN))}, funcionários em ${esc(contaTxt(cReemb()))}).</div>`:''}
+  </div>`;
+}
+async function sincronizar(silencioso){
+  if(!fb()||!INT.user)return toast('Entre na Integração com o usuário do SysContábil.');
+  if(!INT.doc||INT.doc.status!=='vinculado'||!INT.doc.wsId)return toast('Vínculo ainda não concluído no SysContábil.');
+  INT.busy=true;if(route.p==='integracao')rerender();
+  try{
+    await intRef().set({subcontas:payloadSubcontas(),subcontasEm:Date.now()},{merge:true});
+    const ws=await FB.db.collection('users').doc(INT.user.uid).collection('workspaces').doc(INT.doc.wsId).get();
+    if(!ws.exists)throw new Error('a atividade '+ATIVIDADE+' não existe mais no SysContábil');
+    const st=ws.data().state||{};const acc=Array.isArray(st.accounts)?st.accounts:[];const ccs=Array.isArray(st.costCenters)?st.costCenters:[];
+    if(!acc.length)throw new Error('a atividade não tem plano de contas');
+    const plano=acc.filter(a=>!a.sub).map(contaDoChart);const existe=new Set(plano.map(p=>p.c));
+    const subs=acc.filter(a=>a.sub&&existe.has(a.parent)).map(a=>({c:String(a.parent),sub:String(a.sub),n:a.name}));
+    const orc=Object.fromEntries(S.deptos.map(d=>[d.c,d.orc]));
+    S.plano=plano;S.subs=subs;S.deptos=ccs.map(c=>({c:String(c.id),n:String(c.name||''),orc:orc[c.id]??null,on:true}));
+    S.integ={wsId:INT.doc.wsId,email:INT.user.email,syncedAt:nowIso()};indexar();save();
+    if(!silencioso)toast(`Sincronizado: ${plano.length} contas, ${subs.length} subcontas e ${S.deptos.length} centros de custo do SysContábil.`);
+  }catch(e){toast('Erro ao sincronizar: '+esc(e.message))}
+  INT.busy=false;rerender()}
+async function enviarLoteSys(l){
+  if(!vinculado())return;
+  if(!fb()||!INT.user||!INT.doc||INT.doc.status!=='vinculado'){l.sys={erro:'entre na Integração com o usuário do SysContábil'};save();return}
+  try{const batches=lotesParaSys(l);
+    await intRef().set({subcontas:payloadSubcontas(),subcontasEm:Date.now()},{merge:true});
+    await intRef().collection('lotes').doc(l.id).set({numero:l.numero,entidade:ENT,exportadoEm:Date.now(),batches,importado:false});
+    l.sys={enviado:nowIso(),importado:false};toast('Lote enviado ao SysContábil: será importado na atividade '+ATIVIDADE+' ao abri-la.')}
+  catch(e){l.sys={erro:e.message}}save()}
+let checando=false;
+async function checarImportacao(){const l=S.lotes.find(x=>x.id===route.id);if(!l||!l.sys||l.sys.importado||l.sys.erro||checando||!fb()||!INT.user)return;
+  checando=true;try{const s=await intRef().collection('lotes').doc(l.id).get();if(s.exists&&s.data().importado){l.sys.importado=true;l.sys.importadoEm=s.data().importadoEm;save();if(route.p==='lote')rerender()}}catch(e){}checando=false}
+
+/* =============== AÇÕES =============== */
+function docAtual(){return S.docs.find(x=>x.id===route.id)}
+function loteAtual(){return S.lotes.find(x=>x.id===route.id)}
+function proxPendente(atual){return S.docs.filter(d=>d.etapa==='revisao'&&d.id!==atual&&(d.fiscal.status==='pendente'||d.contabil.status==='aguardando')).sort((a,b)=>a.enviadoEm.localeCompare(b.enviadoEm))[0]}
+function depoisDeConcluir(d){save();if(S.prefs.next){const n=proxPendente(d.id);if(n){toast('Indo para a próxima despesa: '+esc(n.codigo));ui.tab=null;go('#/doc/'+n.id);return}}rerender()}
+function preencherDeAmostra(d,k){const a=AMOSTRAS[k];d.tipo=a.tipo;d.forn=a.forn;d.numero=a.numero;d.serie=a.serie||'';d.emissao=isoDay(a.emissaoOff);d.valor=a.valor;d.salvo=false;
+  if(MODELO[a.tipo])d.chave=d.anexo?.chave||'';if(!d.finalidade)d.finalidade=a.finalidade}
+function redrawDoc(){const y=window.scrollY;$('#app').innerHTML=vDoc();window.scrollTo(0,y)}
+function devolverDoc(d,motivo,porCancel){d.etapa='criacao';d.devolucao=porCancel?null:{motivo,por:EU,em:nowIso()};d.salvo=true;d.liberado=true;d.fiscal=novoFiscal();d.contabil={status:'aguardando',lanc:[],motivo:''};
+  hist(d,porCancel?'Aprovação cancelada':'Devolvido ao requisitante: '+motivo)}
+function aplicarBancoPadrao(d){const b=pessoa(d.pag.benef);if(d.pag.padrao&&b.banco){Object.assign(d.pag,{banco:b.banco.banco,tipoConta:b.banco.tipo,ag:b.banco.ag,agDv:b.banco.agDv,conta:b.banco.conta,contaDv:b.banco.contaDv})}}
+const A={
+  menu(){$('#side').classList.toggle('open')},
+  'mclose-bg'(el,e){if(e.target===el)closeModal()}, mclose:closeModal,
+  mok(){const cb=confirmCb;confirmCb=null;closeModal();if(cb)cb()},
+  fora(){toast('Esta função existe no DRACMA real, mas não faz parte deste treinamento.')},
+  reset(){confirmar('Reiniciar treinamento','Apaga documentos, lotes e missões deste navegador e volta aos exemplos. Plano de contas, centros de custo e vínculo continuam.',()=>{const k={plano:S.plano,deptos:S.deptos,subs:S.subs,integ:S.integ,cfg:S.cfg};S=seed();Object.assign(S,k);indexar();save();render()},'Reiniciar')},
+  novo(){const d=novoDoc();S.docs.push(d);ui.draft=d.id;save();rerender()},
+  seldraft(el){ui.draft=el.dataset.id;rerender()},
+  descartar(){const d=curDraft();confirmar('Atenção!','Deseja realmente descartar o documento em criação?',()=>{S.docs=S.docs.filter(x=>x.id!==d.id);ui.draft=null;save();rerender()})},
+  novoforn(el,e){e.preventDefault();modal(`<h2>Adicionar pessoa</h2><div class="hint">No DRACMA o cadastro de pessoas fica em Cadastros Gerais. Aqui é só para o treinamento. Com o SysContábil vinculado, a pessoa vira subconta lá ao sincronizar.</div>
+    <label class="f req">Nome / Razão social</label><input id="nfNome"><label class="f req">CNPJ ou CPF</label><input id="nfDoc">
+    <label class="f">Código (sub conta)</label><input id="nfCod" placeholder="Gerado automaticamente se vazio">
+    <label class="f">Regime tributário</label><select id="nfReg"><option value="">—</option>${REGIMES.map(r=>`<option>${r}</option>`).join('')}</select>
+    <label class="row" style="gap:8px;margin-top:12px"><input type="checkbox" id="nfFunc"> É funcionário (reembolso em ${esc(contaTxt(cReemb()))})</label>
+    <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="nfok">Cadastrar</button></div>`)},
+  nfok(){const n=$('#nfNome').value.trim(),dd=digits($('#nfDoc').value);
+    if(!n||![11,14].includes(dd.length))return toast('Informe o nome e um CNPJ (14 dígitos) ou CPF (11 dígitos).');
+    const cod=digits($('#nfCod').value)||String(5000+S.pessoas.length);if(S.pessoas.some(p=>p.cod===cod))return toast('Já existe uma pessoa com o código '+cod+'.');
+    const f={id:'u'+uid(),cod,nome:n,doc:fmtDoc(dd),regime:$('#nfReg').value,func:$('#nfFunc').checked};S.pessoas.push(f);const d=curDraft();d.forn=f.id;d.salvo=false;save();closeModal();rerender()},
+  amostra(){modal(`<h2>Anexar documento de exemplo</h2><p class="muted">Escolha um documento fictício. Depois use <b>Processar</b> para preencher automaticamente, ou digite os dados olhando o anexo.</p>
+    ${Object.entries(AMOSTRAS).map(([k,a])=>`<button class="btn" style="width:100%;margin:5px 0;justify-content:flex-start" data-act="amostraok" data-k="${k}">&#128196; ${esc(a.titulo)}</button>`).join('')}
+    <div class="row" style="margin-top:10px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button></div>`)},
+  amostraok(el){const k=el.dataset.k,a=AMOSTRAS[k],d=curDraft();const emi=isoDay(a.emissaoOff);
+    d.anexo={amostra:k,tipo:{Bol:'bol',NFSe:'nfse',NFe:'nfe',NFCe:'nfe',REC:'rec'}[a.tipo],nome:a.titulo+'.pdf',forn:a.forn,numero:a.numero,serie:a.serie,emissao:emi,valor:a.valor,
+      venc:isoDay(a.vencOff),linha:a.linha,chave:MODELO[a.tipo]?gerarChave(pessoa(a.forn).doc,emi,MODELO[a.tipo],a.serie,a.numero):'',dados:{itens:a.itens,servico:a.servico,ret:a.ret}};
+    save();closeModal();rerender();if(a.dica)toast('Dica: '+esc(a.dica))},
+  rmanexo(){const d=curDraft();d.anexo=null;save();rerender()},
+  processar(){const d=curDraft();const a=d.anexo;if(!a)return;
+    if(a.amostra){preencherDeAmostra(d,a.amostra);save();rerender();toast('Dados preenchidos a partir do anexo. <b>Confira</b> e clique em Salvar.')}
+    else if(a.xml){toast('Os dados do XML já foram preenchidos na importação.')}
+    else alerta('Processar','No treinamento o preenchimento automático funciona com os anexos de exemplo e com XML de NF-e. Para arquivos seus, digite os dados.','warn')},
+  xml(){modal(`<h2>Importar XML</h2><p>Selecione o XML de uma NF-e. Ele é lido só aqui no navegador, nada é enviado.</p>
+    <label class="btn dark">Escolher arquivo XML<input type="file" accept=".xml,text/xml" data-act-change="xmlfile" hidden></label>
+    <button class="btn blue" data-act="xmlex" style="margin-left:6px">Usar XML de exemplo</button>
+    <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button></div>`)},
+  xmlex(){const n=String(5000+Math.floor(Math.random()*4000));const emi=isoDay(-1);const ch=gerarChave('99000111000109',emi,'55','1',n);importarXml(`<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc><NFe><infNFe Id="NFe${ch}"><ide><serie>1</serie><nNF>${n}</nNF><dhEmi>${emi}T10:15:00-03:00</dhEmi></ide>
+<emit><CNPJ>99000111000109</CNPJ><xNome>Grafica Ponto Final Ltda</xNome></emit>
+<det nItem="1"><prod><xProd>Folder A4 4x4 cores (milheiro)</xProd><qCom>2</qCom><vUnCom>310.00</vUnCom></prod></det>
+<det nItem="2"><prod><xProd>Banner lona 90x120</xProd><qCom>3</qCom><vUnCom>85.00</vUnCom></prod></det>
+<total><ICMSTot><vNF>875.00</vNF></ICMSTot></total></infNFe></NFe></nfeProc>`,'NFe '+n+' Grafica Ponto Final.xml')},
+  salvar(){const d=curDraft();const E=[];
+    if(!d.tipo)E.push('Tipo de Documento');if(!d.forn)E.push('Emitente (selecione da lista)');if(!d.emissao)E.push('Data de Emissão');
+    if(!d.numero.trim())E.push('Número');if(!(d.valor>0))E.push('Valor');if(!d.finalidade.trim())E.push('Finalidade');
+    if(E.length)return alerta('Campos obrigatórios','Preencha: <b>'+E.join(', ')+'</b>.');
+    if(d.emissao>isoDay(0))return alerta('Data de emissão','A data de emissão não pode estar no futuro.');
+    if(d.chave&&digits(d.chave).length!==44)return alerta('Chave de Acesso','A chave de acesso deve ter 44 dígitos.');
+    const dup=S.docs.find(x=>x.id!==d.id&&x.forn===d.forn&&digits(x.numero)===digits(d.numero)&&x.tipo===d.tipo);
+    if(dup)return alerta('Documento Duplicado',`Já existe o documento <b>${esc(dup.tipo)} ${esc(dup.numero)}</b> deste emitente (${esc(dup.codigo||'em criação')}, ${brl(dup.valor)}). Verifique antes de continuar.`);
+    if(d.anexo&&d.anexo.amostra){const a=d.anexo;const dif=[];if(a.forn!==d.forn)dif.push('emitente');if(digits(a.numero)!==digits(d.numero))dif.push('número');if(r2(a.valor)!==r2(d.valor))dif.push('valor');if(a.emissao!==d.emissao)dif.push('data de emissão');
+      if(dif.length)toast('&#9888; Atenção: '+dif.join(', ')+' diferente(s) do anexo.')}
+    d.salvo=true;if(!d.liberado){d.liberado=true;if(!d.pag.benef)d.pag.benef=d.forn;if(d.anexo&&d.anexo.venc&&!d.pag.venc)d.pag.venc=d.anexo.venc;
+      if(d.anexo&&d.anexo.linha&&!d.pag.linha){d.pag.linha=d.anexo.linha;d.pag.forma=d.pag.forma||'Boleto'}
+      if(!d.rateio.length)d.rateio=[{cat:'',cc:DP[SEDE]?SEDE:(deptosAtivos()[0]?.c||''),valor:d.valor,desc:''}]}
+    hist(d,'Informações básicas salvas');save();rerender();toast('Documento salvo. Agora preencha Categorias, Centros de Custo e Pagamento.')},
+  radd(){const d=curDraft();const soma=r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0));d.rateio.push({cat:d.rateio.at(-1)?.cat||'',cc:'',valor:Math.max(0,r2(d.valor-soma)),desc:''});save();rerender()},
+  rdel(el){const d=curDraft();d.rateio.splice(+el.dataset.i,1);save();rerender()},
+  rfill(){const d=curDraft();const soma=r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0));const last=d.rateio.at(-1);last.valor=r2(last.valor+d.valor-soma);save();rerender()},
+  reembolso(){const d=curDraft();const pid=PESSOA_REQ[d.requisitante];const p=pessoa(pid);if(!pid||!p.banco)return toast('O requisitante não tem conta bancária padrão cadastrada.');
+    d.pag.benef=pid;d.pag.forma='Transferência Bancária';d.pag.padrao=true;aplicarBancoPadrao(d);save();rerender();
+    toast('Reembolso padrão: pagamento para <b>'+esc(p.nome)+'</b> na conta bancária padrão.')},
+  enviar(){const d=curDraft();const P=pendencias(d);if(P.length)return alerta('Ainda não dá para enviar','Falta: '+P.join('; ')+'.');
+    if(d.anexo&&d.anexo.amostra){const a=d.anexo;if(r2(a.valor)!==r2(d.valor)||a.forn!==d.forn||digits(a.numero)!==digits(d.numero))
+      return confirmar('Divergência com o anexo','Os dados digitados não batem com o anexo (emitente, número ou valor). Na revisão fiscal isso será devolvido. Enviar mesmo assim?',()=>enviarDoc(d),'Enviar mesmo assim')}
+    enviarDoc(d)},
+  revisar(){const n=proxPendente(null);if(!n)return toast('Nenhum documento pendente de revisão.');S.prefs.next=true;save();ui.tab=null;go('#/doc/'+n.id)},
+  filtro(el){ui.filtro=el.dataset.f;rerender()}, mine(){ui.mine=!ui.mine;rerender()},
+  abrir(el){ui.tab=null;go('#/doc/'+el.dataset.id)},
+  proxima(){const d=docAtual();const L=listaFiltrada();const i=L.findIndex(x=>x.id===d.id);const n=L[i+1]||L[0];if(n&&n.id!==d.id){ui.tab=null;go('#/doc/'+n.id)}else toast('Não há outro documento na lista.')},
+  tab(el){ui.tab=el.dataset.t;ui.srvEdit=false;rerender()},
+  excluirdoc(){const d=docAtual();confirmar('Excluir documento','O documento será excluído.',()=>{S.docs=S.docs.filter(x=>x!==d);save();go('#/revisao')},'Excluir')},
+  cancaprov(){const d=docAtual();confirmar('Cancelar Aprovação','O documento volta para Cadastrar Documento, em criação.',()=>{devolverDoc(d,'',true);save();go('#/revisao')},'Cancelar Aprovação')},
+  // Fiscal
+  validar(){const d=docAtual();d.fiscal.validacao=validarChave(d);save();rerender()},
+  srvnovo(){const d=docAtual();d.fiscal.servico=novoServico(pessoa(d.forn).regime);d.fiscal.servico.valor=d.valor;ui.srvEdit=true;save();rerender()},
+  srvedit(){ui.srvEdit=true;rerender()},
+  srvcancel(){const d=docAtual();if(!d.fiscal.servico.atualizado)d.fiscal.servico=null;ui.srvEdit=false;save();rerender()},
+  srvsalvar(){const d=docAtual();const s=d.fiscal.servico;if(!s.regime||!s.cod)return toast('Informe o Regime do Prestador e o Serviço Fiscal.');
+    s.atualizado=nowIso();d.fiscal.sim=null;ui.srvEdit=false;hist(d,'Serviço fiscal cadastrado: '+s.cod);save();rerender()},
+  simular(){const d=docAtual();if(!d.fiscal.servico?.atualizado)return toast('Salve o serviço antes de simular.');d.fiscal.sim=simular(d);save();rerender()},
+  aplicarsim(){const d=docAtual();d.fiscal.ret=d.fiscal.sim.filter(r=>r.valor>0).map(r=>({tipo:r.tipo,base:r.base,aliq:r.aliq,valor:r.valor}));d.fiscal.simAplicada=true;
+    hist(d,'Retenções aplicadas pela simulação: '+brl(totRet(d)));save();rerender();
+    if(d.anexo?.dados?.ret)toast(retConfere(d)?'As retenções conferem com as destacadas na nota.':'&#9888; As retenções não conferem com as destacadas na nota. Revise o serviço.')},
+  retdel(el){const d=docAtual();d.fiscal.ret.splice(+el.dataset.i,1);save();rerender()},
+  confFiscal(){const d=docAtual();const F=d.fiscal;const D=d.anexo?.dados||{};
+    if(MODELO[d.tipo]){const E=validarChave(d);F.validacao=E;if(E.length){save();rerender();return alerta('Dados da nota não conferem','Corrija os dados do documento antes de confirmar:<br>'+E.map(esc).join('<br>'))}}
+    if(D.valorReal!=null&&r2(D.valorReal)!==r2(d.valor))return alerta('Feedback do treinamento',`Olhe o anexo: o valor da nota é <b>${brl(D.valorReal)}</b>, mas o documento foi lançado com <b>${brl(d.valor)}</b>. O fiscal não altera valor: use <b>Devolver</b> com o motivo.`,'warn');
+    if(SERV.has(d.tipo)&&(!F.servico?.atualizado||!F.sim))return alerta('Serviço não analisado','Cadastre o serviço (regime do prestador e serviço fiscal), clique em Simular e aplique as retenções antes de confirmar.');
+    const fin=()=>{F.status='concluida';F.por=EU;F.em=nowIso();
+      F.guias=F.ret.map(r=>({tipo:r.tipo,guia:RET[r.tipo].guia,valor:r.valor,venc:diaMesSeguinte(d.emissao,RET[r.tipo].dia)}));
+      hist(d,'Análise fiscal confirmada'+(F.ret.length?' com retenções de '+brl(totRet(d)):' sem retenções'));
+      if(d.seedKey==='chave')S.flags.m4=true;if(d.seedKey==='nfse'&&retConfere(d)&&F.servico?.cod)S.flags.m5=true;depoisDeConcluir(d)};
+    if(D.ret&&!retConfere(d)){const R=D.ret;return confirmar('Retenções não conferem',`A nota destaca: ${Object.entries(R).map(([k,v])=>RET[k].nome+' '+brl(v)).join(' + ')}. Você aplicou: ${F.ret.map(r=>RET[r.tipo].nome+' '+brl(r.valor)).join(' + ')||'nenhuma'}.<br><br>Confirmar mesmo assim?`,fin,'Confirmar mesmo assim')}
+    fin()},
+  devolver(){modal(`<h2>Devolver</h2><p>O documento volta para "Cadastrar Documento" de quem lançou, com o motivo.</p>
+    <label class="f req">Insira uma Justificativa</label><textarea id="motivo" maxlength="300" placeholder="Ex.: valor lançado (R$ X) diferente da nota (R$ Y)"></textarea>
+    <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn red" data-act="devok">Devolver</button></div>`)},
+  devok(){const m=$('#motivo').value.trim();if(m.length<8)return toast('Escreva um motivo claro (o requisitante precisa entender o que corrigir).');
+    const d=docAtual();devolverDoc(d,m);if(d.seedKey==='div')S.flags.m6=true;closeModal();toast('Documento devolvido ao requisitante.');depoisDeConcluir(d)},
+  reabrirFiscal(el,e){e&&e.preventDefault();const d=docAtual();confirmar('Reabrir análise fiscal','Os lançamentos contábeis gerados serão excluídos, porque dependem das retenções.',()=>{d.fiscal.status='pendente';d.fiscal.guias=[];d.contabil.lanc=[];hist(d,'Análise fiscal reaberta');save();rerender()})},
+  // Contábil
+  gerar(){const d=docAtual();const go2=()=>{d.contabil.lanc=[gerarLanc(d)];ui.edit=0;hist(d,'Contabilização gerada');save();redrawDoc();toast('Lançamento gerado. Escolha as contas de débito nas linhas marcadas.')};
+    if(d.contabil.lanc.length)confirmar('Gerar contabilização','Já existem lançamentos. Gerar de novo substitui os atuais.',go2,'Gerar');else go2()},
+  sincronizar(){if(vinculado())sincronizar();else toast('Sincronizar busca o plano de contas no SysContábil. Vincule primeiro em Integração.')},
+  lancdelall(){const d=docAtual();confirmar('Atenção!','Excluir todos os lançamentos deste documento?',()=>{d.contabil.lanc=[];hist(d,'Lançamentos excluídos');save();rerender()},'Excluir')},
+  landel(el){const d=docAtual();confirmar('Atenção!','Deseja excluir o lançamento?',()=>{d.contabil.lanc.splice(+el.dataset.l,1);save();rerender()},'Excluir')},
+  pronto(el){const d=docAtual();const l=d.contabil.lanc[+el.dataset.l];
+    if(!l.pronto){const s=r2(somaL(l,1)+somaL(l,-1));if(s!==0)return alerta('Lançamento não fecha',`O saldo está em ${brl(s)}. Débito e crédito precisam ser iguais antes de marcar como pronto.`);
+      const E=errosLinhas(l.linhas);if(E.length)return alerta('Lançamento incompleto',E.map(esc).join('<br>'))}
+    l.pronto=!l.pronto;ui.edit=null;save();rerender()},
+  lanedit(el){ui.edit=+el.dataset.l;redrawDoc()},
+  lanok(){ui.edit=null;save();rerender()},
+  linadd(el){const d=docAtual();const l=d.contabil.lanc[+el.dataset.l];l.linhas.push({id:uid(),conta:'',sub:'',depto:SEDE,restr:'0E',valor:0,venc:'',desc:'',fin:d.finalidade,aviso:'N'});l.pronto=false;ui.edit=+el.dataset.l;save();redrawDoc()},
+  lindel(el){const d=docAtual();const l=d.contabil.lanc[+el.dataset.l];l.linhas.splice(+el.dataset.i,1);l.pronto=false;save();redrawDoc()},
+  naocont(){modal(`<h2>Não Contabilizar</h2><p>Use só quando o documento não deve gerar lançamento (ex.: já contabilizado por outra rotina).</p>
+    <label class="f req">Insira uma Justificativa</label><textarea id="ncMot" maxlength="300"></textarea><div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="ncok">Confirmar</button></div>`)},
+  ncok(){const m=$('#ncMot').value.trim();if(m.length<8)return toast('Escreva a justificativa.');const d=docAtual();
+    if(d.fiscal.status==='pendente'){closeModal();return alerta('Análise fiscal pendente','Conclua a análise fiscal antes.')}
+    d.contabil={status:'nao',lanc:[],motivo:m};hist(d,'Marcado como Não Contabilizar: '+m);closeModal();depoisDeConcluir(d)},
+  confCont(){const d=docAtual();const C=d.contabil;
+    if(d.fiscal.status==='pendente')return alerta('Análise fiscal pendente','A análise contábil só pode ser confirmada depois da fiscal.');
+    if(!C.lanc.length)return alerta('Sem lançamentos','Gere a contabilização antes de confirmar.');
+    if(C.lanc.some(l=>!l.pronto))return alerta('Lançamentos não prontos','Escolha as contas, confira e marque todos os lançamentos como <b>Pronto</b>.');
+    const deb=r2(C.lanc.reduce((a,l)=>a+somaL(l,1),0));const esperado=r2(d.valor+(+d.pag.multa||0));
+    if(deb!==esperado)return confirmar('Conferência','O total debitado ('+brl(deb)+') é diferente do valor do documento ('+brl(esperado)+'). Confirmar mesmo assim?',()=>finCont(d),'Confirmar mesmo assim');
+    finCont(d)},
+  reabrirCont(){const d=docAtual();confirmar('Cancelar Análise Contábil','O documento volta para "Aguardando Análise Contábil".',()=>{d.contabil.status='aguardando';d.contabil.lanc.forEach(l=>l.pronto=false);hist(d,'Análise contábil cancelada');save();rerender()},'Cancelar Análise Contábil')},
+  cmt(){const t=$('#cmt').value.trim();if(!t)return;const d=docAtual();d.coments.push({por:EU,em:nowIso(),t});hist(d,'Comentário adicionado');save();rerender()},
+  // Lotes
+  novolote(){modalLote(null)},
+  novoloteok(){const ids=[...document.querySelectorAll('.nlDoc:checked')].map(c=>c.value);if(!ids.length)return toast('Selecione ao menos um documento.');
+    const l={id:String(Date.now())+'0'.repeat(6),numero:'',mes:$('#nlMes').value||isoDay(0).slice(0,7),criado:nowIso(),por:EU,status:'aguardando',verif:null,docs:ids};
+    S.lotes.push(l);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;hist(d,'Incluído no lote '+l.id)});save();closeModal();go('#/lote/'+l.id)},
+  addlote(){modalLote(loteAtual())},
+  addloteok(){const l=loteAtual();const ids=[...document.querySelectorAll('.nlDoc:checked')].map(c=>c.value);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;l.docs.push(id);hist(d,'Incluído no lote '+l.id)});l.verif=null;save();closeModal();rerender()},
+  abrirlote(el){go('#/lote/'+el.dataset.id)},
+  tiradoc(el){const l=loteAtual();const d=S.docs.find(x=>x.id===el.dataset.id);confirmar('Atenção!','Retirar este documento do lote? Ele volta a ficar disponível para outro lote.',()=>{l.docs=l.docs.filter(x=>x!==d.id);d.loteId=null;l.verif=null;hist(d,'Retirado do lote '+l.id);save();rerender()},'Retirar')},
+  dellote(){const l=loteAtual();confirmar('Excluir Lote','Os documentos voltam a ficar disponíveis para outro lote.',()=>{l.docs.forEach(id=>{const d=S.docs.find(x=>x.id===id);if(d){d.loteId=null;hist(d,'Lote '+l.id+' excluído')}});S.lotes=S.lotes.filter(x=>x!==l);save();go('#/lotes')},'Excluir')},
+  verificar(){const l=loteAtual();const v=verificarLote(l);save();rerender();toast(v.ok?'Lote verificado sem erros.':'Foram encontrados '+v.erros.length+' erro(s).')},
+  exportar(){const l=loteAtual();const v=verificarLote(l);if(!v.ok){save();rerender();return alerta('Lote com erros','Corrija os erros listados antes de exportar.')}
+    confirmar('Exportar lote',`Será gerado o arquivo CSV${vinculado()?` e o lote será enviado para a atividade <b>${ATIVIDADE}</b> do SysContábil`:''}. O lote passa para <b>Contabilizado</b>.`,async()=>{S.loteSeq++;l.numero='PG - '+S.loteSeq;l.status='contabilizado';l.exportado=nowIso();
+      docsLote(l).forEach(d=>hist(d,'Lote '+l.numero+' exportado'));save();baixarCsv(l);toast('CSV gerado: '+esc(l.numero));await enviarLoteSys(l);rerender()},'Exportar')},
+  baixar(){baixarCsv(loteAtual())},
+  async reenviar(){await enviarLoteSys(loteAtual());rerender()},
+  // Centros de custo (antes do vínculo; depois vêm do SysContábil)
+  novodepto(){modal(`<h2>Novo departamento</h2><label class="f req">Código</label><input id="ndCod" inputmode="numeric" placeholder="Ex.: 3312920">
+    <label class="f req">Nome</label><input id="ndNome"><label class="f">Orçamento disponível</label><input id="ndOrc" placeholder="vazio = não controla">
+    <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="ndeptook">Incluir</button></div>`)},
+  ndeptook(){const c=digits($('#ndCod').value),n=$('#ndNome').value.trim();if(!c||!n)return toast('Informe código e nome.');if(DP[c])return toast('Já existe o departamento '+c+'.');
+    const o=$('#ndOrc').value.trim();S.deptos.push({c,n,orc:o?r2(parseFloat(o.replace(/\./g,'').replace(',','.'))):null,on:true});S.deptos.sort((a,b)=>a.c.localeCompare(b.c));indexar();save();closeModal();ui.dBusca=c;rerender()},
+  deldepto(el){const c=el.dataset.c;confirmar('Excluir departamento',`Excluir o departamento <b>${esc(c)}</b>?`,()=>{S.deptos=S.deptos.filter(p=>p.c!==c);indexar();save();rerender()},'Excluir')},
+  restdeptos(){confirmar('Restaurar centros de custo','Volta à lista copiada do DRACMA.',()=>{S.deptos=deptosPadrao();indexar();save();rerender()},'Restaurar')},
+  // Integração
+  async fblogin(){const e=$('#fbEmail').value.trim(),p=$('#fbSenha').value;if(!e||!p)return toast('Informe e-mail e senha.');INT.busy=true;
+    try{await FB.auth.signInWithEmailAndPassword(e,p)}catch(err){INT.erro={'auth/invalid-credential':'E-mail ou senha incorretos.','auth/wrong-password':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail ou senha incorretos.','auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.','auth/network-request-failed':'Sem conexão.'}[err.code]||('Não foi possível entrar: '+err.message);rerender()}
+    INT.busy=false},
+  async fblogout(){await FB.auth.signOut()},
+  relerint(){lerIntegracao()},
+  async solicitar(){INT.busy=true;rerender();
+    try{const p=payloadVinculo();await intRef().set({entidade:ENT,atividade:ATIVIDADE,email:INT.user.email,status:'pendente',solicitadoEm:Date.now(),
+        centros:p.centros,subcontas:payloadSubcontas(),subcontasEm:Date.now()},{merge:true});
+      toast('Vínculo solicitado. Agora abra o SysContábil → Configurações → Integração DRACMA → Vincular.');await lerIntegracao()}
+    catch(e){INT.erro='Erro ao solicitar vínculo: '+e.message}
+    INT.busy=false;rerender()},
+  desvincular(){confirmar('Desvincular','O DRACMA deixa de usar o plano e os centros de custo do SysContábil (o último sincronizado continua aqui, editável). A atividade no SysContábil não é apagada.',async()=>{
+    try{await intRef().set({status:'desvinculado',desvinculadoEm:Date.now()},{merge:true})}catch(e){}S.integ=null;save();await lerIntegracao();rerender()},'Desvincular')}
+};
+function finCont(d){d.contabil.status='concluida';d.contabil.por=EU;d.contabil.porMim=true;hist(d,'Análise contábil confirmada');depoisDeConcluir(d)}
+function enviarDoc(d){if(!d.codigo)d.codigo=novoCodigo();d.etapa='revisao';d.enviadoEm=nowIso();d.devolucao=null;
+  d.fiscal=novoFiscal();d.fiscal.status=FISCAL.has(d.tipo)?'pendente':'nao_aplica';d.contabil={status:'aguardando',lanc:[],motivo:''};
+  hist(d,'Documento enviado e aprovado');ui.draft=null;save();rerender();
+  modal(`<h2>Documento enviado</h2><div class="okbox">${esc(d.tipo)} ${esc(d.numero)} — ${brl(d.valor)} foi enviado com o código <b>${esc(d.codigo)}</b>.<br>
+   ${d.fiscal.status==='pendente'?'Status: <b>Aprovado - Aguardando Análise Fiscal</b>.':'Esse tipo não passa por análise fiscal. Próxima etapa: <b>Análise Contábil</b>.'}</div>
+   <div class="row"><span class="sp"></span><button class="btn" data-act="mclose">Continuar cadastrando</button><a class="btn dark" href="#/doc/${d.id}" data-act="mclose">Abrir na Revisão</a></div>`)}
+function importarXml(txt,nome){let x;try{x=new DOMParser().parseFromString(txt,'text/xml')}catch(e){}
+  const g=t=>x?.getElementsByTagName(t)[0]?.textContent?.trim()||'';
+  const emit=x?.getElementsByTagName('emit')[0];const cnpj=emit?(emit.getElementsByTagName('CNPJ')[0]||emit.getElementsByTagName('CPF')[0])?.textContent.trim():'';
+  const nomeE=emit?.getElementsByTagName('xNome')[0]?.textContent.trim();const vNF=parseFloat(g('vNF'));
+  if(!cnpj||!nomeE||!vNF){closeModal();return alerta('XML inválido','Não encontrei emitente e valor de NF-e neste arquivo. Use o XML de uma NF-e (modelo 55).')}
+  let f=S.pessoas.find(z=>digits(z.doc)===cnpj);if(!f){f={id:'u'+uid(),cod:String(5000+S.pessoas.length),nome:nomeE,doc:fmtDoc(cnpj),regime:''};S.pessoas.push(f)}
+  const d=curDraft();d.tipo='NFe';d.forn=f.id;d.numero=g('nNF');d.serie=g('serie');d.emissao=(g('dhEmi')||g('dEmi')).slice(0,10);d.valor=r2(vNF);
+  d.chave=digits(x.getElementsByTagName('infNFe')[0]?.getAttribute('Id')||g('chNFe'));d.salvo=false;d.origemXml=true;
+  const it=[...x.getElementsByTagName('prod')].map(p=>[p.getElementsByTagName('xProd')[0]?.textContent,+p.getElementsByTagName('qCom')[0]?.textContent,+p.getElementsByTagName('vUnCom')[0]?.textContent]);
+  d.anexo={tipo:'nfe',xml:true,nome,forn:f.id,numero:d.numero,serie:d.serie,chave:d.chave,emissao:d.emissao,valor:d.valor,dados:{itens:it}};
+  save();closeModal();rerender();toast('XML importado: emitente, série, número, chave, emissão e valor preenchidos. Complete a Finalidade e salve.')}
+
+/* =============== EVENTOS =============== */
+document.addEventListener('click',e=>{const ln=e.target.closest('a[href^="#/"]');if(ln){e.preventDefault();if(ln.dataset.act==='mclose')closeModal();go(ln.getAttribute('href'));return}
+  const el=e.target.closest('[data-act]');if(!el)return;const f=A[el.dataset.act];if(f){if(el.tagName==='A')e.preventDefault();f(el,e)}});
+document.addEventListener('change',e=>{const el=e.target;const k=el.dataset.actChange;
+  if(k==='next'){S.prefs.next=el.checked;save()}
+  else if(k==='pfiltro'){ui.pFiltro=el.value;rerender()}
+  else if(k==='reemb'){S.cfg=S.cfg||{};S.cfg.reemb=el.value;indexar();save();rerender();toast('Reembolsos a funcionário passam a creditar '+esc(contaTxt(el.value))+'.')}
+  else if(k==='arquivo'){const file=el.files[0];if(!file)return;const d=curDraft();d.anexo={arquivo:true,nome:file.name,mime:file.type,url:/^image\//.test(file.type)?URL.createObjectURL(file):''};save();rerender()}
+  else if(k==='xmlfile'){const file=el.files[0];if(!file)return;file.text().then(t=>importarXml(t,file.name))}
+  else if(['tipo','emissao'].includes(el.dataset.b)){const d=curDraft();d[el.dataset.b]=el.value;d.salvo=false;save();rerender()}
+  else if(el.dataset.b==='forn'){const d=curDraft();const v=el.value.trim().toLowerCase();const f=S.pessoas.find(z=>(z.nome+' - '+z.doc).toLowerCase()===v)||S.pessoas.find(z=>v&&(z.nome.toLowerCase().includes(v)||digits(z.doc)===digits(v)&&digits(v).length>=11));
+    d.forn=f?f.id:'';d.salvo=false;if(d.liberado&&f&&!d.pag.benef)d.pag.benef=f.id;save();rerender();if(!f&&v)toast('Emitente não encontrado. Selecione da lista ou adicione a pessoa.')}
+  else if(el.dataset.r!=null&&['cat','cc'].includes(el.dataset.rf)){const d=curDraft();d.rateio[+el.dataset.r][el.dataset.rf]=el.value;save();rerender()}
+  else if(el.dataset.p==='padrao'){const d=curDraft();d.pag.padrao=el.checked;aplicarBancoPadrao(d);save();rerender()}
+  else if(el.dataset.p==='benef'){const d=curDraft();d.pag.benef=el.value;d.pag.padrao=!!pessoa(el.value).banco&&d.pag.forma==='Transferência Bancária';if(!d.pag.padrao)Object.assign(d.pag,{banco:'',ag:'',agDv:'',conta:'',contaDv:''});aplicarBancoPadrao(d);save();rerender()}
+  else if(el.dataset.p==='forma'){const d=curDraft();d.pag.forma=el.value;if(el.value==='Transferência Bancária'&&pessoa(d.pag.benef).banco&&!d.pag.conta){d.pag.padrao=true;aplicarBancoPadrao(d)}save();rerender()}
+  else if(el.dataset.p&&['venc','parcelas','periodo','banco','tipoConta'].includes(el.dataset.p)){const d=curDraft();d.pag[el.dataset.p]=el.dataset.p==='parcelas'?Math.max(1,Math.min(60,+el.value||1)):el.value;save();rerender()}
+  else if(el.dataset.p&&['desconto','multa'].includes(el.dataset.p)){rerender()}
+  else if(el.dataset.fd){const d=docAtual();const fld=el.dataset.fd;const old=d[fld];const v=fld==='chave'?digits(el.value):el.value.trim();if(v===old)return;d[fld]=v;d.fiscal.validacao=null;
+    hist(d,`Dado do documento alterado na análise fiscal: ${fld==='emissao'?'data de emissão':fld} de "${fld==='emissao'?dt(old):old}" para "${fld==='emissao'?dt(v):v}"`);save();rerender()}
+  else if(el.dataset.sv){const d=docAtual();const s=d.fiscal.servico;const f=el.dataset.sv;
+    if(f==='semIss'||f==='issRet')s[f]=el.checked;else if(f==='issAliq')s[f]=parseFloat(el.value.replace(',','.'))||0;else if(f==='valor')s[f]=parseMoney(el.value);else s[f]=el.value;
+    d.fiscal.sim=null;save();if(f==='semIss')rerender()}
+  else if(el.dataset.ln!=null){const d=docAtual();const l=d.contabil.lanc[+el.dataset.ln];const x=l.linhas[+el.dataset.i];const fld=el.dataset.lf;
+    if(fld==='conta'){const c=el.value.split(' - ')[0].trim();x.conta=PL[c]?c:digits(c);if(x.conta&&!PL[x.conta])toast('Conta '+esc(x.conta)+' não existe no plano de contas.');else if(x.conta&&!PL[x.conta].a)toast('A conta '+esc(x.conta)+' é sintética. Escolha uma analítica.');
+      if(SUBS[x.conta]?.length&&!SUBS[x.conta].some(s=>s.sub===(x.sub||'').split(' - ')[0]))x.sub=''}
+    else x[fld]=fld==='valor'?r2(parseFloat(el.value.replace(/\./g,'').replace(',','.'))||0):el.value;
+    l.pronto=false;save();redrawDoc()}
+  else if(el.dataset.ret!=null){const d=docAtual();d.fiscal.ret[+el.dataset.ret].valor=parseMoney(el.value);save();rerender()}
+  else if(el.dataset.pl){const p=PL[el.dataset.pl];if(!p)return;const f=el.dataset.pf;
+    if(f==='n'){p.n=el.value.trim()||p.n}else if(f==='on'){p.on=el.checked}indexar();save();rerender()}
+  else if(el.dataset.dp){const p=DP[el.dataset.dp];if(!p)return;const f=el.dataset.df;
+    if(f==='n'){p.n=el.value.trim()||p.n}else if(f==='orc'){const v=el.value.trim();p.orc=v?r2(parseFloat(v.replace(/\./g,'').replace(',','.'))||0):null}else if(f==='on'){p.on=el.checked}indexar();save();rerender()}
+});
+document.addEventListener('input',e=>{const el=e.target;
+  if(el.hasAttribute('data-money')){if(el.dataset.sv)return;const v=parseMoney(el.value);el.value=v?brl(v):'';
+    if(el.dataset.b==='valor'){const d=curDraft();d.valor=v;d.salvo=false;save();resumoEnvio();const r=$('#rsum');if(r)r.innerHTML=rsum(d)}
+    else if(el.dataset.r!=null){const d=curDraft();d.rateio[+el.dataset.r].valor=v;save();const r=$('#rsum');if(r)r.innerHTML=rsum(d);resumoEnvio()}
+    else if(el.dataset.p){const d=curDraft();d.pag[el.dataset.p]=v;save();resumoEnvio()}
+    return}
+  if(['numero','finalidade','serie','chave'].includes(el.dataset.b)){const d=curDraft();d[el.dataset.b]=el.dataset.b==='chave'?digits(el.value):el.value;d.salvo=false;save();resumoEnvio()}
+  else if(el.dataset.r!=null&&el.dataset.rf==='desc'){const d=curDraft();d.rateio[+el.dataset.r].desc=el.value;save()}
+  else if(el.dataset.p&&['linha','pix','ag','agDv','conta','contaDv'].includes(el.dataset.p)){const d=curDraft();d.pag[el.dataset.p]=el.value;save();resumoEnvio()}
+  else if(['busca','pBusca','dBusca'].includes(el.id)){ui[el.id]=el.value;const pos=el.selectionStart;rerender();const b=$('#'+el.id);b.focus();b.setSelectionRange(pos,pos)}
+});
+window.addEventListener('popstate',()=>render());window.addEventListener('hashchange',()=>render());
+
+load();checkMissoes();render();fb();carregarPlanoSys();
+</script>
+</body>
+</html>

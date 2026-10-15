@@ -85,7 +85,7 @@ export const navigate = (tabId, params) => {
 
 // ---------- Abas de Configurações ----------
 export const switchConfigTab = (tab) => {
-    ['dados', 'dre', 'cc'].forEach(t => {
+    ['dados', 'dre', 'cc', 'dracma'].forEach(t => {
         document.getElementById(`config-area-${t}`).classList.toggle('hidden', t !== tab);
         document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === tab);
     });
