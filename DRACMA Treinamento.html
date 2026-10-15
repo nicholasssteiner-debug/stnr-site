@@ -115,6 +115,11 @@
   .hint{font-size:12.5px;color:#2b6576;background:var(--info);border-left:3px solid var(--blue);padding:7px 10px;margin:8px 0;border-radius:2px}
   .rbox{border:1px solid var(--line);border-radius:4px;padding:12px;margin-bottom:10px;background:#fcfcfc}
   .x{background:none;border:0;color:var(--red);font-size:20px;cursor:pointer}
+  .dtwrap{position:relative;display:flex;align-items:stretch;gap:4px}
+  .dtwrap .dtin{flex:1;min-width:0;font-variant-numeric:tabular-nums}
+  .dtwrap .dtbtn{border:1px solid #d5d5d5;background:#fff;border-radius:4px;padding:0 9px;cursor:pointer;font-size:15px}
+  .dtwrap .dtbtn:disabled{opacity:.4;cursor:not-allowed}
+  .dtwrap .dtpick{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
   .flow{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:10px 0}
   .flow div{flex:1;min-width:140px;background:#fff;border:1px solid var(--line);border-top:4px solid var(--dark);padding:10px;border-radius:4px;font-size:13.5px}
   .flow b{display:block;margin-bottom:4px}
@@ -494,140 +499,9 @@
 4.4 - impostosResultado
 </script>
 
-<!-- Departamentos (centros de custo) da entidade 1622 no DRACMA -->
+<!-- Centros de custo padrão do SysContábil (createDefaultState em syscontabil/js/state.js). No site, o próprio arquivo é carregado; após o vínculo, vêm da atividade STNR - DRACMA -->
 <script type="text/plain" id="deptosPadrao">
-3310000 - Departamento Sede
-3310103 - Informática
-3310104 - Patrimônio
-3311001 - CAL - Sede Escola
-3311002 - CAL - Caixa Escola
-3311101 - CAL - Educação Infantil
-3311102 - CAL - Fundamental I
-3311103 - CAL - Fundamental II
-3311104 - CAL - Ensino Médio
-3311705 - CAL - Formaturas
-3311802 - CAL - Viagens, Passeios e Excursões
-3311805 - CAL - Missão Alunos
-3311807 - CAL - Jogos e Atividades Esportivas
-3311808 - CAL - Atividades Pedagógicas e Preparatórias
-3311900 - CAL - Taxa de Eventos Extracurriculares
-3311901 - CAL - Taxa Dia dos Pais
-3311902 - CAL - Taxa Dia das Mães
-3311903 - CAL - Taxa Dia dos Estudantes
-3311904 - CAL - Taxa Aniversariantes
-3311905 - CAL - Taxa Dia das Mulheres
-3311906 - CAL - Taxa Dia das Crianças
-3311907 - CAL - Taxa Páscoa
-3311908 - CAL - Taxa Jogos Interséries
-3311909 - CAL - Taxa Capelania
-3311910 - CAL - Taxa Coordenação
-3311911 - CAL - Taxa Orientação
-3311912 - CAL - Taxa Capelania Projetos
-3312001 - CAM - Sede Escola
-3312002 - CAM - Caixa Escola
-3312101 - CAM - Educação Infantil
-3312102 - CAM - Fundamental I
-3312103 - CAM - Fundamental II
-3312104 - CAM - Ensino Médio
-3312705 - CAM - Formaturas
-3312802 - CAM - Viagens, Passeios e Excursões
-3312805 - CAM - Missão Alunos
-3312807 - CAM - Jogos e Atividades Esportivas
-3312808 - CAM - Atividades Pedagógicas e Preparatórias
-3312900 - CAM - Taxa de Eventos Extracurriculares
-3312901 - CAM - Taxa Dia dos Pais
-3312902 - CAM - Taxa Dia das Mães
-3312903 - CAM - Taxa Dia dos Estudantes
-3312904 - CAM - Taxa Aniversariantes
-3312905 - CAM - Taxa Dia das Mulheres
-3312906 - CAM - Taxa Dia das Crianças
-3312907 - CAM - Taxa Páscoa
-3312908 - CAM - Taxa Jogos Interséries
-3312909 - CAM - Taxa Capelania
-3312910 - CAM - Taxa Coordenação
-3312911 - CAM - Taxa Orientação
-3313001 - EAM - Sede Escola
-3313002 - EAM - Caixa Escola
-3313101 - EAM - Educação Infantil
-3313102 - EAM - Fundamental I
-3313103 - EAM - Fundamental II
-3313705 - EAM - Formaturas
-3313802 - EAM - Viagens, Passeios e Excursões
-3313805 - EAM - Missão Alunos
-3313807 - EAM - Jogos e Atividades Esportivas
-3313808 - EAM - Atividades Pedagógicas e Preparatórias
-3313900 - EAM - Taxa de Eventos Extracurric
-3313901 - EAM - Taxa Dia dos Pais
-3313902 - EAM - Taxa Dia das Mães
-3313903 - EAM - Taxa Dia dos Estudantes
-3313904 - EAM - Taxa Aniversariantes
-3313905 - EAM - Taxa Dia das Mulheres
-3313906 - EAM - Taxa Dia das Crianças
-3313907 - EAM - Taxa Páscoa
-3313908 - EAM - Taxa Jogos Interséries
-3313909 - EAM - Taxa Capelania
-3313910 - EAM - Taxa Coordenação
-3313911 - EAM - Taxa Orientação
-3314001 - EAC - Sede Escola
-3314002 - EAC - Caixa Escola
-3314101 - EAC - Educação Infantil
-3314102 - EAC - Fundamental I
-3314705 - EAC - Formaturas
-3314802 - EAC - Viagens, Passeios e Excursões
-3314805 - EAC - Missão Alunos
-3314807 - EAC - Jogos e Atividades Esportivas
-3314808 - EAC - Atividades Pedagógicas e Preparatórias
-3314900 - EAC - Taxa de Eventos Extracurriculares
-3314901 - EAC - Taxa Dia dos Pais
-3314902 - EAC - Taxa Dia das Mães
-3314903 - EAC - Taxa Dia dos Estudantes
-3314904 - EAC - Taxa Aniversariantes
-3314905 - EAC - Taxa Dia das Mulheres
-3314906 - EAC - Taxa Dia das Crianças
-3314907 - EAC - Taxa Páscoa
-3314908 - EAC - Taxa Jogos Interséries
-3314909 - EAC - Taxa Capelania
-3314910 - EAC - Taxa Coordenação
-3314911 - EAC - Taxa Orientação
-3315001 - EAA - Sede Escola
-3315002 - EAA - Caixa Escola
-3315101 - EAA - Educação Infantil
-3315102 - EAA - Fundamental I
-3315705 - EAA - Formaturas
-3315802 - EAA - Viagens, Passeios e Excursões
-3315805 - EAA - Missão Alunos
-3315807 - EAA - Jogos e Atividades Esportivas
-3315808 - EAA - Atividades Pedagógicas e Preparatórias
-3315900 - EAA - Taxa de Eventos Extracurriculares
-3315901 - EAA - Taxa Dia dos Pais
-3315902 - EAA - Taxa Dia das Mães
-3315903 - EAA - Taxa Dia dos Estudantes
-3315904 - EAA - Taxa Aniversariantes
-3315905 - EAA - Taxa Dia das Mulheres
-3315906 - EAA - Taxa Dia das Crianças
-3315907 - EAA - Taxa Páscoa
-3315908 - EAA - Taxa Jogos Interséries
-3315909 - EAA - Taxa Capelania
-3315910 - EAA - Taxa Coordenação
-3315911 - EAA - Taxa Orientação
-3316001 - CALGP - Sede Escola
-3316009 - CALGP - Construção
-3316010 - CALGP - Pav. Asfáltica
-3317001 - CAME - Sede Escola
-33190 - Promoção e Eventos
-33191 - CADEC - Londrina
-33192 - CADEC - Apucarana
-33193 - Lar dos Menores Paul Harris
-33910 - IASBE - Escritório
-33911 - IASBE - Externo
-33921 - Lar dos Menores Paul Harris - Administrativo
-33922 - Casa Lar da Adolescente Talita
-33923 - Creche Ana Proveller
-33924 - Creche - Foz do Iguaçu
-33931 - CADEC - Londrina
-33932 - CADEC - Apucarana
-33941 - CATRE - Escritório
-33942 - Acampamento - Terra Roxa
+CC-01 - Sede Administrativa
 </script>
 
 <script>
@@ -699,7 +573,8 @@ const C_FORN='2.1.01.002', REEMB_PADRAO='2.1.07.001', C_DESC='3.3.01.003', C_JUR
 const cReemb = () => (S&&S.cfg&&S.cfg.reemb)||REEMB_PADRAO;
 const FUNDO='10', FUNDO_TXT='10 - Fundo Operativo';
 const RESTR={'0A':'0A - Ativo e Passivo ou Sem Restrição','0E':'0E - Despesas e Transferências'};
-const SEDE='3310000';
+// Centro de custo padrão (o primeiro do SysContábil): usado nos créditos gerados automaticamente
+const sedeCC = () => (S&&S.deptos&&S.deptos[0]&&S.deptos[0].c)||'CC-01';
 const EU='Você (Treinamento)';
 
 const AMOSTRAS = {};   // sem documentos de exemplo
@@ -719,6 +594,15 @@ function nowIso(){const d=new Date();return isoDay(0)+'T'+pad(d.getHours())+':'+
 const mesTxt = ym => new Date(ym.slice(0,7)+'-15T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 const uid = () => Math.random().toString(36).slice(2,10);
 const digits = s => String(s||'').replace(/\D/g,'');
+// Campo de data digitável: dd/mm/aaaa com máscara (as barras entram sozinhas) + botão de calendário.
+// O valor digitado é convertido para AAAA-MM-DD antes dos tratadores de "change" (ver evento em captura).
+function dateIn(attrs,iso,cls=''){return `<span class="dtwrap"><input type="text" class="dtin ${cls}" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" autocomplete="off" value="${dt(iso)}" ${attrs}><button type="button" class="dtbtn" data-act="dtpick" title="Abrir calendário" tabindex="-1" ${/disabled/.test(attrs)?'disabled':''}>&#128197;</button><input type="date" class="dtpick" tabindex="-1" value="${esc(iso||'')}"></span>`}
+function mascaraData(v){const d=digits(v).slice(0,8);return d.length>4?d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4):d.length>2?d.slice(0,2)+'/'+d.slice(2):d}
+function dataDigitada(v){const p=String(v||'').trim().split(/\D+/).filter(Boolean);if(!p.length)return '';
+  let [dd,mm,aa]=p;if(p.length===1&&dd.length>=4){aa=dd.slice(4)||'';mm=dd.slice(2,4);dd=dd.slice(0,2)}
+  aa=aa?(aa.length<=2?'20'+aa.padStart(2,'0'):aa):String(new Date().getFullYear());
+  const d=new Date(+aa,(+mm||0)-1,+dd);if(!mm||isNaN(d)||d.getDate()!==+dd||d.getMonth()!==+mm-1||aa.length!==4)return null;
+  return aa+'-'+pad(+mm)+'-'+pad(+dd)}
 function parseMoney(s){const d=digits(s);return d?r2(parseInt(d,10)/100):0}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.innerHTML=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4200)}
 function parseLista(id){return $('#'+id).textContent.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf(' - ');return [l.slice(0,i).trim(),l.slice(i+3).trim()]})}
@@ -752,7 +636,10 @@ const planoPadrao = () => parseLista('planoPadrao').map(([code,n])=>{const [name
 // No site, lê o plano padrão direto do SysContábil (garante que é o mesmo); localmente fica a cópia embutida
 async function carregarPlanoSys(){if(vinculado())return;try{const m=await import('./syscontabil/js/chartOfAccounts.js');
   const novo=m.FULL_CHART.map(contaDoChart);const k=p=>p.map(x=>x.c+'|'+x.n).join('\n');
-  if(novo.length&&!vinculado()&&k(novo)!==k(S.plano)){S.plano=novo;indexar();save();rerender()}}catch(e){}}
+  if(novo.length&&!vinculado()&&k(novo)!==k(S.plano)){S.plano=novo;indexar();save();rerender()}}catch(e){}
+  // centros de custo padrão do SysContábil
+  try{const st=await import('./syscontabil/js/state.js');const cc=st.createDefaultState().costCenters.map(c=>({c:String(c.id),n:String(c.name||''),orc:null,on:true}));
+    const k=l=>l.map(x=>x.c+'|'+x.n).join('\n');if(cc.length&&!vinculado()&&k(cc)!==k(S.deptos)){S.deptos=cc;indexar();save();rerender()}}catch(e){}}
 const deptosPadrao = () => parseLista('deptosPadrao').map(([c,n],i)=>({c,n,orc:null,on:true}));
 let PL={},DP={},SUBS={};
 function indexar(){PL=Object.fromEntries(S.plano.map(p=>[p.c,p]));DP=Object.fromEntries(S.deptos.map(p=>[p.c,p]));
@@ -778,7 +665,10 @@ function seed(){
   S=s;indexar();
   return s;
 }
-function load(){try{const j=localStorage.getItem(KEY);if(j){S=JSON.parse(j);indexar();return}}catch(e){}S=seed()}
+function load(){try{const j=localStorage.getItem(KEY);if(j){S=JSON.parse(j);
+    // versões anteriores usavam os departamentos da 1622: sem vínculo, volta aos centros de custo padrão do SysContábil
+    if(!(S.integ&&S.integ.wsId)&&S.deptos.some(d=>d.c==='3310000'))S.deptos=deptosPadrao();
+    indexar();return}}catch(e){}S=seed()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}checkMissoes()}
 
 /* =============== MISSÕES (sem exemplos, sem missões) =============== */
@@ -828,12 +718,12 @@ function subDe(conta,p){const lst=SUBS[conta];if(lst&&lst.length){const s=lst.fi
 function gerarLanc(d){
   const f=pessoa(d.forn);const ref=`${d.tipo} ${d.numero} ${f.nome} ${dt(d.emissao)}`;const L=[];const fin=d.finalidade;
   d.rateio.forEach(r=>L.push({id:uid(),conta:'',sub:'',depto:r.cc,restr:'0E',valor:r2(r.valor),venc:'',desc:ref,fin:r.desc?fin+' - '+r.desc:fin,aviso:'N'}));
-  if(+d.pag.multa)L.push({id:uid(),conta:C_JUROS,sub:'',depto:SEDE,restr:'0E',valor:r2(d.pag.multa),venc:'',desc:'Multa/Juros - '+ref,fin,aviso:'N'});
-  d.fiscal.ret.forEach(t=>L.push({id:uid(),conta:RET[t.tipo].conta,sub:'',depto:SEDE,restr:'0A',valor:-r2(t.valor),
+  if(+d.pag.multa)L.push({id:uid(),conta:C_JUROS,sub:'',depto:sedeCC(),restr:'0E',valor:r2(d.pag.multa),venc:'',desc:'Multa/Juros - '+ref,fin,aviso:'N'});
+  d.fiscal.ret.forEach(t=>L.push({id:uid(),conta:RET[t.tipo].conta,sub:'',depto:sedeCC(),restr:'0A',valor:-r2(t.valor),
     venc:diaMesSeguinte(d.emissao,RET[t.tipo].dia),desc:`Retenção ${RET[t.tipo].nome} - ${ref}`,fin,aviso:'N'}));
-  if(+d.pag.desconto)L.push({id:uid(),conta:C_DESC,sub:'',depto:SEDE,restr:'0E',valor:-r2(d.pag.desconto),venc:'',desc:'Desconto obtido - '+ref,fin,aviso:'N'});
+  if(+d.pag.desconto)L.push({id:uid(),conta:C_DESC,sub:'',depto:sedeCC(),restr:'0E',valor:-r2(d.pag.desconto),venc:'',desc:'Desconto obtido - '+ref,fin,aviso:'N'});
   const b=pessoa(d.pag.benef||d.forn);const cc=b.func?cReemb():C_FORN;const ps=parcelas(d);
-  ps.forEach(p=>L.push({id:uid(),conta:cc,sub:subDe(cc,b),depto:SEDE,restr:'0A',valor:-p.valor,venc:p.venc,
+  ps.forEach(p=>L.push({id:uid(),conta:cc,sub:subDe(cc,b),depto:sedeCC(),restr:'0A',valor:-p.valor,venc:p.venc,
     desc:`${d.tipo} ${d.numero} ${f.nome} Vcto. ${dt(p.venc)} - ${p.n}/${ps.length}`,fin,aviso:'N'}));
   return {id:String(Date.now())+String(Math.floor(Math.random()*1e6)).padStart(6,'0'),tipo:'Provisionamento',criado:nowIso(),pronto:false,linhas:L};
 }
@@ -958,7 +848,7 @@ function vCadastrar(){
      <label class="f req">Entidade</label><select disabled><option>${ENT}</option></select>
      <label class="f req">Tipo de Documento</label><select data-b="tipo"><option value="">Selecione</option>${TIPOS.map(t=>`<option value="${esc(t[0])}" ${t[0]===d.tipo?'selected':''}>${esc(t[0]+' - '+t[1])}</option>`).join('')}</select>
      <label class="f req">Emitente <a href="#" data-act="novoforn" style="font-weight:400;margin-left:8px">Adicionar pessoa</a></label><input list="dlforn" data-b="forn" placeholder="Buscar por nome ou CNPJ/CPF" value="${esc(d.forn?pessoaTxt(d.forn):'')}">
-     <label class="f req">Data de Emissão</label><input type="date" data-b="emissao" value="${esc(d.emissao)}">
+     <label class="f req">Data de Emissão</label>${dateIn('data-b="emissao"',d.emissao)}
      <div class="cols" style="gap:10px;grid-template-columns:${temSerie?'1fr 2fr':'1fr'}">${temSerie?`<div><label class="f">Série</label><input data-b="serie" value="${esc(d.serie)}"></div>`:''}
      <div><label class="f req">Número</label><input data-b="numero" value="${esc(d.numero)}"></div></div>
      ${temChave?`<label class="f">Chave de Acesso</label><input data-b="chave" inputmode="numeric" value="${esc(d.chave)}" placeholder="44 dígitos">`:''}
@@ -1011,7 +901,7 @@ function pagHtml(d){const p=d.pag;const b=pessoa(p.benef||d.forn);const per=peri
    <label class="f">Período do Parcelamento</label><input data-p="periodo" value="${esc(p.periodo)}" placeholder="10, 15, 20, 45">
    <div class="muted" style="margin-top:4px">Dias contados da emissão para cada parcela (ex.: 30, 60, 90). Vazio = parcelas mensais a partir do vencimento.</div>
    <div class="cols" style="gap:10px"><div><label class="f">Parcelas</label><input type="number" min="1" max="60" data-p="parcelas" value="${per.length>1?per.length:p.parcelas}" ${per.length>1?'disabled':''}></div>
-   <div><label class="f ${per.length>1?'':'req'}">Vencimento</label><input type="date" data-p="venc" value="${esc(p.venc)}" ${per.length>1?'disabled':''}></div></div>
+   <div><label class="f ${per.length>1?'':'req'}">Vencimento</label>${dateIn(`data-p="venc" ${per.length>1?'disabled':''}`,p.venc)}</div></div>
    <div class="cols" style="gap:10px"><div><label class="f">Desconto</label><input inputmode="numeric" data-money data-p="desconto" value="${+p.desconto?brl(p.desconto):''}" placeholder="R$ 0,00"></div>
    <div><label class="f">Multa e Juros/Acrescimos</label><input inputmode="numeric" data-money data-p="multa" value="${+p.multa?brl(p.multa):''}" placeholder="R$ 0,00"></div></div>
    <label class="f req">Beneficiário</label><select data-p="benef">${fo}</select>
@@ -1127,7 +1017,7 @@ function tFiscal(d){
    <div class="hint" style="margin-top:0">Confirme os dados com a nota (anexo). Se estiverem diferentes, corrija aqui. Para alterar valor ou emitente, devolva ao requisitante.</div>
    <div class="c3">${temChave||d.serie?`<div><label class="f">Série</label><input data-fd="serie" value="${esc(d.serie)}" ${ro}></div>`:''}
     <div><label class="f">Número</label><input data-fd="numero" value="${esc(d.numero)}" ${ro}></div>
-    <div><label class="f">Data de Emissão</label><input type="date" data-fd="emissao" value="${esc(d.emissao)}" ${ro}></div></div>
+    <div><label class="f">Data de Emissão</label>${dateIn(`data-fd="emissao" ${ro}`,d.emissao)}</div></div>
    ${temChave?`<label class="f">Chave de Acesso</label><input data-fd="chave" inputmode="numeric" value="${esc(d.chave)}" ${ro}>`:''}
    <div class="muted" style="margin-top:8px">Emitente: ${esc(pessoaTxt(d.forn))} · Valor: ${brl(d.valor)}</div>
    ${F.validacao?(F.validacao.length?`<div class="errbox"><b>Validação da chave:</b><br>${F.validacao.map(esc).join('<br>')}</div>`:'<div class="okbox">Chave de acesso válida e coerente com os dados do documento.</div>'):''}
@@ -1198,7 +1088,7 @@ function lancHtml(d,l,li,fin){const deb=somaL(l,1),cred=somaL(l,-1),saldo=r2(deb
      <td><select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="depto" style="min-width:200px">${deptoOpts(x.depto)}</select></td>
      <td><select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="restr">${Object.entries(RESTR).map(([k,v])=>`<option value="${k}" ${x.restr===k?'selected':''}>${v}</option>`).join('')}</select></td>
      <td><input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="valor" value="${String(x.valor).replace('.',',')}" style="width:110px;text-align:right"></td>
-     <td><input type="date" class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="venc" value="${esc(x.venc)}"></td>
+     <td style="min-width:150px">${dateIn(`data-ln="${li}" data-i="${i}" data-lf="venc"`,x.venc,'inp-sm')}</td>
      <td><input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="desc" value="${esc(x.desc)}" style="min-width:220px"></td>
      <td><input class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="fin" value="${esc(x.fin||'')}" style="min-width:180px"></td>
      <td><select class="inp-sm" data-ln="${li}" data-i="${i}" data-lf="aviso"><option value="N" ${x.aviso!=='S'?'selected':''}>Não</option><option value="S" ${x.aviso==='S'?'selected':''}>Sim</option></select></td>
@@ -1246,8 +1136,8 @@ function gruposPagamento(itens,data,banco){const porDoc={};
   itens.forEach(i=>{(porDoc[i.docId]=porDoc[i.docId]||[]).push(i)});
   return Object.entries(porDoc).map(([docId,its])=>{const d=S.docs.find(x=>x.id===docId);const f=pessoa(d.forn);const ps=parcelas(d);const L=[];
     its.forEach(i=>{const p=ps.find(x=>x.n===i.n);if(!p)return;const cp=contaProvisionada(d,p);const desc=`Pagto ${d.tipo} ${d.numero} ${f.nome} - ${p.n}/${ps.length}`;
-      L.push({id:uid(),conta:cp.conta,sub:cp.sub,depto:SEDE,restr:'0A',valor:r2(p.valor),venc:data,desc,fin:d.finalidade,aviso:'N'});
-      L.push({id:uid(),conta:banco,sub:'',depto:SEDE,restr:'0A',valor:-r2(p.valor),venc:data,desc,fin:d.finalidade,aviso:'N'})});
+      L.push({id:uid(),conta:cp.conta,sub:cp.sub,depto:sedeCC(),restr:'0A',valor:r2(p.valor),venc:data,desc,fin:d.finalidade,aviso:'N'});
+      L.push({id:uid(),conta:banco,sub:'',depto:sedeCC(),restr:'0A',valor:-r2(p.valor),venc:data,desc,fin:d.finalidade,aviso:'N'})});
     return {docId,titulo:`${dt(data)} - Pagamento - Id - ${d.codigo} · ${d.tipo} ${d.numero} · ${its.map(i=>i.n+'ª').join(', ')} parcela`,linhas:L}})}
 function vLotes(){
   const L=[...S.lotes].sort((a,b)=>b.criado.localeCompare(a.criado));const pend=elegiveis().length;const apagar=parcelasAPagar().length;
@@ -1328,7 +1218,7 @@ function modalLote(l,tipo){
   if((l?tipoLote(l):tipo)==='pagamento'){const its=parcelasAPagar();const bancos=contasBanco();
     return modal(`<h2>Novo Lote de Pagamento</h2>
      <div class="hint">Baixa das parcelas: débito na conta do fornecedor/reembolso (a mesma do provisionamento) e crédito na conta bancária.</div>
-     <div class="cols" style="gap:10px"><div><label class="f req">Data do Pagamento</label><input type="date" id="nlData" value="${isoDay(0)}"></div>
+     <div class="cols" style="gap:10px"><div><label class="f req">Data do Pagamento</label>${dateIn('id="nlData"',isoDay(0))}</div>
      <div><label class="f req">Conta Bancária</label><select id="nlBanco">${bancos.map(b=>`<option value="${esc(b.c)}" ${b.c==='1.1.01.003'?'selected':''}>${esc(b.c+' - '+b.n)}</option>`).join('')}</select></div></div>
      <label class="f">Parcelas de documentos provisionados</label>
      ${its.length?`<div class="tw"><table class="t"><tr><th></th><th>Código</th><th>Documento</th><th>Beneficiário</th><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th></tr>${its.map((i,k)=>{const d=S.docs.find(x=>x.id===i.docId);return `<tr><td><input type="checkbox" class="nlPar" value="${k}" checked></td><td>${esc(d.codigo)}</td><td>${esc(d.tipo)} ${esc(d.numero)} - ${esc(pessoa(d.forn).nome)}</td><td>${esc(pessoa(d.pag.benef||d.forn).nome)}</td><td>${i.n}/${i.total}</td><td>${dt(i.venc)}</td><td class="num">${brl(i.valor)}</td></tr>`}).join('')}</table></div>`
@@ -1373,20 +1263,17 @@ function vPlano(){
 
 /* =============== CENTROS DE CUSTO =============== */
 function vDeptos(){
-  const q=ui.dBusca.toLowerCase();const L=S.deptos.filter(d=>!q||(d.c+' '+d.n).toLowerCase().includes(q));const ro=vinculado();
+  const q=ui.dBusca.toLowerCase();const L=S.deptos.filter(d=>!q||(d.c+' '+d.n).toLowerCase().includes(q));
   return `${crumb('Contábil','Centros de Custo')}<h1>Centros de Custo</h1>
-  <div class="muted">Entidade ${ENT} · ${S.deptos.length} departamentos (${deptosAtivos().length} ativos)</div>
-  ${ro?`<div class="okbox">Os centros de custo vêm do SysContábil (atividade <b>${ATIVIDADE}</b>). Cadastre ou altere lá e clique em <a href="#/integracao">Sincronizar</a>. O orçamento disponível é só do treinamento e pode ser ajustado aqui.</div>`
-      :'<div class="hint">Lista padrão do DRACMA. Depois de vincular ao SysContábil, os centros de custo passam a vir de lá. Orçamento vazio = não controla.</div>'}
-  <div class="row" style="margin:12px 0"><input id="dBusca" placeholder="&#128269; Buscar" value="${esc(ui.dBusca)}" style="flex:1;min-width:200px">
-   ${ro?'':'<button class="btn dark" data-act="novodepto">&#65291; Novo departamento</button><button class="btn" data-act="restdeptos">Restaurar padrão</button>'}</div>
-  <div class="tw"><table class="t"><tr><th>Código</th><th>Nome</th><th class="num">Orçamento Disponível</th><th>Ativo</th>${ro?'':'<th></th>'}</tr>
-  ${L.map(d=>`<tr class="${d.on?'':'off'}"><td>${esc(d.c)}</td><td>${ro?esc(d.n):`<input class="inp-sm" data-dp="${esc(d.c)}" data-df="n" value="${esc(d.n)}">`}</td>
-   <td class="num"><input class="inp-sm" data-dp="${esc(d.c)}" data-df="orc" value="${d.orc==null?'':String(d.orc).replace('.',',')}" style="width:140px;text-align:right"></td>
-   <td><input type="checkbox" data-dp="${esc(d.c)}" data-df="on" ${d.on?'checked':''} ${ro?'disabled':''}></td>
-   ${ro?'':`<td><button class="x" data-act="deldepto" data-c="${esc(d.c)}" title="Excluir">&times;</button></td>`}</tr>`).join('')}</table></div>`;
+  <div class="muted">Entidade ${ENT} · ${S.deptos.length} centro(s) de custo · o primeiro (${esc(sedeCC())}) é o padrão dos lançamentos automáticos</div>
+  ${vinculado()?`<div class="okbox">Centros de custo da atividade <b>${ATIVIDADE}</b> do SysContábil${S.integ.syncedAt?', sincronizados em '+dth(S.integ.syncedAt):''}. Cadastre ou altere lá (Configurações → Centros de Custo) e clique em <a href="#/integracao">Sincronizar</a>.</div>`
+      :'<div class="hint">Centros de custo padrão do SysContábil. Depois de vincular, passam a ser os da atividade <b>'+ATIVIDADE+'</b>, com o que for cadastrado lá.</div>'}
+  <div class="row" style="margin:12px 0"><input id="dBusca" placeholder="&#128269; Buscar" value="${esc(ui.dBusca)}" style="flex:1;min-width:200px"></div>
+  <div class="tw"><table class="t"><tr><th>Sigla</th><th>Centro de Custo</th><th class="num">Orçamento Disponível</th></tr>
+  ${L.map(d=>`<tr><td style="font-family:monospace">${esc(d.c)}</td><td>${esc(d.n)}</td>
+   <td class="num"><input class="inp-sm" data-dp="${esc(d.c)}" data-df="orc" value="${d.orc==null?'':String(d.orc).replace('.',',')}" placeholder="não controla" style="width:140px;text-align:right"></td></tr>`).join('')}</table></div>
+  <div class="muted" style="margin-top:8px">O orçamento disponível existe só no DRACMA de treinamento (aviso no rateio). Vazio = não controla.</div>`;
 }
-
 /* =============== INTEGRAÇÃO SYSCONTÁBIL (Firebase, mesmo usuário) =============== */
 // users/{uid}/integrations/dracma           pedido de vínculo + plano/centros iniciais + subcontas a criar (lidos pelo SysContábil)
 // users/{uid}/integrations/dracma/lotes/{id} lotes exportados aguardando importação no SysContábil
@@ -1404,7 +1291,7 @@ async function lerIntegracao(){try{const s=await intRef().get();INT.doc=s.exists
   if(route.p==='integracao'||route.p==='inicio')rerender();else side()}
 // O plano de contas da atividade é o padrão do próprio SysContábil; do DRACMA vão só os centros de custo iniciais
 function payloadVinculo(){
-  const sede=S.deptos.find(d=>d.c===SEDE);const centros=[...(sede?[sede]:[]),...S.deptos.filter(d=>d.on&&d.c!==SEDE)].map(d=>({id:d.c,name:d.n}));
+  const centros=[];   // os centros de custo são os do próprio SysContábil
   return {centros}}
 function payloadSubcontas(){return S.pessoas.filter(p=>p.cod).map(p=>({parent:p.func?cReemb():C_FORN,sub:String(p.cod),name:p.nome}))}
 function vIntegracao(){
@@ -1476,6 +1363,8 @@ function devolverDoc(d,motivo,porCancel){d.etapa='criacao';d.devolucao=porCancel
 function aplicarBancoPadrao(d){const b=pessoa(d.pag.benef);if(d.pag.padrao&&b.banco){Object.assign(d.pag,{banco:b.banco.banco,tipoConta:b.banco.tipo,ag:b.banco.ag,agDv:b.banco.agDv,conta:b.banco.conta,contaDv:b.banco.contaDv})}}
 const A={
   menu(){$('#side').classList.toggle('open')},
+  dtpick(el){const p=el.parentElement.querySelector('.dtpick');const t=el.parentElement.querySelector('.dtin');if(!p||t.disabled)return;
+    const iso=dataDigitada(t.value);if(iso)p.value=iso;try{p.showPicker()}catch(e){p.style.pointerEvents='auto';p.focus();p.click()}},
   'mclose-bg'(el,e){if(e.target===el)closeModal()}, mclose:closeModal,
   mok(){const cb=confirmCb;confirmCb=null;closeModal();if(cb)cb()},
   fora(){toast('Esta função existe no DRACMA real, mas não faz parte deste treinamento.')},
@@ -1522,7 +1411,7 @@ const A={
       if(dif.length)toast('&#9888; Atenção: '+dif.join(', ')+' diferente(s) do anexo.')}
     d.salvo=true;if(!d.liberado){d.liberado=true;if(!d.pag.benef)d.pag.benef=d.forn;if(d.anexo&&d.anexo.venc&&!d.pag.venc)d.pag.venc=d.anexo.venc;
       if(d.anexo&&d.anexo.linha&&!d.pag.linha){d.pag.linha=d.anexo.linha;d.pag.forma=d.pag.forma||'Boleto'}
-      if(!d.rateio.length)d.rateio=[{cat:'',cc:DP[SEDE]?SEDE:(deptosAtivos()[0]?.c||''),valor:d.valor,desc:''}]}
+      if(!d.rateio.length)d.rateio=[{cat:'',cc:sedeCC(),valor:d.valor,desc:''}]}
     hist(d,'Informações básicas salvas');save();rerender();toast('Documento salvo. Agora preencha Categorias, Centros de Custo e Pagamento.')},
   radd(){const d=curDraft();const soma=r2(d.rateio.reduce((a,r)=>a+(+r.valor||0),0));d.rateio.push({cat:d.rateio.at(-1)?.cat||'',cc:'',valor:Math.max(0,r2(d.valor-soma)),desc:''});save();rerender()},
   rdel(el){const d=curDraft();d.rateio.splice(+el.dataset.i,1);save();rerender()},
@@ -1582,7 +1471,7 @@ const A={
     l.pronto=!l.pronto;ui.edit=null;save();rerender()},
   lanedit(el){ui.edit=+el.dataset.l;redrawDoc()},
   lanok(){ui.edit=null;save();rerender()},
-  linadd(el){const d=docAtual();const l=d.contabil.lanc[+el.dataset.l];l.linhas.push({id:uid(),conta:'',sub:'',depto:SEDE,restr:'0E',valor:0,venc:'',desc:'',fin:d.finalidade,aviso:'N'});l.pronto=false;ui.edit=+el.dataset.l;save();redrawDoc()},
+  linadd(el){const d=docAtual();const l=d.contabil.lanc[+el.dataset.l];l.linhas.push({id:uid(),conta:'',sub:'',depto:sedeCC(),restr:'0E',valor:0,venc:'',desc:'',fin:d.finalidade,aviso:'N'});l.pronto=false;ui.edit=+el.dataset.l;save();redrawDoc()},
   lindel(el){const d=docAtual();const l=d.contabil.lanc[+el.dataset.l];l.linhas.splice(+el.dataset.i,1);l.pronto=false;save();redrawDoc()},
   naocont(){modal(`<h2>Não Contabilizar</h2><p>Use só quando o documento não deve gerar lançamento (ex.: já contabilizado por outra rotina).</p>
     <label class="f req">Insira uma Justificativa</label><textarea id="ncMot" maxlength="300"></textarea><div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-act="mclose">Cancelar</button><button class="btn dark" data-act="ncok">Confirmar</button></div>`)},
@@ -1604,7 +1493,7 @@ const A={
     const l={id:String(Date.now())+'0'.repeat(6),tipo:'provisionamento',numero:'',mes:$('#nlMes').value||isoDay(0).slice(0,7),criado:nowIso(),por:EU,status:'aguardando',verif:null,docs:ids};
     S.lotes.push(l);ids.forEach(id=>{const d=S.docs.find(x=>x.id===id);d.loteId=l.id;hist(d,'Incluído no lote de provisionamento '+l.id)});save();closeModal();go('#/lote/'+l.id)},
   novopagok(){const its=parcelasAPagar();const sel=[...document.querySelectorAll('.nlPar:checked')].map(c=>its[+c.value]).filter(Boolean);
-    if(!sel.length)return toast('Selecione ao menos uma parcela.');const data=$('#nlData').value,banco=$('#nlBanco').value;if(!data||!banco)return toast('Informe a data do pagamento e a conta bancária.');
+    if(!sel.length)return toast('Selecione ao menos uma parcela.');const data=dataDigitada($('#nlData').value),banco=$('#nlBanco').value;if(!data||!banco)return toast('Informe a data do pagamento e a conta bancária.');
     const l={id:String(Date.now())+'0'.repeat(6),tipo:'pagamento',numero:'',mes:data.slice(0,7),criado:nowIso(),por:EU,status:'aguardando',verif:null,dataPag:data,banco,
       itens:sel.map(i=>({docId:i.docId,n:i.n})),grupos:gruposPagamento(sel,data,banco)};
     S.lotes.push(l);save();closeModal();go('#/lote/'+l.id)},
@@ -1711,6 +1600,7 @@ document.addEventListener('change',e=>{const el=e.target;const k=el.dataset.actC
     if(f==='n'){p.n=el.value.trim()||p.n}else if(f==='orc'){const v=el.value.trim();p.orc=v?r2(parseFloat(v.replace(/\./g,'').replace(',','.'))||0):null}else if(f==='on'){p.on=el.checked}indexar();save();rerender()}
 });
 document.addEventListener('input',e=>{const el=e.target;
+  if(el.classList.contains('dtin')){const pos=el.selectionStart,antes=el.value.length;el.value=mascaraData(el.value);const n=Math.max(0,pos+el.value.length-antes);el.setSelectionRange(n,n);return}
   if(el.hasAttribute('data-money')){if(el.dataset.sv)return;const v=parseMoney(el.value);el.value=v?brl(v):'';
     if(el.dataset.b==='valor'){const d=curDraft();d.valor=v;d.salvo=false;save();resumoEnvio();const r=$('#rsum');if(r)r.innerHTML=rsum(d)}
     else if(el.dataset.r!=null){const d=curDraft();d.rateio[+el.dataset.r].valor=v;save();const r=$('#rsum');if(r)r.innerHTML=rsum(d);resumoEnvio()}
@@ -1721,6 +1611,12 @@ document.addEventListener('input',e=>{const el=e.target;
   else if(el.dataset.p&&['linha','pix','ag','agDv','conta','contaDv'].includes(el.dataset.p)){const d=curDraft();d.pag[el.dataset.p]=el.value;save();resumoEnvio()}
   else if(['busca','pBusca','dBusca'].includes(el.id)){ui[el.id]=el.value;const pos=el.selectionStart;rerender();const b=$('#'+el.id);b.focus();b.setSelectionRange(pos,pos)}
 });
+// Datas: converte dd/mm/aaaa para AAAA-MM-DD antes dos tratadores de "change" (fase de captura)
+document.addEventListener('change',e=>{const el=e.target;
+  if(el.classList.contains('dtpick')){const t=el.parentElement.querySelector('.dtin');if(t&&el.value){t.value=dt(el.value);t.dispatchEvent(new Event('change',{bubbles:true}))}e.stopImmediatePropagation();return}
+  if(!el.classList.contains('dtin')||el.id==='nlData')return;
+  const iso=dataDigitada(el.value);if(iso===null){toast('Data inválida: use dd/mm/aaaa.');el.value='';e.stopImmediatePropagation();return}
+  el.value=iso||'';},true);
 // Arrastar e soltar arquivos na área de anexos
 document.addEventListener('dragover',e=>{const z=e.target.closest('[data-drop]');if(z){e.preventDefault();z.style.outline='2px dashed var(--blue)'}});
 document.addEventListener('dragleave',e=>{const z=e.target.closest('[data-drop]');if(z)z.style.outline=''});

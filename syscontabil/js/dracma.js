@@ -35,7 +35,7 @@ const isDracmaWorkspace = (info) => !!info && info.status === 'vinculado' && inf
 
 // ---------- Centros de custo ----------
 // O plano de contas da atividade é o padrão do SysContábil (criado com a atividade); do DRACMA vêm só
-// os centros de custo iniciais. Atividade nova: troca o centro padrão pelos do DRACMA. Existente: acrescenta.
+// os centros de custo iniciais (versões antigas do DRACMA). Hoje o DRACMA usa os centros de custo da própria atividade.
 const applyCostCenters = (info, replace) => {
     const centros = (info.centros || []).map(c => ({ id: String(c.id), name: String(c.name || '') }));
     if (replace && centros.length) { state.costCenters = centros; return centros.length; }
@@ -126,7 +126,7 @@ export const linkDracma = async () => {
             if (!await createWorkspace(DRACMA_ACTIVITY, false)) return;   // plano de contas padrão do SysContábil
             applyCostCenters(info, true);
             persistState();
-            showToast(`Atividade ${DRACMA_ACTIVITY} criada com o plano de contas padrão e os centros de custo do DRACMA (entidade ${info.entidade || 'STNR'}).`);
+            showToast(`Atividade ${DRACMA_ACTIVITY} criada com o plano de contas e os centros de custo padrão do SysContábil (entidade ${info.entidade || 'STNR'}).`);
         }
         await setDoc(intRef(), { status: 'vinculado', wsId: session.workspaceId, atividade: DRACMA_ACTIVITY, entidade: 'STNR', vinculadoEm: Date.now(), vinculadoPor: session.user.email }, { merge: true });
         const r = await applyPending({ ...info, wsId: session.workspaceId });
@@ -207,7 +207,7 @@ export const renderDracmaPanel = async () => {
     el.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
             ${step(status !== 'nenhum', '1. Solicitar no DRACMA', `No DRACMA Treinamento → Integração, entre com <b>${escapeHtml(session.user.email)}</b> e clique em "Solicitar vínculo".`)}
-            ${step(status === 'vinculado', '2. Vincular aqui', `Cria a atividade <b>${DRACMA_ACTIVITY}</b> com o plano de contas padrão daqui e os centros de custo do DRACMA. Entidade: STNR.`)}
+            ${step(status === 'vinculado', '2. Vincular aqui', `Cria a atividade <b>${DRACMA_ACTIVITY}</b> com o plano de contas e os centros de custo padrão daqui; o DRACMA passa a usar exatamente os desta atividade. Entidade: STNR.`)}
             ${step(status === 'vinculado', '3. Usar', 'O DRACMA puxa daqui contas, subcontas e centros de custo (botão Sincronizar). Lotes exportados lá entram aqui ao abrir a atividade.')}
         </div>
         ${status === 'nenhum' || status === 'desvinculado' ? `
@@ -218,7 +218,7 @@ export const renderDracmaPanel = async () => {
         ${status === 'pendente' ? `
             <div class="card-head rounded-lg border border-stnr-border">
                 <p class="text-sm mb-1">Pedido de vínculo de <b>${escapeHtml(info.email || '')}</b> em ${formatDateTimeBR(info.solicitadoEm)}.</p>
-                <p class="muted text-sm mb-3">${(info.centros || []).length} centro(s) de custo e ${(info.subcontas || []).length} subconta(s). Entidade ${escapeHtml(info.entidade || 'STNR')}.</p>
+                <p class="muted text-sm mb-3">${(info.subcontas || []).length} subconta(s). Entidade ${escapeHtml(info.entidade || 'STNR')}.</p>
                 <button onclick="linkDracma()" class="btn btn-primary"><i data-lucide="link" class="w-4 h-4"></i> Vincular — criar atividade ${DRACMA_ACTIVITY}</button>
             </div>` : ''}
         ${status === 'vinculado' ? `

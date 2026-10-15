@@ -100,9 +100,9 @@ workspaces ─► firebase, state, utils, ui
 Liga o `DRACMA Treinamento.html` ao SysContábil pelo **mesmo usuário** do Firebase. Entidade fixa: STNR.
 
 1. No DRACMA → Integração, o usuário entra e clica em "Solicitar vínculo": grava
-   `users/{uid}/integrations/dracma` com os centros de custo do DRACMA.
+   `users/{uid}/integrations/dracma` (pedido de vínculo).
 2. Aqui, Configurações → Integração DRACMA → "Vincular": cria (ou reaproveita) a atividade
-   **STNR - DRACMA** com o plano de contas padrão deste sistema e esses centros de custo, e grava
+   **STNR - DRACMA** com o plano de contas e os centros de custo padrão deste sistema, e grava
    `status: 'vinculado'` e `wsId`. O DRACMA usa exatamente esse plano (mesmos códigos; no CSV a conta
    sai só com os números, 4.2.02.003 → 4202003).
 3. Daí em diante a atividade é a fonte: o botão Sincronizar do DRACMA lê `users/{uid}/workspaces/{wsId}`
