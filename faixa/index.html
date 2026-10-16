@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Faixa Presidencial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: gabinete de crise — mapa-múndi na posse; depois dossiê lateral + mesa de relatórios + caneta presidencial fixa embaixo */
+:root{
+  --paper:#EEF1F5; --panel:#FFFFFF; --ink:#15202D; --muted:#596678; --line:#D3DAE3;
+  --accent:#1C4C86; --accent-ink:#FFFFFF; --stamp:#B42318;
+  --ocean:#D9E3EE; --land:#C3CDD9; --land-hi:#97ABC3; --land-sel:#1C4C86;
+  --good:#1E7A4C; --warn:#A86A12; --bad:#B42318; --clip:#F7F8FA; --secret:#FBEDEA;
+  --f-display:"Newsreader",Georgia,"Times New Roman",serif;
+  --f-ui:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E151E; --panel:#151F2B; --ink:#E5EBF2; --muted:#93A1B3; --line:#263446;
+  --accent:#7DAEE8; --accent-ink:#0E151E; --stamp:#F07167;
+  --ocean:#0A1118; --land:#26333F; --land-hi:#3A4E65; --land-sel:#7DAEE8;
+  --good:#4CC38A; --warn:#E3B341; --bad:#F07167; --clip:#1A2633; --secret:#2A1C1D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E151E; --panel:#151F2B; --ink:#E5EBF2; --muted:#93A1B3; --line:#263446;
+  --accent:#7DAEE8; --accent-ink:#0E151E; --stamp:#F07167;
+  --ocean:#0A1118; --land:#26333F; --land-hi:#3A4E65; --land-sel:#7DAEE8;
+  --good:#4CC38A; --warn:#E3B341; --bad:#F07167; --clip:#1A2633; --secret:#2A1C1D; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:1.45rem;margin:0;letter-spacing:-.01em}
+.brand span{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;letter-spacing:.02em}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.notice{border:1px solid var(--line);border-left:3px solid var(--warn);background:var(--panel);padding:10px 12px;border-radius:4px;font-size:.9rem}
+
+/* ---------- SETUP ---------- */
+#setup{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;padding-block:20px;max-width:1500px;margin:0 auto}
+.mapcard{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.maptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.maptools input{flex:1 1 200px;min-width:0;border:1px solid var(--line);border-radius:6px;padding:7px 10px;background:var(--paper)}
+#world{display:block;width:100%;height:auto;aspect-ratio:960/500;max-width:100%;background:var(--ocean);cursor:grab;touch-action:none}
+#world:active{cursor:grabbing}
+#world.capmode{cursor:crosshair}
+.country{fill:var(--land);stroke:var(--panel);stroke-width:.5;vector-effect:non-scaling-stroke;transition:fill .12s}
+.country:hover{fill:var(--land-hi)}
+.country.sel{fill:var(--land-sel)}
+.sphere{fill:var(--ocean)}
+.grat{pointer-events:none;fill:none;stroke:var(--line);stroke-width:.4;vector-effect:non-scaling-stroke;opacity:.6}
+.pin circle{fill:var(--stamp);stroke:var(--panel);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.maphint{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 12px;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
+#hover{font-weight:600;color:var(--ink)}
+.form{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:14px;align-self:start}
+.form h2{font-family:var(--f-display);font-size:1.5rem;margin:0;line-height:1.15;text-wrap:balance}
+.form p.sub{margin:0;color:var(--muted);font-size:.9rem}
+.field{display:flex;flex-direction:column;gap:5px}
+.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--paper);width:100%}
+.field textarea{resize:vertical;min-height:64px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px;cursor:pointer;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.selbox{border:1px dashed var(--line);border-radius:6px;padding:10px;font-size:.95rem}
+.selbox b{font-family:var(--f-display);font-size:1.15rem}
+.saves{display:flex;flex-direction:column;gap:6px}
+.save{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--paper)}
+.save .meta{flex:1;min-width:0}
+.save .meta b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.save .meta small{color:var(--muted)}
+
+/* ---------- GAME ---------- */
+#game{display:grid;grid-template-columns:330px minmax(0,1fr);gap:0;min-height:calc(100% - 60px)}
+aside.dossie{border-right:1px solid var(--line);background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:16px;overflow:auto;max-height:calc(100vh - 60px);position:sticky;top:0}
+.nation h2{font-family:var(--f-display);font-size:1.4rem;margin:2px 0 0;line-height:1.1;text-wrap:balance}
+.nation .who{color:var(--muted);font-size:.88rem}
+#mini{width:100%;height:auto;aspect-ratio:300/180;flex-shrink:0;max-width:100%;background:var(--ocean);border-radius:6px;display:block}
+#mini .country{stroke-width:.6}
+#mini .ctx{fill:var(--land)}
+#mini .me{fill:var(--land-sel)}
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gauge{border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.gauge .v{font-family:var(--f-mono);font-size:1.25rem;font-weight:500}
+.gauge .d{font-family:var(--f-mono);font-size:.78rem;margin-left:4px}
+.bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--muted)}
+table.ind{width:100%;border-collapse:collapse;font-size:.86rem}
+table.ind td{padding:5px 0;border-bottom:1px solid var(--line)}
+table.ind td:nth-child(2),table.ind td:nth-child(3){text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.ind td:nth-child(3){width:64px;font-size:.78rem}
+.congress{display:flex;height:12px;border-radius:3px;overflow:hidden;margin-top:6px}
+.congress i{display:block;height:100%}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:5px}
+.legend b{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:0}
+.lob{display:grid;grid-template-columns:1fr 70px;gap:4px 10px;font-size:.84rem;align-items:center}
+.lob .bar{margin:0}
+.defcon{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-weight:500;padding:2px 8px;border-radius:4px;border:1px solid currentColor;font-size:.8rem}
+.hist{display:flex;flex-direction:column;gap:4px}
+.hist button{text-align:left;border:0;background:transparent;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:.85rem;color:var(--ink)}
+.hist button:hover{background:var(--paper)}
+.hist small{color:var(--muted);font-family:var(--f-mono);margin-right:6px}
+
+main.mesa{display:flex;flex-direction:column;min-width:0}
+#feed{flex:1;padding-block:20px 12px;display:flex;flex-direction:column;gap:22px}
+.turnhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;max-width:860px;margin:0 auto;width:100%}
+.turnhead .n{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.act{max-width:860px;margin:0 auto;width:100%;border-left:3px solid var(--accent);background:var(--panel);padding:10px 14px;border-radius:0 6px 6px 0;white-space:pre-wrap;font-size:.95rem}
+.act .lbl{display:block;margin-bottom:4px}
+article.rep{max-width:860px;margin:0 auto;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px clamp(14px,3vw,34px);font-family:var(--f-display);font-size:1.02rem;line-height:1.55;min-width:0;overflow-wrap:anywhere}
+article.rep h1{font-size:1.5rem;line-height:1.2;margin:0 0 10px;text-wrap:balance;border-bottom:3px double var(--ink);padding-bottom:8px}
+article.rep h2,article.rep h3{font-family:var(--f-ui);font-size:1.02rem;text-transform:uppercase;letter-spacing:.06em;margin:26px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+article.rep h4{font-family:var(--f-ui);font-size:.95rem;margin:18px 0 6px;letter-spacing:.02em}
+article.rep hr{display:none}
+article.rep ul,article.rep ol{padding-left:22px}
+article.rep li{margin:3px 0}
+article.rep strong{font-weight:700}
+article.rep code{font-family:var(--f-mono);font-size:.86em;background:var(--paper);padding:1px 5px;border-radius:3px}
+.tbl{overflow-x:auto;margin:10px 0;border:1px solid var(--line);border-radius:6px}
+article.rep table{border-collapse:collapse;width:100%;font-family:var(--f-ui);font-size:.86rem;min-width:520px}
+article.rep th{background:var(--paper);text-align:left;padding:7px 9px;font-weight:600;border-bottom:1px solid var(--line)}
+article.rep td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+article.rep blockquote{margin:12px 0;padding:12px 16px;background:var(--clip);border:1px solid var(--line);border-radius:4px}
+article.rep blockquote p{margin:6px 0}
+article.rep blockquote.secret{background:var(--secret);border:1px solid var(--stamp);border-left:6px solid var(--stamp);position:relative}
+article.rep blockquote.secret::after{content:"CONFIDENCIAL";position:absolute;top:8px;right:10px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.2em;color:var(--stamp);border:1.5px solid var(--stamp);padding:1px 6px;transform:rotate(3deg)}
+.thinking{display:flex;align-items:center;gap:10px;color:var(--muted);font-family:var(--f-ui)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.1s infinite ease-in-out}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.err{max-width:860px;margin:0 auto;width:100%;color:var(--bad);font-size:.92rem}
+
+.composer{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding-block:12px calc(12px + env(safe-area-inset-bottom,0px))}
+.composer .inner{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.chips .chip{flex-shrink:0}
+article.rep th{white-space:nowrap}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 10px;font-size:.8rem;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip:hover{border-color:var(--accent)}
+.chip.dil{border-color:var(--warn)}
+#act{width:100%;min-height:84px;max-height:40vh;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--paper);font-family:var(--f-display);font-size:1.02rem}
+.sendrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sendrow small{color:var(--muted)}
+
+#overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--paper) 82%,transparent);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+#overlay .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:12px}
+#overlay h3{margin:0;font-family:var(--f-display);font-size:1.3rem}
+
+@media (max-width:980px){
+  #setup{grid-template-columns:1fr}
+  #game{grid-template-columns:1fr}
+  aside.dossie{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}
+}
+@media (max-width:520px){.row2{grid-template-columns:1fr}.brand span{display:none}}
+body{margin:0}
+.aistat{display:flex;align-items:center;gap:8px;font-size:.88rem}
+.aistat i{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block}
+.aistat.ok i{background:var(--good)}
+#overlay .box{max-height:calc(100vh - 32px);overflow:auto}
+.cfgprov{border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.cfgprov h4{margin:0;font-size:1rem}
+.cfgprov p{margin:0;font-size:.84rem;color:var(--muted)}
+.cfgprov a{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header class="top wrap">
+  <div class="brand"><h1>Faixa Presidencial</h1><span id="sub">RPG de governo com IA</span></div>
+  <div style="display:flex;gap:8px">
+    <button class="btn ghost" id="btnHome" hidden>Trocar de mandato</button>
+    <button class="btn" id="btnCfg">Configurar IA</button>
+  </div>
+</header>
+
+<!-- ================= SETUP ================= -->
+<section id="setup" class="wrap">
+  <div class="mapcard">
+    <div class="maptools">
+      <input id="search" list="countryList" placeholder="Buscar país (ex.: Brasil, Japão, Quênia)" autocomplete="off">
+      <datalist id="countryList"></datalist>
+      <button class="btn" id="zoomReset">Ver o mundo</button>
+    </div>
+    <svg id="world" viewBox="0 0 960 500" role="img" aria-label="Mapa-múndi: clique em um país para escolher"></svg>
+    <div class="maphint"><span id="hover">Passe o mouse ou toque em um país</span><span>Arraste para mover · role ou pince para zoom</span></div>
+  </div>
+
+  <div class="form" id="form">
+    <div>
+      <h2>Tome posse de uma nação</h2>
+      <p class="sub">Escolha um país no mapa, ou declare a independência de uma região, e governe por turnos mensais. A IA julga cada ato seu e devolve o relatório de Estado.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Tipo de nação">
+      <button id="modeExist" aria-pressed="true">País existente</button>
+      <button id="modeEman" aria-pressed="false">Região emancipada</button>
+    </div>
+    <div class="selbox" id="selbox">Nenhum território selecionado. Clique no mapa.</div>
+    <div id="emanFields" hidden style="display:flex;flex-direction:column;gap:14px">
+      <div class="field"><label class="lbl" for="regionName">Nome da nova nação</label>
+        <input id="regionName" placeholder="ex.: República Rio-Grandense, Catalunha, Texas"></div>
+      <div class="field"><label class="lbl" for="regionDesc">Território que se separa</label>
+        <input id="regionDesc" placeholder="ex.: estados do RS e SC; província de Barcelona"></div>
+    </div>
+    <div class="field"><label class="lbl" for="capital">Capital <span style="text-transform:none;letter-spacing:0;font-weight:400">(opcional)</span></label>
+      <div style="display:flex;gap:8px"><input id="capital" placeholder="Deixe vazio para a capital atual" style="flex:1;min-width:0"><button class="btn" id="btnCap" type="button">Marcar no mapa</button></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label class="lbl" for="pres">Seu nome (Presidente)</label><input id="pres" placeholder="ex.: Helena Duarte"></div>
+      <div class="field"><label class="lbl" for="ideo">Orientação</label>
+        <select id="ideo"><option>Esquerda</option><option>Centro-esquerda</option><option selected>Centro</option><option>Centro-direita</option><option>Direita</option><option>Liberal</option><option>Nacionalista</option><option>Tecnocrata</option></select></div>
+    </div>
+    <div class="field"><label class="lbl" for="plat">Plataforma de governo</label>
+      <textarea id="plat" placeholder="ex.: ajuste fiscal sem cortar programas sociais, reforma tributária, aproximação com a Ásia"></textarea></div>
+    <div class="row2">
+      <div class="field"><label class="lbl" for="month">Mês da posse</label><select id="month"></select></div>
+      <div class="field"><label class="lbl" for="year">Ano</label><input id="year" type="number" min="1900" max="2200" value="2027"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label class="lbl" for="diff">Dificuldade</label>
+        <select id="diff"><option value="branda">Branda</option><option value="realista" selected>Realista</option><option value="dificil">Difícil (crises frequentes)</option></select></div>
+      <div class="field"><label class="lbl" for="tier">IA que responde</label>
+        <select id="tier"><option value="gemini">Gemini</option><option value="claude">Claude</option></select></div>
+    </div>
+    <div class="aistat" id="aiStat"><i></i><span></span></div>
+    <button class="btn primary" id="btnStart" disabled>Tomar posse</button>
+    <div id="savesWrap" hidden>
+      <div class="lbl" style="margin-bottom:6px">Mandatos em andamento</div>
+      <div class="saves" id="saves"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" id="btnExport" type="button">Exportar backup</button>
+      <label class="btn ghost" for="importFile" style="display:inline-block">Importar backup</label>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GAME ================= -->
+<section id="game" hidden>
+  <aside class="dossie">
+    <div class="nation">
+      <div class="lbl" id="gDate"></div>
+      <h2 id="gName"></h2>
+      <div class="who" id="gWho"></div>
+    </div>
+    <svg id="mini" viewBox="0 0 300 180" aria-hidden="true"></svg>
+    <div class="gauges" id="gauges"></div>
+    <div><div class="lbl">Dossiê macroeconômico</div><table class="ind" id="indTable"></table></div>
+    <div><div class="lbl" id="congLbl">Legislativo</div><div class="congress" id="cong"></div><div class="legend" id="congLeg"></div></div>
+    <div><div class="lbl" style="margin-bottom:6px">Grupos de pressão</div><div class="lob" id="lobbies"></div></div>
+    <div><div class="lbl" style="margin-bottom:6px">Relações exteriores</div><div class="lob" id="rels"></div></div>
+    <div><div class="lbl" style="margin-bottom:4px">Arquivo de atos</div><div class="hist" id="hist"></div></div>
+    <button class="btn danger ghost" id="btnDelete">Encerrar este mandato</button>
+  </aside>
+
+  <main class="mesa">
+    <div id="feed" class="wrap"></div>
+    <div class="composer wrap">
+      <div class="inner">
+        <div class="chips" id="dilChips"></div>
+        <div class="chips" id="typeChips"></div>
+        <label for="act" class="lbl">Ato presidencial do turno</label>
+        <textarea id="act" placeholder="Descreva sua ação como Presidente: decreto, projeto de lei, PEC, nomeação, operação sigilosa, discurso, negociação com o Congresso, viagem diplomática..."></textarea>
+        <div class="sendrow">
+          <small id="sendHint">Ctrl + Enter assina o ato. Cada ato avança um mês.</small>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="btnStop" hidden>Interromper</button>
+            <button class="btn primary" id="btnSend">Assinar ato</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<div id="overlay" hidden><div class="box" id="ovBox"></div></div>
+
+<script type="text/plain" id="tpl"># 📑 RELATÓRIO DE ESTADO E INTELIGÊNCIA — [NOME DO PAÍS]
+**Referente ao Ato:** [Nome Oficial do Ato/Decreto do Jogador] | **Turno/Data:** [Nº do Turno - Mês/Ano]
+**Presidente:** [Nome do Personagem]
+**Desfecho Institucional:** [✅ Sancionado Integralmente / ⚠️ Aprovado com Desidratação (Emendas) / ❌ Rejeitado ou Judicializado / 🕵️ Operação em Andamento]
+
+---
+
+### ⚖️ 1. TRAMITAÇÃO POLÍTICA, JUDICIÁRIA E BASTIDORES DO PODER
+* **Placar no Congresso/Parlamento (se aplicável):**
+  * 🟢 **Favoráveis:** [XX] | 🔴 **Contrários:** [XX] | ⚪ **Abstenções/Ausências:** [XX]
+  * **Resultado:** [Ex: Aprovado por Maioria Simples / Quórum de PEC atingido / Derrotado em Plenário]
+* **Controle de Constitucionalidade (Suprema Corte):**
+  * **Status:** [Ex: Sem questionamentos / Ação Direta de Inconstitucionalidade (ADI) protocolada pela oposição / Liminar derrubando o Artigo X]
+* **Balanço de Governabilidade & Articulação:**
+  * [Narrativa técnica descrevendo como as bancadas reagiram, quais concessões funcionaram, quem traiu o governo na votação e o clima entre Executivo, Legislativo e Judiciário.]
+* **Capital Político do Presidente:** **[Ex: XX/100 (+/- X pontos)]**
+* **Fidelidade da Base Aliada:** **[Ex: XX% (+/- X%)]**
+
+---
+
+### 💹 2. BALANÇO MACROECONÔMICO, FISCAL E MERCADOS
+*Impacto consolidado nos indicadores do Dossiê Nacional para o próximo turno:*
+
+| Indicador Macroeconômico | Anterior | Atual (Pós-Ação) | Variação | Diagnóstico Técnico (Banco Central / Fazenda) |
+| :--- | :---: | :---: | :---: | :--- |
+| **PIB (Projeção Anual)** | [Ex: +1,8%] | **[Ex: +2,3%]** | [🟢/🔴 +/-X%] | [Justificativa técnica do impacto na atividade econômica] |
+| **Inflação Acumulada (IPCA/CPI)** | [Ex: 4,5%] | **[Ex: 4,9%]** | [🟢/🔴 +/-X%] | [Pressão ou alívio de oferta/demanda/câmbio] |
+| **Taxa Básica de Juros (BC)** | [Ex: 9,25%] | **[Ex: 9,50%]** | [⚠️/🟢 +/-X%] | [Postura do Banco Central: Hawkish (alta), Dovish (queda) ou Neutro] |
+| **Taxa de Desemprego** | [Ex: 7,2%] | **[Ex: 6,8%]** | [🟢/🔴 +/-X%] | [Impacto líquido na geração ou destruição de vagas formais] |
+| **Câmbio (Moeda Local / US$ 1)** | [Ex: 4,80] | **[Ex: 4,72]** | [🟢/🔴 +/-X%] | [Fluxo cambial: entrada ou fuga de dólares] |
+| **Bolsa de Valores (Índice Local)** | [Ex: 115k pts] | **[Ex: 119,4k pts]** | [🟢/🔴 +/-X%] | [Setores que subiram e setores que despencaram] |
+| **Risco-País (CDS) & Rating** | [Ex: 180 pts] | **[Ex: 165 pts]** | [🟢/🔴 +/-X pts] | [Percepção de solvência fiscal por investidores globais] |
+
+#### 🏦 Contas Públicas e Execução Orçamentária (Tesouro Nacional)
+* **Custo Bruto da Medida no Turno:** [-US$ X,X Bilhões]
+* **Receitas Extraordinárias / Arrecadação Gerada:** [+US$ X,X Bilhões]
+* **Saldo do Orçamento Discricionário Restante:** **US$ [X,X] Bilhões**
+* **Impacto no Resultado Primário:** [Superávit / Déficit de US$ X,X Bi (+/- X,X% do PIB)]
+* **Relação Dívida Bruta / PIB:** [De XX,X% para **XX,X%**]
+* **Reservas Internacionais:** **US$ [XXX] Bilhões** *(Variação de +/- US$ X Bi)*
+
+---
+
+### 👥 3. TERMÔMETRO SOCIAL E GRUPOS DE PRESSÃO (LOBBIES)
+* **Aprovação Popular Geral do Governo:** **[XX% (+/- X%)]**
+  * 🟢 **Ótimo/Bom:** [XX%] | 🟡 **Regular:** [XX%] | 🔴 **Ruim/Péssimo:** [XX%]
+
+| Setor / Classe / Grupo de Interesse | Humor Atual | Variação | Reação Prática e Mobilização |
+| :--- | :---: | :---: | :--- |
+| **Classes Baixas / Trabalhadores** | [🟢/🟡/🔴] | [+/- X] | [Impacto no poder de compra, serviços públicos e emprego] |
+| **Classe Média Urbana** | [🟢/🟡/🔴] | [+/- X] | [Reação a impostos, consumo, segurança e inflação] |
+| **Sindicatos & Movimentos Sociais** | [🟢/🟡/🔴] | [+/- X] | [Risco de greves, paralisações, passeatas ou apoio nas ruas] |
+| **Mercado Financeiro / Bancos** | [🟢/🟡/🔴] | [+/- X] | [Reação à política fiscal, juros, títulos públicos e reformas] |
+| **Indústria & Infraestrutura** | [🟢/🟡/🔴] | [+/- X] | [Reação ao custo de crédito, energia, logística e tributos] |
+| **Agronegócio / Exportadores** | [🟢/🟡/🔴] | [+/- X] | [Impacto em câmbio, abertura de mercados, subsídios e terras] |
+| **Funcionalismo Público** | [🟢/🟡/🔴] | [+/- X] | [Clima nos ministérios, risco de operação-padrão ou greve] |
+| **Forças Armadas & Polícias** | [🟢/🟡/🔴] | [+/- X] | [Satisfação salarial, orçamento de defesa e prestígio institucional] |
+| **Igrejas & Grupos Conservadores** | [🟢/🟡/🔴] | [+/- X] | [Reação a pautas de costumes, educação e assistência social] |
+
+---
+
+### 🌍 4. GEOPOLÍTICA, COMÉRCIO EXTERIOR E DEFESA NACIONAL
+* **Balança Comercial no Turno:** [Superávit/Déficit de US$ X,X Bi — Impacto nas exportações e importações]
+* **Repercussões Diplomáticas Bilaterais e Multilaterais:**
+  * 🏳️ **[País / Potência / Bloco A]:** **[+/- X Relação]** — [Nota diplomática, retaliação comercial, acordo bilateral ou movimentação de embaixada.]
+  * 🏳️ **[País / Potência / Bloco B]:** **[+/- X Relação]** — [Reação de parceiro estratégico, vizinho regional ou organismo como ONU/OMC/FMI.]
+* **Segurança Nacional, Fronteiras e Prontidão Militar:**
+  * **Nível de Prontidão (DEFCON):** **[Nível 5 a 1]**
+  * **Status Operacional:** [Movimentação de tropas, patrulha naval/aérea, custos logísticos militares, segurança de fronteiras ou crime organizado.]
+* **Soft Power & Prestígio Internacional:** **[XX/100 (+/- X pts)]**
+
+---
+
+### 🕵️ 5. BRIEFING CONFIDENCIAL DE INTELIGÊNCIA (OLHOS DO PRESIDENTE)
+> 🔒 **AGÊNCIA NACIONAL DE INTELIGÊNCIA — ACESSO NÍVEL ALFA (ULTRASSECRETO)**
+> * **Contraespionagem & Vazamentos Internos:**
+>   [Relato de traições no gabinete, ministros conspirando com a oposição, grampos ilegais ou vazamento de documentos sigilosos.]
+> * **Monitoramento de Ameaças Internas:**
+>   [Movimentação financeira suspeita, financiamento oculto de greves/protestos, atuação de facções ou planos de sabotagem contra infraestrutura crítica.]
+> * **Inteligência Externa (Espionagem Internacional):**
+>   [Movimentação de agências estrangeiras no país, reuniões secretas de diplomatas rivais com a oposição ou movimentação militar não declarada na fronteira.]
+
+---
+
+### 📰 6. GIRO DA IMPRENSA & OPINIÃO PÚBLICA (CLIPPING SECOM)
+**Índice de Exposição Midiática:** [🟢 Positiva (Hegemônica) / 🟡 Dividida (Polarizada) / 🔴 Negativa (Crise de Imagem)]
+**Narrativa Dominante:** *[Resumo em 1 frase do assunto que domina as rodas de conversa e o noticiário nacional]*
+
+#### 🗞️ A. Capas dos Grandes Jornais (Imprensa Nacional)
+
+> 🏛️ **[NOME DO JORNAL TRADICIONAL / INSTITUCIONAL]**
+> **Manchete:** **"[TÍTULO EM CAIXA ALTA DA CAPA]"**
+> **Subtítulo:** *[Linha fina explicando os desdobramentos políticos, jurídicos ou parlamentares]*
+> **Trecho do Editorial:** *"[1 ou 2 parágrafos simulando o editorial do jornal, analisando o impacto institucional, a relação com os Poderes e o custo político da decisão do Presidente.]"*
+
+> 📈 **[NOME DO JORNAL ECONÔMICO / FINANCEIRO]**
+> **Manchete:** **"[TÍTULO EM CAIXA ALTA FOCADO EM BOLSA, CÂMBIO, JUROS E CONTAS PÚBLICAS]"**
+> **Subtítulo:** *[Reação de investidores, bancos, agências de risco e empresariado]*
+> **Análise de Mercado:** *"[1 ou 2 parágrafos com tom técnico-financeiro, citando fontes do mercado, impacto na curva de juros, inflação e confiança fiscal.]"*
+
+> ✊ **[NOME DO JORNAL POPULAR / SINDICAL / OPOSIÇÃO]**
+> **Manchete:** **"[TÍTULO DE FORTE APELO POPULAR, SINDICAL OU SENSACIONALISTA]"**
+> **Subtítulo:** *[Como a medida afeta o bolso do trabalhador, os serviços públicos ou denuncia escândalos]*
+> **Corpo da Matéria:** *"[1 ou 2 parágrafos focados no custo de vida, reação de sindicatos, movimentos de rua e declarações contundentes de líderes da oposição.]"*
+
+#### 🍷 B. Colunas de Bastidores & "Rádio Corredor" (Notas Curtas)
+* 🖋️ **Coluna Política ([Nome do Colunista]):** *"Fontes do alto escalão confidenciaram que [fofoca política de bastidor, atrito entre ministros, ameaça de demissão ou recado atravessado de líderes do Congresso]..."*
+* 💼 **Painel S.A. (Bastidores do PIB):** *"Em grupo reservado de mensagens, grandes empresários do setor de [Setor] reagiram à medida. Um peso-pesado da indústria resumiu o sentimento: '[Frase de efeito]'."*
+
+#### 📺 C. Telejornais do Horário Nobre & Rádio
+* **🎤 [Principal Telejornal da TV Aberta — Audiência: XX pts]:**
+  * **Escalpelamento (Abertura):** Dedicou [X] minutos na abertura com reportagens mostrando [descrição das matérias exibidas e entrevistas].
+  * **Tom da Bancada:** [Neutro / Crítico / Elogioso / Alarmista].
+* **📻 [Rádio de Notícias Matinal — Horário de Pico]:**
+  * **Comentário da Manhã:** O âncora [Nome] disparou ao vivo: *"[Fala direta em tom de rádio, opinativa e ácida, batendo ou defendendo a decisão do governo]"*.
+
+#### 🌍 D. Repercussão na Imprensa Internacional (Foreign Desk)
+
+> 🌐 **[FINANCIAL TIMES / THE ECONOMIST / WALL STREET JOURNAL] (Visão Financeira Global)**
+> **Headline:** *"[Título sobre o risco ou oportunidade econômica do país]"*
+> **Resumo:** *"[Como os fundos internacionais e analistas de Wall Street/Londres enxergam o movimento do Presidente.]"*
+
+> 🌐 **[LE MONDE / EL PAÍS / AL JAZEERA / GLOBAL TIMES] (Visão Geopolítica)**
+> **Headline:** *"[Título focado em diplomacia, soberania, meio ambiente ou alinhamento geopolítico]"*
+> **Resumo:** *"[Análise do impacto regional da medida e como as potências estrangeiras devem reagir.]"*
+
+#### 📱 E. Termômetro Digital & Redes Sociais (Monitoramento em Tempo Real)
+**Sentimento nas Redes:** [🟢 XX% Positivo | ⚪ XX% Neutro | 🔴 XX% Negativo]
+
+* 🔥 **Trending Topics (Assuntos Mais Comentados no País):**
+  1. `#[Hashtag 1]` *(XXX mil menções — [Contexto de quem está subindo a tag])*
+  2. `[Termo ou Nome 2]` *(XXX mil menções — [Contexto])*
+  3. `#[Hashtag 3]` *(XX mil menções — [Contexto])*
+  4. `[Termo 4]` *(XX mil menções — [Contexto])*
+
+* 💬 **Cortes & Reações Virais:**
+  * **@[PerfilDeOposiçãoVerificado] ✓:** *"[Postagem ácida ou corte de vídeo atacando o governo — XX mil curtidas]"*
+  * **@[InfluenciadorGovernista/Base] ✓:** *"[Postagem defendendo a medida e exaltando os números — XX mil curtidas]"*
+  * **@[PáginaDeMemes/CidadãoComum]:** *"[Piada, meme ou ironia viral sobre o impacto prático da medida no cotidiano — XXX mil curtidas]"*
+
+---
+
+### 🎯 7. PAUTA DE DECISÃO (DILEMAS IMEDIATOS PARA O PRÓXIMO TURNO)
+*O Chefe de Gabinete aguarda diretrizes urgentes do Presidente sobre os desdobramentos abaixo:*
+
+1. 🚨 **[Crise / Dilema Político ou Econômico]:** [Descrição clara do problema gerado pela ação e as 2 ou 3 opções mais óbvias de resposta, cada uma com seu custo.]
+2. 🌐 **[Pressão Externa / Segurança / Social]:** [Descrição de uma cobrança diplomática, ameaça de greve, ultimato de partido aliado ou oportunidade internacional que exige canetada no próximo turno.]
+3. 🕵️ **[Demanda de Bastidor / Inteligência]:** [Decisão sigilosa sobre o que fazer com a informação descoberta pela Agência de Inteligência no item 5.]
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="world.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const MARK = "<<<ESTADO>>>";
+
+const IND = [
+  {k:"pib", n:"PIB (proj. anual)", u:"%", d:1, good:"up", sign:true},
+  {k:"inflacao", n:"Inflação 12 meses", u:"%", d:1, good:"down"},
+  {k:"juros", n:"Juros básicos", u:"%", d:2, good:"down"},
+  {k:"desemprego", n:"Desemprego", u:"%", d:1, good:"down"},
+  {k:"cambio", n:"Câmbio", u:"", d:2, good:"down"},
+  {k:"bolsa", n:"Bolsa", u:" pts", d:0, good:"up"},
+  {k:"risco", n:"Risco-país", u:" pts", d:0, good:"down"},
+  {k:"divida", n:"Dívida bruta / PIB", u:"%", d:1, good:"down"},
+  {k:"reservas", n:"Reservas", u:" bi", d:0, good:"up", pre:"US$ "},
+  {k:"orcamento", n:"Orçamento livre", u:" bi", d:1, good:"up", pre:"US$ "},
+  {k:"primario", n:"Primário (% PIB)", u:"%", d:1, good:"up", sign:true},
+];
+const LOB = [
+  ["baixa","Classes baixas"],["media","Classe média"],["sindicatos","Sindicatos e movimentos"],["mercado","Mercado financeiro"],
+  ["industria","Indústria"],["agro","Agronegócio"],["funcionalismo","Funcionalismo"],["militares","Forças Armadas e polícias"],["igrejas","Igrejas e conservadores"]
+];
+
+const S = { sample:null, db:null, uid:null, games:[], game:null, turns:[], sel:null, mode:"exist", capMode:false, capPt:null, ctl:null, busy:false };
+
+/* ---------------- helpers ---------------- */
+const nf = (v, d) => (v == null || isNaN(v)) ? "—" : Number(v).toLocaleString("pt-BR", {minimumFractionDigits:d, maximumFractionDigits:d});
+const clamp = (v, a, b) => Math.max(a, Math.min(b, Number(v)));
+const num = (v, fallback) => { const n = Number(v); return isFinite(n) ? n : fallback; };
+const dateLabel = g => `${MESES[g.month]} de ${g.year}`;
+function uid() { return "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function md(text) {
+  const html = DOMPurify.sanitize(marked.parse(text || "", {gfm:true, breaks:false}));
+  const box = document.createElement("div"); box.innerHTML = html;
+  box.querySelectorAll("table").forEach(t => { const w = document.createElement("div"); w.className = "tbl"; t.replaceWith(w); w.appendChild(t); });
+  box.querySelectorAll("blockquote").forEach(b => { if (/ULTRASSECRETO|🔒|INTELIG[ÊE]NCIA/i.test(b.textContent)) b.classList.add("secret"); });
+  return box.innerHTML;
+}
+function errCopy(e) {
+  const c = e && e.code;
+  return ({
+    no_key: "Nenhuma chave cadastrada para esta IA. Abra \"Configurar IA\" e cole a chave.",
+    bad_key: "A chave foi recusada. Confira em \"Configurar IA\" se ela foi colada inteira.",
+    bad_model: "Esse modelo não existe ou não está liberado para a sua chave. Escolha outro em \"Configurar IA\".",
+    rate_limited: "Limite de uso da IA atingido (no Gemini grátis há um limite por minuto e por dia). Espere um pouco e tente de novo.",
+    refused: "A IA recusou este ato. Reescreva a ação de outra forma.",
+    invalid_json: "A IA respondeu fora do formato esperado. Tente de novo.",
+    empty_completion: "A IA não devolveu texto. Tente de novo.",
+    upstream_error: "O serviço da IA está sobrecarregado ou fora do ar. Tente de novo em instantes.",
+    network: "Sem conexão com a IA. Confira a internet e tente de novo.",
+  })[c] || ("A IA devolveu um erro: " + (e?.message || "desconhecido") + ".");
+}
+
+/* ---------------- storage (db privado do jogador, com reserva local) ---------------- */
+const Store = {
+  local: {
+    list() { try { return JSON.parse(localStorage.getItem("faixa.games") || "[]"); } catch { return []; } },
+    putList(l) { try { localStorage.setItem("faixa.games", JSON.stringify(l)); } catch {} },
+    async listGames() { return this.list(); },
+    async saveGame(g) { const l = this.list().filter(x => x.id !== g.id); l.unshift(g); this.putList(l); },
+    async saveTurn(gid, t) { try { const k = "faixa.t." + gid; const a = JSON.parse(localStorage.getItem(k) || "[]").filter(x => x.n !== t.n); a.push(t); localStorage.setItem(k, JSON.stringify(a)); } catch {} },
+    async loadTurns(gid) { try { return JSON.parse(localStorage.getItem("faixa.t." + gid) || "[]"); } catch { return []; } },
+    async deleteGame(gid) { this.putList(this.list().filter(x => x.id !== gid)); try { localStorage.removeItem("faixa.t." + gid); } catch {} },
+  },
+  get impl() { return this.local; },
+  async save(g, t) { await this.local.saveGame(g); if (t) await this.local.saveTurn(g.id, t); },
+};
+
+/* ---------------- IA: Gemini ou Claude, com a chave guardada só neste navegador ---------------- */
+const CFG_KEY = "faixa.cfg";
+const AI = {
+  cfg: {provider: "gemini", gemKey: "", gemModel: "gemini-2.5-flash", claKey: "", claModel: "claude-opus-5-5"},
+  load() { try { Object.assign(this.cfg, JSON.parse(localStorage.getItem(CFG_KEY) || "{}")); } catch {} },
+  persist() { try { localStorage.setItem(CFG_KEY, JSON.stringify(this.cfg)); } catch {} },
+  key(p = this.cfg.provider) { return p === "claude" ? this.cfg.claKey : this.cfg.gemKey; },
+  model(p = this.cfg.provider) { return p === "claude" ? this.cfg.claModel : this.cfg.gemModel; },
+  ready() { return !!this.key(); },
+  label() { return (this.cfg.provider === "claude" ? "Claude" : "Gemini") + " · " + this.model(); },
+
+  // Lê um fluxo SSE e entrega cada objeto JSON de "data:"
+  async sse(res, onEvent) {
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (!data || data === "[DONE]") continue;
+        try { onEvent(JSON.parse(data)); } catch (e) { if (e && e.code) throw e; }
+      }
+    }
+  },
+  async httpError(res) {
+    let msg = ""; try { const j = await res.json(); msg = j.error?.message || ""; } catch {}
+    const code = res.status === 401 || res.status === 403 ? "bad_key"
+      : res.status === 429 ? "rate_limited"
+      : res.status === 404 ? "bad_model"
+      : res.status === 400 && /api key|API_KEY/i.test(msg) ? "bad_key"
+      : res.status >= 500 || res.status === 529 ? "upstream_error" : "http_error";
+    return {code, message: msg || ("HTTP " + res.status)};
+  },
+
+  // Gera texto com streaming. Resolve {text, truncated}; rejeita {code, message, text?}
+  async stream(prompt, {onText, signal, json = false} = {}) {
+    const p = this.cfg.provider, key = this.key(p), model = this.model(p);
+    if (!key) throw {code: "no_key"};
+    let text = "", truncated = false, refused = false;
+    const push = t => { if (!t) return; text += t; onText && onText({text}); };
+    let res;
+    try {
+      if (p === "claude") {
+        // Opus 5.5 / Sonnet 5.5 aceitam o fallback automático em caso de recusa
+        const fb = /^claude-(opus|sonnet)-5-5$/.test(model);
+        const headers = {
+          "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        };
+        if (fb) headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
+        const body = {model, max_tokens: 32000, stream: true, messages: [{role: "user", content: prompt}]};
+        if (fb) body.fallbacks = "default";
+        res = await fetch("https://api.anthropic.com/v1/messages", {method: "POST", headers, body: JSON.stringify(body), signal});
+        if (!res.ok) throw await this.httpError(res);
+        await this.sse(res, ev => {
+          if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") push(ev.delta.text);
+          else if (ev.type === "message_delta") {
+            if (ev.delta?.stop_reason === "max_tokens") truncated = true;
+            if (ev.delta?.stop_reason === "refusal") refused = true;
+          } else if (ev.type === "error") throw {code: ev.error?.type === "overloaded_error" ? "upstream_error" : "http_error", message: ev.error?.message};
+        });
+      } else {
+        const body = {contents: [{role: "user", parts: [{text: prompt}]}], generationConfig: {maxOutputTokens: 32000}};
+        if (json) body.generationConfig.responseMimeType = "application/json";
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+          {method: "POST", headers: {"content-type": "application/json", "x-goog-api-key": key}, body: JSON.stringify(body), signal});
+        if (!res.ok) throw await this.httpError(res);
+        await this.sse(res, ev => {
+          const c = ev.candidates?.[0];
+          (c?.content?.parts || []).forEach(pt => { if (!pt.thought) push(pt.text); });
+          if (c?.finishReason === "MAX_TOKENS") truncated = true;
+          if (["SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "RECITATION"].includes(c?.finishReason)) refused = true;
+          if (ev.promptFeedback?.blockReason) refused = true;
+        });
+      }
+    } catch (e) {
+      if (e?.name === "AbortError" || signal?.aborted) throw {code: "cancelled", text};
+      if (e?.code) throw {...e, text};
+      throw {code: "network", message: String(e?.message || e), text};
+    }
+    if (refused && !text.trim()) throw {code: "refused"};
+    if (!text.trim()) throw {code: "empty_completion"};
+    return {text, truncated};
+  },
+  async json(prompt, opts = {}) {
+    const {text} = await this.stream(prompt, {...opts, json: true});
+    const tryParse = s => { try { return JSON.parse(s); } catch { return undefined; } };
+    let v = tryParse(text.trim());
+    if (v === undefined) { const m = text.match(/```(?:json)?\s*([\s\S]*?)```/); if (m) v = tryParse(m[1]); }
+    if (v === undefined) { const a = text.indexOf("{"), b = text.lastIndexOf("}"); if (a >= 0 && b > a) v = tryParse(text.slice(a, b + 1)); }
+    if (v === undefined) throw {code: "invalid_json", text};
+    return v;
+  },
+  // Lista os modelos disponíveis para a chave (também serve para testar a chave)
+  async listModels(p, key) {
+    if (p === "claude") {
+      const res = await fetch("https://api.anthropic.com/v1/models?limit=100", {headers: {
+        "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"}});
+      if (!res.ok) throw await this.httpError(res);
+      return (await res.json()).data.map(m => m.id);
+    }
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", {headers: {"x-goog-api-key": key}});
+    if (!res.ok) throw await this.httpError(res);
+    return ((await res.json()).models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes("generateContent") && /gemini/i.test(m.name))
+      .map(m => m.name.replace(/^models\//, ""));
+  },
+};
+AI.load();
+
+/* ---------------- world map ---------------- */
+const topo = window.WORLD_TOPO;
+const FEATS = topojson.feature(topo, topo.objects.countries).features;
+FEATS.forEach((f, i) => { f.idx = i; f.pt = (window.WORLD_PT || {})[f.id] || f.properties.name; });
+const byName = new Map(FEATS.map(f => [f.pt.toLowerCase(), f]));
+$("#countryList").innerHTML = [...FEATS].sort((a, b) => a.pt.localeCompare(b.pt, "pt")).map(f => `<option value="${esc(f.pt)}">`).join("");
+
+const W = 960, H = 500;
+const proj = d3.geoNaturalEarth1().fitExtent([[6, 6], [W - 6, H - 6]], {type: "Sphere"});
+const path = d3.geoPath(proj);
+const svg = d3.select("#world");
+const gRoot = svg.append("g");
+gRoot.append("path").attr("class", "sphere").attr("d", path({type: "Sphere"}));
+gRoot.append("path").attr("class", "grat").attr("d", path(d3.geoGraticule10()));
+const countries = gRoot.append("g").selectAll("path").data(FEATS).join("path")
+  .attr("class", "country").attr("d", path)
+  .on("mousemove", (ev, f) => { $("#hover").textContent = f.pt; })
+  .on("mouseleave", () => { $("#hover").textContent = S.sel ? "Selecionado: " + S.sel.pt : "Passe o mouse ou toque em um país"; })
+  .on("click", (ev, f) => {
+    if (S.capMode) return markCapital(ev);
+    selectCountry(f, false);
+  });
+const pinG = gRoot.append("g").attr("class", "pin");
+let curK = 1;
+const zoom = d3.zoom().scaleExtent([1, 40]).translateExtent([[0, 0], [W, H]])
+  .on("zoom", ev => { gRoot.attr("transform", ev.transform); curK = ev.transform.k; drawPin(); });
+svg.call(zoom);
+svg.on("click.cap", ev => { if (S.capMode && ev.target.classList.contains("sphere")) markCapital(ev); });
+
+function zoomTo(f) {
+  const [[x0, y0], [x1, y1]] = path.bounds(f);
+  const k = Math.min(40, 0.8 / Math.max((x1 - x0) / W, (y1 - y0) / H));
+  svg.transition().duration(650).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-(x0 + x1) / 2, -(y0 + y1) / 2));
+}
+function selectCountry(f, doZoom) {
+  S.sel = f;
+  countries.classed("sel", d => d === f);
+  if (doZoom) zoomTo(f);
+  $("#hover").textContent = "Selecionado: " + f.pt;
+  renderSelbox();
+}
+function markCapital(ev) {
+  const [x, y] = d3.pointer(ev, gRoot.node());
+  const ll = proj.invert([x, y]);
+  if (!ll) return;
+  S.capPt = ll; S.capMode = false;
+  $("#world").classList.remove("capmode");
+  $("#btnCap").textContent = "Remarcar";
+  // seleciona o país sob o ponto se nada estiver selecionado
+  const under = FEATS.find(f => d3.geoContains(f, ll));
+  if (under && (!S.sel || S.mode === "exist")) selectCountry(under, false);
+  drawPin(); renderSelbox();
+}
+function drawPin() {
+  pinG.selectAll("*").remove();
+  if (!S.capPt) return;
+  const [x, y] = proj(S.capPt);
+  pinG.append("circle").attr("cx", x).attr("cy", y).attr("r", 5 / curK);
+}
+$("#zoomReset").onclick = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+$("#search").addEventListener("change", e => {
+  const f = byName.get(e.target.value.trim().toLowerCase());
+  if (f) selectCountry(f, true);
+});
+$("#btnCap").onclick = () => {
+  S.capMode = !S.capMode;
+  $("#world").classList.toggle("capmode", S.capMode);
+  $("#btnCap").textContent = S.capMode ? "Clique no mapa…" : (S.capPt ? "Remarcar" : "Marcar no mapa");
+};
+
+/* ---------------- setup form ---------------- */
+$("#month").innerHTML = MESES.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+function setMode(m) {
+  S.mode = m;
+  $("#modeExist").setAttribute("aria-pressed", m === "exist");
+  $("#modeEman").setAttribute("aria-pressed", m === "eman");
+  $("#emanFields").hidden = m !== "eman";
+  renderSelbox();
+}
+$("#modeExist").onclick = () => setMode("exist");
+$("#modeEman").onclick = () => setMode("eman");
+function renderSelbox() {
+  const box = $("#selbox");
+  const cap = S.capPt ? ` · capital marcada em ${S.capPt[1].toFixed(2)}°, ${S.capPt[0].toFixed(2)}°` : "";
+  if (!S.sel) box.innerHTML = S.mode === "eman" ? "Clique no país de onde a região vai se separar." : "Nenhum território selecionado. Clique no mapa.";
+  else if (S.mode === "eman") box.innerHTML = `<span class="lbl">Separa-se de</span><br><b>${esc(S.sel.pt)}</b><small style="color:var(--muted)">${esc(cap)}</small>`;
+  else box.innerHTML = `<span class="lbl">Nação</span><br><b>${esc(S.sel.pt)}</b><small style="color:var(--muted)">${esc(cap)}</small>`;
+  updateStartBtn();
+}
+function updateStartBtn() {
+  const ok = S.sel && $("#pres").value.trim() && (S.mode === "exist" || $("#regionName").value.trim());
+  $("#btnStart").disabled = !ok || !AI.ready();
+  const st = $("#aiStat");
+  st.classList.toggle("ok", AI.ready());
+  st.querySelector("span").textContent = AI.ready() ? "IA pronta: " + AI.label() : "Cadastre a chave da IA em \"Configurar IA\" para jogar.";
+}
+["#pres", "#regionName"].forEach(s => $(s).addEventListener("input", updateStartBtn));
+
+/* ---------------- AI prompts ---------------- */
+function setupPrompt(cfg) {
+  const who = cfg.emancipada
+    ? `uma NOVA NAÇÃO chamada "${cfg.nome}", recém-emancipada de ${cfg.origem}. Território: ${cfg.territorio || "a definir de forma verossímil"}. Capital: ${cfg.capital || "escolha a cidade mais plausível da região"}${cfg.capPt ? ` (coordenadas aproximadas lat ${cfg.capPt[1].toFixed(2)}, lon ${cfg.capPt[0].toFixed(2)})` : ""}. Estime os números de forma realista para um Estado recém-independente: reconhecimento internacional parcial, moeda própria recém-criada ou uso transitório da moeda antiga, reservas baixas, relação tensa com ${cfg.origem}, instituições provisórias (Assembleia Constituinte etc.).`
+    : `o país real ${cfg.origem}, com dados realistas e atuais${cfg.capital ? ` (capital: ${cfg.capital})` : ""}.`;
+  return `Você é o motor de um RPG geopolítico realista em português do Brasil. Monte o DOSSIÊ NACIONAL inicial para ${who}
+
+Presidente (jogador): ${cfg.presidente}, orientação ${cfg.ideologia}. Plataforma: ${cfg.plataforma || "não informada"}.
+Data da posse: ${MESES[cfg.month]} de ${cfg.year}. Dificuldade: ${cfg.dificuldade}.
+Se o país real não for presidencialista, adapte: o jogador é o chefe de governo com poderes equivalentes, e você descreve o sistema real.
+
+Responda SOMENTE com um objeto JSON exatamente neste formato (números puros, sem texto nos campos numéricos):
+{
+ "nome_oficial": "República ...",
+ "nome_curto": "...",
+ "sistema": "ex.: Presidencialismo federativo",
+ "capital": "...",
+ "populacao_mi": 0.0,
+ "moeda": {"nome": "...", "codigo": "XXX"},
+ "bolsa_nome": "nome do índice da bolsa local",
+ "legislativo": {"nome": "ex.: Congresso Nacional", "descricao": "ex.: Câmara (513) e Senado (81)", "total": 513, "base": 0, "centro": 0, "oposicao": 0},
+ "indicadores": {"pib": 0.0, "inflacao": 0.0, "juros": 0.0, "desemprego": 0.0, "cambio": 0.0, "bolsa": 0, "risco": 0, "divida": 0.0, "reservas": 0, "orcamento": 0.0, "primario": 0.0},
+ "politica": {"capital_politico": 0, "fidelidade_base": 0, "aprovacao": 0, "otimo_bom": 0, "regular": 0, "ruim_pessimo": 0},
+ "lobbies": {"baixa": 50, "media": 50, "sindicatos": 50, "mercado": 50, "industria": 50, "agro": 50, "funcionalismo": 50, "militares": 50, "igrejas": 50},
+ "relacoes": [{"pais": "...", "valor": 0}],
+ "defcon": 5,
+ "soft_power": 0,
+ "imprensa": {"tradicional": "...", "economico": "...", "popular": "...", "tv": "...", "radio": "...", "colunista": "..."},
+ "briefing": "Texto em Markdown de 3 a 5 parágrafos: a situação do país no dia da posse, a correlação de forças, as principais ameaças e oportunidades.",
+ "dilemas": ["Título curto: descrição do dilema", "...", "..."]
+}
+Regras: pib = crescimento anual projetado em %; cambio = unidades da moeda local por 1 US$ (1.0 se a moeda for o dólar); bolsa em pontos; risco em pontos-base; divida em % do PIB; reservas e orcamento em US$ bilhões (orcamento = verba discricionária disponível no ano); primario em % do PIB (negativo = déficit). capital_politico, fidelidade_base, aprovacao e soft_power de 0 a 100; otimo_bom + regular + ruim_pessimo = 100. lobbies de 0 (furioso) a 100 (entusiasmado). relacoes: 5 a 7 países, blocos ou organismos mais relevantes, valor de -100 a 100. defcon de 5 (paz) a 1. Na imprensa use veículos reais do país (ou verossímeis, se a nação for nova); "colunista" deve ser um nome fictício. Os dilemas são as 3 decisões urgentes do primeiro mês.`;
+}
+
+function stateForPrompt(g) {
+  return JSON.stringify({
+    nacao: g.nation.officialName, sistema: g.nation.system, capital: g.nation.capital, populacao_mi: g.nation.population,
+    emancipada: g.nation.emancipated ? `sim, de ${g.nation.origin}` : "não",
+    moeda: g.nation.currency, bolsa_nome: g.nation.stockIndex,
+    presidente: g.president, legislativo: g.legislature, indicadores: g.ind, politica: g.pol,
+    lobbies: g.lob, relacoes: g.rel, defcon: g.defcon, soft_power: g.soft, imprensa: g.press,
+  });
+}
+
+function turnPrompt(g, act) {
+  const mem = (g.memory || []).slice(-12).map(m => `- Turno ${m.n} (${m.date}) — ${m.title}: ${m.summary}`).join("\n") || "- (primeiro turno do mandato)";
+  const dil = (g.dilemmas || []).map((d, i) => `${i + 1}. ${d}`).join("\n") || "(nenhum)";
+  const tpl = $("#tpl").textContent;
+  return `Você é o MOTOR DE SIMULAÇÃO de um RPG geopolítico realista, escrito em português do Brasil. O jogador governa ${g.nation.officialName} como Presidente (${g.president.nome}, ${g.president.ideologia}). Ele acabou de assinar um ato. Seu trabalho é simular, com rigor técnico, o que acontece no mês seguinte e entregar o RELATÓRIO DE ESTADO E INTELIGÊNCIA.
+
+REGRAS DO JOGO
+1. Realismo institucional: o Presidente não é onipotente. Leis passam pelo Legislativo (use a composição real das bancadas), atos podem ser judicializados, a burocracia resiste, aliados cobram cargos e verbas. Atos inconstitucionais, ilegais ou absurdos tendem a ser barrados, desidratados ou a gerar crise. Ações sigilosas viram "Operação em Andamento" e podem vazar.
+2. Coerência numérica: a coluna "Anterior" deve repetir EXATAMENTE os valores do ESTADO ATUAL. Variações de um mês são graduais e proporcionais ao ato e ao contexto. Use a moeda (${g.nation.currency?.codigo || "moeda local"}) e o índice da bolsa (${g.nation.stockIndex || "índice local"}) do país.
+3. Consequências de segunda ordem: considere o histórico abaixo; decisões passadas continuam produzindo efeitos. Mesmo sem relação direta com o ato, o mundo se move (eventos externos, escândalos, clima, mercados).
+4. Dificuldade: ${g.difficulty}. ${g.difficulty === "dificil" ? "Gere crises com frequência e seja duro com erros." : g.difficulty === "branda" ? "Seja mais tolerante, mas ainda realista." : "Equilibre sucessos e reveses de forma plausível."}
+5. Imprensa: use os veículos do dossiê (${Object.values(g.press || {}).join(", ")}) e da imprensa internacional real. Políticos, ministros, colunistas, âncoras e perfis de redes sociais citados devem ter nomes FICTÍCIOS ou ser referidos pelo cargo; não invente falas de pessoas reais vivas.
+6. Siga o MODELO abaixo seção por seção, com todos os títulos, emojis, tabelas e citações, substituindo cada [colchete] por conteúdo concreto. Não escreva nada antes do título do relatório.
+7. Turno/Data: Turno ${g.turn} - ${dateLabel(g)}.
+
+ESTADO ATUAL (JSON)
+${stateForPrompt(g)}
+
+HISTÓRICO RECENTE DO MANDATO
+${mem}
+
+DILEMAS QUE ESTAVAM SOBRE A MESA
+${dil}
+
+ATO DO PRESIDENTE NESTE TURNO
+"""${act}"""
+
+MODELO DO RELATÓRIO
+${tpl}
+
+DEPOIS DO RELATÓRIO
+Escreva uma linha contendo apenas ${MARK} e, logo abaixo, um único objeto JSON (sem cercas de código) com o estado APÓS este turno, que será usado no próximo:
+{"titulo_ato": "nome oficial do ato", "desfecho": "sancionado|desidratado|rejeitado|operacao",
+ "indicadores": {"pib":0,"inflacao":0,"juros":0,"desemprego":0,"cambio":0,"bolsa":0,"risco":0,"divida":0,"reservas":0,"orcamento":0,"primario":0},
+ "politica": {"capital_politico":0,"fidelidade_base":0,"aprovacao":0,"otimo_bom":0,"regular":0,"ruim_pessimo":0},
+ "legislativo": {"base":0,"centro":0,"oposicao":0},
+ "lobbies": {"baixa":0,"media":0,"sindicatos":0,"mercado":0,"industria":0,"agro":0,"funcionalismo":0,"militares":0,"igrejas":0},
+ "relacoes": [{"pais":"...","valor":0}],
+ "defcon": 5, "soft_power": 0,
+ "resumo": "2 ou 3 frases com o que aconteceu de mais importante, para a memória do jogo",
+ "dilemas": ["Título curto: descrição", "...", "..."]}
+Os números do JSON devem bater com os valores "Atual" do relatório.`;
+}
+
+/* ---------------- game state ---------------- */
+function gameFromDossier(cfg, d) {
+  const i = d.indicadores || {}, p = d.politica || {}, l = d.legislativo || {};
+  return {
+    id: uid(), createdAt: Date.now(), updatedAt: Date.now(),
+    turn: 1, month: cfg.month, year: cfg.year, difficulty: cfg.dificuldade, tier: cfg.tier,
+    president: {nome: cfg.presidente, ideologia: cfg.ideologia, plataforma: cfg.plataforma},
+    nation: {
+      officialName: d.nome_oficial || cfg.nome || cfg.origem, shortName: d.nome_curto || cfg.nome || cfg.origem,
+      emancipated: cfg.emancipada, origin: cfg.origem, territory: cfg.territorio || "",
+      featureIdx: cfg.featureIdx, capital: d.capital || cfg.capital || "", capPt: cfg.capPt || null,
+      system: d.sistema || "", population: num(d.populacao_mi, null), currency: d.moeda || {}, stockIndex: d.bolsa_nome || "Bolsa",
+    },
+    legislature: {nome: l.nome || "Legislativo", descricao: l.descricao || "", total: num(l.total, 0), base: num(l.base, 0), centro: num(l.centro, 0), oposicao: num(l.oposicao, 0)},
+    ind: Object.fromEntries(IND.map(x => [x.k, num(i[x.k], 0)])),
+    pol: {capital_politico: num(p.capital_politico, 50), fidelidade_base: num(p.fidelidade_base, 60), aprovacao: num(p.aprovacao, 45), otimo_bom: num(p.otimo_bom, 35), regular: num(p.regular, 30), ruim_pessimo: num(p.ruim_pessimo, 35)},
+    lob: Object.fromEntries(LOB.map(([k]) => [k, clamp(num((d.lobbies || {})[k], 50), 0, 100)])),
+    rel: (d.relacoes || []).slice(0, 8).map(r => ({pais: String(r.pais || "?"), valor: clamp(num(r.valor, 0), -100, 100)})),
+    defcon: clamp(num(d.defcon, 5), 1, 5), soft: clamp(num(d.soft_power, 50), 0, 100),
+    press: d.imprensa || {},
+    prev: null, memory: [], dilemmas: (d.dilemas || []).slice(0, 3).map(String),
+  };
+}
+function snapshotPrev(g) { return {ind: {...g.ind}, pol: {...g.pol}, lob: {...g.lob}, soft: g.soft, rel: g.rel.map(r => ({...r}))}; }
+function applyTurn(g, j, act, report) {
+  g.prev = snapshotPrev(g);
+  if (j) {
+    for (const x of IND) if (j.indicadores && j.indicadores[x.k] != null) g.ind[x.k] = num(j.indicadores[x.k], g.ind[x.k]);
+    if (j.politica) for (const k of Object.keys(g.pol)) if (j.politica[k] != null) g.pol[k] = clamp(num(j.politica[k], g.pol[k]), 0, 100);
+    if (j.legislativo) for (const k of ["base", "centro", "oposicao"]) if (j.legislativo[k] != null) g.legislature[k] = Math.max(0, num(j.legislativo[k], g.legislature[k]));
+    if (j.lobbies) for (const [k] of LOB) if (j.lobbies[k] != null) g.lob[k] = clamp(num(j.lobbies[k], g.lob[k]), 0, 100);
+    if (Array.isArray(j.relacoes) && j.relacoes.length) g.rel = j.relacoes.slice(0, 8).map(r => ({pais: String(r.pais || "?"), valor: clamp(num(r.valor, 0), -100, 100)}));
+    if (j.defcon != null) g.defcon = clamp(num(j.defcon, g.defcon), 1, 5);
+    if (j.soft_power != null) g.soft = clamp(num(j.soft_power, g.soft), 0, 100);
+    if (Array.isArray(j.dilemas)) g.dilemmas = j.dilemas.slice(0, 3).map(String);
+  }
+  const title = (j && j.titulo_ato) || act.slice(0, 60);
+  g.memory.push({n: g.turn, date: dateLabel(g), title, summary: (j && j.resumo) || "Relatório sem resumo estruturado."});
+  if (g.memory.length > 40) g.memory = g.memory.slice(-40);
+  const t = {n: g.turn, date: dateLabel(g), act, report, title, outcome: (j && j.desfecho) || "", at: Date.now()};
+  g.turn += 1; g.month += 1; if (g.month > 11) { g.month = 0; g.year += 1; }
+  g.updatedAt = Date.now();
+  return t;
+}
+
+/* ---------------- dossier render ---------------- */
+function delta(cur, prev, d, good) {
+  if (prev == null || cur == null) return `<span class="flat"></span>`;
+  const df = cur - prev;
+  if (Math.abs(df) < Math.pow(10, -d) / 2) return `<span class="flat">=</span>`;
+  const better = good === "up" ? df > 0 : df < 0;
+  return `<span class="${better ? "up" : "down"}">${df > 0 ? "▲" : "▼"} ${nf(Math.abs(df), d)}</span>`;
+}
+function renderDossier() {
+  const g = S.game; if (!g) return;
+  const pv = g.prev || {};
+  $("#gDate").textContent = `Turno ${g.turn} · ${dateLabel(g)}`;
+  $("#gName").textContent = g.nation.officialName;
+  $("#gWho").textContent = `Presidente ${g.president.nome} · ${g.president.ideologia}${g.nation.system ? " · " + g.nation.system : ""}`;
+  $("#sub").textContent = g.nation.shortName;
+  const gauge = (lbl, v, pvv, max = 100, suf = "") => `<div class="gauge"><div class="lbl">${lbl}</div><span class="v">${nf(v, 0)}${suf}</span><span class="d">${delta(v, pvv, 0, "up")}</span><div class="bar"><i style="width:${clamp(v / max * 100, 0, 100)}%"></i></div></div>`;
+  const dc = g.defcon, dcColor = dc >= 4 ? "var(--good)" : dc === 3 ? "var(--warn)" : "var(--bad)";
+  $("#gauges").innerHTML =
+    gauge("Aprovação", g.pol.aprovacao, pv.pol?.aprovacao, 100, "%") +
+    gauge("Capital político", g.pol.capital_politico, pv.pol?.capital_politico) +
+    gauge("Fidelidade da base", g.pol.fidelidade_base, pv.pol?.fidelidade_base, 100, "%") +
+    gauge("Soft power", g.soft, pv.soft) +
+    `<div class="gauge" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center"><span class="lbl">Prontidão militar</span><span class="defcon" style="color:${dcColor}">DEFCON ${dc}</span></div>`;
+  const cur = g.nation.currency?.codigo || "";
+  $("#indTable").innerHTML = IND.map(x => {
+    const name = x.k === "bolsa" ? (g.nation.stockIndex || "Bolsa") : x.k === "cambio" ? `Câmbio (${cur || "local"}/US$)` : x.n;
+    const v = g.ind[x.k];
+    const val = (x.pre || "") + (x.sign && v > 0 ? "+" : "") + nf(v, x.d) + x.u;
+    return `<tr><td>${esc(name)}</td><td>${val}</td><td>${delta(v, pv.ind?.[x.k], x.d, x.good)}</td></tr>`;
+  }).join("");
+  const L = g.legislature, tot = Math.max(1, L.base + L.centro + L.oposicao);
+  $("#congLbl").textContent = `${L.nome}${L.descricao ? " · " + L.descricao : ""}`;
+  $("#cong").innerHTML = `<i style="width:${L.base / tot * 100}%;background:var(--good)"></i><i style="width:${L.centro / tot * 100}%;background:var(--warn)"></i><i style="width:${L.oposicao / tot * 100}%;background:var(--bad)"></i>`;
+  $("#congLeg").innerHTML = `<span><b style="background:var(--good)"></b>Base ${L.base}</span><span><b style="background:var(--warn)"></b>Centro ${L.centro}</span><span><b style="background:var(--bad)"></b>Oposição ${L.oposicao}</span>`;
+  const moodColor = v => v >= 60 ? "var(--good)" : v >= 40 ? "var(--warn)" : "var(--bad)";
+  $("#lobbies").innerHTML = LOB.map(([k, n]) => `<span>${n}</span><div class="bar" title="${g.lob[k]}/100"><i style="width:${g.lob[k]}%;background:${moodColor(g.lob[k])}"></i></div>`).join("");
+  $("#rels").innerHTML = g.rel.map(r => `<span>${esc(r.pais)}</span><span class="mono" style="text-align:right;color:${r.valor >= 20 ? "var(--good)" : r.valor <= -20 ? "var(--bad)" : "var(--muted)"}">${r.valor > 0 ? "+" : ""}${r.valor}</span>`).join("");
+  $("#hist").innerHTML = S.turns.length
+    ? [...S.turns].reverse().map(t => `<button data-n="${t.n}"><small>T${t.n}</small>${esc(t.title)}</button>`).join("")
+    : `<span style="color:var(--muted);font-size:.85rem">Nenhum ato assinado ainda.</span>`;
+  $("#hist").querySelectorAll("button").forEach(b => b.onclick = () => document.getElementById("turn-" + b.dataset.n)?.scrollIntoView({behavior: "smooth", block: "start"}));
+  renderMini(); renderChips();
+}
+function renderMini() {
+  const g = S.game, f = FEATS[g.nation.featureIdx];
+  const m = d3.select("#mini"); m.selectAll("*").remove();
+  if (!f) return;
+  const pr = d3.geoMercator().fitExtent([[20, 20], [280, 160]], f);
+  const pth = d3.geoPath(pr);
+  m.append("g").selectAll("path").data(FEATS).join("path").attr("class", d => "country " + (d === f ? "me" : "ctx")).attr("d", pth);
+  if (g.nation.capPt) {
+    const [x, y] = pr(g.nation.capPt);
+    m.append("circle").attr("cx", x).attr("cy", y).attr("r", 4.5).attr("fill", "var(--stamp)").attr("stroke", "var(--panel)").attr("stroke-width", 1.5);
+  }
+}
+const TYPES = ["Decreto", "Projeto de Lei", "PEC (emenda constitucional)", "Medida Provisória", "Nomeação", "Negociação com o Congresso", "Operação sigilosa", "Pronunciamento em rede nacional", "Viagem diplomática"];
+function renderChips() {
+  const g = S.game;
+  $("#dilChips").innerHTML = (g.dilemmas || []).map((d, i) => `<button class="chip dil" data-i="${i}" title="${esc(d)}">⚑ ${esc(d.split(":")[0].slice(0, 60))}</button>`).join("");
+  $("#dilChips").querySelectorAll("button").forEach(b => b.onclick = () => insertAct(`Sobre "${g.dilemmas[b.dataset.i].split(":")[0]}": `));
+  $("#typeChips").innerHTML = TYPES.map(t => `<button class="chip" data-t="${esc(t)}">${esc(t)}</button>`).join("");
+  $("#typeChips").querySelectorAll("button").forEach(b => b.onclick = () => insertAct(`${b.dataset.t}: `));
+}
+function insertAct(prefix) {
+  const ta = $("#act"); ta.value = (ta.value.trim() ? ta.value.trimEnd() + "\n" : "") + prefix; ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+/* ---------------- feed ---------------- */
+function turnBlock(t) {
+  const sec = document.createElement("section");
+  sec.id = "turn-" + t.n; sec.style.display = "flex"; sec.style.flexDirection = "column"; sec.style.gap = "10px";
+  sec.innerHTML = `<div class="turnhead"><span class="n">TURNO ${t.n} · ${esc(t.date)}</span></div>
+    <div class="act"><span class="lbl">Ato assinado</span>${esc(t.act)}</div>
+    <article class="rep">${md(t.report)}</article>`;
+  return sec;
+}
+function renderFeed() {
+  const feed = $("#feed"); feed.innerHTML = "";
+  const g = S.game;
+  const intro = document.createElement("section");
+  intro.innerHTML = `<article class="rep"><h1>📁 Dossiê de Posse — ${esc(g.nation.officialName)}</h1>${md(g.briefing || "")}${
+    g.initialDilemmas?.length ? `<h3>🎯 Primeiras decisões</h3><ol>${g.initialDilemmas.map(d => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}</article>`;
+  feed.appendChild(intro);
+  [...S.turns].sort((a, b) => a.n - b.n).forEach(t => feed.appendChild(turnBlock(t)));
+}
+
+/* ---------------- screens ---------------- */
+function showSetup() {
+  S.game = null; S.turns = [];
+  $("#setup").hidden = false; $("#game").hidden = true; $("#btnHome").hidden = true;
+  $("#sub").textContent = "RPG de governo com IA";
+  refreshSaves();
+}
+async function openGame(g) {
+  S.game = g;
+  S.turns = await Store.impl.loadTurns(g.id).catch(() => []);
+  $("#setup").hidden = true; $("#game").hidden = false; $("#btnHome").hidden = false;
+  renderDossier(); renderFeed();
+  window.scrollTo({top: document.body.scrollHeight});
+  try { localStorage.setItem("faixa.last", g.id); } catch {}
+}
+async function refreshSaves() {
+  S.games = await Store.impl.listGames().catch(() => []);
+  S.games.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  $("#savesWrap").hidden = !S.games.length;
+  $("#saves").innerHTML = S.games.map(g => `<div class="save"><div class="meta"><b>${esc(g.nation.shortName)}</b><small>${esc(g.president.nome)} · Turno ${g.turn} · ${esc(dateLabel(g))}</small></div><button class="btn" data-id="${g.id}">Continuar</button></div>`).join("");
+  $("#saves").querySelectorAll("button").forEach(b => b.onclick = () => openGame(S.games.find(g => g.id === b.dataset.id)));
+}
+$("#btnHome").onclick = showSetup;
+
+function overlay(html) { $("#ovBox").innerHTML = html; $("#overlay").hidden = !html; }
+
+/* ---------------- start game ---------------- */
+$("#btnStart").onclick = async () => {
+  if (!AI.ready() || !S.sel) return;
+  const cfg = {
+    emancipada: S.mode === "eman",
+    nome: $("#regionName").value.trim(), territorio: $("#regionDesc").value.trim(),
+    origem: S.sel.pt, featureIdx: S.sel.idx, capital: $("#capital").value.trim(), capPt: S.capPt,
+    presidente: $("#pres").value.trim(), ideologia: $("#ideo").value, plataforma: $("#plat").value.trim(),
+    month: +$("#month").value, year: +$("#year").value || 2027, dificuldade: $("#diff").value, tier: $("#tier").value,
+  };
+  overlay(`<h3>Preparando a posse</h3><div class="thinking"><span class="dot"></span><span>O gabinete de transição está montando o Dossiê Nacional de ${esc(cfg.emancipada ? cfg.nome : cfg.origem)}…</span></div><small style="color:var(--muted)">${esc(AI.label())}</small>`);
+  try {
+    const d = await AI.json(setupPrompt(cfg));
+    if (!d || typeof d !== "object" || !d.indicadores) throw {code: "invalid_json"};
+    const g = gameFromDossier(cfg, d);
+    g.briefing = String(d.briefing || "");
+    g.initialDilemmas = [...g.dilemmas];
+    await Store.save(g).catch(() => {});
+    overlay("");
+    await openGame(g);
+  } catch (e) {
+    overlay(`<h3>Não deu para tomar posse</h3><p>${esc(errCopy(e))}</p><button class="btn primary" id="ovClose">Voltar</button>`);
+    $("#ovClose").onclick = () => overlay("");
+  }
+};
+
+/* ---------------- play a turn ---------------- */
+async function sendAct() {
+  const g = S.game, act = $("#act").value.trim();
+  if (!g || !act || S.busy) return;
+  if (!AI.ready()) { openCfg(); return; }
+  S.busy = true; $("#btnSend").disabled = true; $("#btnStop").hidden = false;
+  const feed = $("#feed");
+  const pending = {n: g.turn, date: dateLabel(g), act, report: ""};
+  const sec = turnBlock(pending);
+  const art = sec.querySelector("article");
+  art.innerHTML = `<div class="thinking"><span class="dot"></span><span>O ato está em tramitação. Ministérios, Congresso, mercado e imprensa estão reagindo…</span></div>`;
+  feed.appendChild(sec);
+  sec.scrollIntoView({behavior: "smooth", block: "start"});
+  const ctl = new AbortController(); S.ctl = ctl;
+  let raf = 0, latest = "";
+  const paint = () => { raf = 0; art.innerHTML = md(latest.split(MARK)[0]); };
+  try {
+    const res = await AI.stream(turnPrompt(g, act), {
+      signal: ctl.signal,
+      onText: ({text}) => { latest = text; if (!raf) raf = requestAnimationFrame(paint); },
+    });
+    latest = res.text; paint();
+    const [report, tail] = res.text.split(MARK);
+    let j = null;
+    if (tail) { const m = tail.match(/\{[\s\S]*\}/); if (m) { try { j = JSON.parse(m[0]); } catch {} } }
+    const t = applyTurn(g, j, act, report.trim());
+    S.turns.push(t);
+    sec.id = "turn-" + t.n;
+    if (!j) sec.insertAdjacentHTML("beforeend", `<div class="err">${res.truncated ? "O relatório foi cortado antes do fim." : "O relatório veio sem os números estruturados."} Os indicadores do painel ficaram como estavam neste turno.</div>`);
+    $("#act").value = "";
+    try { localStorage.removeItem("faixa.draft." + g.id); } catch {}
+    renderDossier();
+    try { await Store.save(g, t); }
+    catch (e) { sec.insertAdjacentHTML("beforeend", `<div class="err">Não consegui salvar este turno (${esc(e?.code || "erro")}). Ele continua visível nesta aba.</div>`); }
+  } catch (e) {
+    if (e && e.code === "cancelled") sec.remove();
+    else { art.innerHTML = e?.text ? md(e.text.split(MARK)[0]) : ""; sec.insertAdjacentHTML("beforeend", `<div class="err">${esc(errCopy(e))} O ato não foi contabilizado; seu texto continua na caixa.</div>`); }
+  } finally {
+    S.busy = false; S.ctl = null; $("#btnSend").disabled = false; $("#btnStop").hidden = true;
+  }
+}
+$("#btnSend").onclick = sendAct;
+$("#btnStop").onclick = () => S.ctl?.abort();
+$("#act").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendAct(); } });
+$("#act").addEventListener("input", () => { if (S.game) try { localStorage.setItem("faixa.draft." + S.game.id, $("#act").value); } catch {} });
+
+$("#btnDelete").onclick = () => {
+  const g = S.game;
+  overlay(`<h3>Encerrar o mandato?</h3><p>O jogo de <b>${esc(g.nation.shortName)}</b> e os ${S.turns.length} relatórios serão apagados para sempre.</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="ovNo">Cancelar</button><button class="btn primary" id="ovYes" style="background:var(--bad);border-color:var(--bad)">Apagar mandato</button></div>`);
+  $("#ovNo").onclick = () => overlay("");
+  $("#ovYes").onclick = async () => { await Store.impl.deleteGame(g.id).catch(() => {}); overlay(""); showSetup(); };
+};
+
+/* ---------------- configurações da IA ---------------- */
+const CLAUDE_MODELS = [["claude-opus-5-5", "Claude Opus 5.5 (melhor qualidade)"], ["claude-sonnet-5-5", "Claude Sonnet 5.5 (equilíbrio)"], ["claude-haiku-5-5", "Claude Haiku 5.5 (mais barato)"]];
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"];
+function openCfg() {
+  const c = AI.cfg;
+  overlay(`<h3>Configurar IA</h3>
+    <p style="margin:0;font-size:.88rem;color:var(--muted)">As chaves ficam guardadas só neste navegador. Elas não vão para o site nem para o GitHub. Em outro computador ou celular, cole de novo.</p>
+    <div class="field"><label class="lbl" for="cfgProv">IA que responde</label>
+      <select id="cfgProv"><option value="gemini">Gemini (Google)</option><option value="claude">Claude (Anthropic)</option></select></div>
+    <div class="cfgprov">
+      <h4>Gemini</h4>
+      <p>Tem faixa gratuita com limite diário. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+      <div class="field"><label class="lbl" for="cfgGemKey">Chave</label><input id="cfgGemKey" type="password" autocomplete="off" placeholder="AIza…"></div>
+      <div class="field"><label class="lbl" for="cfgGemModel">Modelo</label><input id="cfgGemModel" list="gemModels" autocomplete="off"><datalist id="gemModels">${GEMINI_MODELS.map(m => `<option value="${m}">`).join("")}</datalist></div>
+    </div>
+    <div class="cfgprov">
+      <h4>Claude</h4>
+      <p>Pago por uso, cobrado à parte da assinatura do Claude. Crie a chave em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+      <div class="field"><label class="lbl" for="cfgClaKey">Chave</label><input id="cfgClaKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
+      <div class="field"><label class="lbl" for="cfgClaModel">Modelo</label><select id="cfgClaModel">${CLAUDE_MODELS.map(([v, n]) => `<option value="${v}">${n}</option>`).join("")}</select></div>
+    </div>
+    <div id="cfgMsg" style="font-size:.88rem;min-height:1.2em"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn" id="cfgTest" type="button">Testar chave</button>
+      <button class="btn" id="cfgCancel" type="button">Cancelar</button>
+      <button class="btn primary" id="cfgSave" type="button">Salvar</button>
+    </div>`);
+  $("#cfgProv").value = c.provider; $("#cfgGemKey").value = c.gemKey; $("#cfgGemModel").value = c.gemModel;
+  $("#cfgClaKey").value = c.claKey; $("#cfgClaModel").value = c.claModel;
+  const read = () => ({provider: $("#cfgProv").value, gemKey: $("#cfgGemKey").value.trim(), gemModel: $("#cfgGemModel").value.trim() || "gemini-2.5-flash",
+    claKey: $("#cfgClaKey").value.trim(), claModel: $("#cfgClaModel").value});
+  $("#cfgCancel").onclick = () => overlay("");
+  $("#cfgSave").onclick = () => { Object.assign(AI.cfg, read()); AI.persist(); $("#tier").value = AI.cfg.provider; overlay(""); updateStartBtn(); };
+  $("#cfgTest").onclick = async () => {
+    const v = read(), p = v.provider, key = p === "claude" ? v.claKey : v.gemKey, msg = $("#cfgMsg");
+    if (!key) { msg.style.color = "var(--bad)"; msg.textContent = "Cole a chave da IA escolhida acima."; return; }
+    msg.style.color = "var(--muted)"; msg.textContent = "Testando…";
+    try {
+      const models = await AI.listModels(p, key);
+      const model = p === "claude" ? v.claModel : v.gemModel;
+      if (p === "gemini") $("#gemModels").innerHTML = models.map(m => `<option value="${esc(m)}">`).join("");
+      const has = models.includes(model);
+      msg.style.color = has ? "var(--good)" : "var(--warn)";
+      msg.textContent = has ? `Chave válida. O modelo ${model} está disponível.` : `Chave válida, mas o modelo ${model} não apareceu na lista. ${p === "gemini" ? "Escolha um da lista no campo Modelo." : "Escolha outro modelo."}`;
+    } catch (e) { msg.style.color = "var(--bad)"; msg.textContent = errCopy(e); }
+  };
+}
+$("#btnCfg").onclick = openCfg;
+$("#tier").addEventListener("change", e => { AI.cfg.provider = e.target.value; AI.persist(); updateStartBtn(); });
+
+/* ---------------- backup ---------------- */
+$("#btnExport").onclick = async () => {
+  const games = await Store.local.listGames();
+  const data = {app: "faixa-presidencial", v: 1, exportedAt: new Date().toISOString(), games: []};
+  for (const g of games) data.games.push({game: g, turns: await Store.local.loadTurns(g.id)});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"}));
+  a.download = `faixa-presidencial-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+$("#importFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (data.app !== "faixa-presidencial" || !Array.isArray(data.games)) throw new Error("formato");
+    for (const {game, turns} of data.games) {
+      if (!game?.id) continue;
+      await Store.local.saveGame(game);
+      for (const t of turns || []) await Store.local.saveTurn(game.id, t);
+    }
+    await refreshSaves();
+    overlay(`<h3>Backup importado</h3><p>${data.games.length} mandato(s) restaurado(s).</p><button class="btn primary" id="ovClose">Fechar</button>`);
+  } catch {
+    overlay(`<h3>Não deu para importar</h3><p>O arquivo não é um backup do Faixa Presidencial.</p><button class="btn primary" id="ovClose">Fechar</button>`);
+  }
+  $("#ovClose").onclick = () => overlay("");
+});
+
+/* ---------------- boot ---------------- */
+(async () => {
+  renderSelbox();
+  $("#tier").value = AI.cfg.provider;
+  updateStartBtn();
+  if (!AI.ready()) openCfg();
+  await refreshSaves();
+  // retoma o último mandato aberto
+  let last = null; try { last = localStorage.getItem("faixa.last"); } catch {}
+  const g = last && S.games.find(x => x.id === last);
+  if (g) { await openGame(g); try { $("#act").value = localStorage.getItem("faixa.draft." + g.id) || ""; } catch {} }
+})();
+})();
+</script>
+
+</body>
+</html>

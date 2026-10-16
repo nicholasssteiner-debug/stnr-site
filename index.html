@@ -226,6 +226,14 @@
         <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Geração de extratos bancários e despesas com documentos fiscais fictícios, para aulas de contabilidade.</p>
       </a>
 
+      <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Comprovantes de Pagamento.html">
+        <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+          <i data-lucide="file-check" class="w-6 h-6"></i>
+        </div>
+        <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Comprovantes de Pagamento</h2>
+        <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Comprovante interno do Contas a Pagar, emitido no envio do arquivo de remessa ao banco.</p>
+      </a>
+
       <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="fap/funcionarios/">
         <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
           <i data-lucide="users" class="w-6 h-6"></i>
@@ -340,6 +348,26 @@
       </div>
     </section>
 
+    <section class="dash-section mb-14">
+      <div class="flex items-center gap-3 mb-6">
+        <i data-lucide="flask-conical" class="w-6 h-6 text-stnr-accent"></i>
+        <h2 class="text-2xl md:text-3xl font-bold tracking-wide">Laboratório</h2>
+        <div class="flex-1 h-px bg-stnr-border"></div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="cardGridLab">
+
+        <a class="dashboard-card group bg-stnr-card p-6 md:p-8 rounded-2xl border border-stnr-border flex flex-col text-stnr-textMain text-decoration-none transition-all duration-300 hover:-translate-y-2 hover:border-stnr-accent hover:shadow-[0_10px_30px_rgba(108,99,255,0.2)]" href="Mini Universo.html">
+          <div class="w-12 h-12 rounded-xl bg-stnr-bg border border-stnr-border flex items-center justify-center mb-5 text-stnr-accent group-hover:scale-110 group-hover:bg-stnr-accent group-hover:text-white transition-all duration-300">
+            <i data-lucide="orbit" class="w-6 h-6"></i>
+          </div>
+          <h2 class="card-title text-xl font-bold mb-2 text-stnr-accent group-hover:text-stnr-accentHover transition-colors">Mini Universo</h2>
+          <p class="card-desc text-sm md:text-base text-stnr-textMuted leading-relaxed">Sandbox gravitacional: crie estrelas, planetas e buracos negros, lance-os em órbita e veja o sistema evoluir com colisões e fusões.</p>
+        </a>
+
+      </div>
+    </section>
+
     <div id="noResults" class="hidden text-center py-10">
       <i data-lucide="search-x" class="w-16 h-16 mx-auto text-stnr-border mb-4"></i>
       <p class="text-xl text-stnr-textMuted">Nenhum sistema encontrado.</p>
@@ -406,11 +434,13 @@
       } else if (cliqueSecreto === 3) {
         // Terceiro clique: Pede a senha
         const senha = prompt("Acesso Restrito:");
-        
+
         if (senha === "3004") {
           window.location.href = "Aura Privé - Private P2P.html";
         } else if (senha === "30042022") {
           window.location.href = "Plantão 24h - Protocolo de Atendimento.html";
+        } else if (senha === "1822") {
+          window.location.href = "faixa/";
         } else {
           // Reseta tudo se errar a senha ou cancelar
           cliqueSecreto = 0;
