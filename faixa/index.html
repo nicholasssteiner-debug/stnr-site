@@ -522,7 +522,7 @@ const Store = {
 /* ---------------- IA: Gemini ou Claude, com a chave guardada só neste navegador ---------------- */
 const CFG_KEY = "faixa.cfg";
 const AI = {
-  cfg: {provider: "gemini", gemKey: "", gemModel: "gemini-2.5-flash", claKey: "", claModel: "claude-opus-5-5"},
+  cfg: {provider: "gemini", gemKey: "", gemModel: "gemini-3.8-flash", claKey: "", claModel: "claude-opus-5-5"},
   load() { try { Object.assign(this.cfg, JSON.parse(localStorage.getItem(CFG_KEY) || "{}")); } catch {} },
   persist() { try { localStorage.setItem(CFG_KEY, JSON.stringify(this.cfg)); } catch {} },
   key(p = this.cfg.provider) { return p === "claude" ? this.cfg.claKey : this.cfg.gemKey; },
@@ -588,9 +588,18 @@ const AI = {
       } else {
         const body = {contents: [{role: "user", parts: [{text: prompt}]}], generationConfig: {}};
         if (json) body.generationConfig.responseMimeType = "application/json";
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+        const call = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,
           {method: "POST", headers: {"content-type": "application/json", "x-goog-api-key": key}, body: JSON.stringify(body), signal});
-        if (!res.ok) throw await this.httpError(res);
+        res = await call(model);
+        if (!res.ok) {
+          const err = await this.httpError(res);
+          // modelo aposentado: usa o que o Google sugerir e guarda a troca
+          const sug = err.code === "bad_model" && this.suggestedModel(err.message);
+          if (!sug || sug === model) throw err;
+          res = await call(sug);
+          if (!res.ok) throw await this.httpError(res);
+          this.cfg.gemModel = sug; this.persist();
+        }
         await this.sse(res, ev => {
           const c = ev.candidates?.[0];
           (c?.content?.parts || []).forEach(pt => { if (!pt.thought) push(pt.text); });
@@ -618,6 +627,8 @@ const AI = {
     return v;
   },
   // Lista os modelos disponíveis para a chave (também serve para testar a chave)
+  // "...no longer available... use models/gemini-X for..." -> "gemini-X"
+  suggestedModel(msg) { const m = /use\s+models\/([\w.-]+)/i.exec(msg || ""); return m ? m[1].replace(/\.$/, "") : null; },
   // Pede uma resposta curtinha ao modelo: prova que a chave consegue gerar texto com ele
   async ping(p, key, model) {
     const res = p === "claude"
@@ -1072,7 +1083,10 @@ $("#btnDelete").onclick = () => {
 
 /* ---------------- configurações da IA ---------------- */
 const CLAUDE_MODELS = [["claude-opus-5-5", "Claude Opus 5.5 (melhor qualidade)"], ["claude-sonnet-5-5", "Claude Sonnet 5.5 (equilíbrio)"], ["claude-haiku-5-5", "Claude Haiku 5.5 (mais barato)"]];
-const GEMINI_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const GEMINI_MODELS = ["gemini-3.8-flash"];
+// o Flash estável de versão mais alta da lista
+const bestFlash = models => models.filter(m => /flash/i.test(m) && !/lite|preview|exp/i.test(m)).sort((a, b) => b.localeCompare(a, "en", {numeric: true}))[0]
+  || models.find(m => /flash/i.test(m)) || models[0];
 const gemLabel = m => m + (/pro/i.test(m) ? " — Pro (melhor qualidade, limite menor)" : /lite/i.test(m) ? " — Lite (mais rápido)" : /flash/i.test(m) ? " — Flash (rápido, limite maior)" : "");
 // Preenche a lista de modelos Gemini: os Pro primeiro, depois os mais novos
 function fillGemModels(models, current) {
@@ -1113,7 +1127,7 @@ function openCfg() {
     fillGemModels(ms, $("#cfgGemModel").value); $("#gemHint").textContent = `${ms.length} modelos liberados para a sua chave.`;
   }).catch(() => {});
   $("#cfgClaKey").value = c.claKey; $("#cfgClaModel").value = c.claModel;
-  const read = () => ({provider: $("#cfgProv").value, gemKey: $("#cfgGemKey").value.trim(), gemModel: $("#cfgGemModel").value.trim() || "gemini-2.5-flash",
+  const read = () => ({provider: $("#cfgProv").value, gemKey: $("#cfgGemKey").value.trim(), gemModel: $("#cfgGemModel").value.trim() || "gemini-3.8-flash",
     claKey: $("#cfgClaKey").value.trim(), claModel: $("#cfgClaModel").value});
   $("#cfgCancel").onclick = () => overlay("");
   $("#cfgSave").onclick = () => { Object.assign(AI.cfg, read()); AI.persist(); $("#tier").value = AI.cfg.provider; overlay(""); updateStartBtn(); };
@@ -1126,19 +1140,34 @@ function openCfg() {
       const models = await AI.listModels(p, key);
       if (p === "gemini") {
         // modelo escolhido sumiu da lista (aposentado): troca por um Flash estável disponível
-        if (!models.includes(model)) {
-          const pick = models.filter(m => /flash/i.test(m) && !/lite|preview|exp/i.test(m)).sort((a, b) => b.localeCompare(a, "en", {numeric: true}))[0]
-            || models.find(m => /flash/i.test(m)) || models[0];
-          if (pick) model = pick;
-        }
+        if (!models.includes(model)) model = bestFlash(models) || model;
         fillGemModels(models, model); $("#gemHint").textContent = `${models.length} modelos liberados para a sua chave.`;
       }
-      step = "o modelo " + model;
-      msg.textContent = `Chave aceita. Testando uma resposta de ${model}…`;
-      await AI.ping(p, key, model);
+      // testa o modelo; se o Google disser que foi aposentado, segue a sugestão dele (até 3 tentativas)
+      const tried = new Set();
+      for (;;) {
+        step = "o modelo " + model; tried.add(model);
+        msg.textContent = `Chave aceita. Testando uma resposta de ${model}…`;
+        try { await AI.ping(p, key, model); break; }
+        catch (e) {
+          const next = p === "gemini" && e.code === "bad_model" && (AI.suggestedModel(e.message) || bestFlash(models.filter(m => !tried.has(m))));
+          if (!next || tried.has(next) || tried.size >= 3) throw e;
+          model = next;
+        }
+      }
+      if (p === "gemini") fillGemModels([...$("#cfgGemModel").options].map(o => o.value), model);
       msg.style.color = "var(--good)";
       msg.textContent = `Tudo certo: ${model} respondeu. Clique em Salvar.`;
-    } catch (e) { msg.style.color = "var(--bad)"; msg.textContent = `Falhou ao testar ${step}. ` + errCopy(e); }
+    } catch (e) {
+      if (e.code === "upstream_error" || e.code === "rate_limited") {
+        // chave e modelo aceitos; o serviço só está ocupado ou no limite agora
+        if (p === "gemini") fillGemModels([...$("#cfgGemModel").options].map(o => o.value), model);
+        msg.style.color = "var(--warn)";
+        msg.textContent = `Chave e modelo ${model} aceitos, mas ${e.code === "rate_limited" ? "o limite de uso foi atingido" : "o Google está sobrecarregado"} agora. Pode salvar e jogar daqui a pouco, ou escolher outro modelo. Detalhe: ${e.message || ""}`;
+        return;
+      }
+      msg.style.color = "var(--bad)"; msg.textContent = `Falhou ao testar ${step}. ` + errCopy(e);
+    }
   };
 }
 $("#btnCfg").onclick = openCfg;
