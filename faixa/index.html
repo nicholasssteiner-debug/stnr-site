@@ -1056,7 +1056,15 @@ $("#btnDelete").onclick = () => {
 
 /* ---------------- configurações da IA ---------------- */
 const CLAUDE_MODELS = [["claude-opus-5-5", "Claude Opus 5.5 (melhor qualidade)"], ["claude-sonnet-5-5", "Claude Sonnet 5.5 (equilíbrio)"], ["claude-haiku-5-5", "Claude Haiku 5.5 (mais barato)"]];
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"];
+const GEMINI_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const gemLabel = m => m + (/pro/i.test(m) ? " — Pro (melhor qualidade, limite menor)" : /lite/i.test(m) ? " — Lite (mais rápido)" : /flash/i.test(m) ? " — Flash (rápido, limite maior)" : "");
+// Preenche a lista de modelos Gemini: os Pro primeiro, depois os mais novos
+function fillGemModels(models, current) {
+  const list = [...new Set([...models, current].filter(Boolean))]
+    .sort((a, b) => (/pro/i.test(b) - /pro/i.test(a)) || b.localeCompare(a, "en", {numeric: true}));
+  $("#cfgGemModel").innerHTML = list.map(m => `<option value="${esc(m)}">${esc(gemLabel(m))}</option>`).join("");
+  $("#cfgGemModel").value = current;
+}
 function openCfg() {
   const c = AI.cfg;
   overlay(`<h3>Configurar IA</h3>
@@ -1067,7 +1075,8 @@ function openCfg() {
       <h4>Gemini</h4>
       <p>Tem faixa gratuita com limite diário. Crie a chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
       <div class="field"><label class="lbl" for="cfgGemKey">Chave</label><input id="cfgGemKey" type="password" autocomplete="off" placeholder="AIza…"></div>
-      <div class="field"><label class="lbl" for="cfgGemModel">Modelo</label><input id="cfgGemModel" list="gemModels" autocomplete="off"><datalist id="gemModels">${GEMINI_MODELS.map(m => `<option value="${m}">`).join("")}</datalist></div>
+      <div class="field"><label class="lbl" for="cfgGemModel">Modelo</label><select id="cfgGemModel"></select>
+        <p id="gemHint">Clique em "Testar chave" para ver todos os modelos liberados para a sua chave.</p></div>
     </div>
     <div class="cfgprov">
       <h4>Claude</h4>
@@ -1081,7 +1090,12 @@ function openCfg() {
       <button class="btn" id="cfgCancel" type="button">Cancelar</button>
       <button class="btn primary" id="cfgSave" type="button">Salvar</button>
     </div>`);
-  $("#cfgProv").value = c.provider; $("#cfgGemKey").value = c.gemKey; $("#cfgGemModel").value = c.gemModel;
+  $("#cfgProv").value = c.provider; $("#cfgGemKey").value = c.gemKey;
+  fillGemModels(GEMINI_MODELS, c.gemModel);
+  if (c.gemKey) AI.listModels("gemini", c.gemKey).then(ms => {
+    if (!$("#cfgGemModel")) return;
+    fillGemModels(ms, $("#cfgGemModel").value); $("#gemHint").textContent = `${ms.length} modelos liberados para a sua chave.`;
+  }).catch(() => {});
   $("#cfgClaKey").value = c.claKey; $("#cfgClaModel").value = c.claModel;
   const read = () => ({provider: $("#cfgProv").value, gemKey: $("#cfgGemKey").value.trim(), gemModel: $("#cfgGemModel").value.trim() || "gemini-2.5-flash",
     claKey: $("#cfgClaKey").value.trim(), claModel: $("#cfgClaModel").value});
@@ -1094,7 +1108,7 @@ function openCfg() {
     try {
       const models = await AI.listModels(p, key);
       const model = p === "claude" ? v.claModel : v.gemModel;
-      if (p === "gemini") $("#gemModels").innerHTML = models.map(m => `<option value="${esc(m)}">`).join("");
+      if (p === "gemini") { fillGemModels(models, model); $("#gemHint").textContent = `${models.length} modelos liberados para a sua chave.`; }
       const has = models.includes(model);
       msg.style.color = has ? "var(--good)" : "var(--warn)";
       msg.textContent = has ? `Chave válida. O modelo ${model} está disponível.` : `Chave válida, mas o modelo ${model} não apareceu na lista. ${p === "gemini" ? "Escolha um da lista no campo Modelo." : "Escolha outro modelo."}`;
