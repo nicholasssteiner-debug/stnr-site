@@ -521,6 +521,10 @@ const Store = {
 
 /* ---------------- IA: Gemini ou Claude, com a chave guardada só neste navegador ---------------- */
 const CFG_KEY = "faixa.cfg";
+const sleep = (ms, signal) => new Promise((resolve, reject) => {
+  const t = setTimeout(resolve, ms);
+  signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("", "AbortError")); }, {once: true});
+});
 const AI = {
   cfg: {provider: "gemini", gemKey: "", gemModel: "gemini-3.8-flash", claKey: "", claModel: "claude-opus-5-5"},
   load() { try { Object.assign(this.cfg, JSON.parse(localStorage.getItem(CFG_KEY) || "{}")); } catch {} },
@@ -559,10 +563,10 @@ const AI = {
   },
 
   // Gera texto com streaming. Resolve {text, truncated}; rejeita {code, message, text?}
-  async stream(prompt, {onText, signal, json = false} = {}) {
+  async stream(prompt, {onText, onStatus, signal, json = false} = {}) {
     const p = this.cfg.provider, key = this.key(p), model = this.model(p);
     if (!key) throw {code: "no_key"};
-    let text = "", truncated = false, refused = false;
+    let text = "", truncated = false, refused = false, retired = false, usedModel = model;
     const push = t => { if (!t) return; text += t; onText && onText({text}); };
     let res;
     try {
@@ -590,16 +594,33 @@ const AI = {
         if (json) body.generationConfig.responseMimeType = "application/json";
         const call = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,
           {method: "POST", headers: {"content-type": "application/json", "x-goog-api-key": key}, body: JSON.stringify(body), signal});
-        res = await call(model);
-        if (!res.ok) {
-          const err = await this.httpError(res);
-          // modelo aposentado: usa o que o Google sugerir e guarda a troca
-          const sug = err.code === "bad_model" && this.suggestedModel(err.message);
-          if (!sug || sug === model) throw err;
-          res = await call(sug);
-          if (!res.ok) throw await this.httpError(res);
-          this.cfg.gemModel = sug; this.persist();
+        // Modelo aposentado: troca pelo que o Google sugerir (e guarda a troca).
+        // Modelo ocupado: espera e tenta de novo uma vez; depois passa para outro modelo da chave.
+        const tried = new Set();
+        let m = model, waited = false, lastErr = null;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          tried.add(m);
+          res = await call(m);
+          if (res.ok) break;
+          lastErr = await this.httpError(res);
+          let next = null;
+          if (lastErr.code === "bad_model") {
+            next = this.suggestedModel(lastErr.message);
+            if (next) retired = true;
+          } else if (lastErr.code === "upstream_error" && !waited) {
+            waited = true; next = m; tried.delete(m);
+            onStatus && onStatus(`O Google está com o ${m} ocupado. Tentando de novo em alguns segundos…`);
+            await sleep(5000, signal);
+          } else if (lastErr.code === "upstream_error" || lastErr.code === "rate_limited") {
+            next = await this.altModel(key, tried);
+            if (next) onStatus && onStatus(`${m} indisponível agora. Tentando com ${next}…`);
+          }
+          if (!next || tried.has(next)) throw lastErr;
+          m = next;
         }
+        if (!res.ok) throw lastErr;
+        usedModel = m;
+        if (retired && m !== model) { this.cfg.gemModel = m; this.persist(); }
         await this.sse(res, ev => {
           const c = ev.candidates?.[0];
           (c?.content?.parts || []).forEach(pt => { if (!pt.thought) push(pt.text); });
@@ -615,7 +636,7 @@ const AI = {
     }
     if (refused && !text.trim()) throw {code: "refused"};
     if (!text.trim()) throw {code: "empty_completion"};
-    return {text, truncated};
+    return {text, truncated, model: usedModel};
   },
   async json(prompt, opts = {}) {
     const {text} = await this.stream(prompt, {...opts, json: true});
@@ -629,6 +650,13 @@ const AI = {
   // Lista os modelos disponíveis para a chave (também serve para testar a chave)
   // "...no longer available... use models/gemini-X for..." -> "gemini-X"
   suggestedModel(msg) { const m = /use\s+models\/([\w.-]+)/i.exec(msg || ""); return m ? m[1].replace(/\.$/, "") : null; },
+  // Outro modelo da chave para quando o escolhido está ocupado: Flash estável, outros Flash, Pro, por fim Lite
+  async altModel(key, tried) {
+    if (!this._models) { try { this._models = await this.listModels("gemini", key); } catch { return null; } }
+    const left = this._models.filter(m => !tried.has(m));
+    const rank = m => /lite/i.test(m) ? 3 : /flash/i.test(m) ? (/preview|exp/i.test(m) ? 1 : 0) : /pro/i.test(m) ? 2 : 4;
+    return left.sort((a, b) => rank(a) - rank(b) || b.localeCompare(a, "en", {numeric: true}))[0] || null;
+  },
   // Pede uma resposta curtinha ao modelo: prova que a chave consegue gerar texto com ele
   async ping(p, key, model) {
     const res = p === "claude"
@@ -1014,7 +1042,7 @@ $("#btnStart").onclick = async () => {
   };
   overlay(`<h3>Preparando a posse</h3><div class="thinking"><span class="dot"></span><span>O gabinete de transição está montando o Dossiê Nacional de ${esc(cfg.emancipada ? cfg.nome : cfg.origem)}…</span></div><small style="color:var(--muted)">${esc(AI.label())}</small>`);
   try {
-    const d = await AI.json(setupPrompt(cfg));
+    const d = await AI.json(setupPrompt(cfg), {onStatus: s => { const sp = $("#ovBox .thinking span:last-child"); if (sp) sp.textContent = s; }});
     if (!d || typeof d !== "object" || !d.indicadores) throw {code: "invalid_json"};
     const g = gameFromDossier(cfg, d);
     g.briefing = String(d.briefing || "");
@@ -1047,6 +1075,7 @@ async function sendAct() {
   try {
     const res = await AI.stream(turnPrompt(g, act), {
       signal: ctl.signal,
+      onStatus: s => { const sp = art.querySelector(".thinking span:last-child"); if (sp) sp.textContent = s; },
       onText: ({text}) => { latest = text; if (!raf) raf = requestAnimationFrame(paint); },
     });
     latest = res.text; paint();
@@ -1056,6 +1085,8 @@ async function sendAct() {
     const t = applyTurn(g, j, act, report.trim());
     S.turns.push(t);
     sec.id = "turn-" + t.n;
+    if (res.model && res.model !== AI.model("gemini") && AI.cfg.provider === "gemini")
+      sec.insertAdjacentHTML("beforeend", `<div class="err" style="color:var(--muted)">Respondido por ${esc(res.model)}, porque o modelo escolhido estava ocupado.</div>`);
     if (!j) sec.insertAdjacentHTML("beforeend", `<div class="err">${res.truncated ? "O relatório foi cortado antes do fim." : "O relatório veio sem os números estruturados."} Os indicadores do painel ficaram como estavam neste turno.</div>`);
     $("#act").value = "";
     try { localStorage.removeItem("faixa.draft." + g.id); } catch {}
