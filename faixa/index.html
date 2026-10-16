@@ -488,7 +488,7 @@ function md(text) {
 }
 function errCopy(e) {
   const c = e && e.code;
-  return ({
+  const copy = ({
     no_key: "Nenhuma chave cadastrada para esta IA. Abra \"Configurar IA\" e cole a chave.",
     bad_key: "A chave foi recusada. Confira em \"Configurar IA\" se ela foi colada inteira.",
     bad_model: "Esse modelo não existe ou não está liberado para a sua chave. Escolha outro em \"Configurar IA\".",
@@ -498,7 +498,10 @@ function errCopy(e) {
     empty_completion: "A IA não devolveu texto. Tente de novo.",
     upstream_error: "O serviço da IA está sobrecarregado ou fora do ar. Tente de novo em instantes.",
     network: "Sem conexão com a IA. Confira a internet e tente de novo.",
-  })[c] || ("A IA devolveu um erro: " + (e?.message || "desconhecido") + ".");
+  })[c];
+  // mostra a mensagem original da API junto, para dar para saber o que houve
+  if (copy) return copy + (e?.message ? ` Detalhe: ${e.message}` : "");
+  return "A IA devolveu um erro: " + (e?.message || "desconhecido") + ".";
 }
 
 /* ---------------- storage (db privado do jogador, com reserva local) ---------------- */
@@ -583,7 +586,7 @@ const AI = {
           } else if (ev.type === "error") throw {code: ev.error?.type === "overloaded_error" ? "upstream_error" : "http_error", message: ev.error?.message};
         });
       } else {
-        const body = {contents: [{role: "user", parts: [{text: prompt}]}], generationConfig: {maxOutputTokens: 32000}};
+        const body = {contents: [{role: "user", parts: [{text: prompt}]}], generationConfig: {}};
         if (json) body.generationConfig.responseMimeType = "application/json";
         res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
           {method: "POST", headers: {"content-type": "application/json", "x-goog-api-key": key}, body: JSON.stringify(body), signal});
@@ -615,6 +618,18 @@ const AI = {
     return v;
   },
   // Lista os modelos disponíveis para a chave (também serve para testar a chave)
+  // Pede uma resposta curtinha ao modelo: prova que a chave consegue gerar texto com ele
+  async ping(p, key, model) {
+    const res = p === "claude"
+      ? await fetch("https://api.anthropic.com/v1/messages", {method: "POST", headers: {
+          "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"},
+          body: JSON.stringify({model, max_tokens: 16, messages: [{role: "user", content: "Responda apenas: ok"}]})})
+      : await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method: "POST",
+          headers: {"content-type": "application/json", "x-goog-api-key": key},
+          body: JSON.stringify({contents: [{role: "user", parts: [{text: "Responda apenas: ok"}]}]})});
+    if (!res.ok) throw await this.httpError(res);
+  },
   async listModels(p, key) {
     if (p === "claude") {
       const res = await fetch("https://api.anthropic.com/v1/models?limit=100", {headers: {
@@ -625,7 +640,8 @@ const AI = {
     const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", {headers: {"x-goog-api-key": key}});
     if (!res.ok) throw await this.httpError(res);
     return ((await res.json()).models || [])
-      .filter(m => (m.supportedGenerationMethods || []).includes("generateContent") && /gemini/i.test(m.name))
+      .filter(m => (m.supportedGenerationMethods || []).includes("generateContent") && /gemini/i.test(m.name)
+        && !/tts|image|live|audio|embedding|robotics|computer-use/i.test(m.name))
       .map(m => m.name.replace(/^models\//, ""));
   },
 };
@@ -1105,14 +1121,24 @@ function openCfg() {
     const v = read(), p = v.provider, key = p === "claude" ? v.claKey : v.gemKey, msg = $("#cfgMsg");
     if (!key) { msg.style.color = "var(--bad)"; msg.textContent = "Cole a chave da IA escolhida acima."; return; }
     msg.style.color = "var(--muted)"; msg.textContent = "Testando…";
+    let model = p === "claude" ? v.claModel : v.gemModel, step = "a chave";
     try {
       const models = await AI.listModels(p, key);
-      const model = p === "claude" ? v.claModel : v.gemModel;
-      if (p === "gemini") { fillGemModels(models, model); $("#gemHint").textContent = `${models.length} modelos liberados para a sua chave.`; }
-      const has = models.includes(model);
-      msg.style.color = has ? "var(--good)" : "var(--warn)";
-      msg.textContent = has ? `Chave válida. O modelo ${model} está disponível.` : `Chave válida, mas o modelo ${model} não apareceu na lista. ${p === "gemini" ? "Escolha um da lista no campo Modelo." : "Escolha outro modelo."}`;
-    } catch (e) { msg.style.color = "var(--bad)"; msg.textContent = errCopy(e); }
+      if (p === "gemini") {
+        // modelo escolhido sumiu da lista (aposentado): troca por um Flash estável disponível
+        if (!models.includes(model)) {
+          const pick = models.filter(m => /flash/i.test(m) && !/lite|preview|exp/i.test(m)).sort((a, b) => b.localeCompare(a, "en", {numeric: true}))[0]
+            || models.find(m => /flash/i.test(m)) || models[0];
+          if (pick) model = pick;
+        }
+        fillGemModels(models, model); $("#gemHint").textContent = `${models.length} modelos liberados para a sua chave.`;
+      }
+      step = "o modelo " + model;
+      msg.textContent = `Chave aceita. Testando uma resposta de ${model}…`;
+      await AI.ping(p, key, model);
+      msg.style.color = "var(--good)";
+      msg.textContent = `Tudo certo: ${model} respondeu. Clique em Salvar.`;
+    } catch (e) { msg.style.color = "var(--bad)"; msg.textContent = `Falhou ao testar ${step}. ` + errCopy(e); }
   };
 }
 $("#btnCfg").onclick = openCfg;
