@@ -1,0 +1,10 @@
+{
+  "name": "Rede dos Amigos",
+  "short_name": "Amigos",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1fb",
+  "theme_color": "#7c3aed",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
