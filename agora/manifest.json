@@ -1,10 +1,10 @@
 {
-  "name": "Rede dos Amigos",
-  "short_name": "Amigos",
+  "name": "Ágora",
+  "short_name": "Ágora",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f1fb",
-  "theme_color": "#7c3aed",
+  "theme_color": "#6d28d9",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }
