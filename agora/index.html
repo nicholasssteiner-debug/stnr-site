@@ -398,7 +398,7 @@ h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy, limit, limitToLast, onSnapshot, serverTimestamp, Timestamp, writeBatch, arrayUnion, arrayRemove, deleteField, increment, Bytes } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy, limit, limitToLast, onSnapshot, serverTimestamp, Timestamp, writeBatch, arrayUnion, arrayRemove, deleteField, increment, Bytes, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /* ================= CONFIGURAÇÃO ================= */
 const FB = {
@@ -693,7 +693,7 @@ onAuthStateChanged(auth, async u => {
 });
 
 function pararTudo() {
-  S.unsubs.forEach(f => f()); S.unsubs = []; S.unsubMsgs?.(); S.unsubMsgs = null;
+  S.unsubs.forEach(f => f()); S.unsubs = []; S.unsubMsgs?.(); S.unsubMsgs = null; S.unsubCotas?.(); S.unsubCotas = null;
   Object.values(S.unsubComent).forEach(f => f()); S.unsubComent = {};
   clearInterval(S.relogio); clearInterval(S.presenca);
 }
@@ -893,12 +893,14 @@ function abrirConversa(id) {
       renderMsgs(minhaNova); if (S.aba === 'chat' && !document.hidden) marcarLido(id);
     }, erro);
     S.umaVez = false; S.surpresa = null; atualizarToggles();
+    S.unsubCotas?.(); S.cotas = [];
+    S.unsubCotas = onSnapshot(collection(db, 'conversas', id, 'ia'), s => { S.cotas = s.docs.map(d => ({ id: d.id, ...d.data() })); }, e => console.warn('cotas', e));
   }
   $('#v-chat').classList.add('aberta'); $('#conv-nenhuma').hidden = true; $('#conv-aberta').hidden = false;
   renderCabConversa(); renderConversas(); marcarLido(id);
   if (matchMedia('(min-width:701px)').matches) $('#m-texto').focus();
 }
-function fecharConversa() { S.unsubMsgs?.(); S.unsubMsgs = null; S.conv = null; $('#v-chat').classList.remove('aberta'); $('#conv-nenhuma').hidden = false; $('#conv-aberta').hidden = true; renderConversas(); }
+function fecharConversa() { S.unsubMsgs?.(); S.unsubMsgs = null; S.unsubCotas?.(); S.unsubCotas = null; S.cotas = []; S.conv = null; $('#v-chat').classList.remove('aberta'); $('#conv-nenhuma').hidden = false; $('#conv-aberta').hidden = true; renderConversas(); }
 function renderCabConversa() {
   const c = convAtual(); if (!c) return;
   const outros = c.membros.filter(m => m !== uid());
@@ -973,6 +975,53 @@ async function imagensParaIA(lista) {
 }
 const ehFoto = m => tipoMidia(m) === 'foto';
 /** últimas fotos da conversa (para quando a pessoa pergunta "o que é isso?" sobre uma imagem recém-enviada) */
+/* ---------- cota da galera: alguém empresta a própria chave para uma conversa, com limite mensal ---------- */
+// o mês é em UTC para bater com request.time das regras do Firestore
+const mesAtual = () => { const d = new Date(); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; };
+const restantes = ct => ct.limite - (ct.mes === mesAtual() ? ct.usados || 0 : 0);
+const cotaDe = prov => (S.cotas || []).filter(ct => ct.prov === prov && restantes(ct) > 0).sort((a, b) => restantes(b) - restantes(a))[0] || null;
+/** consome 1 pergunta da cota (o contador é protegido pelas regras do banco) e devolve a configuração dela */
+async function usarCota(c, idCota) {
+  const ref = doc(db, 'conversas', c.id, 'ia', idCota);
+  return runTransaction(db, async t => {
+    const s = await t.get(ref);
+    if (!s.exists()) throw new Error('Essa cota foi desligada por quem compartilhou.');
+    const d = s.data(); const mes = mesAtual(); const usados = d.mes === mes ? d.usados || 0 : 0;
+    if (usados >= d.limite) throw new Error(`A cota de ${primeiroNome(d.dono)} acabou este mês (${d.limite} perguntas).`);
+    t.update(ref, { usados: usados + 1, mes, ultimoUso: serverTimestamp(), ultimoPor: uid() });
+    return d;
+  });
+}
+function compartilharIA(c) {
+  const provs = Object.keys(IAS).filter(p => iaCfg(p).chave);
+  if (!provs.length) return toast('Configure uma chave em Galera → Minhas IAs primeiro');
+  modal(`<h3>🤝 Compartilhar minha IA nesta conversa</h3>
+    <div class="sub">Quem está aqui poderá perguntar usando a <b>sua</b> chave, até o limite do mês. A resposta aparece como “cota de ${esc(primeiroNome(uid()))}”.</div>
+    <div class="chips" style="margin:10px 0" id="ci-prov">${provs.map((p, i) => `<button class="chip ${i ? '' : 'ativo'}" data-p="${p}">${IAS[p].ico} ${IAS[p].nome}</button>`).join('')}</div>
+    <div class="linha" style="display:flex;gap:8px;align-items:center"><span style="white-space:nowrap">Modelo</span><select id="ci-modelo" class="campo"><option>Carregando…</option></select></div>
+    <div class="linha" style="display:flex;gap:8px;align-items:center;margin-top:8px"><span style="white-space:nowrap">Limite</span><select id="ci-limite" class="campo">${[10, 20, 30, 50, 100, 200].map(n => `<option value="${n}" ${n === 30 ? 'selected' : ''}>${n} perguntas por mês</option>`).join('')}</select></div>
+    <label style="display:flex;gap:8px;margin-top:8px;font-size:14px"><input type="checkbox" id="ci-web"> 🔎 Permitir pesquisa na web (deixa cada pergunta mais cara)</label>
+    <div class="dica" style="margin-top:10px">🔐 <b>Importante:</b> o Ágora não tem servidor próprio, então a chave chega ao aparelho de quem está nesta conversa. O contador não dá para burlar pelo app, mas alguém com conhecimento técnico conseguiria copiar a chave. Por isso: crie uma <b>chave separada só para o Ágora</b> e coloque um <b>limite de gasto</b> no console (Anthropic: Settings → Limits; Google: AI Studio → faturamento). Se precisar, é só apagar a chave lá.</div>
+    <div class="acoes-modal"><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn" id="ci-ok">Compartilhar</button></div>`);
+  let prov = provs[0];
+  const carregarModelos = async () => {
+    const sel = $('#ci-modelo'); const cfg = iaCfg(prov); sel.innerHTML = '<option>Carregando…</option>';
+    try {
+      const lista = await IAS[prov].listar(cfg.chave); const atual = cfg.modelo || IAS[prov].padrao(lista);
+      sel.innerHTML = lista.map(m => `<option value="${esc(m.id)}" ${m.id === atual ? 'selected' : ''}>${esc(m.nome)}</option>`).join('');
+    } catch (e) { sel.innerHTML = `<option value="${esc(cfg.modelo)}">${esc(cfg.modelo || 'padrão')}</option>`; toast(e.message); }
+  };
+  $('#ci-prov').onclick = e => { const b = e.target.closest('.chip'); if (!b) return; prov = b.dataset.p; $$('#ci-prov .chip').forEach(x => x.classList.toggle('ativo', x === b)); carregarModelos(); };
+  carregarModelos();
+  $('#ci-ok').onclick = async () => {
+    const limite = Number($('#ci-limite').value), modelo = $('#ci-modelo').value, web = $('#ci-web').checked;
+    try {
+      await setDoc(doc(db, 'conversas', c.id, 'ia', `${uid()}_${prov}`), { dono: uid(), prov, chave: iaCfg(prov).chave, modelo, limite, usados: 0, mes: mesAtual(), web, criadoEm: serverTimestamp() });
+      await enviarMsgSistema(`compartilhou o ${IAS[prov].nome} nesta conversa 🤝 (${limite} perguntas por mês)`);
+      fecharModal(); toast('Cota compartilhada!');
+    } catch (e) { erro(e); }
+  };
+}
 const fotosRecentes = () => S.msgs.filter(m => !m.sistema && !m.ia && !m.umaVez && !(m.abreEm && ms(m.abreEm) > Date.now()) && Date.now() - ms(m.criadoEm) < 30 * 60000).slice(-10).flatMap(m => (m.midia || []).filter(ehFoto)).slice(-4);
 const iaCfg = prov => lsGet(prov === 'gemini' ? 'gemini' : 'ia_' + prov, { chave: '', modelo: '', modo: 'api', web: true, contexto: true });
 const salvarIA = (prov, v) => lsSet(prov === 'gemini' ? 'gemini' : 'ia_' + prov, { ...iaCfg(prov), ...v });
@@ -1021,8 +1070,8 @@ async function acharModeloGemini(chave, evitar) {
   }
   return null;
 }
-async function chamarGemini(prompt, web, imgs = []) {
-  const cfg = iaCfg('gemini'); if (!cfg.chave) throw new Error('Configure sua chave do Gemini na aba Galera');
+async function chamarGemini(prompt, web, imgs = [], cfgX = null) {
+  const cfg = cfgX || iaCfg('gemini'); if (!cfg.chave) throw new Error('Configure sua chave do Gemini na aba Galera');
   let modelo = cfg.modelo || 'models/gemini-2.5-flash';
   const partes = [...imgs.map(i => ({ inline_data: { mime_type: i.tipo, data: i.b64 } })), { text: prompt }];
   const corpo = { systemInstruction: { parts: [{ text: SISTEMA('Gemini') }] }, contents: [{ role: 'user', parts: partes }] };
@@ -1033,7 +1082,7 @@ async function chamarGemini(prompt, web, imgs = []) {
   if (!r.ok && r.status === 429 && semCotaGratis(j)) {
     const alt = await acharModeloGemini(cfg.chave, modelo).catch(() => null);
     if (alt) {
-      salvarIA('gemini', { modelo: alt }); toast(`Troquei seu modelo do Gemini para ${nomeGem(alt)} (o anterior não tem cota grátis na sua chave)`, 6000);
+      if (!cfgX) salvarIA('gemini', { modelo: alt }); toast(`Troquei o modelo do Gemini para ${nomeGem(alt)} (o anterior não tem cota grátis na sua chave)`, 6000);
       modelo = alt; ({ r, j } = await gemPost(cfg.chave, modelo, corpo));
     }
   }
@@ -1072,8 +1121,8 @@ async function listarModelosClaude(chave) {
 const padraoClaude = lista => (lista.find(m => m.id === 'claude-opus-5-5') || lista[0])?.id || 'claude-opus-5-5';
 const CLAUDE_COM_FALLBACK = /^claude-(fable-5-1|opus-5-5|opus-5|sonnet-5-5)$/;
 const CLAUDE_COM_EFFORT = /^claude-(fable|opus|sonnet|haiku)-5|^claude-opus-4-[5-8]|^claude-sonnet-4-6/;
-async function chamarClaude(prompt, web, imgs = [], ferramentas = true) {
-  const cfg = iaCfg('claude'); if (!cfg.chave) throw new Error('Configure sua chave do Claude na aba Galera');
+async function chamarClaude(prompt, web, imgs = [], ferramentas = true, cfgX = null) {
+  const cfg = cfgX || iaCfg('claude'); if (!cfg.chave) throw new Error('Configure sua chave do Claude na aba Galera');
   const modelo = cfg.modelo || 'claude-opus-5-5';
   const { Anthropic, client } = await clienteClaude(cfg.chave);
   const base = { model: modelo, max_tokens: 16000, system: SISTEMA('Claude') };
@@ -1094,7 +1143,7 @@ async function chamarClaude(prompt, web, imgs = [], ferramentas = true) {
     }
   } catch (e) {
     // ferramenta não liberada na organização/modelo: tira primeiro a web, depois o código
-    if (ferramentas && e instanceof Anthropic.BadRequestError && !/credit balance/i.test(e.message)) return chamarClaude(prompt, false, imgs, web);
+    if (ferramentas && e instanceof Anthropic.BadRequestError && !/credit balance/i.test(e.message)) return chamarClaude(prompt, false, imgs, web, cfgX);
     throw erroClaude(Anthropic, e);
   }
   if (r.stop_reason === 'refusal') throw new Error('O Claude não quis responder essa pergunta.');
@@ -1113,7 +1162,7 @@ const IAS = {
     passos: `1. Abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> com a sua conta Google<br>2. Clique em <b>Create API key</b> e copie<br>3. Cole abaixo e toque em Salvar`,
     nota: 'Grátis, com limite diário. ⚠️ No plano grátis o Google pode usar as perguntas para treinar modelos — nada sigiloso do trabalho.',
     notaModelo: 'Modelos “Flash” são rápidos e entram no limite grátis; “Pro” pode exigir faturamento ativo na sua chave.',
-    listar: listarModelosGemini, padrao: padraoGemini, chamar: chamarGemini
+    listar: listarModelosGemini, padrao: padraoGemini, chamar: (p, w, i, cfgX) => chamarGemini(p, w, i, cfgX)
   },
   claude: {
     nome: 'Claude', ico: '✳️', cls: 'c', prefixo: /^@claude\b[:,]?\s*/i, ph: 'sk-ant-…', app: 'claude.ai',
@@ -1121,7 +1170,7 @@ const IAS = {
     passos: `1. Abra <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a> (entre com seu e-mail)<br>2. Em <b>Billing</b>, coloque créditos (a partir de US$ 5)<br>3. Clique em <b>Create Key</b>, copie, cole abaixo e toque em Salvar`,
     nota: 'Pago por uso, com créditos da sua conta (o plano Pro/Max do claude.ai não vale para a chave). Uma pergunta comum custa centavos. A API não usa suas perguntas para treinar modelos.',
     notaModelo: 'Opus é o mais capaz; Sonnet é mais barato; Haiku é o mais barato e rápido.',
-    listar: listarModelosClaude, padrao: padraoClaude, chamar: chamarClaude
+    listar: listarModelosClaude, padrao: padraoClaude, chamar: (p, w, i, cfgX) => chamarClaude(p, w, i, true, cfgX)
   }
 };
 const provDe = texto => Object.keys(IAS).find(p => IAS[p].prefixo.test(texto || ''));
@@ -1147,7 +1196,11 @@ function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false, imag
   // sem imagens explícitas: usa as fotos recentes da conversa (a pergunta costuma ser sobre elas)
   if (!imagens) imagens = fotosRecentes();
   if (jaPostada && cfg.modo === 'api' && cfg.chave) return responderViaAPI(c, prov, pergunta, cfg.contexto, cfg.web, imagens);
+  const cota = cotaDe(prov);
+  // @claude / @gemini sem chave própria: usa a cota da galera direto, se houver
+  if (jaPostada && !cfg.chave && cota) return responderViaAPI(c, prov, pergunta, cfg.contexto, cfg.web, imagens, cota.id);
   const P = IAS[prov]; const temChave = !!cfg.chave;
+  const modoIni = temChave && cfg.modo !== 'app' ? 'api' : cota && cfg.modo !== 'app' ? 'cota' : 'app';
   modal(`<h3>${P.ico} Perguntar ao ${P.nome}</h3>
     <div class="chips" style="margin-bottom:10px">${Object.entries(IAS).map(([k, x]) => `<button class="chip ${k === prov ? 'ativo' : ''}" data-acao="trocar-ia" data-prov="${k}">${x.ico} ${x.nome}</button>`).join('')}</div>
     <textarea id="ia-q" class="campo" rows="4" placeholder="Qual é a pergunta?">${esc(pergunta)}</textarea>
@@ -1155,8 +1208,9 @@ function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false, imag
     <div id="ia-imgs" class="anexos"></div>
     <label class="btn sec peq" style="display:inline-block;margin-top:6px;cursor:pointer">📷 Anexar imagem<input type="file" id="ia-arq" accept="image/*" multiple hidden></label>
     <div class="modo-gem">
-      <label><input type="radio" name="ia-modo" value="api" ${cfg.modo !== 'app' && temChave ? 'checked' : ''} ${temChave ? '' : 'disabled'}>⚡ <b>Resposta automática</b><div class="sub">Usa a sua chave. A resposta já aparece aqui.${temChave ? '' : '<br><a href="#" data-acao="ir-config-ia">Configurar chave →</a>'}</div></label>
-      <label><input type="radio" name="ia-modo" value="app" ${cfg.modo === 'app' || !temChave ? 'checked' : ''}>💎 <b>App do ${P.nome}</b><div class="sub">Abre o ${P.app} na sua conta (vale o seu plano). Você cola a resposta de volta.</div></label>
+      <label><input type="radio" name="ia-modo" value="api" ${modoIni === 'api' ? 'checked' : ''} ${temChave ? '' : 'disabled'}>⚡ <b>Resposta automática</b><div class="sub">Usa a sua chave. A resposta já aparece aqui.${temChave ? '' : '<br><a href="#" data-acao="ir-config-ia">Configurar chave →</a>'}</div></label>
+      ${cota ? `<label><input type="radio" name="ia-modo" value="cota" ${modoIni === 'cota' ? 'checked' : ''}>🤝 <b>Cota da galera</b><div class="sub">Por conta de ${esc(primeiroNome(cota.dono))} · restam ${restantes(cota)} de ${cota.limite} este mês${cota.web === false ? ' · sem pesquisa web' : ''}</div></label>` : ''}
+      <label><input type="radio" name="ia-modo" value="app" ${modoIni === 'app' ? 'checked' : ''}>💎 <b>App do ${P.nome}</b><div class="sub">Abre o ${P.app} na sua conta (vale o seu plano). Você cola a resposta de volta.</div></label>
     </div>
     <label style="display:flex;gap:8px;margin-top:10px;font-size:14px"><input type="checkbox" id="ia-ctx" ${cfg.contexto ? 'checked' : ''}> Mandar junto as últimas mensagens da conversa (contexto)</label>
     <label style="display:flex;gap:8px;margin-top:6px;font-size:14px"><input type="checkbox" id="ia-web" ${cfg.web ? 'checked' : ''}> 🔎 Pesquisar na web (resposta automática)</label>
@@ -1178,7 +1232,7 @@ function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false, imag
   $('#ia-ok').onclick = async () => {
     const q = $('#ia-q').value.trim(); if (!q) return toast('Escreva a pergunta');
     const modo = $('input[name="ia-modo"]:checked').value, ctx = $('#ia-ctx').checked, web = $('#ia-web').checked;
-    salvarIA(prov, { modo, contexto: ctx, web }); lsSet('ia_padrao', prov);
+    salvarIA(prov, { ...(modo !== 'cota' ? { modo } : {}), contexto: ctx, web }); lsSet('ia_padrao', prov);
     const escolhidas = imagens.filter((_, i) => !fora.has(i));
     fecharModal();
     let enviadas = [];
@@ -1188,10 +1242,10 @@ function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false, imag
       if (!jaPostada || enviadas.length) await postarMsg(c, { autor: uid(), texto: jaPostada ? '' : `${P.ico} @${prov} ${q}`, criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ...(enviadas.length ? { midia: enviadas } : {}), ...(c.timer ? { expiraEm: Timestamp.fromMillis(Date.now() + c.timer * 1000) } : {}) });
     } catch (e) { return erro(e); }
     const todas = [...escolhidas, ...enviadas];
-    if (modo === 'api') responderViaAPI(c, prov, q, ctx, web, todas); else responderViaApp(c, prov, q, ctx, todas.length);
+    if (modo === 'app') responderViaApp(c, prov, q, ctx, todas.length); else responderViaAPI(c, prov, q, ctx, web, todas, modo === 'cota' ? cota.id : null);
   };
 }
-async function responderViaAPI(c, prov, pergunta, ctx, web, imagens = []) {
+async function responderViaAPI(c, prov, pergunta, ctx, web, imagens = [], idCota = null) {
   const P = IAS[prov];
   const ind = document.createElement('div'); ind.className = 'pensando'; ind.textContent = `${P.ico} ${P.nome} está pensando`;
   $('#msgs').append(ind); rolarFim(true);
@@ -1200,8 +1254,10 @@ async function responderViaAPI(c, prov, pergunta, ctx, web, imagens = []) {
     const nota = imgs.length ? `(${imgs.length} imagem${imgs.length > 1 ? 'ns' : ''} da conversa anexada${imgs.length > 1 ? 's' : ''} — use se for relevante para a pergunta.)
 
 ` : '';
-    const r = await P.chamar(nota + montarPrompt(pergunta, ctx), web, imgs);
-    await postarMsg(c, msgIA(c, prov, r.texto, { modelo: r.modelo, fontes: r.fontes, via: 'api' }));
+    let cfgX = null; const extra = {};
+    if (idCota) { const ct = await usarCota(c, idCota); cfgX = { chave: ct.chave, modelo: ct.modelo }; web = web && ct.web === true; extra.cota = ct.dono; }
+    const r = await P.chamar(nota + montarPrompt(pergunta, ctx), web, imgs, cfgX);
+    await postarMsg(c, msgIA(c, prov, r.texto, { modelo: r.modelo, fontes: r.fontes, via: idCota ? 'cota' : 'api', ...extra }));
   } catch (e) { erro(e); } finally { ind.remove(); }
 }
 async function responderViaApp(c, prov, pergunta, ctx, nImgs = 0) {
@@ -1315,7 +1371,7 @@ function bolha(m, ant, c) {
     const reacIA = Object.values(m.reacoes || {}); const rtxt = [...new Set(reacIA)].join('') + (reacIA.length > 1 ? ' ' + reacIA.length : '');
     const tempoIA = m.expiraEm ? `<span class="tempo">⏱ <span data-ate="${ms(m.expiraEm)}">${falta(ms(m.expiraEm))}</span></span>` : '';
     const P = IAS[m.ia.prov || 'gemini'];
-    return `<div class="msg ia ${P.cls}"><div class="b"><div class="ia-cab"><b>${P.ico} ${P.nome}</b><span>· pedido por ${esc(primeiroNome(m.ia.por))}${m.ia.modelo ? ' · ' + esc(m.ia.modelo) : ''}</span></div>${md(m.texto)}${fontes ? `<div class="fontes">${fontes}</div>` : ''}</div>${rtxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${rtxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempoIA}<button class="mais" data-acao="copiar-msg" data-id="${m.id}" title="Copiar resposta">📋</button><button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button><button class="mais" data-acao="ia-msg" data-id="${m.id}" data-prov="${m.ia.prov || 'gemini'}" title="Continuar com a IA">${P.ico}</button>${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
+    return `<div class="msg ia ${P.cls}"><div class="b"><div class="ia-cab"><b>${P.ico} ${P.nome}</b><span>· pedido por ${esc(primeiroNome(m.ia.por))}${m.ia.cota && m.ia.cota !== m.ia.por ? ' · cota de ' + esc(primeiroNome(m.ia.cota)) : ''}${m.ia.modelo ? ' · ' + esc(m.ia.modelo) : ''}</span></div>${md(m.texto)}${fontes ? `<div class="fontes">${fontes}</div>` : ''}</div>${rtxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${rtxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempoIA}<button class="mais" data-acao="copiar-msg" data-id="${m.id}" title="Copiar resposta">📋</button><button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button><button class="mais" data-acao="ia-msg" data-id="${m.id}" data-prov="${m.ia.prov || 'gemini'}" title="Continuar com a IA">${P.ico}</button>${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
   }
   let conteudo;
   const fechadaAte = m.abreEm && ms(m.abreEm) > Date.now() ? ms(m.abreEm) : 0;
@@ -1365,10 +1421,18 @@ function menuConversa() {
   const fora = Object.keys(S.membros).filter(id => !c.membros.includes(id));
   modal(`<h3>${esc(tituloConv(c))}</h3>
     <div class="sub">Participantes</div><div class="sel-membros">${c.membros.map(id => `<label style="cursor:default">${avatar(id, 'p')} ${esc(nome(id))}${id === c.criador ? ' <span class="tag">criou</span>' : ''}</label>`).join('')}</div>
+    <div class="sub" style="margin-top:12px">🤝 IA da galera nesta conversa</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin:6px 0 10px">${(S.cotas || []).map(ct => `<div style="display:flex;gap:8px;align-items:center;font-size:14px"><span style="flex:1">${IAS[ct.prov]?.ico || '🤖'} ${IAS[ct.prov]?.nome || ct.prov} de <b>${esc(primeiroNome(ct.dono))}</b> · ${restantes(ct)}/${ct.limite} restantes este mês</span>${ct.dono === uid() || souAdmin() ? `<button class="btn fant peq" data-parar-cota="${esc(ct.id)}">Parar</button>` : ''}</div>`).join('') || '<span class="sub" style="font-size:13px">Ninguém compartilhou ainda.</span>'}
+      <button class="btn sec peq" id="mc-compartilhar" style="align-self:flex-start">🤝 Compartilhar minha IA aqui</button></div>
     ${fora.length ? `<div class="sub">Adicionar</div><div class="sel-membros" id="mc-add">${fora.map(id => `<label><input type="checkbox" value="${id}">${avatar(id, 'p')} ${esc(nome(id))}</label>`).join('')}</div><button class="btn sec peq" id="mc-add-ok">＋ Adicionar selecionados</button>` : ''}
     <div class="acoes-modal"><button class="btn perigo peq" id="mc-sair">Sair da conversa</button>${dono ? '<button class="btn perigo peq" id="mc-apagar">Apagar conversa</button>' : ''}<button class="btn" data-acao="fechar-modal">Fechar</button></div>`);
   $('#mc-add-ok')?.addEventListener('click', async () => { const sel = $$('#mc-add input:checked').map(i => i.value); if (!sel.length) return; try { await updateDoc(doc(db, 'conversas', c.id), { membros: arrayUnion(...sel) }); await enviarMsgSistema('adicionou ' + sel.map(primeiroNome).join(', ')); fecharModal(); } catch (e) { erro(e); } });
-  $('#mc-sair').onclick = async () => { if (!confirm('Sair desta conversa?')) return; try { await enviarMsgSistema('saiu da conversa'); await updateDoc(doc(db, 'conversas', c.id), { membros: arrayRemove(uid()) }); fecharModal(); fecharConversa(); } catch (e) { erro(e); } };
+  $('#mc-compartilhar').onclick = () => compartilharIA(c);
+  $$('[data-parar-cota]').forEach(b => b.onclick = async () => {
+    const ct = S.cotas.find(x => x.id === b.dataset.pararCota); if (!ct || !confirm('Parar de compartilhar esta IA?')) return;
+    try { await deleteDoc(doc(db, 'conversas', c.id, 'ia', ct.id)); await enviarMsgSistema(`parou de compartilhar o ${IAS[ct.prov]?.nome || 'assistente'}`); fecharModal(); } catch (e) { erro(e); }
+  });
+  $('#mc-sair').onclick = async () => { if (!confirm('Sair desta conversa?')) return; try { for (const ct of (S.cotas || []).filter(x => x.dono === uid())) await deleteDoc(doc(db, 'conversas', c.id, 'ia', ct.id)); await enviarMsgSistema('saiu da conversa'); await updateDoc(doc(db, 'conversas', c.id), { membros: arrayRemove(uid()) }); fecharModal(); fecharConversa(); } catch (e) { erro(e); } };
   $('#mc-apagar')?.addEventListener('click', async () => {
     if (!confirm('Apagar a conversa e todas as mensagens para todo mundo?')) return;
     try { const s = await getDocs(collection(db, 'conversas', c.id, 'msgs')); for (const d of s.docs) { await deleteDoc(d.ref); apagarArquivos((d.data().midia || []).filter(x => x.arq && d.data().autor === uid())); } await deleteDoc(doc(db, 'conversas', c.id)); fecharModal(); fecharConversa(); } catch (e) { erro(e); }
