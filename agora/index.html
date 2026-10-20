@@ -175,6 +175,10 @@ nav.abas button.ativa .ico{filter:none;opacity:1}
 .pensando{align-self:flex-start;font-size:13px;color:var(--sub);padding:6px 12px}
 .pensando::after{content:"…";animation:pts 1.2s infinite steps(3)}
 @keyframes pts{0%{content:"."}33%{content:".."}66%{content:"..."}}
+.btn-ia.g{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570)!important;color:#fff!important}
+.btn-ia.c{background:#d97757!important;color:#fff!important}
+.msg.ia.c .b{background-image:linear-gradient(var(--card),var(--card)),linear-gradient(135deg,#d97757,#e8a87c)}
+.msg.ia.c .ia-cab b{background:linear-gradient(90deg,#c15f3c,#d97757);-webkit-background-clip:text;background-clip:text}
 .btn-gemini{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570)!important;color:#fff!important}
 .modo-gem{display:flex;gap:8px;margin-top:10px}
 .modo-gem label{flex:1;border:1.5px solid var(--linha);border-radius:14px;padding:10px;cursor:pointer;font-size:14px}
@@ -323,8 +327,8 @@ h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--
           <div class="progresso" id="m-prog" hidden style="margin:0 10px"><div></div></div>
           <div class="entrada">
             <label class="ico-btn" title="Anexar">📎<input type="file" id="m-arq" multiple hidden></label>
-            <button class="ico-btn btn-gemini" data-acao="gemini" title="Perguntar ao Gemini (ou comece a mensagem com @gemini)">✨</button>
-            <textarea id="m-texto" class="campo" rows="1" placeholder="Mensagem · @gemini para perguntar à IA"></textarea>
+            <button class="ico-btn btn-gemini" data-acao="ia" title="Perguntar à IA (ou comece a mensagem com @gemini / @claude)">✨</button>
+            <textarea id="m-texto" class="campo" rows="1" placeholder="Mensagem · @gemini ou @claude para perguntar à IA"></textarea>
             <button class="ico-btn" id="m-enviar" style="background:var(--pri);color:var(--pri-txt)" title="Enviar">➤</button>
           </div>
           <div class="entrada opts" style="border:0;padding-top:0">
@@ -367,8 +371,8 @@ h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--
     <!-- GALERA -->
     <section id="v-galera" class="vista">
       <div class="cartao" id="meu-perfil"></div>
-      <h2 class="sec">✨ Meu Gemini</h2>
-      <div class="cartao" id="meu-gemini"></div>
+      <h2 class="sec">🤖 Minhas IAs</h2>
+      <div class="cartao" id="minhas-ias"></div>
       <h2 class="sec">Galera</h2>
       <div class="cartao" id="lista-membros"></div>
       <h2 class="sec">Placar do mês</h2>
@@ -739,7 +743,7 @@ function irPara(aba) {
   S.aba = aba; lsSet('aba', aba);
   $$('.vista').forEach(v => v.classList.toggle('ativa', v.id === 'v-' + aba));
   $$('nav.abas button').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba));
-  if (aba === 'galera') { renderGalera(); renderMeuGemini(); }
+  if (aba === 'galera') { renderGalera(); renderMinhasIAs(); }
   if (aba === 'album') renderAlbum();
   if (aba === 'chat' && S.conv) { marcarLido(S.conv); rolarFim(true); }
   scrollTo(0, 0);
@@ -936,124 +940,205 @@ async function enviarMsg() {
   if (S.surpresa) d.abreEm = Timestamp.fromMillis(S.surpresa);
   $('#m-texto').value = ''; S.anexos.m = []; desenharAnexos('m', '#m-anexos'); autoAltura();
   S.umaVez = false; S.surpresa = null; atualizarToggles();
-  const gem = /^@gemini\b/i.test(texto) && !d.umaVez && !d.abreEm;
+  const prov = !d.umaVez && !d.abreEm ? provDe(texto) : null;
   try {
     if (anexos.length) d.midia = await enviarVarios(anexos, temp ? 'temp' : 'u', '#m-prog');
     await postarMsg(c, d);
-    if (gem) perguntarGemini({ pergunta: texto.replace(/^@gemini\b[:,]?\s*/i, ''), jaPostada: true });
+    if (prov) perguntarIA({ prov, pergunta: texto.replace(IAS[prov].prefixo, ''), jaPostada: true });
   } catch (e) { erro(e); }
 }
 /** grava a mensagem e atualiza o resumo da conversa */
 async function postarMsg(c, d) {
-  const resumo = d.ia ? '✨ Gemini respondeu' : d.umaVez ? '👁 Visualização única' : d.abreEm ? '🎁 Mensagem surpresa' : c.timer ? '⏱ Mensagem temporária' : (d.texto || (d.midia?.length ? '📎 Anexo' : '')).slice(0, 80);
+  const resumo = d.ia ? `${IAS[d.ia.prov || 'gemini'].ico} ${IAS[d.ia.prov || 'gemini'].nome} respondeu` : d.umaVez ? '👁 Visualização única' : d.abreEm ? '🎁 Mensagem surpresa' : c.timer ? '⏱ Mensagem temporária' : (d.texto || (d.midia?.length ? '📎 Anexo' : '')).slice(0, 80);
   await addDoc(collection(db, 'conversas', c.id, 'msgs'), d);
   await updateDoc(doc(db, 'conversas', c.id), { ultimaMsg: { texto: resumo, autor: uid(), em: serverTimestamp() }, atualizadoEm: serverTimestamp() });
 }
 
-/* ================= GEMINI ================= */
-// A chave de cada pessoa fica só no navegador dela (localStorage). Nunca vai para o Firestore.
-const gemCfg = () => lsGet('gemini', { chave: '', modelo: '', modo: 'api', web: true, contexto: true });
-const salvarGem = v => lsSet('gemini', { ...gemCfg(), ...v });
-const API_GEM = 'https://generativelanguage.googleapis.com/v1beta';
-const nomeModelo = m => (m || '').replace(/^models\//, '');
+/* ================= ASSISTENTES (Gemini e Claude) ================= */
+// Cada pessoa usa a PRÓPRIA conta. Chaves ficam só no navegador dela (localStorage), nunca no Firestore.
+const SISTEMA = nome => `Você é o ${nome} participando de uma conversa de amigos no app Ágora. Responda em português do Brasil, de forma direta, correta e útil. Use markdown simples (negrito, listas, blocos de código). Se usar fontes da web, seja fiel a elas.`;
+const iaCfg = prov => lsGet(prov === 'gemini' ? 'gemini' : 'ia_' + prov, { chave: '', modelo: '', modo: 'api', web: true, contexto: true });
+const salvarIA = (prov, v) => lsSet(prov === 'gemini' ? 'gemini' : 'ia_' + prov, { ...iaCfg(prov), ...v });
+const iaPadrao = () => lsGet('ia_padrao', 'gemini');
 
-async function listarModelos(chave) {
+/* ---------- Gemini (API do Google AI Studio) ---------- */
+const API_GEM = 'https://generativelanguage.googleapis.com/v1beta';
+async function listarModelosGemini(chave) {
   const r = await fetch(`${API_GEM}/models?pageSize=200`, { headers: { 'x-goog-api-key': chave } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || `Chave recusada (${r.status})`);
-  return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/i.test(m.name) && !/image|tts|audio|live|embedding|robotics|computer/i.test(m.name));
+  return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/i.test(m.name) && !/image|tts|audio|live|embedding|robotics|computer/i.test(m.name))
+    .map(m => ({ id: m.name, nome: m.displayName || m.name.replace(/^models\//, '') }));
 }
-function escolherPadrao(modelos) {
+function padraoGemini(lista) {
   const ver = n => Number((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0);
-  const estaveis = modelos.filter(m => !/preview|exp|lite/i.test(m.name));
-  const flash = (estaveis.length ? estaveis : modelos).filter(m => /flash/i.test(m.name)).sort((a, b) => ver(b.name) - ver(a.name));
-  return (flash[0] || modelos[0])?.name || 'models/gemini-2.5-flash';
+  const estaveis = lista.filter(m => !/preview|exp|lite/i.test(m.id));
+  const flash = (estaveis.length ? estaveis : lista).filter(m => /flash/i.test(m.id)).sort((a, b) => ver(b.id) - ver(a.id));
+  return (flash[0] || lista[0])?.id || 'models/gemini-2.5-flash';
 }
-function montarPrompt(pergunta, comContexto) {
-  let p = pergunta.trim();
-  if (comContexto && S.conv) {
-    const hist = S.msgs.filter(m => !m.sistema && !m.umaVez && !(m.abreEm && ms(m.abreEm) > Date.now()) && m.texto).slice(-15)
-      .map(m => `${m.ia ? 'Gemini' : primeiroNome(m.autor)}: ${m.texto.slice(0, 800)}`).join('\n');
-    if (hist) p = `Contexto (últimas mensagens da conversa em grupo):\n${hist}\n\nPergunta de ${primeiroNome(uid())}: ${p}`;
-  }
-  return p;
-}
-async function chamarGeminiAPI(prompt, web) {
-  const cfg = gemCfg(); if (!cfg.chave) throw new Error('Configure sua chave do Gemini na aba Galera');
+async function chamarGemini(prompt, web) {
+  const cfg = iaCfg('gemini'); if (!cfg.chave) throw new Error('Configure sua chave do Gemini na aba Galera');
   const modelo = cfg.modelo || 'models/gemini-2.5-flash';
-  const corpo = {
-    systemInstruction: { parts: [{ text: 'Você é o Gemini participando de uma conversa de amigos no app Ágora. Responda em português do Brasil, de forma direta, correta e útil. Use markdown simples (negrito, listas, blocos de código). Se usar fontes da web, seja fiel a elas.' }] },
-    contents: [{ role: 'user', parts: [{ text: prompt }] }]
-  };
+  const corpo = { systemInstruction: { parts: [{ text: SISTEMA('Gemini') }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }] };
   if (web) corpo.tools = [{ google_search: {} }];
   const r = await fetch(`${API_GEM}/${modelo}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.chave }, body: JSON.stringify(corpo) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    if (web && r.status === 400) return chamarGeminiAPI(prompt, false);   // modelo sem pesquisa web: tenta sem
-    if (r.status === 429) throw new Error('Limite grátis do seu Gemini atingido por agora. Tente daqui a pouco ou use o modo "App do Gemini".');
+    if (web && r.status === 400) return chamarGemini(prompt, false);   // modelo sem pesquisa web: tenta sem
+    if (r.status === 429) throw new Error('Limite grátis do seu Gemini atingido por agora. Tente daqui a pouco ou use o modo "App".');
     throw new Error(j.error?.message || `Gemini respondeu com erro ${r.status}`);
   }
   const cand = j.candidates?.[0];
   const texto = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('').trim();
   if (!texto) throw new Error(cand?.finishReason === 'SAFETY' ? 'O Gemini se recusou a responder essa.' : 'O Gemini não devolveu resposta.');
   const fontes = [...new Map((cand.groundingMetadata?.groundingChunks || []).map(g => g.web).filter(Boolean).map(w => [w.uri, { titulo: (w.title || w.uri).slice(0, 80), url: w.uri }])).values()].slice(0, 6);
-  return { texto: texto.slice(0, 30000), fontes, modelo: nomeModelo(modelo) };
+  return { texto, fontes, modelo: modelo.replace(/^models\//, '') };
 }
-function msgIA(c, texto, extra) {
-  const d = { autor: uid(), texto, criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ia: { por: uid(), ...extra } };
+
+/* ---------- Claude (Claude API, SDK oficial no navegador) ---------- */
+let sdkAnthropic;
+async function clienteClaude(chave) {
+  sdkAnthropic ||= import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm');
+  const { default: Anthropic } = await sdkAnthropic;
+  // a chave é da própria pessoa e fica só no aparelho dela — por isso a chamada direta do navegador é aceitável aqui
+  return { Anthropic, client: new Anthropic({ apiKey: chave, dangerouslyAllowBrowser: true }) };
+}
+function erroClaude(Anthropic, e) {
+  if (e instanceof Anthropic.AuthenticationError) return new Error('Chave do Claude inválida ou revogada.');
+  if (e instanceof Anthropic.PermissionDeniedError) return new Error('Sua chave do Claude não tem permissão para isso.');
+  if (e instanceof Anthropic.RateLimitError) return new Error('Limite de uso da sua chave do Claude atingido. Tente daqui a pouco.');
+  if (e instanceof Anthropic.BadRequestError) return new Error(/credit balance/i.test(e.message) ? 'Sua conta da API do Claude está sem créditos (console da Anthropic → Billing).' : e.message);
+  if (e instanceof Anthropic.APIConnectionError) return new Error('Sem conexão com a Anthropic.');
+  return e;
+}
+async function listarModelosClaude(chave) {
+  const { Anthropic, client } = await clienteClaude(chave);
+  try {
+    const out = [];
+    for await (const m of client.models.list()) if (/^claude-/.test(m.id)) out.push({ id: m.id, nome: m.display_name || m.id });
+    return out;
+  } catch (e) { throw erroClaude(Anthropic, e); }
+}
+const padraoClaude = lista => (lista.find(m => m.id === 'claude-opus-5-5') || lista[0])?.id || 'claude-opus-5-5';
+const CLAUDE_COM_FALLBACK = /^claude-(fable-5-1|opus-5-5|opus-5|sonnet-5-5)$/;
+const CLAUDE_COM_EFFORT = /^claude-(fable|opus|sonnet|haiku)-5|^claude-opus-4-[5-8]|^claude-sonnet-4-6/;
+async function chamarClaude(prompt, web) {
+  const cfg = iaCfg('claude'); if (!cfg.chave) throw new Error('Configure sua chave do Claude na aba Galera');
+  const modelo = cfg.modelo || 'claude-opus-5-5';
+  const { Anthropic, client } = await clienteClaude(cfg.chave);
+  const base = { model: modelo, max_tokens: 16000, system: SISTEMA('Claude') };
+  if (CLAUDE_COM_EFFORT.test(modelo)) base.output_config = { effort: 'medium' };
+  // se o modelo recusar por política de segurança, o próprio servidor tenta de novo em outro modelo
+  if (CLAUDE_COM_FALLBACK.test(modelo)) Object.assign(base, { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
+  if (web) base.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }];
+  const msgs = [{ role: 'user', content: prompt }];
+  let r;
+  try {
+    for (let i = 0; i < 4; i++) {
+      r = await client.beta.messages.create({ ...base, messages: msgs });
+      if (r.stop_reason !== 'pause_turn') break;            // pesquisa longa: continua de onde parou
+      msgs.push({ role: 'assistant', content: r.content });
+    }
+  } catch (e) {
+    if (web && e instanceof Anthropic.BadRequestError && !/credit balance/i.test(e.message)) return chamarClaude(prompt, false);  // pesquisa web desligada na organização
+    throw erroClaude(Anthropic, e);
+  }
+  if (r.stop_reason === 'refusal') throw new Error('O Claude não quis responder essa pergunta.');
+  const blocos = r.content.filter(b => b.type === 'text');
+  const texto = blocos.map(b => b.text).join('').trim();
+  if (!texto) throw new Error('O Claude não devolveu resposta.');
+  const fontes = [...new Map(blocos.flatMap(b => b.citations || []).filter(c => c.url).map(c => [c.url, { titulo: (c.title || c.url).slice(0, 80), url: c.url }])).values()].slice(0, 6);
+  return { texto, fontes, modelo: r.model || modelo };
+}
+
+/* ---------- descrição de cada assistente ---------- */
+const IAS = {
+  gemini: {
+    nome: 'Gemini', ico: '✨', cls: 'g', prefixo: /^@gemini\b[:,]?\s*/i, ph: 'AIza…', app: 'gemini.google.com',
+    appUrl: q => `https://gemini.google.com/app?q=${encodeURIComponent(q)}`,
+    passos: `1. Abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> com a sua conta Google<br>2. Clique em <b>Create API key</b> e copie<br>3. Cole abaixo e toque em Salvar`,
+    nota: 'Grátis, com limite diário. ⚠️ No plano grátis o Google pode usar as perguntas para treinar modelos — nada sigiloso do trabalho.',
+    notaModelo: 'Modelos “Flash” são rápidos e entram no limite grátis; “Pro” pode exigir faturamento ativo na sua chave.',
+    listar: listarModelosGemini, padrao: padraoGemini, chamar: chamarGemini
+  },
+  claude: {
+    nome: 'Claude', ico: '✳️', cls: 'c', prefixo: /^@claude\b[:,]?\s*/i, ph: 'sk-ant-…', app: 'claude.ai',
+    appUrl: q => `https://claude.ai/new?q=${encodeURIComponent(q)}`,
+    passos: `1. Abra <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a> (entre com seu e-mail)<br>2. Em <b>Billing</b>, coloque créditos (a partir de US$ 5)<br>3. Clique em <b>Create Key</b>, copie, cole abaixo e toque em Salvar`,
+    nota: 'Pago por uso, com créditos da sua conta (o plano Pro/Max do claude.ai não vale para a chave). Uma pergunta comum custa centavos. A API não usa suas perguntas para treinar modelos.',
+    notaModelo: 'Opus é o mais capaz; Sonnet é mais barato; Haiku é o mais barato e rápido.',
+    listar: listarModelosClaude, padrao: padraoClaude, chamar: chamarClaude
+  }
+};
+const provDe = texto => Object.keys(IAS).find(p => IAS[p].prefixo.test(texto || ''));
+
+function montarPrompt(pergunta, comContexto) {
+  let p = pergunta.trim();
+  if (comContexto && S.conv) {
+    const hist = S.msgs.filter(m => !m.sistema && !m.umaVez && !(m.abreEm && ms(m.abreEm) > Date.now()) && m.texto).slice(-15)
+      .map(m => `${m.ia ? IAS[m.ia.prov || 'gemini'].nome : primeiroNome(m.autor)}: ${m.texto.slice(0, 800)}`).join('\n');
+    if (hist) p = `Contexto (últimas mensagens da conversa em grupo):\n${hist}\n\nPergunta de ${primeiroNome(uid())}: ${p}`;
+  }
+  return p;
+}
+function msgIA(c, prov, texto, extra) {
+  const d = { autor: uid(), texto: texto.slice(0, 30000), criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ia: { prov, por: uid(), ...extra } };
   if (c.timer) d.expiraEm = Timestamp.fromMillis(Date.now() + c.timer * 1000);
   return d;
 }
-/** Abre o painel do atalho. pergunta: texto inicial; jaPostada: a pergunta já foi enviada na conversa (via @gemini) */
-function perguntarGemini({ pergunta = '', jaPostada = false } = {}) {
+/** Painel do atalho. jaPostada: a pergunta já foi enviada na conversa (via @gemini / @claude) */
+function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false } = {}) {
   const c = convAtual(); if (!c) return;
-  const cfg = gemCfg();
-  if (jaPostada && cfg.modo === 'api' && cfg.chave) return responderViaAPI(c, pergunta, cfg.contexto, cfg.web);
-  const temChave = !!cfg.chave;
-  modal(`<h3>✨ Perguntar ao Gemini</h3>
-    <textarea id="gm-q" class="campo" rows="4" placeholder="Qual é a pergunta?">${esc(pergunta)}</textarea>
+  const cfg = iaCfg(prov);
+  if (jaPostada && cfg.modo === 'api' && cfg.chave) return responderViaAPI(c, prov, pergunta, cfg.contexto, cfg.web);
+  const P = IAS[prov]; const temChave = !!cfg.chave;
+  modal(`<h3>${P.ico} Perguntar ao ${P.nome}</h3>
+    <div class="chips" style="margin-bottom:10px">${Object.entries(IAS).map(([k, x]) => `<button class="chip ${k === prov ? 'ativo' : ''}" data-acao="trocar-ia" data-prov="${k}">${x.ico} ${x.nome}</button>`).join('')}</div>
+    <textarea id="ia-q" class="campo" rows="4" placeholder="Qual é a pergunta?">${esc(pergunta)}</textarea>
     <div class="modo-gem">
-      <label><input type="radio" name="gm-modo" value="api" ${cfg.modo !== 'app' ? 'checked' : ''} ${temChave ? '' : 'disabled'}>⚡ <b>Resposta automática</b><div class="sub">Usa a sua chave. O app já posta a resposta aqui.${temChave ? '' : '<br><a href="#" data-acao="ir-config-gemini">Configurar chave →</a>'}</div></label>
-      <label><input type="radio" name="gm-modo" value="app" ${cfg.modo === 'app' || !temChave ? 'checked' : ''}>💎 <b>App do Gemini</b><div class="sub">Abre na sua conta (vale o plano Pro). Você cola a resposta de volta.</div></label>
+      <label><input type="radio" name="ia-modo" value="api" ${cfg.modo !== 'app' && temChave ? 'checked' : ''} ${temChave ? '' : 'disabled'}>⚡ <b>Resposta automática</b><div class="sub">Usa a sua chave. A resposta já aparece aqui.${temChave ? '' : '<br><a href="#" data-acao="ir-config-ia">Configurar chave →</a>'}</div></label>
+      <label><input type="radio" name="ia-modo" value="app" ${cfg.modo === 'app' || !temChave ? 'checked' : ''}>💎 <b>App do ${P.nome}</b><div class="sub">Abre o ${P.app} na sua conta (vale o seu plano). Você cola a resposta de volta.</div></label>
     </div>
-    <label style="display:flex;gap:8px;margin-top:10px;font-size:14px"><input type="checkbox" id="gm-ctx" ${cfg.contexto ? 'checked' : ''}> Mandar junto as últimas mensagens da conversa (contexto)</label>
-    <label style="display:flex;gap:8px;margin-top:6px;font-size:14px"><input type="checkbox" id="gm-web" ${cfg.web ? 'checked' : ''}> 🔎 Pesquisar na web (resposta automática)</label>
-    <div class="dica" style="margin-top:10px">⚠️ No plano grátis da API o Google pode usar as perguntas para treinar modelos. Não mande dados sigilosos do trabalho (nomes, CPFs, valores de clientes).</div>
-    <div class="acoes-modal"><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn btn-gemini" id="gm-ok">Perguntar</button></div>`);
-  $('#gm-q').focus();
-  $('#gm-ok').onclick = async () => {
-    const q = $('#gm-q').value.trim(); if (!q) return toast('Escreva a pergunta');
-    const modo = $('input[name="gm-modo"]:checked').value, ctx = $('#gm-ctx').checked, web = $('#gm-web').checked;
-    salvarGem({ modo, contexto: ctx, web });
+    <label style="display:flex;gap:8px;margin-top:10px;font-size:14px"><input type="checkbox" id="ia-ctx" ${cfg.contexto ? 'checked' : ''}> Mandar junto as últimas mensagens da conversa (contexto)</label>
+    <label style="display:flex;gap:8px;margin-top:6px;font-size:14px"><input type="checkbox" id="ia-web" ${cfg.web ? 'checked' : ''}> 🔎 Pesquisar na web (resposta automática)</label>
+    <div class="dica" style="margin-top:10px">⚠️ Não mande dados sigilosos do trabalho (nomes, CPFs, valores de clientes) para nenhuma IA.</div>
+    <div class="acoes-modal"><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn btn-ia ${P.cls}" id="ia-ok">Perguntar</button></div>`);
+  $('#ia-q').focus();
+  $$('[data-acao="trocar-ia"]').forEach(b => b.onclick = ev => { ev.stopPropagation(); lsSet('ia_padrao', b.dataset.prov); perguntarIA({ prov: b.dataset.prov, pergunta: $('#ia-q').value, jaPostada }); });
+  $('#ia-ok').onclick = async () => {
+    const q = $('#ia-q').value.trim(); if (!q) return toast('Escreva a pergunta');
+    const modo = $('input[name="ia-modo"]:checked').value, ctx = $('#ia-ctx').checked, web = $('#ia-web').checked;
+    salvarIA(prov, { modo, contexto: ctx, web }); lsSet('ia_padrao', prov);
     fecharModal();
-    try { if (!jaPostada) await postarMsg(c, { autor: uid(), texto: `✨ @gemini ${q}`, criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ...(c.timer ? { expiraEm: Timestamp.fromMillis(Date.now() + c.timer * 1000) } : {}) }); } catch (e) { return erro(e); }
-    if (modo === 'api') responderViaAPI(c, q, ctx, web); else responderViaApp(c, q, ctx);
+    try { if (!jaPostada) await postarMsg(c, { autor: uid(), texto: `${P.ico} @${prov} ${q}`, criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ...(c.timer ? { expiraEm: Timestamp.fromMillis(Date.now() + c.timer * 1000) } : {}) }); } catch (e) { return erro(e); }
+    if (modo === 'api') responderViaAPI(c, prov, q, ctx, web); else responderViaApp(c, prov, q, ctx);
   };
 }
-async function responderViaAPI(c, pergunta, ctx, web) {
-  const ind = document.createElement('div'); ind.className = 'pensando'; ind.textContent = '✨ Gemini está pensando';
+async function responderViaAPI(c, prov, pergunta, ctx, web) {
+  const P = IAS[prov];
+  const ind = document.createElement('div'); ind.className = 'pensando'; ind.textContent = `${P.ico} ${P.nome} está pensando`;
   $('#msgs').append(ind); rolarFim(true);
   try {
-    const r = await chamarGeminiAPI(montarPrompt(pergunta, ctx), web);
-    await postarMsg(c, msgIA(c, r.texto, { modelo: r.modelo, fontes: r.fontes, via: 'api' }));
+    const r = await P.chamar(montarPrompt(pergunta, ctx), web);
+    await postarMsg(c, msgIA(c, prov, r.texto, { modelo: r.modelo, fontes: r.fontes, via: 'api' }));
   } catch (e) { erro(e); } finally { ind.remove(); }
 }
-async function responderViaApp(c, pergunta, ctx) {
-  const prompt = montarPrompt(pergunta, ctx);
+async function responderViaApp(c, prov, pergunta, ctx) {
+  const P = IAS[prov]; const prompt = montarPrompt(pergunta, ctx);
   try { await navigator.clipboard.writeText(prompt); } catch {}
-  window.open(`https://gemini.google.com/app?q=${encodeURIComponent(prompt.slice(0, 1800))}`, '_blank', 'noopener');
-  modal(`<h3>💎 Resposta do app Gemini</h3>
-    <div class="sub">Abri o Gemini numa nova aba com a pergunta (ela também foi copiada — se não aparecer lá, é só colar). Quando ele responder, toque em <b>Copiar</b> embaixo da resposta e volte aqui.</div>
-    <textarea id="gm-resp" class="campo" rows="7" style="margin-top:10px" placeholder="Cole aqui a resposta do Gemini"></textarea>
-    <div class="acoes-modal"><button class="btn sec" id="gm-colar">📋 Colar</button><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn btn-gemini" id="gm-env">Enviar na conversa</button></div>`);
-  const colar = async () => { try { const t = await navigator.clipboard.readText(); if (t && t.trim() !== prompt.trim()) $('#gm-resp').value = t; } catch { toast('Cole com Ctrl+V / segurar e colar'); } };
-  $('#gm-colar').onclick = colar;
-  const aoVoltar = () => { if (!document.hidden && $('#gm-resp') && !$('#gm-resp').value) colar(); };
+  window.open(P.appUrl(prompt.slice(0, 1800)), '_blank', 'noopener');
+  modal(`<h3>💎 Resposta do ${P.nome}</h3>
+    <div class="sub">Abri o ${P.app} numa nova aba com a pergunta (ela também foi copiada — se não aparecer lá, é só colar). Quando ele responder, toque em <b>Copiar</b> embaixo da resposta e volte aqui.</div>
+    <textarea id="ia-resp" class="campo" rows="7" style="margin-top:10px" placeholder="Cole aqui a resposta do ${P.nome}"></textarea>
+    <div class="acoes-modal"><button class="btn sec" id="ia-colar">📋 Colar</button><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn btn-ia ${P.cls}" id="ia-env">Enviar na conversa</button></div>`);
+  const colar = async () => { try { const t = await navigator.clipboard.readText(); if (t && t.trim() !== prompt.trim()) $('#ia-resp').value = t; } catch { toast('Cole com Ctrl+V / segurar e colar'); } };
+  $('#ia-colar').onclick = colar;
+  const aoVoltar = () => { if (!document.hidden && $('#ia-resp') && !$('#ia-resp').value) colar(); };
   document.addEventListener('visibilitychange', aoVoltar);
   aoFecharModal = () => document.removeEventListener('visibilitychange', aoVoltar);
-  $('#gm-env').onclick = async () => {
-    const t = $('#gm-resp').value.trim(); if (!t) return toast('Cole a resposta primeiro');
-    try { await postarMsg(c, msgIA(c, t.slice(0, 30000), { modelo: 'app Gemini', via: 'app' })); fecharModal(); } catch (e) { erro(e); }
+  $('#ia-env').onclick = async () => {
+    const t = $('#ia-resp').value.trim(); if (!t) return toast('Cole a resposta primeiro');
+    try { await postarMsg(c, msgIA(c, prov, t, { modelo: `app ${P.nome}`, via: 'app' })); fecharModal(); } catch (e) { erro(e); }
   };
 }
 /** markdown simples e seguro (escapa tudo antes) */
@@ -1078,35 +1163,40 @@ function md(s) {
   fechar();
   return `<div class="md">${out.replace(/\u0000(\d+)\u0000/g, (_, i) => blocos[i])}</div>`;
 }
-function renderMeuGemini() {
-  const el = $('#meu-gemini'); if (!el) return; const cfg = gemCfg();
-  el.innerHTML = `<div class="sub">Cada pessoa usa a <b>própria conta</b> do Google. No chat, toque em <b>✨</b> ou comece a mensagem com <b>@gemini</b>.</div>
+/* ---------- configuração (aba Galera) ---------- */
+function renderMinhasIAs() {
+  const el = $('#minhas-ias'); if (!el) return;
+  el.innerHTML = `<div class="sub">Cada pessoa usa a <b>própria conta</b>. No chat, toque em <b>✨</b> ou comece a mensagem com <b>@gemini</b> ou <b>@claude</b>.</div>
+    <div class="linha" style="display:flex;gap:8px;align-items:center;margin-top:10px"><span class="sub" style="white-space:nowrap">Botão ✨ abre:</span><select id="ia-padrao" class="campo" style="width:auto">${Object.entries(IAS).map(([k, x]) => `<option value="${k}" ${iaPadrao() === k ? 'selected' : ''}>${x.ico} ${x.nome}</option>`).join('')}</select></div>
+    ${Object.keys(IAS).map(p => `<div id="ia-cfg-${p}" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--linha)"></div>`).join('')}`;
+  $('#ia-padrao').onchange = e => { lsSet('ia_padrao', e.target.value); toast(`Botão ✨ abre o ${IAS[e.target.value].nome}`); };
+  Object.keys(IAS).forEach(renderCfgIA);
+}
+function renderCfgIA(prov) {
+  const el = $('#ia-cfg-' + prov); if (!el) return; const P = IAS[prov]; const cfg = iaCfg(prov);
+  el.innerHTML = `<b>${P.ico} ${P.nome}</b>
     <div class="modo-gem">
-      <label><input type="radio" name="cfg-modo" value="api" ${cfg.modo !== 'app' ? 'checked' : ''}>⚡ <b>Resposta automática</b><div class="sub">Chave grátis da API, criada na sua conta. A resposta aparece sozinha na conversa.</div></label>
-      <label><input type="radio" name="cfg-modo" value="app" ${cfg.modo === 'app' ? 'checked' : ''}>💎 <b>App do Gemini</b><div class="sub">Abre o gemini.google.com logado em você — usa seu plano (Pro, se tiver).</div></label>
+      <label><input type="radio" name="cfg-modo-${prov}" value="api" ${cfg.modo !== 'app' ? 'checked' : ''}>⚡ <b>Resposta automática</b><div class="sub">Com a sua chave da API. A resposta aparece sozinha na conversa.</div></label>
+      <label><input type="radio" name="cfg-modo-${prov}" value="app" ${cfg.modo === 'app' ? 'checked' : ''}>💎 <b>App do ${P.nome}</b><div class="sub">Abre o ${P.app} logado em você — usa seu plano (Pro, se tiver).</div></label>
     </div>
-    <div id="cfg-api" style="margin-top:12px" ${cfg.modo === 'app' ? 'hidden' : ''}>
-      <div class="dica"><b>Como pegar sua chave (1 min, grátis):</b><br>1. Abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> com a sua conta Google<br>2. Clique em <b>Create API key</b> e copie<br>3. Cole abaixo e toque em Salvar<br><span class="sub">A chave fica só neste aparelho; ninguém da Ágora vê. Em outro celular/PC, cole de novo.</span></div>
-      <div style="display:flex;gap:8px;margin-top:8px"><input id="cfg-chave" class="campo" type="password" placeholder="Cole sua chave aqui (AIza…)" value="${esc(cfg.chave)}" autocomplete="off"><button class="btn" id="cfg-salvar">Salvar</button></div>
-      <div id="cfg-modelos" style="margin-top:8px"></div>
-    </div>
-    ${cfg.chave ? '<div class="acoes-modal"><button class="btn fant peq" id="cfg-apagar">Remover minha chave deste aparelho</button></div>' : ''}`;
-  $$('input[name="cfg-modo"]', el).forEach(r => r.onchange = () => { salvarGem({ modo: r.value }); $('#cfg-api').hidden = r.value === 'app'; toast(r.value === 'app' ? 'Vai abrir o app do Gemini' : 'Resposta automática'); });
-  const mostrarModelos = async chave => {
-    const alvo = $('#cfg-modelos'); alvo.innerHTML = '<span class="sub">Verificando chave…</span>';
+    <div id="cfg-api-${prov}" style="margin-top:12px" ${cfg.modo === 'app' ? 'hidden' : ''}>
+      <div class="dica"><b>Como pegar sua chave:</b><br>${P.passos}<br><span class="sub">${P.nota}<br>A chave fica só neste aparelho; ninguém da Ágora vê. Em outro celular/PC, cole de novo.</span></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><input id="cfg-chave-${prov}" class="campo" type="password" placeholder="Cole sua chave aqui (${P.ph})" value="${esc(cfg.chave)}" autocomplete="off"><button class="btn" id="cfg-salvar-${prov}">Salvar</button></div>
+      <div id="cfg-modelos-${prov}" style="margin-top:8px"></div>
+      ${cfg.chave ? `<button class="btn fant peq" id="cfg-apagar-${prov}" style="margin-top:6px">Remover minha chave deste aparelho</button>` : ''}
+    </div>`;
+  $$(`input[name="cfg-modo-${prov}"]`, el).forEach(r => r.onchange = () => { salvarIA(prov, { modo: r.value }); $('#cfg-api-' + prov).hidden = r.value === 'app'; toast(r.value === 'app' ? `Vai abrir o app do ${P.nome}` : 'Resposta automática'); });
+  $('#cfg-salvar-' + prov).onclick = () => { const k = $('#cfg-chave-' + prov).value.trim(); if (!k) return toast('Cole a chave'); salvarIA(prov, { chave: k, modelo: '', modo: 'api' }); renderCfgIA(prov); };
+  $('#cfg-apagar-' + prov)?.addEventListener('click', () => { salvarIA(prov, { chave: '', modelo: '' }); renderCfgIA(prov); toast('Chave removida deste aparelho'); });
+  if (cfg.chave) (async () => {
+    const alvo = $('#cfg-modelos-' + prov); alvo.innerHTML = '<span class="sub">Verificando chave…</span>';
     try {
-      const ms_ = await listarModelos(chave); const atual = gemCfg().modelo || escolherPadrao(ms_);
-      if (!gemCfg().modelo) salvarGem({ modelo: atual });
-      alvo.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><span class="sub" style="white-space:nowrap">✅ Modelo</span><select id="cfg-modelo" class="campo">${ms_.map(m => `<option value="${esc(m.name)}" ${m.name === atual ? 'selected' : ''}>${esc(m.displayName || nomeModelo(m.name))}</option>`).join('')}</select></div><div class="sub" style="margin-top:4px">Modelos “Flash” são rápidos e entram no limite grátis; “Pro” pode exigir faturamento ativo na sua chave.</div>`;
-      $('#cfg-modelo').onchange = e => { salvarGem({ modelo: e.target.value }); toast('Modelo salvo'); };
+      const lista = await P.listar(cfg.chave); const atual = iaCfg(prov).modelo || P.padrao(lista);
+      if (!iaCfg(prov).modelo) salvarIA(prov, { modelo: atual });
+      alvo.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><span class="sub" style="white-space:nowrap">✅ Modelo</span><select id="cfg-modelo-${prov}" class="campo">${lista.map(m => `<option value="${esc(m.id)}" ${m.id === atual ? 'selected' : ''}>${esc(m.nome)}</option>`).join('')}</select></div><div class="sub" style="margin-top:4px">${P.notaModelo}</div>`;
+      $('#cfg-modelo-' + prov).onchange = e => { salvarIA(prov, { modelo: e.target.value }); toast('Modelo salvo'); };
     } catch (e) { alvo.innerHTML = `<span style="color:var(--perigo);font-size:14px">❌ ${esc(e.message)}</span>`; }
-  };
-  $('#cfg-salvar').onclick = async () => {
-    const k = $('#cfg-chave').value.trim(); if (!k) return toast('Cole a chave');
-    salvarGem({ chave: k, modelo: '', modo: 'api' }); renderMeuGemini();
-  };
-  $('#cfg-apagar')?.addEventListener('click', () => { salvarGem({ chave: '', modelo: '' }); renderMeuGemini(); toast('Chave removida deste aparelho'); });
-  if (cfg.chave) mostrarModelos(cfg.chave);
+  })();
 }
 $('#m-enviar').onclick = enviarMsg;
 $('#m-texto').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); enviarMsg(); } });
@@ -1134,7 +1224,8 @@ function bolha(m, ant, c) {
     const fontes = (m.ia.fontes || []).map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" title="${esc(f.titulo)}">🔗 ${esc(f.titulo)}</a>`).join('');
     const reacIA = Object.values(m.reacoes || {}); const rtxt = [...new Set(reacIA)].join('') + (reacIA.length > 1 ? ' ' + reacIA.length : '');
     const tempoIA = m.expiraEm ? `<span class="tempo">⏱ <span data-ate="${ms(m.expiraEm)}">${falta(ms(m.expiraEm))}</span></span>` : '';
-    return `<div class="msg ia"><div class="b"><div class="ia-cab"><b>✨ Gemini</b><span>· pedido por ${esc(primeiroNome(m.ia.por))}${m.ia.modelo ? ' · ' + esc(m.ia.modelo) : ''}</span></div>${md(m.texto)}${fontes ? `<div class="fontes">${fontes}</div>` : ''}</div>${rtxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${rtxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempoIA}<button class="mais" data-acao="copiar-msg" data-id="${m.id}" title="Copiar resposta">📋</button><button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button><button class="mais" data-acao="gemini-msg" data-id="${m.id}" title="Continuar com o Gemini">✨</button>${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
+    const P = IAS[m.ia.prov || 'gemini'];
+    return `<div class="msg ia ${P.cls}"><div class="b"><div class="ia-cab"><b>${P.ico} ${P.nome}</b><span>· pedido por ${esc(primeiroNome(m.ia.por))}${m.ia.modelo ? ' · ' + esc(m.ia.modelo) : ''}</span></div>${md(m.texto)}${fontes ? `<div class="fontes">${fontes}</div>` : ''}</div>${rtxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${rtxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempoIA}<button class="mais" data-acao="copiar-msg" data-id="${m.id}" title="Copiar resposta">📋</button><button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button><button class="mais" data-acao="ia-msg" data-id="${m.id}" data-prov="${m.ia.prov || 'gemini'}" title="Continuar com a IA">${P.ico}</button>${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
   }
   let conteudo;
   const fechadaAte = m.abreEm && ms(m.abreEm) > Date.now() ? ms(m.abreEm) : 0;
@@ -1144,7 +1235,7 @@ function bolha(m, ant, c) {
   const reac = Object.values(m.reacoes || {}); const reacTxt = [...new Set(reac)].join('') + (reac.length > 1 ? ' ' + reac.length : '');
   const tempo = m.expiraEm ? `<span class="tempo">⏱ <span data-ate="${ms(m.expiraEm)}">${falta(ms(m.expiraEm))}</span></span>` : '';
   const mostrarNome = grupo && !eu && ant?.autor !== m.autor;
-  return `<div class="msg ${eu ? 'eu' : ''}">${mostrarNome ? `<span class="de">${esc(primeiroNome(m.autor))}</span>` : ''}<div class="b">${conteudo}</div>${reacTxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${reacTxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempo}<button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button>${!fechadaAte && !m.umaVez && m.texto ? `<button class="mais" data-acao="gemini-msg" data-id="${m.id}" title="Perguntar ao Gemini sobre esta mensagem">✨</button>` : ''}${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
+  return `<div class="msg ${eu ? 'eu' : ''}">${mostrarNome ? `<span class="de">${esc(primeiroNome(m.autor))}</span>` : ''}<div class="b">${conteudo}</div>${reacTxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${reacTxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempo}<button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button>${!fechadaAte && !m.umaVez && m.texto ? `<button class="mais" data-acao="ia-msg" data-id="${m.id}" title="Perguntar à IA sobre esta mensagem">✨</button>` : ''}${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
 }
 async function apagarMsg(m) {
   if (S.apagando.has(m.id)) return; S.apagando.add(m.id);
@@ -1359,10 +1450,10 @@ document.addEventListener('click', async e => {
       case 'fechar-conversa': fecharConversa(); break;
       case 'menu-conversa': menuConversa(); break;
       case 'ver-umavez': verUmaVez(id); break;
-      case 'gemini': { const t = $('#m-texto').value.trim(); $('#m-texto').value = ''; autoAltura(); perguntarGemini({ pergunta: t.replace(/^@gemini\b[:,]?\s*/i, '') }); break; }
-      case 'gemini-msg': { const m = S.msgs.find(x => x.id === id); if (!m) break; perguntarGemini({ pergunta: m.ia ? 'Explique melhor / continue: ' : `${primeiroNome(m.autor)} perguntou: "${m.texto}"\n\nResponda isso.` }); break; }
+      case 'ia': { const t = $('#m-texto').value.trim(); $('#m-texto').value = ''; autoAltura(); const pv = provDe(t) || iaPadrao(); perguntarIA({ prov: pv, pergunta: t.replace(IAS[pv].prefixo, '') }); break; }
+      case 'ia-msg': { const m = S.msgs.find(x => x.id === id); if (!m) break; perguntarIA({ prov: a.dataset.prov || iaPadrao(), pergunta: m.ia ? 'Explique melhor / continue: ' : `${primeiroNome(m.autor)} perguntou: "${m.texto}"\n\nResponda isso.` }); break; }
       case 'copiar-msg': { const m = S.msgs.find(x => x.id === id); try { await navigator.clipboard.writeText(m?.texto || ''); toast('Copiado'); } catch { toast('Não deu para copiar'); } break; }
-      case 'ir-config-gemini': fecharModal(); irPara('galera'); setTimeout(() => $('#meu-gemini')?.scrollIntoView({ behavior: 'smooth' }), 100); break;
+      case 'ir-config-ia': fecharModal(); irPara('galera'); setTimeout(() => $('#minhas-ias')?.scrollIntoView({ behavior: 'smooth' }), 100); break;
       case 'reagir-msg': popEmojis(a, async em => { const m = S.msgs.find(x => x.id === id); try { await updateDoc(doc(db, 'conversas', S.conv, 'msgs', id), { [`reacoes.${me}`]: m?.reacoes?.[me] === em ? deleteField() : em }); } catch (er) { erro(er); } }); break;
       case 'apagar-msg': { if (!confirm('Apagar mensagem para todos?')) return; const m = S.msgs.find(x => x.id === id); if (m) { S.apagando.delete(id); await apagarMsg(m); } break; }
       case 'apagar-capsula': { if (!confirm('Apagar esta cápsula?')) return; const b = writeBatch(db); b.delete(doc(db, 'capsulas', id, 'conteudo', 'c')); b.delete(doc(db, 'capsulas', id)); await b.commit(); break; }
