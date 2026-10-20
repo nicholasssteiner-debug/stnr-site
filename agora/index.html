@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Ágora</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#7c3aed">
@@ -238,6 +238,71 @@ h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 #pop button:hover{background:var(--bg)}
 .progresso{height:4px;background:var(--linha);border-radius:2px;overflow:hidden;margin-top:8px}
 .progresso div{height:100%;background:var(--pri);width:0;transition:width .2s}
+
+/* ===================== conversas estilo WhatsApp ===================== */
+:root{--fundo-chat:#f1edf8;--trilho:84px}
+@media (prefers-color-scheme:dark){:root{--fundo-chat:#0e0b16}}
+body.em-chat main{padding:0}
+body.em-chat #app{max-width:1500px}
+#v-chat.ativa{gap:0;height:calc(100dvh - var(--topo) - var(--nav));border-top:1px solid var(--linha)}
+.conv-lista{width:380px;gap:0;border-right:1px solid var(--linha);background:var(--card)}
+.lista-cab{display:flex;align-items:center;gap:8px;padding:12px 16px;position:sticky;top:0;background:var(--card);z-index:1;border-bottom:1px solid var(--linha)}
+.lista-cab b{font-size:20px;flex:1}
+#conv-lista{display:flex;flex-direction:column}
+.conv-item{border:0;border-radius:0;background:transparent;padding:12px 16px;border-bottom:1px solid var(--linha)}
+.conv-item:hover{background:var(--bg)}
+.conv-item.ativa{background:var(--pri-claro);border-color:var(--linha)}
+.conv-item .av{width:48px;height:48px}
+.conv-tela{border:0;border-radius:0;background:var(--card)}
+.conv-cab{padding:8px 12px;min-height:60px;background:var(--card)}
+.conv-cab .t{font-size:16px}
+.conv-cab .t .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#conv-timer{max-width:110px}
+.msgs{background-color:var(--fundo-chat);background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--pri) 13%,transparent) 1px,transparent 0);background-size:22px 22px;padding:12px 4%}
+.msg .b{box-shadow:0 1px .5px rgba(0,0,0,.13)}
+.entrada{padding:8px 10px;gap:6px;align-items:flex-end}
+.entrada textarea{border-radius:22px;background:var(--bg)}
+.entrada .enviar{background:var(--pri);color:var(--pri-txt)}
+#m-atalhos.on{background:var(--alerta);color:#fff}
+.m-estado{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:13px;background:color-mix(in srgb,var(--alerta) 14%,var(--card));color:var(--txt);border-top:1px solid var(--linha)}
+.m-estado span{flex:1}
+.m-estado button{border:0;background:none;cursor:pointer;color:var(--sub);font-size:15px}
+.bandeja{background:var(--card);border-top:1px solid var(--linha);padding:10px 12px;max-height:42dvh;overflow-y:auto}
+.bandeja-topo{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bandeja-topo b{flex:1}
+.frases{display:flex;flex-wrap:wrap;gap:6px}
+.frase{border:1px solid var(--linha);background:var(--bg);border-radius:16px;padding:7px 12px;font-size:14px;cursor:pointer;text-align:left;max-width:100%}
+.frase:hover{border-color:var(--pri)}
+.frase.ia-rapida.c{background:#d97757;color:#fff;border-color:#d97757}
+.frase.ia-rapida.g{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);color:#fff;border:0}
+.frase.com-ia{border-color:#d97757}
+.bandeja-ops{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--linha)}
+.ef-linha{display:flex;gap:6px;align-items:center;margin-top:6px}
+.ef-linha input.campo{flex:1;min-width:0}
+.ef-linha select.campo{width:auto}
+
+/* computador: abas viram trilho lateral, conversa ocupa a tela */
+@media (min-width:900px){
+  body{padding-left:var(--trilho)}
+  nav.abas{top:0;bottom:0;right:auto;width:var(--trilho);height:auto;padding:calc(var(--topo) + 8px) 0 12px;border-top:0;border-right:1px solid var(--linha)}
+  nav.abas .grade{flex-direction:column;gap:2px}
+  nav.abas button{flex:none;height:70px}
+  main{padding-bottom:24px}
+  #toast{bottom:24px}
+  #v-chat.ativa{height:calc(100dvh - var(--topo))}
+}
+/* celular: lista em tela cheia; conversa aberta cobre tudo (cabeçalho e abas somem) */
+@media (max-width:700px){
+  .conv-lista{width:100%;border-right:0}
+  #v-chat.ativa.aberta .conv-tela{position:fixed;inset:0;z-index:60;height:100dvh}
+  .conv-cab{padding:calc(6px + env(safe-area-inset-top)) 6px 6px;gap:6px}
+  .conv-cab .ico-btn{width:36px;height:36px}
+  #conv-timer{max-width:78px;padding:4px 4px}
+  .msgs{padding:10px 8px}
+  .entrada{padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:4px}
+  .entrada .ico-btn{width:38px;height:38px;font-size:16px}
+  .conv-item .av{width:46px;height:46px}
+}
 </style>
 </head>
 <body>
@@ -302,8 +367,8 @@ h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--
     <!-- CHAT -->
     <section id="v-chat" class="vista">
       <div class="conv-lista">
-        <button class="btn" data-acao="nova-conversa">＋ Nova conversa</button>
-        <div id="conv-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div class="lista-cab"><b>Conversas</b><button class="ico-btn" data-acao="nova-conversa" title="Nova conversa">＋</button></div>
+        <div id="conv-lista"></div>
       </div>
       <div class="conv-tela">
         <div id="conv-nenhuma" class="conv-vazia">Escolha uma conversa ou crie uma nova 💬</div>
@@ -313,27 +378,33 @@ h2.sec{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--
             <span id="conv-av"></span>
             <div class="t" id="conv-titulo"></div>
             <select id="conv-timer" title="Mensagens temporárias">
-              <option value="0">⏱ Desligado</option>
+              <option value="0">⏱ Off</option>
               <option value="60">⏱ 1 min</option>
-              <option value="3600">⏱ 1 hora</option>
-              <option value="86400">⏱ 24 horas</option>
+              <option value="3600">⏱ 1 h</option>
+              <option value="86400">⏱ 24 h</option>
               <option value="604800">⏱ 7 dias</option>
             </select>
-            <button class="ico-btn" data-acao="menu-conversa" title="Opções">⋯</button>
+            <button class="ico-btn" data-acao="menu-conversa" title="Opções da conversa">⋮</button>
           </div>
           <div id="conv-aviso" class="aviso-temp" hidden></div>
           <div id="msgs" class="msgs"></div>
           <div id="m-anexos" class="anexos" style="padding:0 10px;background:var(--card)"></div>
           <div class="progresso" id="m-prog" hidden style="margin:0 10px"><div></div></div>
-          <div class="entrada">
-            <label class="ico-btn" title="Anexar">📎<input type="file" id="m-arq" multiple hidden></label>
-            <button class="ico-btn btn-gemini" data-acao="ia" title="Perguntar à IA (ou comece a mensagem com @gemini / @claude)">✨</button>
-            <textarea id="m-texto" class="campo" rows="1" placeholder="Mensagem · @gemini ou @claude para perguntar à IA"></textarea>
-            <button class="ico-btn" id="m-enviar" style="background:var(--pri);color:var(--pri-txt)" title="Enviar">➤</button>
+          <div id="m-estado" class="m-estado" hidden></div>
+          <div id="bandeja" class="bandeja" hidden>
+            <div class="bandeja-topo"><b>⚡ Atalhos</b><button class="btn fant peq" data-acao="editar-frases">✏️ Editar frases</button></div>
+            <div class="frases" id="frases"></div>
+            <div class="bandeja-ops">
+              <button class="toggle" id="m-umavez" title="Quem receber só consegue abrir uma vez">👁 Ver uma vez</button>
+              <button class="toggle" id="m-surpresa" title="Só abre na data marcada">🎁 Abrir depois…</button>
+            </div>
           </div>
-          <div class="entrada opts" style="border:0;padding-top:0">
-            <button class="toggle" id="m-umavez" title="Quem receber só consegue abrir uma vez">👁 Ver uma vez</button>
-            <button class="toggle" id="m-surpresa" title="Só abre na data marcada">🎁 Abrir depois…</button>
+          <div class="entrada">
+            <button class="ico-btn" id="m-atalhos" title="Atalhos: frases prontas, @claude, ver uma vez">⚡</button>
+            <label class="ico-btn" title="Anexar">📎<input type="file" id="m-arq" multiple hidden></label>
+            <textarea id="m-texto" class="campo" rows="1" placeholder="Mensagem"></textarea>
+            <button class="ico-btn btn-gemini" data-acao="ia" title="Perguntar à IA (ou comece a mensagem com @claude / @gemini)">✨</button>
+            <button class="ico-btn enviar" id="m-enviar" title="Enviar">➤</button>
           </div>
         </div>
       </div>
@@ -724,6 +795,7 @@ function iniciarApp() {
     if (S.conv && !S.conversas.some(c => c.id === S.conv)) fecharConversa();
     renderConversas(); if (S.conv) renderCabConversa();
   }, erro));
+  S.unsubs.push(onSnapshot(doc(db, 'privado', me), d => { S.frases = d.exists() && Array.isArray(d.data().frases) ? d.data().frases : null; renderFrases(); }, e => console.warn('frases', e)));
   S.unsubs.push(onSnapshot(query(collection(db, 'capsulas'), orderBy('abreEm', 'asc')), s => {
     S.capsulas = s.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })); renderCapsulas();
   }, erro));
@@ -740,7 +812,7 @@ function renderTudo() { renderMural(); renderConversas(); if (S.conv) { renderCa
 /* ================= navegação ================= */
 function irPara(aba) {
   if (!['mural', 'chat', 'capsulas', 'album', 'galera'].includes(aba)) aba = 'mural';
-  S.aba = aba; lsSet('aba', aba);
+  S.aba = aba; lsSet('aba', aba); document.body.classList.toggle('em-chat', aba === 'chat');
   $$('.vista').forEach(v => v.classList.toggle('ativa', v.id === 'v-' + aba));
   $$('nav.abas button').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba));
   if (aba === 'galera') { renderGalera(); renderMinhasIAs(); }
@@ -900,12 +972,15 @@ function abrirConversa(id) {
   renderCabConversa(); renderConversas(); marcarLido(id);
   if (matchMedia('(min-width:701px)').matches) $('#m-texto').focus();
 }
-function fecharConversa() { S.unsubMsgs?.(); S.unsubMsgs = null; S.unsubCotas?.(); S.unsubCotas = null; S.cotas = []; S.conv = null; $('#v-chat').classList.remove('aberta'); $('#conv-nenhuma').hidden = false; $('#conv-aberta').hidden = true; renderConversas(); }
+function fecharConversa() { $('#bandeja').hidden = true; S.unsubMsgs?.(); S.unsubMsgs = null; S.unsubCotas?.(); S.unsubCotas = null; S.cotas = []; S.conv = null; $('#v-chat').classList.remove('aberta'); $('#conv-nenhuma').hidden = false; $('#conv-aberta').hidden = true; renderConversas(); }
 function renderCabConversa() {
   const c = convAtual(); if (!c) return;
   const outros = c.membros.filter(m => m !== uid());
   $('#conv-av').innerHTML = c.membros.length > 2 ? '<span class="av p">👥</span>' : avatar(outros[0] || uid(), 'p');
-  $('#conv-titulo').innerHTML = `${esc(tituloConv(c))}<div class="sub" style="font-weight:400;font-size:12px">${c.membros.length} pessoa${c.membros.length > 1 ? 's' : ''}</div>`;
+  const outroM = S.membros[outros[0]];
+  const linha2 = c.membros.length > 2 ? ['Você', ...outros.map(primeiroNome)].join(', ')
+    : outroM ? (Date.now() - ms(outroM.ultimoAcesso) < 150000 ? 'online' : 'visto ' + rel(outroM.ultimoAcesso)) : '';
+  $('#conv-titulo').innerHTML = `${esc(tituloConv(c))}<div class="sub" style="font-weight:400;font-size:12px">${esc(linha2)}</div>`;
   $('#conv-timer').value = String(c.timer || 0);
   const av = $('#conv-aviso'); av.hidden = !c.timer; av.textContent = c.timer ? `⏱ Mensagens novas somem ${rotTimer(c.timer)} depois de enviadas` : '';
 }
@@ -921,6 +996,9 @@ function atualizarToggles() {
   $('#m-umavez').classList.toggle('on', S.umaVez);
   $('#m-surpresa').classList.toggle('on', !!S.surpresa);
   $('#m-surpresa').textContent = S.surpresa ? `🎁 Abre ${new Date(S.surpresa).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : '🎁 Abrir depois…';
+  const est = [S.umaVez ? '👁 próxima mensagem: ver uma vez' : '', S.surpresa ? `🎁 abre em ${new Date(S.surpresa).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''].filter(Boolean).join(' · ');
+  $('#m-estado').hidden = !est; $('#m-estado').innerHTML = est ? `<span>${est}</span><button data-acao="limpar-opcoes" title="Desligar">✕</button>` : '';
+  $('#m-atalhos').classList.toggle('on', !!est);
 }
 $('#m-umavez').onclick = () => { S.umaVez = !S.umaVez; atualizarToggles(); };
 $('#m-surpresa').onclick = () => {
@@ -1344,7 +1422,58 @@ function renderCfgIA(prov) {
     } catch (e) { alvo.innerHTML = `<span style="color:var(--perigo);font-size:14px">❌ ${esc(e.message)}</span>`; }
   })();
 }
-$('#m-enviar').onclick = enviarMsg;
+$('#m-enviar').onclick = () => { $('#bandeja').hidden = true; enviarMsg(); };
+
+/* ================= ATALHOS / FRASES PRONTAS ================= */
+// ficam em privado/{uid}: só a própria pessoa lê e grava; acompanham a conta em qualquer aparelho
+const FRASES_PADRAO = [
+  { t: 'resolve essa questão passo a passo', ia: 'claude' },
+  { t: 'confere essa conta e mostra o cálculo', ia: 'claude' },
+  { t: 'resume o que foi falado aqui', ia: 'claude' },
+  { t: 'explica de um jeito simples', ia: 'claude' },
+  { t: 'Bom dia, galera! ☀️', ia: '', direto: true },
+  { t: 'Tô chegando! 🏃', ia: '', direto: true }
+];
+const minhasFrases = () => S.frases || FRASES_PADRAO;
+function renderFrases() {
+  const el = $('#frases'); if (!el) return;
+  el.innerHTML = `<button class="frase ia-rapida c" data-frase-ia="claude">✳️ <b>@claude</b> perguntar…</button><button class="frase ia-rapida g" data-frase-ia="gemini">✨ <b>@gemini</b> perguntar…</button>`
+    + minhasFrases().map((f, i) => `<button class="frase ${f.ia ? 'com-ia' : ''}" data-frase="${i}">${f.ia ? IAS[f.ia]?.ico + ' ' : ''}${esc(f.t)}${f.direto ? ' <span class="sub">➤</span>' : ''}</button>`).join('');
+}
+$('#m-atalhos').onclick = () => { const b = $('#bandeja'); b.hidden = !b.hidden; if (!b.hidden) { renderFrases(); rolarFim(true); } };
+$('#frases').onclick = e => {
+  const ta = $('#m-texto'); const atual = ta.value.trim();
+  const ia = e.target.closest('[data-frase-ia]');
+  if (ia) {
+    const prov = ia.dataset.fraseIa; const semPrefixo = atual.replace(/^@(claude|gemini)\b[:,]?\s*/i, '');
+    ta.value = `@${prov} ${semPrefixo}`; $('#bandeja').hidden = true; autoAltura(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); return;
+  }
+  const b = e.target.closest('[data-frase]'); if (!b) return;
+  const f = minhasFrases()[+b.dataset.frase]; if (!f) return;
+  const texto = f.ia ? `@${f.ia} ${f.t}${atual ? '\n\n' + atual.replace(/^@(claude|gemini)\b[:,]?\s*/i, '') : ''}` : (atual ? atual + ' ' : '') + f.t;
+  ta.value = texto; $('#bandeja').hidden = true; autoAltura();
+  if (f.direto) enviarMsg(); else { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+};
+function editarFrases() {
+  let lista = JSON.parse(JSON.stringify(minhasFrases()));
+  modal(`<h3>⚡ Frases prontas</h3>
+    <div class="sub">Toque numa frase na conversa para usá-la. Com <b>✳️ Claude</b> ou <b>✨ Gemini</b>, ela já vai como pergunta para a IA (junto com o que você tiver digitado e as fotos recentes). Com <b>➤</b> marcado, envia na hora.</div>
+    <div id="ef-lista"></div>
+    <button class="btn sec peq" id="ef-add" style="margin-top:8px">＋ Nova frase</button>
+    <div class="acoes-modal"><button class="btn fant peq" id="ef-padrao">Restaurar sugestões</button><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn" id="ef-salvar">Salvar</button></div>`);
+  const desenhar = () => {
+    $('#ef-lista').innerHTML = lista.map((f, i) => `<div class="ef-linha"><input class="campo" data-i="${i}" data-k="t" value="${esc(f.t)}" maxlength="200" placeholder="Frase"><select class="campo" data-i="${i}" data-k="ia"><option value="">💬 Mensagem</option><option value="claude" ${f.ia === 'claude' ? 'selected' : ''}>✳️ Claude</option><option value="gemini" ${f.ia === 'gemini' ? 'selected' : ''}>✨ Gemini</option></select><label title="Enviar na hora" style="white-space:nowrap"><input type="checkbox" data-i="${i}" data-k="direto" ${f.direto ? 'checked' : ''}>➤</label><button class="btn fant peq" data-del="${i}" title="Apagar">✕</button></div>`).join('') || '<div class="sub" style="margin-top:8px">Nenhuma frase.</div>';
+  };
+  desenhar();
+  $('#ef-lista').oninput = $('#ef-lista').onchange = e => { const el = e.target; const i = el.dataset.i; if (i == null) return; lista[i][el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value; };
+  $('#ef-lista').onclick = e => { const d = e.target.closest('[data-del]'); if (d) { lista.splice(+d.dataset.del, 1); desenhar(); } };
+  $('#ef-add').onclick = () => { if (lista.length >= 40) return toast('Máximo de 40 frases'); lista.push({ t: '', ia: 'claude', direto: false }); desenhar(); $$('#ef-lista input.campo').pop()?.focus(); };
+  $('#ef-padrao').onclick = () => { lista = JSON.parse(JSON.stringify(FRASES_PADRAO)); desenhar(); };
+  $('#ef-salvar').onclick = async () => {
+    const limpas = lista.map(f => ({ t: (f.t || '').trim(), ia: f.ia || '', direto: !!f.direto })).filter(f => f.t);
+    try { await setDoc(doc(db, 'privado', uid()), { frases: limpas }, { merge: true }); S.frases = limpas; renderFrases(); fecharModal(); toast('Frases salvas'); } catch (e) { erro(e); }
+  };
+}
 $('#m-texto').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); enviarMsg(); } });
 function autoAltura() { const t = $('#m-texto'); t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; }
 $('#m-texto').addEventListener('input', autoAltura);
@@ -1604,6 +1733,8 @@ document.addEventListener('click', async e => {
       case 'fechar-conversa': fecharConversa(); break;
       case 'menu-conversa': menuConversa(); break;
       case 'ver-umavez': verUmaVez(id); break;
+      case 'editar-frases': editarFrases(); break;
+      case 'limpar-opcoes': S.umaVez = false; S.surpresa = null; atualizarToggles(); break;
       case 'ia': { const t = $('#m-texto').value.trim(); $('#m-texto').value = ''; autoAltura(); const pv = provDe(t) || iaPadrao(); perguntarIA({ prov: pv, pergunta: t.replace(IAS[pv].prefixo, '') }); break; }
       case 'ia-msg': { const m = S.msgs.find(x => x.id === id); if (!m) break; perguntarIA({ prov: a.dataset.prov || iaPadrao(), imagens: (m.midia || []).filter(ehFoto).length ? m.midia.filter(ehFoto) : null, pergunta: m.ia ? 'Explique melhor / continue: ' : m.texto ? `${primeiroNome(m.autor)} perguntou: "${m.texto}"\n\nResponda isso.` : `${primeiroNome(m.autor)} mandou esta imagem. Analise e, se for uma questão ou conta, resolva passo a passo.` }); break; }
       case 'copiar-msg': { const m = S.msgs.find(x => x.id === id); try { await navigator.clipboard.writeText(m?.texto || ''); toast('Copiado'); } catch { toast('Não deu para copiar'); } break; }
