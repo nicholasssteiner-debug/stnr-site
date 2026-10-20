@@ -8,7 +8,9 @@
 <meta name="theme-color" content="#7c3aed">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='512' y2='512'%3E%3Cstop offset='0' stop-color='%234f46e5'/%3E%3Cstop offset='.55' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='116' fill='url%28%23g%29'/%3E%3Cpath d='M100 116h312a44 44 0 0 1 44 44v172a44 44 0 0 1-44 44H240l-88 66v-66h-52a44 44 0 0 1-44-44V160a44 44 0 0 1 44-44z' fill='%23fff'/%3E%3Cpath d='M256 146 384 208H128z' fill='url%28%23g%29'/%3E%3Crect x='136' y='220' width='240' height='14' rx='4' fill='url%28%23g%29'/%3E%3Crect x='154' y='246' width='28' height='74' rx='7' fill='url%28%23g%29'/%3E%3Crect x='214' y='246' width='28' height='74' rx='7' fill='url%28%23g%29'/%3E%3Crect x='270' y='246' width='28' height='74' rx='7' fill='url%28%23g%29'/%3E%3Crect x='330' y='246' width='28' height='74' rx='7' fill='url%28%23g%29'/%3E%3Crect x='128' y='328' width='256' height='16' rx='5' fill='url%28%23g%29'/%3E%3C/svg%3E" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ágora">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1083,13 +1085,13 @@ function renderMeuGemini() {
       <label><input type="radio" name="cfg-modo" value="api" ${cfg.modo !== 'app' ? 'checked' : ''}>⚡ <b>Resposta automática</b><div class="sub">Chave grátis da API, criada na sua conta. A resposta aparece sozinha na conversa.</div></label>
       <label><input type="radio" name="cfg-modo" value="app" ${cfg.modo === 'app' ? 'checked' : ''}>💎 <b>App do Gemini</b><div class="sub">Abre o gemini.google.com logado em você — usa seu plano (Pro, se tiver).</div></label>
     </div>
-    <div id="cfg-api" style="margin-top:12px">
+    <div id="cfg-api" style="margin-top:12px" ${cfg.modo === 'app' ? 'hidden' : ''}>
       <div class="dica"><b>Como pegar sua chave (1 min, grátis):</b><br>1. Abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> com a sua conta Google<br>2. Clique em <b>Create API key</b> e copie<br>3. Cole abaixo e toque em Salvar<br><span class="sub">A chave fica só neste aparelho; ninguém da Ágora vê. Em outro celular/PC, cole de novo.</span></div>
       <div style="display:flex;gap:8px;margin-top:8px"><input id="cfg-chave" class="campo" type="password" placeholder="Cole sua chave aqui (AIza…)" value="${esc(cfg.chave)}" autocomplete="off"><button class="btn" id="cfg-salvar">Salvar</button></div>
       <div id="cfg-modelos" style="margin-top:8px"></div>
     </div>
     ${cfg.chave ? '<div class="acoes-modal"><button class="btn fant peq" id="cfg-apagar">Remover minha chave deste aparelho</button></div>' : ''}`;
-  $$('input[name="cfg-modo"]', el).forEach(r => r.onchange = () => { salvarGem({ modo: r.value }); toast(r.value === 'app' ? 'Vai abrir o app do Gemini' : 'Resposta automática'); });
+  $$('input[name="cfg-modo"]', el).forEach(r => r.onchange = () => { salvarGem({ modo: r.value }); $('#cfg-api').hidden = r.value === 'app'; toast(r.value === 'app' ? 'Vai abrir o app do Gemini' : 'Resposta automática'); });
   const mostrarModelos = async chave => {
     const alvo = $('#cfg-modelos'); alvo.innerHTML = '<span class="sub">Verificando chave…</span>';
     try {
