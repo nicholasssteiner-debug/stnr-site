@@ -944,7 +944,7 @@ async function enviarMsg() {
   try {
     if (anexos.length) d.midia = await enviarVarios(anexos, temp ? 'temp' : 'u', '#m-prog');
     await postarMsg(c, d);
-    if (prov) perguntarIA({ prov, pergunta: texto.replace(IAS[prov].prefixo, ''), jaPostada: true });
+    if (prov) perguntarIA({ prov, pergunta: texto.replace(IAS[prov].prefixo, ''), jaPostada: true, imagens: (d.midia || []).filter(ehFoto).length ? d.midia.filter(ehFoto) : null });
   } catch (e) { erro(e); }
 }
 /** grava a mensagem e atualiza o resumo da conversa */
@@ -956,7 +956,24 @@ async function postarMsg(c, d) {
 
 /* ================= ASSISTENTES (Gemini e Claude) ================= */
 // Cada pessoa usa a PRÓPRIA conta. Chaves ficam só no navegador dela (localStorage), nunca no Firestore.
-const SISTEMA = nome => `Você é o ${nome} participando de uma conversa de amigos no app Ágora. Responda em português do Brasil, de forma direta, correta e útil. Use markdown simples (negrito, listas, blocos de código). Se usar fontes da web, seja fiel a elas.`;
+const SISTEMA = nome => `Você é o ${nome} participando de uma conversa de amigos no app Ágora. Responda em português do Brasil, de forma direta, correta e útil. Use markdown simples (negrito, listas, blocos de código). Quando houver imagens, leia e descreva o que importa nelas (textos, números, tabelas, questões). Para contas, use a ferramenta de código quando ela estiver disponível e mostre o resultado final com clareza. Se usar fontes da web, seja fiel a elas.`;
+// imagens da conversa → base64 para mandar junto da pergunta (máx. 5)
+const blobB64 = b => new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.onerror = () => ko(fr.error); fr.readAsDataURL(b); });
+async function imagensParaIA(lista) {
+  const out = [];
+  for (const m of (lista || []).slice(0, 5)) {
+    try {
+      const b = await (await fetch(await urlArquivo(m))).blob();
+      const tipo = /^image\/(jpeg|png|gif|webp)$/.test(b.type) ? b.type : m.tipo;
+      if (!/^image\/(jpeg|png|gif|webp)$/.test(tipo) || b.size > 4.5e6) continue;
+      out.push({ tipo, b64: await blobB64(b) });
+    } catch (e) { console.warn('imagem para IA', e); }
+  }
+  return out;
+}
+const ehFoto = m => tipoMidia(m) === 'foto';
+/** últimas fotos da conversa (para quando a pessoa pergunta "o que é isso?" sobre uma imagem recém-enviada) */
+const fotosRecentes = () => S.msgs.filter(m => !m.sistema && !m.ia && !m.umaVez && !(m.abreEm && ms(m.abreEm) > Date.now()) && Date.now() - ms(m.criadoEm) < 30 * 60000).slice(-10).flatMap(m => (m.midia || []).filter(ehFoto)).slice(-4);
 const iaCfg = prov => lsGet(prov === 'gemini' ? 'gemini' : 'ia_' + prov, { chave: '', modelo: '', modo: 'api', web: true, contexto: true });
 const salvarIA = (prov, v) => lsSet(prov === 'gemini' ? 'gemini' : 'ia_' + prov, { ...iaCfg(prov), ...v });
 const iaPadrao = () => lsGet('ia_padrao', 'gemini');
@@ -1004,13 +1021,15 @@ async function acharModeloGemini(chave, evitar) {
   }
   return null;
 }
-async function chamarGemini(prompt, web) {
+async function chamarGemini(prompt, web, imgs = []) {
   const cfg = iaCfg('gemini'); if (!cfg.chave) throw new Error('Configure sua chave do Gemini na aba Galera');
   let modelo = cfg.modelo || 'models/gemini-2.5-flash';
-  const corpo = { systemInstruction: { parts: [{ text: SISTEMA('Gemini') }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }] };
-  let { r, j } = await gemPost(cfg.chave, modelo, web ? { ...corpo, tools: [{ google_search: {} }] } : corpo);
-  // a pesquisa web tem cota própria (e às vezes zero no plano grátis): tenta sem ela
-  if (!r.ok && web && (r.status === 400 || r.status === 429)) ({ r, j } = await gemPost(cfg.chave, modelo, corpo));
+  const partes = [...imgs.map(i => ({ inline_data: { mime_type: i.tipo, data: i.b64 } })), { text: prompt }];
+  const corpo = { systemInstruction: { parts: [{ text: SISTEMA('Gemini') }] }, contents: [{ role: 'user', parts: partes }] };
+  // pesquisa web OU execução de código para cálculos (o Gemini não garante as duas juntas)
+  let { r, j } = await gemPost(cfg.chave, modelo, { ...corpo, tools: [web ? { google_search: {} } : { code_execution: {} }] });
+  // ferramentas têm cota própria (às vezes zero no plano grátis): tenta sem elas
+  if (!r.ok && (r.status === 400 || r.status === 429)) ({ r, j } = await gemPost(cfg.chave, modelo, corpo));
   if (!r.ok && r.status === 429 && semCotaGratis(j)) {
     const alt = await acharModeloGemini(cfg.chave, modelo).catch(() => null);
     if (alt) {
@@ -1053,7 +1072,7 @@ async function listarModelosClaude(chave) {
 const padraoClaude = lista => (lista.find(m => m.id === 'claude-opus-5-5') || lista[0])?.id || 'claude-opus-5-5';
 const CLAUDE_COM_FALLBACK = /^claude-(fable-5-1|opus-5-5|opus-5|sonnet-5-5)$/;
 const CLAUDE_COM_EFFORT = /^claude-(fable|opus|sonnet|haiku)-5|^claude-opus-4-[5-8]|^claude-sonnet-4-6/;
-async function chamarClaude(prompt, web) {
+async function chamarClaude(prompt, web, imgs = [], ferramentas = true) {
   const cfg = iaCfg('claude'); if (!cfg.chave) throw new Error('Configure sua chave do Claude na aba Galera');
   const modelo = cfg.modelo || 'claude-opus-5-5';
   const { Anthropic, client } = await clienteClaude(cfg.chave);
@@ -1061,17 +1080,21 @@ async function chamarClaude(prompt, web) {
   if (CLAUDE_COM_EFFORT.test(modelo)) base.output_config = { effort: 'medium' };
   // se o modelo recusar por política de segurança, o próprio servidor tenta de novo em outro modelo
   if (CLAUDE_COM_FALLBACK.test(modelo)) Object.assign(base, { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
-  if (web) base.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }];
-  const msgs = [{ role: 'user', content: prompt }];
+  // código para os cálculos (uso próprio do app, independente da pesquisa) + pesquisa/leitura de páginas na web
+  if (ferramentas) base.tools = [{ type: 'code_execution_20260521', name: 'code_execution' }];
+  if (ferramentas && web) base.tools.push({ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }, { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 5 });
+  const conteudo = [...imgs.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.tipo, data: i.b64 } })), { type: 'text', text: prompt }];
+  const msgs = [{ role: 'user', content: conteudo }];
   let r;
   try {
     for (let i = 0; i < 4; i++) {
       r = await client.beta.messages.create({ ...base, messages: msgs });
-      if (r.stop_reason !== 'pause_turn') break;            // pesquisa longa: continua de onde parou
+      if (r.stop_reason !== 'pause_turn') break;            // pesquisa/código longo: continua de onde parou
       msgs.push({ role: 'assistant', content: r.content });
     }
   } catch (e) {
-    if (web && e instanceof Anthropic.BadRequestError && !/credit balance/i.test(e.message)) return chamarClaude(prompt, false);  // pesquisa web desligada na organização
+    // ferramenta não liberada na organização/modelo: tira primeiro a web, depois o código
+    if (ferramentas && e instanceof Anthropic.BadRequestError && !/credit balance/i.test(e.message)) return chamarClaude(prompt, false, imgs, web);
     throw erroClaude(Anthropic, e);
   }
   if (r.stop_reason === 'refusal') throw new Error('O Claude não quis responder essa pergunta.');
@@ -1118,14 +1141,19 @@ function msgIA(c, prov, texto, extra) {
   return d;
 }
 /** Painel do atalho. jaPostada: a pergunta já foi enviada na conversa (via @gemini / @claude) */
-function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false } = {}) {
+function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false, imagens = null, novas = [] } = {}) {
   const c = convAtual(); if (!c) return;
   const cfg = iaCfg(prov);
-  if (jaPostada && cfg.modo === 'api' && cfg.chave) return responderViaAPI(c, prov, pergunta, cfg.contexto, cfg.web);
+  // sem imagens explícitas: usa as fotos recentes da conversa (a pergunta costuma ser sobre elas)
+  if (!imagens) imagens = fotosRecentes();
+  if (jaPostada && cfg.modo === 'api' && cfg.chave) return responderViaAPI(c, prov, pergunta, cfg.contexto, cfg.web, imagens);
   const P = IAS[prov]; const temChave = !!cfg.chave;
   modal(`<h3>${P.ico} Perguntar ao ${P.nome}</h3>
     <div class="chips" style="margin-bottom:10px">${Object.entries(IAS).map(([k, x]) => `<button class="chip ${k === prov ? 'ativo' : ''}" data-acao="trocar-ia" data-prov="${k}">${x.ico} ${x.nome}</button>`).join('')}</div>
     <textarea id="ia-q" class="campo" rows="4" placeholder="Qual é a pergunta?">${esc(pergunta)}</textarea>
+    <div class="sub" style="margin-top:8px">🖼️ Imagens que vão junto <span style="font-size:12px">(toque para tirar/pôr)</span></div>
+    <div id="ia-imgs" class="anexos"></div>
+    <label class="btn sec peq" style="display:inline-block;margin-top:6px;cursor:pointer">📷 Anexar imagem<input type="file" id="ia-arq" accept="image/*" multiple hidden></label>
     <div class="modo-gem">
       <label><input type="radio" name="ia-modo" value="api" ${cfg.modo !== 'app' && temChave ? 'checked' : ''} ${temChave ? '' : 'disabled'}>⚡ <b>Resposta automática</b><div class="sub">Usa a sua chave. A resposta já aparece aqui.${temChave ? '' : '<br><a href="#" data-acao="ir-config-ia">Configurar chave →</a>'}</div></label>
       <label><input type="radio" name="ia-modo" value="app" ${cfg.modo === 'app' || !temChave ? 'checked' : ''}>💎 <b>App do ${P.nome}</b><div class="sub">Abre o ${P.app} na sua conta (vale o seu plano). Você cola a resposta de volta.</div></label>
@@ -1135,31 +1163,53 @@ function perguntarIA({ prov = iaPadrao(), pergunta = '', jaPostada = false } = {
     <div class="dica" style="margin-top:10px">⚠️ Não mande dados sigilosos do trabalho (nomes, CPFs, valores de clientes) para nenhuma IA.</div>
     <div class="acoes-modal"><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn btn-ia ${P.cls}" id="ia-ok">Perguntar</button></div>`);
   $('#ia-q').focus();
-  $$('[data-acao="trocar-ia"]').forEach(b => b.onclick = ev => { ev.stopPropagation(); lsSet('ia_padrao', b.dataset.prov); perguntarIA({ prov: b.dataset.prov, pergunta: $('#ia-q').value, jaPostada }); });
+  const fora = new Set();   // chaves das imagens desmarcadas
+  const desenharImgs = () => {
+    const el = $('#ia-imgs'); if (!el) return;
+    el.innerHTML = imagens.map((m, i) => `<div class="anexo" data-i="${i}" style="cursor:pointer;${fora.has(i) ? 'opacity:.3' : ''}">${m.prev ? `<img src="${m.prev}">` : '🖼️'}</div>`).join('')
+      + novas.map((f, i) => `<div class="anexo"><img src="${URL.createObjectURL(f)}"><button data-n="${i}">✕</button></div>`).join('')
+      + (!imagens.length && !novas.length ? '<span class="sub" style="font-size:13px">Nenhuma — anexe se a pergunta for sobre uma foto.</span>' : '');
+    $$('[data-i]', el).forEach(d => d.onclick = () => { const i = +d.dataset.i; fora.has(i) ? fora.delete(i) : fora.add(i); desenharImgs(); });
+    $$('[data-n]', el).forEach(b => b.onclick = ev => { ev.stopPropagation(); novas.splice(+b.dataset.n, 1); desenharImgs(); });
+  };
+  desenharImgs();
+  $('#ia-arq').onchange = e => { novas.push(...[...e.target.files].filter(f => f.type.startsWith('image/'))); e.target.value = ''; desenharImgs(); };
+  $$('[data-acao="trocar-ia"]').forEach(b => b.onclick = ev => { ev.stopPropagation(); lsSet('ia_padrao', b.dataset.prov); perguntarIA({ prov: b.dataset.prov, pergunta: $('#ia-q').value, jaPostada, imagens, novas }); });
   $('#ia-ok').onclick = async () => {
     const q = $('#ia-q').value.trim(); if (!q) return toast('Escreva a pergunta');
     const modo = $('input[name="ia-modo"]:checked').value, ctx = $('#ia-ctx').checked, web = $('#ia-web').checked;
     salvarIA(prov, { modo, contexto: ctx, web }); lsSet('ia_padrao', prov);
+    const escolhidas = imagens.filter((_, i) => !fora.has(i));
     fecharModal();
-    try { if (!jaPostada) await postarMsg(c, { autor: uid(), texto: `${P.ico} @${prov} ${q}`, criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ...(c.timer ? { expiraEm: Timestamp.fromMillis(Date.now() + c.timer * 1000) } : {}) }); } catch (e) { return erro(e); }
-    if (modo === 'api') responderViaAPI(c, prov, q, ctx, web); else responderViaApp(c, prov, q, ctx);
+    let enviadas = [];
+    try {
+      // imagens novas também aparecem na conversa, para a galera ver do que se trata
+      if (novas.length) enviadas = await enviarVarios(novas, c.timer ? 'temp' : 'u', '#m-prog');
+      if (!jaPostada || enviadas.length) await postarMsg(c, { autor: uid(), texto: jaPostada ? '' : `${P.ico} @${prov} ${q}`, criadoEm: serverTimestamp(), reacoes: {}, vistoPor: [], ...(enviadas.length ? { midia: enviadas } : {}), ...(c.timer ? { expiraEm: Timestamp.fromMillis(Date.now() + c.timer * 1000) } : {}) });
+    } catch (e) { return erro(e); }
+    const todas = [...escolhidas, ...enviadas];
+    if (modo === 'api') responderViaAPI(c, prov, q, ctx, web, todas); else responderViaApp(c, prov, q, ctx, todas.length);
   };
 }
-async function responderViaAPI(c, prov, pergunta, ctx, web) {
+async function responderViaAPI(c, prov, pergunta, ctx, web, imagens = []) {
   const P = IAS[prov];
   const ind = document.createElement('div'); ind.className = 'pensando'; ind.textContent = `${P.ico} ${P.nome} está pensando`;
   $('#msgs').append(ind); rolarFim(true);
   try {
-    const r = await P.chamar(montarPrompt(pergunta, ctx), web);
+    const imgs = await imagensParaIA(imagens);
+    const nota = imgs.length ? `(${imgs.length} imagem${imgs.length > 1 ? 'ns' : ''} da conversa anexada${imgs.length > 1 ? 's' : ''} — use se for relevante para a pergunta.)
+
+` : '';
+    const r = await P.chamar(nota + montarPrompt(pergunta, ctx), web, imgs);
     await postarMsg(c, msgIA(c, prov, r.texto, { modelo: r.modelo, fontes: r.fontes, via: 'api' }));
   } catch (e) { erro(e); } finally { ind.remove(); }
 }
-async function responderViaApp(c, prov, pergunta, ctx) {
+async function responderViaApp(c, prov, pergunta, ctx, nImgs = 0) {
   const P = IAS[prov]; const prompt = montarPrompt(pergunta, ctx);
   try { await navigator.clipboard.writeText(prompt); } catch {}
   window.open(P.appUrl(prompt.slice(0, 1800)), '_blank', 'noopener');
   modal(`<h3>💎 Resposta do ${P.nome}</h3>
-    <div class="sub">Abri o ${P.app} numa nova aba com a pergunta (ela também foi copiada — se não aparecer lá, é só colar). Quando ele responder, toque em <b>Copiar</b> embaixo da resposta e volte aqui.</div>
+    <div class="sub">Abri o ${P.app} numa nova aba com a pergunta (ela também foi copiada — se não aparecer lá, é só colar). Quando ele responder, toque em <b>Copiar</b> embaixo da resposta e volte aqui.${nImgs ? `<br>🖼️ <b>Imagens não passam por link</b>: anexe ${nImgs > 1 ? 'as imagens' : 'a imagem'} lá no ${P.app} também (pode baixar tocando nela aqui na conversa).` : ''}</div>
     <textarea id="ia-resp" class="campo" rows="7" style="margin-top:10px" placeholder="Cole aqui a resposta do ${P.nome}"></textarea>
     <div class="acoes-modal"><button class="btn sec" id="ia-colar">📋 Colar</button><button class="btn fant" data-acao="fechar-modal">Cancelar</button><button class="btn btn-ia ${P.cls}" id="ia-env">Enviar na conversa</button></div>`);
   const colar = async () => { try { const t = await navigator.clipboard.readText(); if (t && t.trim() !== prompt.trim()) $('#ia-resp').value = t; } catch { toast('Cole com Ctrl+V / segurar e colar'); } };
@@ -1275,7 +1325,7 @@ function bolha(m, ant, c) {
   const reac = Object.values(m.reacoes || {}); const reacTxt = [...new Set(reac)].join('') + (reac.length > 1 ? ' ' + reac.length : '');
   const tempo = m.expiraEm ? `<span class="tempo">⏱ <span data-ate="${ms(m.expiraEm)}">${falta(ms(m.expiraEm))}</span></span>` : '';
   const mostrarNome = grupo && !eu && ant?.autor !== m.autor;
-  return `<div class="msg ${eu ? 'eu' : ''}">${mostrarNome ? `<span class="de">${esc(primeiroNome(m.autor))}</span>` : ''}<div class="b">${conteudo}</div>${reacTxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${reacTxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempo}<button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button>${!fechadaAte && !m.umaVez && m.texto ? `<button class="mais" data-acao="ia-msg" data-id="${m.id}" title="Perguntar à IA sobre esta mensagem">✨</button>` : ''}${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
+  return `<div class="msg ${eu ? 'eu' : ''}">${mostrarNome ? `<span class="de">${esc(primeiroNome(m.autor))}</span>` : ''}<div class="b">${conteudo}</div>${reacTxt ? `<span class="reac-msg" data-acao="reagir-msg" data-id="${m.id}">${reacTxt}</span>` : ''}<div class="meta">${new Date(ms(m.criadoEm)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ${tempo}<button class="mais" data-acao="reagir-msg" data-id="${m.id}" title="Reagir">☺</button>${!fechadaAte && !m.umaVez && (m.texto || (m.midia || []).some(ehFoto)) ? `<button class="mais" data-acao="ia-msg" data-id="${m.id}" title="Perguntar à IA sobre esta mensagem">✨</button>` : ''}${eu ? `<button class="mais" data-acao="apagar-msg" data-id="${m.id}" title="Apagar">🗑</button>` : ''}</div></div>`;
 }
 async function apagarMsg(m) {
   if (S.apagando.has(m.id)) return; S.apagando.add(m.id);
@@ -1491,7 +1541,7 @@ document.addEventListener('click', async e => {
       case 'menu-conversa': menuConversa(); break;
       case 'ver-umavez': verUmaVez(id); break;
       case 'ia': { const t = $('#m-texto').value.trim(); $('#m-texto').value = ''; autoAltura(); const pv = provDe(t) || iaPadrao(); perguntarIA({ prov: pv, pergunta: t.replace(IAS[pv].prefixo, '') }); break; }
-      case 'ia-msg': { const m = S.msgs.find(x => x.id === id); if (!m) break; perguntarIA({ prov: a.dataset.prov || iaPadrao(), pergunta: m.ia ? 'Explique melhor / continue: ' : `${primeiroNome(m.autor)} perguntou: "${m.texto}"\n\nResponda isso.` }); break; }
+      case 'ia-msg': { const m = S.msgs.find(x => x.id === id); if (!m) break; perguntarIA({ prov: a.dataset.prov || iaPadrao(), imagens: (m.midia || []).filter(ehFoto).length ? m.midia.filter(ehFoto) : null, pergunta: m.ia ? 'Explique melhor / continue: ' : m.texto ? `${primeiroNome(m.autor)} perguntou: "${m.texto}"\n\nResponda isso.` : `${primeiroNome(m.autor)} mandou esta imagem. Analise e, se for uma questão ou conta, resolva passo a passo.` }); break; }
       case 'copiar-msg': { const m = S.msgs.find(x => x.id === id); try { await navigator.clipboard.writeText(m?.texto || ''); toast('Copiado'); } catch { toast('Não deu para copiar'); } break; }
       case 'ir-config-ia': fecharModal(); irPara('galera'); setTimeout(() => $('#minhas-ias')?.scrollIntoView({ behavior: 'smooth' }), 100); break;
       case 'reagir-msg': popEmojis(a, async em => { const m = S.msgs.find(x => x.id === id); try { await updateDoc(doc(db, 'conversas', S.conv, 'msgs', id), { [`reacoes.${me}`]: m?.reacoes?.[me] === em ? deleteField() : em }); } catch (er) { erro(er); } }); break;
