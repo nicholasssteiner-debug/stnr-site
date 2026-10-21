@@ -76,14 +76,14 @@ workspaces ─► firebase, state, utils, ui
   em exatamente um dos 7 grupos da DRE. O botão "Importar plano padrão" acrescenta a uma
   atividade existente só as contas que faltam, sem tocar nas atuais.
 - Plano de Contas Religioso (`chartReligioso.js`, escolhido no modal "Nova atividade"): plano da ANP
-  no AASI (papel "Associação Religiosa", entidade 1611, só contas ativas + as movimentadas no último ano),
-  sem subcontas e departamentos — 1.457 contas, 1.210 analíticas. O código segue a hierarquia do AASI em
+  Educação (entidade 1622) no AASI (papel 40, só contas ativas + as movimentadas no último ano), sem
+  subcontas e departamentos — 1.256 contas, 1.026 analíticas. O código segue a hierarquia do AASI em
   pontos: a analítica mantém os 7 dígitos (1135001 → 1.1.3.5.001) e a totalizadora fica com menos de 7
   (1135000 → 1.1.3.5), então não aceita lançamento, pela mesma regra do plano padrão. Cada conta traz a
-  natureza D/C do AASI (`nature`), que prevalece sobre a convenção do "(-)". Grupos 5 (controle) e 6
-  (transferências) entram no resultado, como no AASI. A atividade guarda `chartId` ('padrao' | 'religioso')
-  e o "Importar plano" completa a partir do plano dela. Para regerar: `Projetos\Plano de Contas Religioso\`
-  (`extrair_plano_aasi.py` e depois `gerar_chart_religioso.py`).
+  natureza D/C do AASI (`nature`), que prevalece sobre a convenção do "(-)". O grupo 5 (controle) entra
+  no resultado, como no AASI. Resultado do exercício = 2.3.1.1.020; encerramento = 2.3.1.1.025. A atividade
+  guarda `chartId` ('padrao' | 'religioso') e o "Importar plano" completa a partir do plano dela. Para
+  regerar: `Projetos\Plano de Contas Religioso\` (`extrair_plano_aasi.py` e depois `gerar_chart_religioso.py`).
 - Botão "+" (cabeçalho e Configurações) cria uma atividade nova do zero ou uma cópia
   da atual; a atividade anterior permanece na lista.
 - Conta x subconta é estrutural, não de formato de código. Conta = registro do plano
