@@ -86,6 +86,21 @@
   .wa{color:#1f8f4e;font-weight:600;text-decoration:none;white-space:nowrap}
   .wa:hover{text-decoration:underline}
   .empty{padding:40px;text-align:center;color:var(--muted)}
+  /* envio do livro físico */
+  .addr{display:block;white-space:pre-line;font-size:12px;line-height:1.45;color:var(--ink-2);margin-top:6px;padding-left:8px;border-left:2px solid var(--rule)}
+  .mini{font:inherit;font-size:12px;font-weight:600;padding:5px 9px;margin-top:6px;background:transparent;color:var(--ink);border:1px solid var(--ink);border-radius:2px;cursor:pointer;white-space:nowrap}
+  .mini.go{background:var(--ink);color:var(--paper)}
+  .acts{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  .trk{display:block;font-family:var(--mono);font-size:12px;color:var(--green);margin-top:6px;white-space:nowrap}
+  dialog.ship{border:1px solid var(--ink);padding:0;width:min(440px,92vw);background:var(--card);color:var(--ink)}
+  dialog.ship::backdrop{background:rgba(22,20,15,.55)}
+  .ship form{padding:26px}
+  .ship h3{font-family:var(--serif);font-size:24px;margin:0 0 4px}
+  .ship .who{color:var(--ink-2);font-size:14px;margin:0 0 18px}
+  .ship label{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
+  .ship input,.ship select{width:100%;font:inherit;font-size:15px;padding:11px;border:1px solid var(--rule);background:var(--paper);margin-bottom:16px}
+  .ship .row{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+  .ship .msg{min-height:1.3em;font-size:14px;margin:4px 0 0;color:var(--red)}
   .demo-flag{background:var(--gold);color:var(--ink);font-family:var(--mono);font-size:12px;text-align:center;padding:6px}
   footer{font-size:13px;color:var(--muted);padding:0 0 40px}
 
@@ -212,7 +227,32 @@
   </section>
 </main>
 
-<footer class="wrap">Para mudar o status de envio ou lançar uma venda feita fora da plataforma, edite a aba “Pedidos” da planilha e clique em Atualizar.</footer>
+<dialog class="ship" id="ship">
+  <form id="ship-form">
+    <h3>Registrar envio</h3>
+    <p class="who" id="ship-who"></p>
+    <label for="ship-transp">Transportadora</label>
+    <select id="ship-transp">
+      <option>Correios</option>
+      <option>Jadlog</option>
+      <option>Loggi</option>
+      <option value="Outra">Outra…</option>
+    </select>
+    <div id="ship-outra-box" hidden>
+      <label for="ship-outra">Nome da transportadora</label>
+      <input id="ship-outra" type="text" maxlength="60" autocomplete="off">
+    </div>
+    <label for="ship-code">Código de rastreio</label>
+    <input id="ship-code" type="text" maxlength="60" autocomplete="off" placeholder="Ex.: AA123456789BR">
+    <p class="msg" id="ship-msg" role="status"></p>
+    <div class="row">
+      <button type="button" class="ghost" id="ship-cancel">Cancelar</button>
+      <button type="submit" id="ship-go">Confirmar e avisar por e-mail</button>
+    </div>
+  </form>
+</dialog>
+
+<footer class="wrap">Na aba “A enviar”, use “Copiar endereço” para a etiqueta e “Registrar envio” depois de postar: o comprador recebe o rastreio por e-mail na hora. Para lançar uma venda feita fora da plataforma, edite a aba “Pedidos” da planilha e clique em Atualizar.</footer>
 </div>
 
 <!-- calendário do Instagram -->
@@ -329,7 +369,9 @@
     const pedidos = (j.pedidos || []).map(p => ({
       tipo: "pedido", nome: p["Nome"], email: p["E-mail"], whats: p["WhatsApp"], formato: p["Formato"] || "Físico",
       valor: Number(String(p["Valor"]).replace(",", ".")) || 0, status: p["Status"] || "Aguardando pagamento",
-      envio: p["Envio"] || "—", data: p["Data"], obs: p["Observação"], produto: p["Produto"], pagamento: p["Pagamento"]
+      envio: p["Envio"] || "—", data: p["Data"], obs: p["Observação"], produto: p["Produto"], pagamento: p["Pagamento"],
+      id: p["Pedido"], endereco: p["Endereço"] || "", cpf: p["CPF"] || "",
+      transp: p["Transportadora"] || "", rastreio: p["Rastreio"] || "", rastreioEm: p["Rastreio enviado"] || ""
     }));
     const pagos = pedidos.filter(p => p.status === "Pago");
     const compradores = new Set(pagos.map(p => tail(p.whats)).filter(Boolean));
@@ -382,22 +424,91 @@
     const rows = data[tab].rows
       .filter(r => !q || (r.nome||"").toLowerCase().includes(q) || (r.email||"").toLowerCase().includes(q) || (qd && dig(r.whats).includes(qd)))
       .sort((a,b) => new Date(b.data) - new Date(a.data));
+    shown = rows;
     if (!rows.length){ $("rows").innerHTML = '<tr><td colspan="8" class="empty">Nada por aqui.</td></tr>'; return; }
-    $("rows").innerHTML = rows.map(r => {
+    $("rows").innerHTML = rows.map((r, i) => {
       const w = dig(r.whats);
       const wa = w ? '<a class="wa" target="_blank" rel="noopener" href="https://wa.me/' + (w.length <= 11 ? "55" + w : w) + '?text=' + encodeURIComponent(msgFor(r)) + '">WhatsApp ↗</a>' : "";
       const cls = r.tipo === "lista" ? "lista" : (STATUS_CLS[r.status] || "aguardando");
+      const enviavel = r.tipo === "pedido" && r.formato === "Físico" && r.status === "Pago";
+      const endereco = enviavel && r.endereco
+        ? '<span class="addr">' + esc(r.endereco) + (r.cpf ? '\nCPF ' + esc(r.cpf) : "") + '</span><button type="button" class="mini" data-copy="' + i + '">Copiar endereço</button>' : "";
+      const envio = !enviavel ? "" : r.rastreio
+        ? '<span class="trk">📦 ' + esc(r.transp) + ' · ' + esc(r.rastreio) + '</span><button type="button" class="mini" data-ship="' + i + '">Corrigir / reenviar</button>'
+        : '<button type="button" class="mini go" data-ship="' + i + '">Registrar envio</button>';
       return '<tr>' +
-        '<td>' + esc(r.nome || "—") + (r.email ? '<span class="sub">' + esc(r.email) + '</span>' : "") + '</td>' +
+        '<td>' + esc(r.nome || "—") + (r.email ? '<span class="sub">' + esc(r.email) + '</span>' : "") + endereco + '</td>' +
         '<td class="mono">' + esc(fone(r.whats)) + '</td>' +
         '<td class="fmt">' + esc(r.formato === "Digital" ? "E-book" : r.formato || "—") + '</td>' +
         '<td class="num">' + (r.tipo === "lista" ? "—" : brl(r.valor)) + '</td>' +
         '<td><span class="chip s-' + cls + '">' + esc(r.status) + '</span></td>' +
         '<td>' + esc(r.envio || "—") + '</td>' +
         '<td class="mono">' + esc(dt(r.data)) + '</td>' +
-        '<td>' + wa + '</td></tr>';
+        '<td><div class="acts">' + wa + envio + '</div></td></tr>';
     }).join("");
   }
+
+  /* ---------- envio do livro físico ---------- */
+  let shown = [], alvo = null;
+  $("rows").addEventListener("click", async e => {
+    const c = e.target.closest("[data-copy]"), s = e.target.closest("[data-ship]");
+    if (c){
+      const r = shown[+c.dataset.copy];
+      const txt = [r.nome, r.endereco, r.cpf ? "CPF " + r.cpf : ""].filter(Boolean).join("\n");
+      try { await navigator.clipboard.writeText(txt); c.textContent = "Copiado ✓"; } catch (err) { c.textContent = "Não consegui copiar"; }
+      setTimeout(() => { c.textContent = "Copiar endereço"; }, 2000);
+    }
+    if (s){
+      alvo = shown[+s.dataset.ship];
+      $("ship-who").textContent = alvo.nome + (alvo.email ? " · " + alvo.email : "");
+      const conhecida = ["Correios", "Jadlog", "Loggi"].includes(alvo.transp);
+      $("ship-transp").value = !alvo.transp ? "Correios" : conhecida ? alvo.transp : "Outra";
+      $("ship-outra").value = conhecida ? "" : alvo.transp;
+      $("ship-outra-box").hidden = $("ship-transp").value !== "Outra";
+      $("ship-code").value = alvo.rastreio || "";
+      $("ship-msg").textContent = alvo.rastreioEm ? "O comprador já recebeu o rastreio em " + dt(alvo.rastreioEm) + ". Confirmar envia de novo." : "";
+      $("ship-go").disabled = false;
+      $("ship").showModal();
+      $("ship-code").focus();
+    }
+  });
+  $("ship-transp").addEventListener("change", () => { $("ship-outra-box").hidden = $("ship-transp").value !== "Outra"; });
+  $("ship-cancel").addEventListener("click", () => $("ship").close());
+  $("ship-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const transp = $("ship-transp").value === "Outra" ? $("ship-outra").value.trim() : $("ship-transp").value;
+    const codigo = $("ship-code").value.trim();
+    if (!transp || !codigo){ $("ship-msg").textContent = "Preencha a transportadora e o código."; return; }
+    $("ship-go").disabled = true; $("ship-msg").textContent = "Enviando…";
+    if (!$("demo-flag").hidden){   // modo exemplo: só simula
+      Object.assign(alvo, { transp, rastreio: codigo.toUpperCase(), rastreioEm: new Date().toISOString(), envio: "Enviado" });
+      const p = lastData.pedidos.find(x => x["Pedido"] === alvo.id);
+      if (p) Object.assign(p, { "Transportadora": transp, "Rastreio": codigo.toUpperCase(), "Rastreio enviado": alvo.rastreioEm, "Envio": "Enviado" });
+      $("ship").close(); render(lastData); return;
+    }
+    const enviar = async reenviar => {
+      const r = await fetch(store.get("painel-url"), { method: "POST", body: new URLSearchParams({
+        acao: "rastreio", chave: store.get("painel-key"), pedido: alvo.id, transportadora: transp, codigo, reenviar: reenviar ? "sim" : "" }) });
+      return r.json();
+    };
+    try {
+      let j = await enviar(!!alvo.rastreioEm);
+      if (!j.ok && j.erro === "ja_enviado" && confirm("Esse comprador já recebeu um rastreio em " + dt(j.em) + ". Enviar de novo com os dados novos?")) j = await enviar(true);
+      if (!j.ok){
+        const msgs = { senha: "Senha do painel incorreta.", dados: "Preencha a transportadora e o código.", pedido: "Pedido não encontrado na planilha.",
+          nao_fisico_pago: "Esse pedido não é de livro físico pago.", sem_email: "Esse pedido não tem e-mail.", ja_enviado: "Nada foi enviado.",
+          email: "Os dados foram salvos, mas o e-mail falhou: " + (j.detalhe || "") };
+        $("ship-msg").textContent = msgs[j.erro] || "Não deu certo. Tente de novo.";
+        $("ship-go").disabled = false;
+        if (j.erro === "email") load();
+        return;
+      }
+      $("ship").close(); load();
+    } catch (err) {
+      $("ship-msg").textContent = "Sem conexão com a planilha. Tente de novo.";
+      $("ship-go").disabled = false;
+    }
+  });
   $("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.tab; render(lastData); });
   $("search").addEventListener("input", e => { query = e.target.value; drawRows(); });
 
@@ -405,8 +516,10 @@
   /* ---------- exemplo ---------- */
   function demo(){
     const now = Date.now(), h = 3600e3;
-    const P = (nome, whats, formato, status, envio, horas, email) => ({ "Nome":nome, "E-mail":email||"", "WhatsApp":whats, "Formato":formato,
-      "Valor": formato === "Digital" ? 5 : 38.9, "Status":status, "Envio":envio, "Data": new Date(now - horas*h).toISOString() });
+    let seq = 0;
+    const P = (nome, whats, formato, status, envio, horas, email) => ({ "Pedido": "demo-" + (++seq), "Nome":nome, "E-mail":email||"", "WhatsApp":whats, "Formato":formato,
+      "Valor": formato === "Digital" ? 5 : 38.9, "Status":status, "Envio":envio, "Data": new Date(now - horas*h).toISOString(),
+      "Endereço": formato === "Físico" ? "Rua das Flores, 123\nApto 45\nCentro, Curitiba - PR\nCEP 80000-000" : "", "CPF": formato === "Físico" ? "000.000.000-00" : "" });
     return { ok:true, gerado:new Date().toISOString(), planilha:"",
       pedidos:[
         P("Ana Paula Ribeiro","5541998761234","Físico","Pago","A enviar",2,"ana@exemplo.com"),
