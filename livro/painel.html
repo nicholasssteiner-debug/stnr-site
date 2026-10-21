@@ -89,6 +89,57 @@
   .demo-flag{background:var(--gold);color:var(--ink);font-family:var(--mono);font-size:12px;text-align:center;padding:6px}
   footer{font-size:13px;color:var(--muted);padding:0 0 40px}
 
+  /* abas do painel */
+  .views{display:flex;border:1px solid rgba(244,239,230,.4)}
+  header .views button{border:0;border-right:1px solid rgba(244,239,230,.4);font-weight:500}
+  header .views button:last-child{border-right:0}
+  header .views button[aria-pressed=true]{background:var(--paper);color:var(--ink)}
+  body.on-cal #hdr-r,body.on-cal #demo-flag{display:none!important}
+
+  /* calendário do Instagram */
+  .cal{max-width:760px;margin:0 auto;padding:28px 0 64px}
+  .cal-kpis{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink);background:var(--card)}
+  .cal-kpis .kpi:first-child{border-right:1px solid var(--rule)}
+  .cal-progress{height:6px;background:var(--paper-2);margin-top:8px}
+  .cal-progress i{display:block;height:100%;width:0;background:var(--green)}
+  .cal-note-top{font-size:13px;color:var(--muted);margin:10px 0 0}
+  .cal-box{border:1px solid var(--rule);background:var(--card);margin:14px 0 0}
+  .cal-box summary{padding:12px 16px;font-weight:600;cursor:pointer}
+  .cal-box ul{margin:0;padding:0 16px 16px 36px;display:grid;gap:6px;color:var(--ink-2)}
+  .cal-box p{margin:0;padding:0 16px 14px;color:var(--ink-2)}
+  .cal .tabs{margin:24px 0 0;display:inline-flex}
+  .cal-days{display:grid;gap:10px;margin:16px 0 0}
+  .cal-week{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:14px 0 6px}
+  .cal-rest{display:flex;gap:14px;align-items:baseline;padding:10px 16px;border:1px dashed var(--rule);color:var(--muted);font-size:14px}
+  .cal-day{border:1px solid var(--rule);background:var(--card)}
+  .cal-day.is-today{border-color:var(--ink);box-shadow:3px 3px 0 var(--gold)}
+  .cal-day.is-done{opacity:.6}
+  .cal-day summary{display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center;padding:12px 16px;cursor:pointer;list-style:none}
+  .cal-day summary::-webkit-details-marker{display:none}
+  .cal-day input{width:22px;height:22px;accent-color:var(--green);cursor:pointer}
+  .cal-date{font-family:var(--mono);font-size:13px;line-height:1.2}
+  .cal-date small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase}
+  .cal-what{min-width:0;display:grid;gap:3px;justify-items:start}
+  .cal-what strong{font-weight:600;line-height:1.3}
+  .cal-tag{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--ink);color:var(--ink)}
+  .cal-tag.t-reels{background:var(--violet);border-color:var(--violet);color:var(--paper)}
+  .cal-tag.t-pessoal{border-color:var(--bronze);color:var(--bronze)}
+  .cal-tag.t-stories{border-color:var(--rule);color:var(--muted)}
+  .cal-hoje{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--green);font-weight:500}
+  .cal-body{border-top:1px solid var(--rule);padding:14px 16px 16px;display:grid;gap:14px}
+  .cal-body h4{font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .cal-body p{margin:0}
+  .cal-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+  .cal-list li{display:grid;grid-template-columns:44px 1fr;gap:10px}
+  .cal-list li span{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:2px}
+  .cal-script li span{color:var(--violet)}
+  .cal-cap{background:var(--paper);border-left:3px solid var(--gold);padding:12px 14px;white-space:pre-wrap}
+  .cal-copy{justify-self:start}
+  .cal-note{border-left:3px solid var(--amber);padding-left:10px;font-size:14px}
+  .cal-fill{color:var(--bronze);font-style:italic}
+  .cal-baixa{color:var(--red);font-weight:600}
+  .cal-mantida{color:var(--green);font-weight:600}
+
   @media (max-width:900px){ .kpis{grid-template-columns:1fr 1fr} .kpi{border-bottom:1px solid var(--rule)} .kpi:nth-child(2n){border-right:0} }
   @media (max-width:560px){ .wrap{padding:0 16px} header .wrap{padding:14px 16px} .kpi b{font-size:26px} .search{min-width:0;width:100%} .connect{margin:32px 16px;padding:24px} }
 </style>
@@ -99,6 +150,10 @@
 <header>
   <div class="wrap">
     <h1>Painel da pré-venda · <span>O Fim do Monopólio da Virtude</span></h1>
+    <div class="views" role="group" aria-label="Seções do painel">
+      <button type="button" id="v-vendas" data-view="vendas" aria-pressed="true">Vendas</button>
+      <button type="button" id="v-calendario" data-view="calendario" aria-pressed="false">Calendário do Instagram</button>
+    </div>
     <div class="hdr-r" id="hdr-r" hidden>
       <span id="updated"></span>
       <a class="btn ghost" id="sheet-link" href="#" target="_blank" rel="noopener" style="color:var(--paper);border-color:rgba(244,239,230,.4)">Abrir planilha</a>
@@ -108,6 +163,7 @@
   </div>
 </header>
 
+<div id="view-vendas">
 <main class="wrap">
   <!-- conexão -->
   <section class="connect" id="connect">
@@ -157,6 +213,61 @@
 </main>
 
 <footer class="wrap">Para mudar o status de envio ou lançar uma venda feita fora da plataforma, edite a aba “Pedidos” da planilha e clique em Atualizar.</footer>
+</div>
+
+<!-- calendário do Instagram -->
+<main class="wrap" id="view-calendario" hidden>
+  <div class="cal">
+    <div class="cal-kpis">
+      <div class="kpi"><small>Pré-venda</small><b id="cal-faltam">—</b><span id="cal-faltam-sub"></span></div>
+      <div class="kpi money"><small>Posts publicados</small><b id="cal-feitos">—</b><span id="cal-feitos-sub"></span><div class="cal-progress"><i id="cal-bar"></i></div></div>
+    </div>
+    <p class="cal-note-top">Marque cada dia quando publicar. As marcações ficam salvas neste navegador.</p>
+
+    <details class="cal-box">
+      <summary>Regras do calendário</summary>
+      <ul>
+        <li><b>Reels só a partir de 03/11</b>, com o celular novo. Até lá, só carrosséis, fotos e stories.</li>
+        <li><b>Horário:</b> entre 7h e 12h. Os seguidores ficam mais ativos das 6h às 15h.</li>
+        <li><b>Sábado sem post de venda</b> (Shabbat). Se quiser postar, use o sábado à noite.</li>
+        <li><b>Proporção:</b> a cada 3 posts sobre o livro, 1 da vida pessoal.</li>
+        <li><b>Carrosséis:</b> fundo escuro com dourado, igual à arte da pré-venda. A primeira lâmina tem que fazer a pessoa parar.</li>
+        <li><span class="cal-fill">[Texto entre colchetes]</span> é para preencher com a história real.</li>
+        <li><b>Anúncio:</b> em 27/10, pause o atual e turbine o carrossel com mais salvamentos. Em 04/11, troque pelo Reels 1 se ele for melhor.</li>
+      </ul>
+    </details>
+    <details class="cal-box">
+      <summary>Stories: rotina diária</summary>
+      <ul>
+        <li><b>Seg:</b> enquete com uma convicção do livro</li>
+        <li><b>Ter:</b> bastidor (foto do livro, da mesa, de um trecho marcado)</li>
+        <li><b>Qua:</b> caixa de perguntas sobre o livro</li>
+        <li><b>Qui:</b> resposta em texto a uma pergunta da caixinha</li>
+        <li><b>Sex:</b> vida pessoal + contagem regressiva</li>
+        <li><b>Dom:</b> repost do post do dia + figurinha de link</li>
+      </ul>
+      <p>Todo dia: figurinha de contagem regressiva "Fim da pré-venda · 10/11". Salve os melhores no destaque 📕 Livro.</p>
+    </details>
+    <details class="cal-box">
+      <summary>Antes de postar, preencha</summary>
+      <ul>
+        <li>O achado dos Capítulos 6, 7 e 8, em uma frase cada (22/10, 25/10 e 28/10)</li>
+        <li>3 objeções do Tribunal do Modelo (02/11)</li>
+        <li>O prazo de envio do livro físico (08/11)</li>
+        <li>As histórias pessoais de 23/10, 29/10 e 04/11</li>
+      </ul>
+    </details>
+
+    <div class="tabs" id="cal-filtros" role="group" aria-label="Filtrar dias">
+      <button type="button" data-f="todos" aria-pressed="true">Todos</button>
+      <button type="button" data-f="pendentes" aria-pressed="false">Pendentes</button>
+      <button type="button" data-f="carrossel" aria-pressed="false">Carrossel</button>
+      <button type="button" data-f="reels" aria-pressed="false">Reels</button>
+      <button type="button" data-f="pessoal" aria-pressed="false">Pessoal</button>
+    </div>
+    <div class="cal-days" id="cal-days"></div>
+  </div>
+</main>
 
 <script>
 (function(){
@@ -317,7 +428,19 @@
   }
 
   load();
+
+  /* ---------- abas: vendas / calendário ---------- */
+  function showView(v){
+    const cal = v === "calendario";
+    $("view-vendas").hidden = cal; $("view-calendario").hidden = !cal;
+    document.body.classList.toggle("on-cal", cal);
+    $("v-vendas").setAttribute("aria-pressed", String(!cal)); $("v-calendario").setAttribute("aria-pressed", String(cal));
+    if (location.hash !== (cal ? "#calendario" : "")) history.replaceState(null, "", cal ? "#calendario" : location.pathname + location.search);
+  }
+  document.querySelector(".views").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showView(b.dataset.view); });
+  showView(location.hash === "#calendario" ? "calendario" : "vendas");
 })();
 </script>
+<script src="calendario.js"></script>
 </body>
 </html>
