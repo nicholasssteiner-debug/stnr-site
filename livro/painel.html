@@ -112,12 +112,12 @@
   <!-- conexão -->
   <section class="connect" id="connect">
     <h2>Conectar à planilha</h2>
-    <p>Cole a URL do Apps Script (termina em <code>/exec</code>) e a senha do painel definida no <code>controle-pre-venda.gs</code>. Ficam salvas só neste navegador.</p>
+    <p>Digite a senha do painel (a <code>SENHA_PAINEL</code> do arquivo <code>controle-pre-venda.gs</code>). Ela fica salva só neste navegador.</p>
     <form id="connect-form">
       <label for="c-url">URL do Apps Script</label>
-      <input id="c-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" required>
+      <input id="c-url" name="painel-script" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" required>
       <label for="c-key">Senha do painel</label>
-      <input id="c-key" type="password" required>
+      <input id="c-key" name="painel-senha" type="password" autocomplete="new-password" required>
       <div class="row">
         <button type="submit" id="c-go">Conectar</button>
         <button type="button" class="ghost" id="c-demo">Ver com dados de exemplo</button>
@@ -171,6 +171,7 @@
   const fone = v => { const d = dig(v).replace(/^55/,""); return d.length >= 10 ? "(" + d.slice(0,2) + ") " + d.slice(2,-4) + "-" + d.slice(-4) : (d || "—"); };
   const dt = v => { const d = new Date(v); return isNaN(d) ? "" : d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) + " " + d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); };
   const LIVRO = "O Fim do Monopólio da Virtude";
+  const URL_PADRAO = "https://script.google.com/macros/s/AKfycbwbNtQZB-viwEsvuztYLOaf3IaThlLLpUSRq_w7cujUgJlFOiUCNdTsmYNTa6YCSC61/exec"; // script da planilha (não é secreto; a senha é que protege)
 
   const STATUS_CLS = { "Pago":"pago", "Aguardando pagamento":"aguardando", "Carrinho abandonado":"abandonado", "Recusado":"recusado", "Cancelado":"cancelado", "Reembolsado":"reembolsado" };
   const NAO_PAGOU = ["Aguardando pagamento","Carrinho abandonado","Recusado","Cancelado"];
@@ -194,7 +195,8 @@
   }
   function showConnect(err){
     $("connect").hidden = false; $("dash").hidden = true; $("hdr-r").hidden = true;
-    $("c-url").value = store.get("painel-url");
+    const salva = store.get("painel-url");
+    $("c-url").value = /^https://script.google.com//.test(salva) ? salva : URL_PADRAO;
     $("c-err").textContent = err || "";
   }
   $("connect-form").addEventListener("submit", e => {
