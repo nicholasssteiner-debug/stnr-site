@@ -368,6 +368,18 @@
           <div style="overflow-x:auto"><table class="tabela-dre" id="bp-passivo"></table></div>
         </div>
       </div>
+
+      <div class="painel">
+        <h2>⚠️ Contas fora de natureza</h2>
+        <p class="fer-desc">Contas do balanço com saldo <b>contrário à sua natureza</b> — ativo (devedor)
+          com saldo credor, ou passivo (credor) com saldo devedor. Contas com "(-)" no nome são
+          retificadoras e já entram com a natureza invertida.<br>
+          A conta aparece aqui por <b>dois motivos</b>, e o rótulo diz qual: o <b>total</b> dela está
+          invertido, ou o total fecha certo mas há <b>subconta invertida dentro</b> (ex.: um fornecedor
+          com saldo devedor dentro de "Fornecedores a Pagar" — um adiantamento). Clique no <b>+</b> para
+          abrir as subcontas.</p>
+        <div id="bp-natureza"></div>
+      </div>
     </div>
 
     <div id="aba-ind" class="conteudo-aba" style="display:none">
@@ -435,18 +447,9 @@
         <div id="fer-busca-resultado"></div>
       </div>
 
-      <div class="painel grafico">
-        <h2>⚠️ Contas fora de natureza (ativo e passivo)</h2>
-        <p class="fer-desc">Contas analíticas do balanço com saldo contrário à natureza — ativo (devedor) com saldo credor, passivo (credor) com saldo devedor.
-          Saldo acumulado da abertura até o mês final selecionado. Sinais como no razão (devedor +, credor −).</p>
-        <div id="fer-natureza"></div>
-
-        <h2 style="margin-top:22px">🔬 Contas e subcontas fora de natureza</h2>
-        <p class="fer-desc">Um nível abaixo: cada subconta (identificada pelo código) dentro de uma conta de balanço,
-          cujo saldo está contrário à natureza da conta. Ex.: um fornecedor com saldo devedor em "Fornecedores a Pagar" (adiantamento).
-          No site, mostra só o código; carregando a planilha completa localmente, mostra também o nome.</p>
-        <div id="fer-natureza-sub"></div>
-      </div>
+      <!-- "Contas fora de natureza" saiu daqui: virou uma tabela única (conta +
+           subcontas no mesmo lugar) dentro da aba Balanço, que é onde ela faz
+           sentido. Antes eram dois painéis parecidos lado a lado. -->
 
       <!-- Herdada do painel da ANP (adiantamento de salário, dept 3310000).
            Não se aplica à Loja e depende de uma aba que esta extração não
@@ -864,6 +867,7 @@ function render() {
   renderProjecao();
   renderSubvencoes(linhas);
   renderBalanco();
+  renderNatureza();
   renderIndicadores();
   renderFerramentas();
   renderMovto();
@@ -1049,6 +1053,121 @@ function baixarMovtoCSV(mes, linhas, sufixo) {
    Ativo mostrado como devedor (+); passivo/PL como credor exibido (+).
    Fecha quando Ativo = Passivo + PL + Resultado do exercício.
    ===================================================================== */
+/* =====================================================================
+   CONTAS FORA DE NATUREZA — tabela única (conta + subcontas)
+   Antes eram dois painéis separados na aba Ferramentas. Aqui a conta e as
+   subcontas dela ficam na MESMA linha-pai, expansível, e a conta entra na
+   lista por dois motivos diferentes (o rótulo diz qual):
+     • o TOTAL da conta está invertido;
+     • o total fecha certo, mas há SUBCONTA invertida dentro — o caso que
+       nenhuma das duas tabelas antigas mostrava bem.
+   ===================================================================== */
+function renderNatureza() {
+  const el = document.getElementById("bp-natureza");
+  if (!el) return;
+  const f = filtrosAtuais();
+  if (!f.anos.length || !dadosBrutos.length) { el.innerHTML = ""; return; }
+  const ano = Math.max(...f.anos), mFim = Math.max(1, Math.min(12, f.mesFim));
+  const ESPERADO = { "1": 1, "2": -1 };   // ativo devedor (+), passivo credor (−)
+
+  // saldo acumulado por conta e por conta|subconta
+  const porConta = new Map(), porSub = new Map();
+  for (const d of dadosBrutos) {
+    const g = d.Conta[0];
+    if (g !== "1" && g !== "2") continue;
+    if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
+    if (!infoContas.ehAnalitica(d.Conta)) continue;
+    const v = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!v) continue;
+    if (d.Subconta) {
+      const k = d.Conta + "|" + d.Subconta;
+      const r = porSub.get(k) || { conta: d.Conta, sub: d.Subconta, nome: "", saldo: 0 };
+      if (d.NomeSubconta && d.NomeSubconta.length > r.nome.length) r.nome = d.NomeSubconta;
+      r.saldo += v; porSub.set(k, r);
+    } else {
+      const r = porConta.get(d.Conta) || { nome: d.NomeConta || "", saldo: 0 };
+      r.saldo += v; if (!r.nome && d.NomeConta) r.nome = d.NomeConta;
+      porConta.set(d.Conta, r);
+    }
+  }
+  const temNomes = [...porConta.values()].some(r => r.nome);
+  if (!temNomes) {
+    el.innerHTML = `<p class="fer-desc">Requer a planilha carregada (os nomes das contas identificam as retificadoras).</p>`;
+    return;
+  }
+  // natureza esperada da conta (retificadora inverte)
+  const natDe = conta => {
+    let e = ESPERADO[conta[0]];
+    if (!e) return 0;
+    const nome = (porConta.get(conta) || {}).nome || "";
+    return /\(-\)/.test(nome) ? -e : e;
+  };
+  const invertido = (saldo, e) => e && Math.abs(saldo) > 1 && Math.sign(saldo) !== e;
+
+  // monta: conta -> { contaFora, subsFora[] }
+  const mapa = new Map();
+  for (const [conta, r] of porConta) {
+    const e = natDe(conta);
+    if (invertido(r.saldo, e))
+      mapa.set(conta, { conta, nome: r.nome, saldo: r.saldo, nat: e === 1 ? "devedora" : "credora", contaFora: true, subs: [] });
+  }
+  for (const r of porSub.values()) {
+    const e = natDe(r.conta);
+    if (!invertido(r.saldo, e)) continue;
+    let reg = mapa.get(r.conta);
+    if (!reg) {
+      const c = porConta.get(r.conta) || { nome: "", saldo: 0 };
+      reg = { conta: r.conta, nome: c.nome, saldo: c.saldo, nat: e === 1 ? "devedora" : "credora", contaFora: false, subs: [] };
+      mapa.set(r.conta, reg);
+    }
+    reg.subs.push(r);
+  }
+  const lista = [...mapa.values()].sort((a, b) =>
+    Math.abs(b.contaFora ? b.saldo : b.subs.reduce((s, x) => s + x.saldo, 0)) -
+    Math.abs(a.contaFora ? a.saldo : a.subs.reduce((s, x) => s + x.saldo, 0)));
+  for (const r of lista) r.subs.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+
+  if (!lista.length) {
+    el.innerHTML = `<span class="selo-ok">✓ Nenhuma conta ou subconta fora de natureza no recorte atual</span>`;
+    return;
+  }
+  const temNomeSub = lista.some(r => r.subs.some(s => s.nome));   // no site vem só o código
+  let seq = 0, html = `<table class="tabela-dre"><thead><tr>
+      <th>Conta</th><th>Nome</th><th>Natureza esperada</th>
+      <th class="num">Saldo da conta</th><th>Por que está na lista</th></tr></thead><tbody>`;
+  for (const r of lista) {
+    const id = "nat-g" + (++seq);
+    const seta = r.subs.length ? `<span class="alternar" data-alvo="${id}">+</span> ` : "";
+    const motivo = r.contaFora
+      ? (r.subs.length
+        ? `<b style="color:#b3423a">Total invertido</b> + ${r.subs.length} subconta(s)`
+        : `<b style="color:#b3423a">Total invertido</b>`)
+      : `Total OK — <b>${r.subs.length} subconta(s) invertida(s)</b>`;
+    html += `<tr class="dre-n1-lite"><td>${seta}${r.conta}</td><td>${r.nome || "—"}</td>
+      <td>${r.nat}</td>
+      <td class="num total-col"${r.contaFora ? ' style="color:#b3423a;font-weight:600"' : ""}>${n(r.saldo)}</td>
+      <td>${motivo}</td></tr>`;
+    for (const s of r.subs)
+      html += `<tr class="dre-n3 escondida" data-pai="${id}">
+        <td style="padding-left:26px">↳ ${s.sub}</td>
+        <td>${temNomeSub ? (s.nome || "—") : "<i>(só o código é publicado)</i>"}</td>
+        <td></td><td class="num" style="color:#b3423a">${n(s.saldo)}</td>
+        <td>subconta invertida</td></tr>`;
+  }
+  const nContas = lista.filter(r => r.contaFora).length;
+  const nSubs = lista.reduce((s, r) => s + r.subs.length, 0);
+  html += `</tbody></table><p class="fer-desc" style="margin-top:8px">
+     ${nContas} conta(s) com o total invertido e ${nSubs} subconta(s) invertida(s),
+     em ${lista.length} conta(s) para conferir. Saldo acumulado da abertura até o mês final
+     do filtro; sinais como no razão (devedor +, credor −).</p>`;
+  el.innerHTML = html;
+  el.querySelectorAll(".alternar").forEach(sp => sp.addEventListener("click", () => {
+    const abrir = sp.textContent === "+";
+    sp.textContent = abrir ? "−" : "+";
+    el.querySelectorAll(`tr[data-pai="${sp.dataset.alvo}"]`).forEach(tr => tr.classList.toggle("escondida", !abrir));
+  }));
+}
+
 function renderBalanco() {
   const f = filtrosAtuais();
   const anosDisp = [...new Set(dadosBrutos.map(d => d.Ano))].sort((a, b) => a - b);
@@ -2561,70 +2680,6 @@ function renderFerramentas() {
     reg.saldo += v;
     if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
     ferPorConta.set(d.Conta, reg);
-  }
-
-  // ----- 1) Contas fora de natureza -----
-  const temNomes = [...ferPorConta.values()].some(r => r.nome);
-  const esperado = { "1": 1, "2": -1 };  // só balanço: ativo devedor +1, passivo credor −1
-  const fora = [];
-  if (temNomes) for (const [conta, r] of ferPorConta) {
-    if (!infoContas.ehAnalitica(conta)) continue;
-    let e = esperado[conta[0]];
-    if (!e || Math.abs(r.saldo) <= 1) continue;
-    if (/\(-\)/.test(r.nome)) e = -e;   // retificadora/redutora: natureza invertida
-    if (Math.sign(r.saldo) !== e)
-      fora.push({ conta, nome: r.nome, saldo: r.saldo, nat: e === 1 ? "devedora" : "credora" });
-  }
-  fora.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
-  document.getElementById("fer-natureza").innerHTML = !temNomes
-    ? `<p class="fer-desc">Requer a planilha completa (os nomes das contas identificam as retificadoras).</p>`
-    : (fora.length
-      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome</th><th>Natureza esperada</th><th style="text-align:right">Saldo</th></tr>` +
-        fora.map(x => `<tr><td>${x.conta}</td><td>${x.nome || "—"}</td><td>${x.nat}</td>
-          <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
-        `</table><p class="fer-desc" style="margin-top:8px">${fora.length} conta(s) para conferir. Contas com "(-)" no nome já são tratadas como retificadoras.</p>`
-      : `<span class="selo-ok">✓ Nenhuma conta fora de natureza no recorte atual</span>`);
-
-  // ----- 1b) Contas + subcontas fora de natureza -----
-  // Só funciona com a planilha completa (linhas com subconta); o dados.xlsx
-  // publicado não traz subconta (privacidade: são nomes de fornec./func.).
-  const temSub = dadosBrutos.some(d => d.Subconta);
-  if (!temSub) {
-    document.getElementById("fer-natureza-sub").innerHTML =
-      `<p class="fer-desc">Sem dados de subconta no arquivo carregado.</p>`;
-  } else {
-    const porSub = new Map();  // conta|subconta -> { conta, nomeConta, sub, nomeSub, saldo }
-    for (const d of dadosBrutos) {
-      if (!d.Subconta) continue;
-      const g = d.Conta[0];
-      if (g !== "1" && g !== "2") continue;
-      if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
-      if (!infoContas.ehAnalitica(d.Conta)) continue;
-      const v = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
-      if (!v) continue;
-      const chave = d.Conta + "|" + d.Subconta;
-      const reg = porSub.get(chave) || { conta: d.Conta, nomeConta: d.NomeConta || "", sub: d.Subconta, nomeSub: d.NomeSubconta || "", saldo: 0 };
-      reg.saldo += v;
-      if (!reg.nomeSub && d.NomeSubconta) reg.nomeSub = d.NomeSubconta;
-      porSub.set(chave, reg);
-    }
-    const foraSub = [];
-    for (const r of porSub.values()) {
-      let e = esperado[r.conta[0]];
-      if (!e || Math.abs(r.saldo) <= 1) continue;
-      if (/\(-\)/.test(r.nomeConta)) e = -e;
-      if (Math.sign(r.saldo) !== e)
-        foraSub.push({ ...r, nat: e === 1 ? "devedora" : "credora" });
-    }
-    foraSub.sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
-    const temNomeSub = foraSub.some(x => x.nomeSub);   // site publica só o código
-    const colNomeSub = temNomeSub ? "<th>Nome da Subconta</th>" : "";
-    document.getElementById("fer-natureza-sub").innerHTML = foraSub.length
-      ? `<table class="fer-tabela"><tr><th>Conta</th><th>Nome da Conta</th><th>Subconta</th>${colNomeSub}<th>Natureza</th><th style="text-align:right">Saldo</th></tr>` +
-        foraSub.slice(0, 200).map(x => `<tr><td>${x.conta}</td><td>${x.nomeConta || "—"}</td><td>${x.sub}</td>${temNomeSub ? `<td>${x.nomeSub || "—"}</td>` : ""}<td>${x.nat}</td>
-          <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
-        `</table><p class="fer-desc" style="margin-top:8px">${foraSub.length} subconta(s) para conferir${foraSub.length > 200 ? " (mostrando as 200 maiores)" : ""}.</p>`
-      : `<span class="selo-ok">✓ Nenhuma subconta fora de natureza no recorte atual</span>`;
   }
 
   renderBusca();
