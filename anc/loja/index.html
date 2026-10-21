@@ -189,6 +189,10 @@
               font-family: inherit; font-size: 12.5px; color: #456; cursor: pointer; transition: all .15s; }
   .prod-ord:hover { border-color: #5b9bd5; color: #2c5f7c; }
   .prod-ord.ativo { background: #2c5f7c; border-color: #2c5f7c; color: #fff; font-weight: 600; }
+  .est-ord { padding: 5px 12px; border: 1px solid #c9d6e2; border-radius: 3px; background: #fff;
+             font-family: inherit; font-size: 12.5px; color: #456; cursor: pointer; transition: all .15s; }
+  .est-ord:hover { border-color: #5b9bd5; color: #2c5f7c; }
+  .est-ord.ativo { background: #2c5f7c; border-color: #2c5f7c; color: #fff; font-weight: 600; }
   .fer-tabela { border-collapse: collapse; width: 100%; font-size: 13px; }
   .fer-tabela th { background: #eef3f8; color: #345; padding: 6px 9px; text-align: left; }
   .fer-tabela td { padding: 5px 9px; border-bottom: 1px solid #e4e9ee; }
@@ -238,6 +242,7 @@
       <button class="aba-btn" data-aba="proj">Projeção</button>
       <button class="aba-btn" data-aba="subv">Subvenções</button>
       <button class="aba-btn" data-aba="bp">Balanço</button>
+      <button class="aba-btn" data-aba="ind">Indicadores</button>
       <button class="aba-btn" data-aba="fer">Ferramentas</button>
     </div>
 
@@ -363,6 +368,37 @@
           <div style="overflow-x:auto"><table class="tabela-dre" id="bp-passivo"></table></div>
         </div>
       </div>
+    </div>
+
+    <div id="aba-ind" class="conteudo-aba" style="display:none">
+      <div class="cartoes" style="grid-template-columns:repeat(6,1fr)" id="ind-cartoes"></div>
+
+      <div class="painel">
+        <h2>🏦 Fornecedores a Pagar × Capacidade de Pagamento</h2>
+        <p class="fer-desc">Quanto a Loja deve a fornecedores (2130101) contra o que ela tem para pagar:
+          o <b>disponível</b> (caixa, bancos e aplicações) e o que ainda vai entrar a prazo
+          (cartões 1139008, clientes e convênios). O descoberto é a parte da dívida que
+          <b>nenhum dos dois cobre</b> — depende de vender o estoque.</p>
+        <div id="ind-fornecedores"></div>
+      </div>
+
+      <div class="painel">
+        <h2>📦 Estoque por Grupo — giro e abastecimento</h2>
+        <p class="fer-desc">Quanto há parado em cada grupo (1141001), como variou contra o
+          <b>mês anterior</b> e contra o <b>mesmo mês do ano passado</b>, e com que velocidade gira
+          (CMV do período ÷ estoque). <b>Giro baixo + margem baixa</b> é a pior combinação: prende
+          dinheiro e rende pouco.</p>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
+          <button type="button" class="est-ord" data-ord="estoque">Maior estoque</button>
+          <button type="button" class="est-ord" data-ord="giro">Menor giro</button>
+          <button type="button" class="est-ord" data-ord="varMes">Mais abastecido no mês</button>
+          <button type="button" class="est-ord" data-ord="varAno">Maior alta vs ano anterior</button>
+          <button type="button" class="est-ord" data-ord="margem">Menor margem</button>
+        </div>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="ind-estoque"></table></div>
+      </div>
+
+      <div class="painel explica" id="ind-explica"></div>
     </div>
 
     <div id="aba-fer" class="conteudo-aba" style="display:none">
@@ -828,6 +864,7 @@ function render() {
   renderProjecao();
   renderSubvencoes(linhas);
   renderBalanco();
+  renderIndicadores();
   renderFerramentas();
   renderMovto();
 }
@@ -2170,6 +2207,9 @@ document.getElementById("proj-metodo").addEventListener("change", renderProjecao
 document.querySelectorAll(".prod-ord").forEach(b =>
   b.addEventListener("click", () => { prodOrdem = b.dataset.ord; renderProdutos(); }));
 
+document.querySelectorAll(".est-ord").forEach(b =>
+  b.addEventListener("click", () => { estOrdem = b.dataset.ord; renderIndicadores(); }));
+
 document.getElementById("proj-auto").addEventListener("click", () => {
   const f = filtrosAtuais();
   const anosDisp = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
@@ -2189,6 +2229,186 @@ document.getElementById("proj-auto").addEventListener("click", () => {
    ===================================================================== */
 let ferPorConta = new Map();   // conta -> { nome, saldo } no recorte atual
 let ferNomes = new Map();      // conta -> nome (todas, p/ rótulos de família)
+
+/* =====================================================================
+   ABA INDICADORES
+   Liquidez e rentabilidade, endividamento com fornecedores e giro de
+   estoque por grupo. Usa a MESMA classificação sintética/analítica do
+   Balanço (infoContas.ehAnalitica), que é a que fecha exato.
+   Contas de balanço acumulam da abertura: saldo no mês M = períodos 0..M.
+   ===================================================================== */
+let estOrdem = "estoque";
+
+/* Saldo acumulado de cada conta analítica de balanço até o mês informado. */
+function saldosBalanco(ano, campos, ateMes) {
+  const sal = new Map();
+  for (const d of dadosBrutos) {
+    if (d.Subconta || d.Ano !== ano || !campos.includes(d.Entidade)) continue;
+    if (d.Conta[0] !== "1" && d.Conta[0] !== "2") continue;
+    if (d.Mes > ateMes) continue;
+    if (!infoContas.ehAnalitica(d.Conta)) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (base) sal.set(d.Conta, (sal.get(d.Conta) || 0) + base);
+  }
+  return sal;
+}
+
+/* Estoque por grupo (subconta da 1141) acumulado até o mês. */
+function estoquePorGrupo(ano, campos, ateMes) {
+  const m = new Map();
+  for (const d of dadosBrutos) {
+    if (!d.Subconta || d.Ano !== ano || !campos.includes(d.Entidade)) continue;
+    if (!d.Conta.startsWith("1141") || d.Mes > ateMes) continue;
+    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!base) continue;
+    const r = m.get(d.Subconta) || { nome: "", v: 0 };
+    if (d.NomeSubconta && d.NomeSubconta.length > r.nome.length) r.nome = d.NomeSubconta;
+    r.v += base;
+    m.set(d.Subconta, r);
+  }
+  return m;
+}
+
+function renderIndicadores() {
+  if (!document.getElementById("ind-cartoes")) return;
+  const f = filtrosAtuais();
+  if (!f.anos.length || !dadosBrutos.length) return;
+  const ano = Math.max(...f.anos);
+  const mFim = Math.max(1, Math.min(12, f.mesFim));
+
+  const sal = saldosBalanco(ano, f.campos, mFim);
+  const soma = p => { let s = 0; for (const [c, v] of sal) if (c.startsWith(p)) s += v; return s; };
+  const AC = soma("11"), ANC = soma("12") + soma("13");
+  const PC = -soma("21"), PNC = -soma("22"), PL = -soma("23");
+  const EST = soma("114"), ATIVO = AC + ANC;
+  const med = calcularMedidas(dadosFiltrados());
+  const RES = med.resultado;
+
+  // ----- cartões de índices -----
+  const ind = [
+    { t: "Liquidez Corrente", v: PC ? AC / PC : 0, d: "AC ÷ PC", bom: x => x >= 1 },
+    { t: "Liquidez Seca", v: PC ? (AC - EST) / PC : 0, d: "(AC − Estoques) ÷ PC", bom: x => x >= 1 },
+    { t: "Liquidez Geral", v: (PC + PNC) ? ATIVO / (PC + PNC) : 0, d: "Ativo ÷ Passivo", bom: x => x >= 1 },
+    { t: "Endividamento", v: ATIVO ? (PC + PNC) / ATIVO : 0, d: "Passivo ÷ Ativo", pct: true, bom: x => x <= 0.5 },
+    { t: "ROA", v: ATIVO ? RES / ATIVO : 0, d: "Resultado ÷ Ativo", pct: true, bom: x => x > 0 },
+    { t: "ROE", v: PL ? RES / PL : 0, d: "Resultado ÷ PL", pct: true, bom: x => x > 0 },
+  ];
+  document.getElementById("ind-cartoes").innerHTML = ind.map(i => {
+    const txt = i.pct ? pct(i.v) : fmtPct.format(i.v).replace(",", ",");
+    const cor = i.bom(i.v) ? "#2e7d5b" : "#a33";
+    return `<div class="cartao"><div class="titulo">${i.t}</div>
+      <div class="valor" style="color:${cor}">${txt}</div>
+      <div class="faixa">${i.d}</div></div>`;
+  }).join("");
+
+  // ----- fornecedores x capacidade -----
+  const forn = -(sal.get("2130101") || 0);
+  const disp = soma("111") + soma("112") + soma("1113");
+  const receb = soma("1131") + soma("1139") + soma("1137") + soma("1136");
+  const cob1 = forn ? disp / forn : 0, cob2 = forn ? (disp + receb) / forn : 0;
+  const falta = forn - disp - receb;
+  const barra = (v, cor) => `<div style="height:22px;background:${cor};width:${Math.max(0, Math.min(100, v * 100))}%;
+     border-radius:3px;display:inline-block;vertical-align:middle"></div>`;
+  document.getElementById("ind-fornecedores").innerHTML = `
+    <table class="tabela-dre"><tbody>
+      <tr class="dre-n1-lite"><td style="width:34%">Fornecedores a pagar (2130101)</td>
+        <td class="num total-col" style="width:18%">${n(forn)}</td><td></td></tr>
+      <tr class="dre-n1-lite"><td>Disponível — caixa, bancos e aplicações</td>
+        <td class="num">${n(disp)}</td>
+        <td>${barra(cob1, "#2c5f7c")} <b>${pct(cob1)}</b> da dívida</td></tr>
+      <tr class="dre-n1-lite"><td>+ A receber — cartões, clientes e convênios</td>
+        <td class="num">${n(receb)}</td>
+        <td>${barra(cob2, "#6f9fc4")} <b>${pct(cob2)}</b> somando os dois</td></tr>
+      <tr class="dre-resultado"><td>${falta > 0 ? "DESCOBERTO — depende de vender estoque" : "SOBRA sobre a dívida"}</td>
+        <td class="num total-col" style="color:${falta > 0 ? "#a33" : "#2e7d5b"}">${n(Math.abs(falta))}</td>
+        <td>${falta > 0 ? `o estoque parado é de ${n(EST)}` : "dívida coberta sem contar o estoque"}</td></tr>
+    </tbody></table>`;
+
+  // ----- estoque por grupo -----
+  // Referência = último mês COM movimento até o fim do filtro. Sem isso, com o
+  // filtro em Jan–Dez a comparação cairia entre nov e dez (ambos vazios) e daria
+  // sempre 0%.
+  let mRef = 0;
+  for (const d of dadosBrutos)
+    if (d.Ano === ano && d.Mes <= mFim && d.Mes > mRef && f.campos.includes(d.Entidade)
+        && d.Conta.startsWith("1141") && (d.SaldoLegal || d.SaldoAjustado)) mRef = d.Mes;
+  if (!mRef) mRef = mFim;
+  const atual = estoquePorGrupo(ano, f.campos, mRef);
+  const antMes = estoquePorGrupo(ano, f.campos, Math.max(0, mRef - 1));
+  const antAno = estoquePorGrupo(ano - 1, f.campos, mRef);
+  // CMV e margem do período, por grupo (reaproveita a ferramenta de produtos)
+  const prod = new Map(dadosProdutos().linhas.map(l => [l.cod, l]));
+  const meses = Math.max(1, f.mesFim - f.mesIni + 1);
+  const linhas = [];
+  for (const [cod, r] of atual) {
+    const p = prod.get(cod) || {};
+    const cmv = p.cmv || 0;
+    const aM = (antMes.get(cod) || {}).v || 0;
+    const aA = (antAno.get(cod) || {}).v || 0;
+    if (!r.v && !cmv) continue;
+    linhas.push({
+      cod, nome: r.nome || (p.nome || ""), estoque: r.v, cmv,
+      giro: r.v ? cmv / r.v : 0,
+      dias: cmv ? (r.v / cmv) * meses * 30 : null,
+      varMes: aM ? (r.v - aM) / Math.abs(aM) : null, difMes: r.v - aM,
+      varAno: aA ? (r.v - aA) / Math.abs(aA) : null,
+      margem: p.margem ?? null,
+    });
+  }
+  const totE = linhas.reduce((s, r) => s + r.estoque, 0);
+  for (const r of linhas) r.part = totE ? r.estoque / totE : 0;
+  const crit = {
+    estoque: (a, b) => b.estoque - a.estoque,
+    giro: (a, b) => a.giro - b.giro,
+    varMes: (a, b) => (b.difMes || 0) - (a.difMes || 0),
+    varAno: (a, b) => (b.varAno ?? -9) - (a.varAno ?? -9),
+    margem: (a, b) => (a.margem ?? 9) - (b.margem ?? 9),
+  }[estOrdem];
+  document.querySelectorAll(".est-ord").forEach(b => b.classList.toggle("ativo", b.dataset.ord === estOrdem));
+  const vr = v => v === null ? "—" : `<span style="color:${v > 0 ? "#a33" : "#2e7d5b"}">${v > 0 ? "▲" : "▼"} ${pct(Math.abs(v))}</span>`;
+  const el = document.getElementById("ind-estoque");
+  el.innerHTML = `<thead><tr>
+      <th>Grupo</th><th class="num">Estoque</th><th class="num">% do total</th>
+      <th class="num">vs ${NOMES_MESES[Math.max(0,mRef-2)]}</th><th class="num">vs ${NOMES_MESES[Math.max(0,mRef-1)]}/${ano-1}</th>
+      <th class="num">CMV do período</th><th class="num">Giro</th><th class="num">Dias de estoque</th>
+      <th class="num">Margem</th></tr></thead><tbody>
+    ${[...linhas].sort(crit).map(r => `<tr class="dre-n1-lite">
+      <td>${r.cod} — ${r.nome || "—"}</td>
+      <td class="num total-col">${n(r.estoque)}</td>
+      <td class="num">${pct(r.part)}</td>
+      <td class="num">${vr(r.varMes)}</td>
+      <td class="num">${vr(r.varAno)}</td>
+      <td class="num">${n(r.cmv)}</td>
+      <td class="num"><b>${fmtPct.format(r.giro)}×</b></td>
+      <td class="num">${r.dias === null ? "—" : Math.round(r.dias)}</td>
+      <td class="num">${r.margem === null ? "—" : pct(r.margem)}</td></tr>`).join("")}
+    <tr class="dre-resultado"><td>TOTAL</td><td class="num total-col">${n(totE)}</td>
+      <td class="num">100,00%</td><td></td><td></td>
+      <td class="num">${n(linhas.reduce((s, r) => s + r.cmv, 0))}</td>
+      <td class="num"><b>${fmtPct.format(totE ? linhas.reduce((s, r) => s + r.cmv, 0) / totE : 0)}×</b></td>
+      <td></td><td></td></tr></tbody>`;
+
+  // ----- leitura -----
+  const maior = [...linhas].sort((a, b) => b.estoque - a.estoque)[0];
+  const lento = [...linhas].filter(r => r.cmv > 0).sort((a, b) => a.giro - b.giro)[0];
+  document.getElementById("ind-explica").innerHTML = `
+    <h3>Como ler estes números</h3>
+    <p><b>Liquidez Corrente ${fmtPct.format(PC ? AC / PC : 0)} × Liquidez Seca ${fmtPct.format(PC ? (AC - EST) / PC : 0)}:</b>
+      a diferença entre as duas é o <b>estoque</b>, que hoje é ${pct(AC ? EST / AC : 0)} do Ativo Circulante.
+      A Corrente diz que há ativo de curto prazo para cobrir a dívida de curto prazo; a Seca diz quanto
+      sobraria <b>se o estoque não vendesse</b>. Quanto maior o vão entre elas, mais a saúde da Loja
+      depende de girar mercadoria.</p>
+    <p><b>ROA ${pct(ATIVO ? RES / ATIVO : 0)} e ROE ${pct(PL ? RES / PL : 0)}:</b> quanto o resultado do período rende sobre
+      o ativo total e sobre o patrimônio. No recorte atual o resultado é ${n(RES)}${RES < 0 ? " — negativo, então os dois ficam negativos" : ""}.</p>
+    ${maior ? `<p><b>Concentração de estoque:</b> <b>${maior.nome || maior.cod}</b> responde por ${pct(maior.part)}
+      do estoque (${n(maior.estoque)})${maior.margem !== null ? `, com margem de ${pct(maior.margem)}` : ""} e giro de
+      ${fmtPct.format(maior.giro)}×${maior.dias ? ` (${Math.round(maior.dias)} dias de estoque)` : ""}.
+      ${lento && lento.cod === maior.cod ? "É também o de <b>giro mais lento</b> — é nele que o dinheiro fica preso." : ""}</p>` : ""}
+    <p><b>Giro</b> = CMV do período ÷ estoque atual. <b>Dias de estoque</b> = quantos dias o estoque atual duraria
+      no ritmo de venda do período. Números pequenos de giro (e grandes de dias) significam mercadoria parada.
+      Como o giro usa o estoque da data final (e não o médio), ele é uma referência de ordem de grandeza
+      para comparar grupos entre si, não um índice contábil fechado.</p>`;
+}
 
 /* =====================================================================
    RENTABILIDADE POR LINHA DE PRODUTO
@@ -2429,9 +2649,15 @@ document.getElementById("fer-busca").addEventListener("input", renderBusca);
 
 /* ---------- Troca de abas ---------- */
 document.querySelectorAll(".aba-btn").forEach(btn => btn.addEventListener("click", () => {
-  document.querySelectorAll(".aba-btn").forEach(b => b.classList.toggle("ativa", b === btn));
-  for (const aba of ["visao", "dre", "comp", "proj", "subv", "bp", "fer"])
-    document.getElementById("aba-" + aba).style.display = btn.dataset.aba === aba ? "" : "none";
+  // Só os botões de aba mandam aqui. A classe .aba-btn é reaproveitada em
+  // botões de outras ferramentas, e sem esta guarda um clique neles esconderia
+  // todas as abas de uma vez.
+  if (!btn.dataset.aba) return;
+  document.querySelectorAll(".aba-btn[data-aba]").forEach(b => b.classList.toggle("ativa", b === btn));
+  // A lista sai do próprio DOM: aba nova passa a funcionar sem mexer aqui.
+  document.querySelectorAll(".conteudo-aba").forEach(div => {
+    div.style.display = div.id === "aba-" + btn.dataset.aba ? "" : "none";
+  });
 }));
 
 /* ---------- Inicialização ---------- */
