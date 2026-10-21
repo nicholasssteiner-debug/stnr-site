@@ -182,8 +182,8 @@ export const loadWorkspace = async (wsId) => {
 // ---------- Criar / excluir ----------
 // Cria uma atividade e a torna a atual.
 //   copy = true  -> cópia da atividade aberta (plano, lotes e configurações)
-//   copy = false -> começa do zero (plano de contas padrão, sem lançamentos)
-export const createWorkspace = async (name, copy) => {
+//   copy = false -> começa do zero, sem lançamentos, com o plano `chartId` ('padrao' ou 'religioso')
+export const createWorkspace = async (name, copy, chartId = 'padrao') => {
     name = String(name || '').trim();
     if (!name) { showToast('Dê um nome à nova atividade.', 'error'); return false; }
     if (!session.user) return false;
@@ -192,7 +192,7 @@ export const createWorkspace = async (name, copy) => {
         await flushPending();
         const id = 'ws_' + Date.now();
         const now = Date.now();
-        const next = copy ? JSON.parse(JSON.stringify(state)) : createDefaultState();
+        const next = copy ? JSON.parse(JSON.stringify(state)) : createDefaultState(chartId);
         next.workspaceName = name;
         next.activeTab = copy ? state.activeTab : 'planoContas';
 
@@ -246,10 +246,10 @@ export const closeNewWorkspaceModal = () => {
 export const confirmNewWorkspace = async (e) => {
     if (e) e.preventDefault();
     const name = document.getElementById('ws-modal-name').value;
-    const copy = document.getElementById('ws-modal-copy').checked;
+    const mode = document.querySelector('input[name="ws-modal-mode"]:checked')?.value || 'blank';
     const btn = document.getElementById('ws-modal-submit');
     btn.disabled = true;
-    const ok = await createWorkspace(name, copy);
+    const ok = await createWorkspace(name, mode === 'copy', mode === 'religioso' ? 'religioso' : 'padrao');
     btn.disabled = false;
     if (ok) closeNewWorkspaceModal();
 };

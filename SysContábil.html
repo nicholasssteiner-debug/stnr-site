@@ -146,7 +146,7 @@
                     </div>
                     <div id="plano-import-banner" class="edit-banner mx-4 mt-4 hidden">
                         <span><i data-lucide="info" class="w-4 h-4 inline mr-1"></i> <span id="plano-import-banner-text"></span></span>
-                        <button class="btn btn-primary btn-sm" onclick="importDefaultChart()"><i data-lucide="download" class="w-4 h-4"></i> Importar plano padrão</button>
+                        <button class="btn btn-primary btn-sm" onclick="importDefaultChart()"><i data-lucide="download" class="w-4 h-4"></i> Importar plano</button>
                     </div>
                     <div class="p-4 border-b border-stnr-border flex flex-wrap items-center gap-3">
                         <div class="relative w-full md:w-96">
@@ -155,7 +155,7 @@
                         </div>
                         <span id="plano-count" class="text-sm muted"></span>
                         <div class="ml-auto flex gap-2">
-                            <button class="btn btn-ghost btn-sm" onclick="importDefaultChart()" title="Adiciona as contas do plano padrão (comércio + serviços) que ainda não existem nesta atividade"><i data-lucide="download" class="w-4 h-4"></i> Importar plano padrão</button>
+                            <button class="btn btn-ghost btn-sm" onclick="importDefaultChart()" title="Adiciona as contas do plano desta atividade (padrão ou religioso) que ainda não existem"><i data-lucide="download" class="w-4 h-4"></i> Importar plano</button>
                             <button class="btn btn-ghost btn-sm" onclick="exportTableCSV('plano-contas-table', 'plano-de-contas.csv')"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> CSV</button>
                         </div>
                     </div>
@@ -506,7 +506,7 @@
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
                             <div class="card-head rounded-lg border border-stnr-border">
                                 <h3 class="font-bold mb-1 text-stnr-accentHover"><i data-lucide="plus-circle" class="w-4 h-4 inline mr-1"></i>Nova atividade do zero</h3>
-                                <p class="muted text-sm mb-3">Começa um projeto novo: plano de contas padrão, sem lançamentos. A atividade atual continua salva na lista.</p>
+                                <p class="muted text-sm mb-3">Começa um projeto novo, sem lançamentos, com o plano padrão ou o Plano de Contas Religioso. A atividade atual continua salva na lista.</p>
                                 <button onclick="openNewWorkspaceModal()" class="btn btn-primary"><i data-lucide="plus" class="w-4 h-4"></i> Criar nova atividade</button>
                             </div>
                             <div class="card-head rounded-lg border border-stnr-border">
@@ -602,8 +602,15 @@
                 <label class="dre-item border border-stnr-border">
                     <input type="radio" name="ws-modal-mode" id="ws-modal-blank" value="blank" checked>
                     <div>
-                        <div class="text-sm font-medium">Começar do zero</div>
-                        <div class="text-xs muted">Plano de contas padrão, sem lançamentos, DRE e centros de custo iniciais.</div>
+                        <div class="text-sm font-medium">Começar do zero — plano padrão</div>
+                        <div class="text-xs muted">Plano de contas padrão (comércio + serviços), sem lançamentos, DRE e centros de custo iniciais.</div>
+                    </div>
+                </label>
+                <label class="dre-item border border-stnr-border">
+                    <input type="radio" name="ws-modal-mode" id="ws-modal-religioso" value="religioso">
+                    <div>
+                        <div class="text-sm font-medium">Começar do zero — Plano de Contas Religioso</div>
+                        <div class="text-xs muted">Plano de contas da ANP (sem subcontas e departamentos), sem lançamentos. Totalizadoras não aceitam lançamentos.</div>
                     </div>
                 </label>
                 <label class="dre-item border border-stnr-border">

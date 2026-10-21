@@ -1,6 +1,6 @@
 // Estado global da aplicação e valores padrão.
 // `state` é um único objeto mutável compartilhado; nunca é reatribuído (use resetState).
-import { FULL_CHART, buildDreConfig } from './chartOfAccounts.js';
+import { FULL_CHART, buildDreConfig, getChart } from './chartOfAccounts.js';
 
 // Plano de contas padrão das novas atividades (comércio + serviços, 4 níveis)
 export const INITIAL_ACCOUNTS = FULL_CHART;
@@ -22,15 +22,20 @@ export const INITIAL_DRE_CONFIG = buildDreConfig(INITIAL_ACCOUNTS, DRE_GROUP_IDS
 
 export const ACCOUNT_TYPES = ['Ativo', 'Passivo', 'Receita', 'Despesa'];
 
-export const createDefaultState = () => ({
-    workspaceName: 'Atividade Inicial',
-    activeTab: 'planoContas',
-    accounts: INITIAL_ACCOUNTS.map(a => ({ ...a })),
-    batches: [],
-    dreConfig: JSON.parse(JSON.stringify(INITIAL_DRE_CONFIG)),
-    costCenters: [{ id: 'CC-01', name: 'Sede Administrativa' }],
-    nextBatchSeq: 1,
-});
+// chartId: 'padrao' (comércio + serviços) ou 'religioso' (plano da ANP) — ver CHARTS
+export const createDefaultState = (chartId = 'padrao') => {
+    const chart = getChart(chartId);
+    return {
+        workspaceName: 'Atividade Inicial',
+        activeTab: 'planoContas',
+        chartId: chart.id,
+        accounts: chart.accounts.map(a => ({ ...a })),
+        batches: [],
+        dreConfig: buildDreConfig(chart.accounts, DRE_GROUP_IDS, chart.dreGroupFor),
+        costCenters: [{ id: 'CC-01', name: 'Sede Administrativa' }],
+        nextBatchSeq: 1,
+    };
+};
 
 // Estado compartilhado (dados da atividade aberta)
 export const state = createDefaultState();
@@ -70,10 +75,12 @@ export const normalizeState = (raw, fallbackName = 'Sem Nome') => {
     return {
         workspaceName: s.workspaceName || fallbackName,
         activeTab: s.activeTab || def.activeTab,
+        chartId: s.chartId || def.chartId,
         accounts: Array.isArray(s.accounts) && s.accounts.length
             ? s.accounts.map(a => ({
                 code: String(a.code), name: String(a.name || ''), type: a.type || 'Ativo',
                 ...(a.role ? { role: a.role } : {}),
+                ...(a.nature === 'D' || a.nature === 'C' ? { nature: a.nature } : {}),   // natureza explícita (plano religioso)
                 // subconta: código livre + conta-mãe (o código interno é parent.sub)
                 ...(a.sub ? { sub: String(a.sub), parent: String(a.parent || a.code.slice(0, a.code.lastIndexOf('.'))) } : {}),
             }))

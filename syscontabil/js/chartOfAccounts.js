@@ -6,6 +6,8 @@
 // Contas redutoras começam com "(-)" e têm natureza invertida em relação ao grupo.
 //
 // `buildDreConfig` distribui automaticamente as contas de resultado nos grupos da DRE.
+// `CHARTS` reúne os planos que uma atividade nova pode usar (padrão e religioso).
+import { RELIGIOUS_CHART, religiousDreGroupFor } from './chartReligioso.js';
 
 const TYPE_BY_GROUP = { 1: 'Ativo', 2: 'Passivo', 3: 'Receita', 4: 'Despesa' };
 
@@ -395,17 +397,24 @@ export const dreGroupFor = (code) => {
 };
 
 // Monta o dreConfig (lista de contas analíticas por grupo) para um plano de contas.
-export const buildDreConfig = (accounts, groupIds) => {
+export const buildDreConfig = (accounts, groupIds, groupFor = dreGroupFor) => {
     const config = {};
     for (const id of groupIds) config[id] = [];
     for (const acc of accounts) {
         if (acc.type !== 'Receita' && acc.type !== 'Despesa') continue;
         if (hasChildIn(acc.code, accounts)) continue;
-        const group = dreGroupFor(acc.code);
+        const group = groupFor(acc.code);
         if (group && config[group]) config[group].push(acc.code);
     }
     return config;
 };
+
+// Planos disponíveis ao criar uma atividade; a atividade guarda o id em `state.chartId`
+export const CHARTS = {
+    padrao: { id: 'padrao', label: 'Plano padrão (comércio + serviços)', accounts: FULL_CHART, dreGroupFor },
+    religioso: { id: 'religioso', label: 'Plano de Contas Religioso', accounts: RELIGIOUS_CHART, dreGroupFor: religiousDreGroupFor },
+};
+export const getChart = (id) => CHARTS[id] || CHARTS.padrao;
 
 // Verificação de integridade (usada nos testes e no import): retorna lista de problemas.
 export const validateChart = (accounts) => {

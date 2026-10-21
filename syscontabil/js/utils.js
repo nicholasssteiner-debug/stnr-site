@@ -62,9 +62,18 @@ export const escapeHtml = (value) => String(value ?? '')
 export const compareCodes = (a, b) => {
     const pa = a.split('.'), pb = b.split('.');
     const len = Math.max(pa.length, pb.length);
+    let digits = 0;   // dígitos do plano já percorridos (prefixo comum)
     for (let i = 0; i < len; i++) {
         if (pa[i] === undefined) return -1;
         if (pb[i] === undefined) return 1;
+        // Dentro dos 7 dígitos do plano, segmentos de larguras diferentes comparam como posições
+        // do código (plano religioso: 1.1.2.0010 antes de 1.1.2.05, como 1120010 < 1120500)
+        if (digits < 7 && pa[i].length !== pb[i].length && /^\d+$/.test(pa[i]) && /^\d+$/.test(pb[i])) {
+            const w = Math.max(pa[i].length, pb[i].length);
+            const sa = pa[i].padEnd(w, '0'), sb = pb[i].padEnd(w, '0');
+            if (sa !== sb) return sa < sb ? -1 : 1;
+        }
+        digits += pa[i].length;
         const na = parseInt(pa[i], 10), nb = parseInt(pb[i], 10);
         if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
         if (pa[i] !== pb[i]) return pa[i].localeCompare(pb[i]);

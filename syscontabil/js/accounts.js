@@ -5,7 +5,7 @@ import { state } from './state.js';
 import { compareCodes, escapeHtml } from './utils.js';
 import { showToast, showConfirm, refreshIcons } from './ui.js';
 import { persistState } from './workspaces.js';
-import { FULL_CHART, dreGroupFor } from './chartOfAccounts.js';
+import { getChart } from './chartOfAccounts.js';
 
 // ---------- Consultas ----------
 export const getAccount = (code) => state.accounts.find(a => a.code === code);
@@ -61,11 +61,10 @@ export const getAnalyticAccounts = () => state.accounts.filter(a => isAnalytic(a
 export const sortedAccounts = () => [...state.accounts].sort((a, b) => compareCodes(a.code, b.code));
 
 // Natureza do saldo: Ativo/Despesa devedora, Passivo/Receita credora; "(-)" inverte (conta redutora).
-export const isReducing = (acc) => acc.name.trim().startsWith('(-)');
-export const isDebitNature = (acc) => {
-    const base = acc.type === 'Ativo' || acc.type === 'Despesa';
-    return isReducing(acc) ? !base : base;
-};
+// Conta com `nature` explícita (plano religioso, que segue a natureza D/C do AASI) usa a própria.
+const isDebitType = (acc) => acc.type === 'Ativo' || acc.type === 'Despesa';
+export const isReducing = (acc) => acc.nature ? (acc.nature === 'D') !== isDebitType(acc) : acc.name.trim().startsWith('(-)');
+export const isDebitNature = (acc) => acc.nature ? acc.nature === 'D' : (isReducing(acc) ? !isDebitType(acc) : isDebitType(acc));
 
 export const accountHasEntries = (code) =>
     state.batches.some(b => b.entries.some(e => isSelfOrDescendant(e.accountCode, code)));
@@ -112,12 +111,13 @@ export const renderPlanoContas = () => {
     // Aviso quando a atividade ainda usa um plano reduzido ou não tem a conta de resultado
     const banner = document.getElementById('plano-import-banner');
     if (banner) {
-        const missing = FULL_CHART.filter(a => !all.some(b => b.code === a.code)).length;
+        const chart = getChart(state.chartId);
+        const missing = chart.accounts.filter(a => !all.some(b => b.code === a.code)).length;
         const noResult = !getResultAccount();
         banner.classList.toggle('hidden', missing < 50 && !noResult);
         document.getElementById('plano-import-banner-text').innerText = noResult && missing < 50
-            ? 'Esta atividade não tem a conta automática "Superávit ou Déficit do Exercício". Importe o plano padrão para criá-la.'
-            : `Esta atividade tem ${all.length} conta(s); o plano padrão completo (comércio + serviços) tem ${FULL_CHART.length}. Importar acrescenta só o que falta, sem alterar as contas atuais.`;
+            ? 'Esta atividade não tem a conta automática "Superávit ou Déficit do Exercício". Importe o plano para criá-la.'
+            : `Esta atividade tem ${all.length} conta(s); o ${chart.label} completo tem ${chart.accounts.length}. Importar acrescenta só o que falta, sem alterar as contas atuais.`;
     }
 
     if (accounts.length === 0) {
@@ -240,7 +240,7 @@ export const addAccount = (e) => {
             return;
         }
         // Código interno = conta.subcódigo (mantém a hierarquia para os totais); o exibido é só `sub`
-        state.accounts.push({ code: `${parent.code}.${sub}`, name, type: parent.type, sub, parent: parent.code });
+        state.accounts.push({ code: `${parent.code}.${sub}`, name, type: parent.type, ...(parent.nature ? { nature: parent.nature } : {}), sub, parent: parent.code });
         updateDatalists();
         codeInput.value = String((parseInt(sub, 10) || 0) + 1);
         nameInput.value = '';
@@ -284,7 +284,9 @@ export const addAccount = (e) => {
         }
     }
 
-    state.accounts.push({ code, name, type });
+    // Plano com natureza explícita (religioso): a conta nova herda a natureza da conta-pai
+    const natureParent = parentCode ? getAccount(parentCode) : null;
+    state.accounts.push({ code, name, type, ...(natureParent?.nature ? { nature: natureParent.nature } : {}) });
     updateDatalists();
     codeInput.value = '';
     nameInput.value = '';
@@ -316,11 +318,12 @@ export const deleteAccount = (code) => {
     });
 };
 
-// ---------- Importar plano de contas padrão ----------
-// Acrescenta à atividade atual as contas do plano padrão que ainda não existem.
+// ---------- Importar plano de contas da atividade ----------
+// Acrescenta à atividade atual as contas do seu plano (padrão ou religioso) que ainda não existem.
 // Nunca remove nem renomeia contas existentes. Contas analíticas que já tenham
 // lançamentos diretos não recebem subcontas (isso esconderia os lançamentos).
 export const importDefaultChart = () => {
+    const chart = getChart(state.chartId);
     const existing = new Set(state.accounts.map(a => a.code));
     const blockedParents = new Set(
         state.accounts
@@ -330,7 +333,7 @@ export const importDefaultChart = () => {
 
     const toAdd = [];
     const skipped = [];
-    for (const acc of [...FULL_CHART].sort((a, b) => compareCodes(a.code, b.code))) {
+    for (const acc of [...chart.accounts].sort((a, b) => compareCodes(a.code, b.code))) {
         if (existing.has(acc.code)) continue;
         const parentCode = acc.code.includes('.') ? acc.code.slice(0, acc.code.lastIndexOf('.')) : null;
         if (parentCode && [...blockedParents].some(p => isSelfOrDescendant(acc.code, p))) { skipped.push(acc.code); continue; }
@@ -340,11 +343,11 @@ export const importDefaultChart = () => {
     }
 
     if (toAdd.length === 0) {
-        showToast(skipped.length ? `Nada a importar: ${skipped.length} conta(s) conflitam com contas que já têm lançamentos.` : 'O plano padrão já está completo nesta atividade.', 'error');
+        showToast(skipped.length ? `Nada a importar: ${skipped.length} conta(s) conflitam com contas que já têm lançamentos.` : 'O plano de contas já está completo nesta atividade.', 'error');
         return;
     }
 
-    const msg = `Adicionar ${toAdd.length} conta(s) do plano padrão (comércio + serviços) a esta atividade?`
+    const msg = `Adicionar ${toAdd.length} conta(s) do ${chart.label} a esta atividade?`
         + (skipped.length ? ` ${skipped.length} conta(s) serão ignoradas por conflitar com lançamentos existentes.` : '')
         + ' As contas atuais não serão alteradas.';
 
@@ -357,7 +360,7 @@ export const importDefaultChart = () => {
         for (const acc of toAdd) {
             if (acc.type !== 'Receita' && acc.type !== 'Despesa') continue;
             if (!isAnalytic(acc.code) || mapped.has(acc.code)) continue;
-            const group = dreGroupFor(acc.code);
+            const group = chart.dreGroupFor(acc.code);
             if (group && state.dreConfig[group]) state.dreConfig[group].push(acc.code);
         }
         updateDatalists();
