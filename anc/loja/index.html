@@ -335,12 +335,12 @@
       <div class="cartoes" style="grid-template-columns:repeat(3,1fr)" id="subv-cartoes"></div>
       <div class="painel grafico">
         <h2>Subvenções Recebidas — por conta</h2>
-        <p class="fer-desc">Detalhamento das subvenções que a ANP recebeu, por conta contábil, no intervalo de meses selecionado.</p>
+        <p class="fer-desc">Detalhamento das subvenções e transferências que a Loja recebeu, por conta contábil, no intervalo de meses selecionado.</p>
         <div style="overflow-x:auto"><table class="tabela-dre" id="subv-recebidas"></table></div>
       </div>
       <div class="painel grafico">
         <h2>Subvenções / Repasses Enviados (Outorgamentos) — por conta</h2>
-        <p class="fer-desc">O outro lado: subvenções e rateios que a ANP enviou a outras entidades ou centros de custo.</p>
+        <p class="fer-desc">O outro lado: subvenções e rateios que a Loja enviou a outras entidades ou centros de custo. É o que mais pesa no resultado da Loja.</p>
         <div style="overflow-x:auto"><table class="tabela-dre" id="subv-enviadas"></table></div>
       </div>
     </div>
@@ -412,8 +412,10 @@
         <div id="fer-natureza-sub"></div>
       </div>
 
-      <!-- Ferramenta da ANP (adiantamento de salário do dept 3310000): não se
-           aplica à Loja e depende de uma aba que esta extração não gera. -->
+      <!-- Herdada do painel da ANP (adiantamento de salário, dept 3310000).
+           Não se aplica à Loja e depende de uma aba que esta extração não
+           gera, por isso fica oculta. Mantida só para não divergir do código
+           original; pode ser removida com segurança. -->
       <div class="painel grafico" style="display:none">
         <h2>💸 Movimentação Adto Salário — gerar CSV</h2>
         <p class="fer-desc">Reclassificação do adiantamento de salário (contas 1135001/1135005, dept 3310000).
@@ -441,16 +443,18 @@
    4. Sinal "+" mantém, "−" inverte; depois multiplica tudo por −1
       (receitas ficam positivas).
 
-   Medidas (iguais ao DAX):
-   - Resultado            = soma de todas as linhas mapeadas
-   - Prestação de Serviços= DRE3 "Prestação de Serviços" + "Dízimo Líquidos de Repasses"
-   - Pessoal              = −soma(DRE3 "Despesas Com Pessoal")
-   - Adm Gerais           = −soma(DRE3 "Administrativas e Gerais")
-   - Educação Assist      = −soma(DRE3 "Educação, Assistência E Orientação Social")
-   - Subvenções Recebidas = soma(DRE3 "Subvenções Recebidas")
-   - Não Recorrente       = soma(DRE2 "RESULTADO NÃO RECORRENTE")
-   - Resultado S/ Subv    = Resultado − Subvenções − Não Recorrente
-   - Percentuais sempre sobre Prestação de Serviços
+   Medidas da LOJA (varejo). Os slots do motor foram reaproveitados, então
+   os nomes internos (prest/educ) guardam outra coisa — ver DRE3 abaixo:
+   - Resultado        = soma de todas as linhas mapeadas
+   - Vendas Líquidas  = DRE3 "Receita Bruta de Vendas" + "(-) Deduções de Vendas"
+                        (guardado no slot "prest"; é a base de TODOS os percentuais)
+   - CMV              = −soma(DRE3 "(-) Custo das Mercadorias Vendidas")
+                        (guardado no slot "educ")
+   - Lucro Bruto      = Vendas Líquidas − CMV ; Margem = Lucro Bruto / Vendas Líquidas
+   - Pessoal          = −soma(DRE3 "Despesas Com Pessoal")
+   - Adm Gerais       = −soma(DRE3 "Administrativas e Gerais")
+   - Subvenções       = soma(DRE3 "Subvenções e Transferências Recebidas")
+   - Resultado S/ Subv= Resultado − Subvenções − Não Recorrente
    ===================================================================== */
 
 /* Blocos da DRE do varejo. Os slots do motor são reaproveitados:
@@ -463,82 +467,106 @@ const DRE3 = {
   adm: "Administrativas e Gerais",
   educ: "(-) Custo das Mercadorias Vendidas",
   subv: "Subvenções e Transferências Recebidas",
+  subvEnv: "Subvenções e Transferências Enviadas",
+  marketing: "Marketing e Promoção",
+  outras: "Outras Receitas",
 };
 const DRE2_NAO_RECORRENTE = "RESULTADO NÃO RECORRENTE";
 
-/* De/Para DRE padrão (cópia do arquivo de parâmetros do BI).
-   Campos: sinal, conta, DRE 2, ordem 2, DRE 3, ordem 3, DRE 4, ordem 4.
-   É substituído automaticamente se a planilha carregada tiver uma aba
-   com as colunas Sinal / Conta / DRE 2 / DRE 3. */
+/* De/Para DRE padrão da LOJA (varejo), gerado do plano de contas da entidade
+   1012. Serve só de reserva: a planilha carregada traz a aba "DRE" e ela
+   sempre tem prioridade. Campos: sinal, conta, DRE 2, ordem 2, DRE 3,
+   ordem 3, DRE 4, ordem 4. */
 const MAPA_DRE_PADRAO = [
-  ["+","3111000","RECEITAS",1,"Dízimo Líquidos de Repasses",0.5,"Dízimos Repassados da Mantenedora",1],
-  ["+","3131001","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Pessoas Físicas",2],
-  ["+","3131002","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Pessoas Jurídicas",2],
-  ["+","3131015","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações do Exterior",2],
-  ["+","3131020","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Doações Diversas",2],
-  ["+","3135201","RECEITAS",1,"Doações E Contribuições Recebidas",1,"Convênios de Cooperação - Não Dízimo",2],
-  ["+","3141000","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Diversas",3],
-  ["+","3141100","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Ed Básica",3],
-  ["+","3141200","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Graduação",3],
-  ["+","3141300","RECEITAS",1,"Prestação de Serviços",2,"Serviços Educacionais - Pós Graduação",3],
-  ["+","3186000","RECEITAS",1,"Prestação de Serviços",2,"Receitas Educacionais Diversas",4],
-  ["+","3187000","RECEITAS",1,"Prestação de Serviços",2,"Receitas de Pensionato",4],
-  ["+","3187500","RECEITAS",1,"Prestação de Serviços",2,"(-) Desc. E Abat S/ Outras Receitas",5],
-  ["+","3149000","RECEITAS",1,"Prestação de Serviços",2,"(-) Desc. E Abat S/ Receitas e Serviços",6],
-  ["+","3149100","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Concedidas - Educ. Básica",7],
-  ["+","3149200","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Concedidas - Graduação",7],
-  ["+","4126007","RECEITAS",1,"Prestação de Serviços",2,"(-) Descontos Condicionais Concedidos",7],
-  ["+","3195110","RECEITAS",1,"Prestação de Serviços",2,"(-) Bolsas Confessionais",7],
-  ["+","3180000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Outras Receitas Recorrentes",7],
-  ["-","3186000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Outras Receitas Educacionais Diversas",7],
-  ["-","3187000","RECEITAS",1,"Outras Receitas Recorrentes",4,"Receitas de Pensionato",7],
-  ["-","3187500","RECEITAS",1,"Outras Receitas Recorrentes",4,"(-) Desc. E Abat S/ Outras Receitas Educacionais",7],
-  ["+","3192200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Internas Mesma Região - Não Dízimo",8],
-  ["+","3193200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Internas - Não Dízimo",10],
-  ["+","3195100","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Congêneres - Dízimo",10],
-  ["+","3195200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Subv. Entidades Congêneres - Não Dízimo",10],
-  ["+","3197200","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"(-) Repasse Subv. Entidades Congêneres - Não Dízimo",10],
-  ["+","3198100","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"Convênio de Cooperação Entidades Privadas",10],
-  ["-","3195110","SUBVENÇÕES RECEBIDAS",3,"Subvenções Recebidas",5,"(-) Bolsas Confessionais",10],
-  ["+","3210000","RESULTADO NÃO RECORRENTE",4,"Receitas Não Recorrentes",6,"Receitas Não Recorrentes",11],
-  ["+","4111000","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Proventos",13],
-  ["+","4112000","DESPESAS",2,"Despesas Com Pessoal",7,"Encargos Sociais",13],
-  ["+","4113000","DESPESAS",2,"Despesas Com Pessoal",7,"Reembolsos de Despesas",13],
-  ["+","4114000","DESPESAS",2,"Despesas Com Pessoal",7,"Encargos Pessoais Diversos",13],
-  ["+","4119000","DESPESAS",2,"Despesas Com Pessoal",7,"Serviços de Terceiros",13],
-  ["+","4119500","DESPESAS",2,"Despesas Com Pessoal",7,"(-)Deduções Despesas Com Pessoal",13],
-  ["+","4121052","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Moradia Empregados - Geral",13],
-  ["+","4121058","DESPESAS",2,"Despesas Com Pessoal",7,"Despesas Com Moradia Empregados - Contrato",13],
-  ["+","4129122","DESPESAS",2,"Despesas Com Pessoal",7,"Contribuição Associativa - Assistencial",13],
-  ["+","4195210","DESPESAS",2,"Despesas Com Pessoal",7,"Subv. Enviada Educação - Não Dízimo",13],
-  ["+","4121000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Gerais",18],
-  ["+","4121500","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Materiais",18],
-  ["+","4121800","DESPESAS",2,"Administrativas e Gerais",8,"Despesas da Operação",18],
-  ["+","4122000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas de Conservação e Manutenção",18],
-  ["+","4122500","DESPESAS",2,"Administrativas e Gerais",8,"Prestação de Serviços PJ",19],
-  ["+","4123000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Depreciações e Amortizações",20],
-  ["+","4124000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Provisões Gerais",20],
-  ["+","4125000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Tributárias",20],
-  ["+","4126000","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Financeiras",20],
-  ["+","4128500","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Diversas",20],
-  ["+","4129000","DESPESAS",2,"Administrativas e Gerais",8,"Contribuições e Despesas Associativas",20],
-  ["+","4129500","DESPESAS",2,"Administrativas e Gerais",8,"(-)Deduções Despesas Administrativas",20],
-  ["+","4129600","DESPESAS",2,"Administrativas e Gerais",8,"(-)Deduções Despesas Administrativas",20],
-  ["-","4126007","DESPESAS",2,"Administrativas e Gerais",8,"Descontos Condicionais Concedidos",20],
-  ["-","4121052","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Moradia Empregados - Geral",20],
-  ["-","4121058","DESPESAS",2,"Administrativas e Gerais",8,"Despesas Com Moradia Empregados - Contrato",20],
-  ["-","4129122","DESPESAS",2,"Administrativas e Gerais",8,"Contribuição Associativa - Assistencial",20],
-  ["+","4141000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Assistência e Orient. Social",21],
-  ["+","4141100","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Programas, Projetos e Orient. Social",21],
-  ["+","4142000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Despesas C/ Promoção Treinamento e Eventos",21],
-  ["+","4146500","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Apoio ao Aluno Bolsista",22],
-  ["+","4146000","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"Gratuidade Assist. Social",23],
-  ["+","4149500","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"(-)Dedução Despesas Educação e Assist",24],
-  ["+","4149600","DESPESAS",2,"Educação, Assistência E Orientação Social",9,"(-)Dedução Despesas Educação e Assist",24],
-  ["+","4190000","DESPESAS",2,"Outorgamentos",10,"Outorgamentos",25],
-  ["+","3191005","DESPESAS",2,"Outorgamentos",10,"Rateios Dpto Sede",26],
-  ["-","4195210","DESPESAS",2,"Outorgamentos",10,"Subv. Enviada Educação - Não Dízimo",26],
-  ["+","4210000","RESULTADO NÃO RECORRENTE",4,"Despesas Não Recorrentes",11,"Outras Despesas",27],
+  ["+","3131001","RECEITAS",1,"Outras Receitas",4,"Doações Pessoas Físicas",3131001],
+  ["+","3131020","RECEITAS",1,"Outras Receitas",4,"Doações Diversas",3131020],
+  ["+","3151001","RECEITAS",1,"Receita Bruta de Vendas",1,"Vendas de Mercadorias",3151001],
+  ["+","3161001","RECEITAS",1,"(-) Deduções de Vendas",2,"(-)Devolução de Vendas",3161001],
+  ["+","3162010","RECEITAS",1,"(-) Deduções de Vendas",2,"(-)ICMS S/ Faturamento",3162010],
+  ["+","3162013","RECEITAS",1,"(-) Deduções de Vendas",2,"(-)ICMS DIFAL Destino",3162013],
+  ["+","3162015","RECEITAS",1,"(-) Deduções de Vendas",2,"(-)Cofins S/ Faturamento",3162015],
+  ["+","3163001","RECEITAS",1,"(-) Deduções de Vendas",2,"(-)Descontos Concedidos S/ Vendas",3163001],
+  ["+","3171001","RECEITAS",1,"(-) Custo das Mercadorias Vendidas",3,"(-)Custo das Mercadorias Vendidas",3171001],
+  ["+","3181001","RECEITAS",1,"Outras Receitas",4,"Rendimentos sobre Aplicações Financeiras",3181001],
+  ["+","3181005","RECEITAS",1,"Outras Receitas",4,"Descontos Obtidos",3181005],
+  ["+","3182013","RECEITAS",1,"Outras Receitas",4,"Depósitos Bancários Não Identificados",3182013],
+  ["+","3182019","RECEITAS",1,"Outras Receitas",4,"Receita Direitos de Propriedade",3182019],
+  ["+","3182090","RECEITAS",1,"Outras Receitas",4,"Outras Receitas Recorrentes",3182090],
+  ["+","3189001","RECEITAS",1,"Outras Receitas",4,"Alienação de Bens Imobilizados",3189001],
+  ["+","3189016","RECEITAS",1,"Outras Receitas",4,"(-) Custo dos bens sinistrados",3189016],
+  ["+","3191005","RECEITAS",1,"Subvenções e Transferências Recebidas",5,"TI-Transf. Entre Centro de Custos",3191005],
+  ["+","3192240","RECEITAS",1,"Subvenções e Transferências Recebidas",5,"TI-Subv.de Entid. Internas-Mesma Região-Não Dízimo",3192240],
+  ["+","4111001","DESPESAS",2,"Despesas Com Pessoal",6,"Salários",4111001],
+  ["+","4111004","DESPESAS",2,"Despesas Com Pessoal",6,"Décimo Terceiro Salário",4111004],
+  ["+","4111005","DESPESAS",2,"Despesas Com Pessoal",6,"Despesa Provisão 13º Salários e Encargos",4111005],
+  ["+","4111009","DESPESAS",2,"Despesas Com Pessoal",6,"1/3 Férias",4111009],
+  ["+","4111010","DESPESAS",2,"Despesas Com Pessoal",6,"Despesa Provisão de Férias e Encargos",4111010],
+  ["+","4111014","DESPESAS",2,"Despesas Com Pessoal",6,"(-)Reversão de Provisão de Férias e Encargos",4111014],
+  ["+","4111018","DESPESAS",2,"Despesas Com Pessoal",6,"Horas Extras",4111018],
+  ["+","4111020","DESPESAS",2,"Despesas Com Pessoal",6,"Indenizações Trabalhistas",4111020],
+  ["+","4111050","DESPESAS",2,"Despesas Com Pessoal",6,"Utilidade Educacional",4111050],
+  ["+","4112001","DESPESAS",2,"Despesas Com Pessoal",6,"FGTS",4112001],
+  ["+","4112002","DESPESAS",2,"Despesas Com Pessoal",6,"FGTS Indenizado",4112002],
+  ["+","4112003","DESPESAS",2,"Despesas Com Pessoal",6,"PIS s/ Folha de Pagamento",4112003],
+  ["+","4112005","DESPESAS",2,"Despesas Com Pessoal",6,"Contribuição INSS - Quota Patronal",4112005],
+  ["+","4112007","DESPESAS",2,"Despesas Com Pessoal",6,"Contribuição INSS - Terceiros",4112007],
+  ["+","4112011","DESPESAS",2,"Despesas Com Pessoal",6,"Contribuição INSS - SAT",4112011],
+  ["+","4113010","DESPESAS",2,"Despesas Com Pessoal",6,"Reemb. Despesas Equip. Profissional",4113010],
+  ["+","4113030","DESPESAS",2,"Despesas Com Pessoal",6,"Reemb. Despesas Viagens",4113030],
+  ["+","4114010","DESPESAS",2,"Despesas Com Pessoal",6,"Convênio Saúde",4114010],
+  ["+","4114011","DESPESAS",2,"Despesas Com Pessoal",6,"Convênio Saúde PROASA",4114011],
+  ["+","4114015","DESPESAS",2,"Despesas Com Pessoal",6,"Exame Medico Trabalhista",4114015],
+  ["+","4114030","DESPESAS",2,"Despesas Com Pessoal",6,"Contribuição Sindical - Convenção",4114030],
+  ["+","4114035","DESPESAS",2,"Despesas Com Pessoal",6,"Seguro de Vida em Grupo",4114035],
+  ["+","4114045","DESPESAS",2,"Despesas Com Pessoal",6,"Vale Refeição - Ticket",4114045],
+  ["+","4114050","DESPESAS",2,"Despesas Com Pessoal",6,"Vale Transporte - Ticket",4114050],
+  ["+","4119525","DESPESAS",2,"Despesas Com Pessoal",6,"Débito Custo Pessoal - Transf. de Outra Entidade",4119525],
+  ["+","4119526","DESPESAS",2,"Despesas Com Pessoal",6,"(-)Crédito Custo Pessoal - Transf P/Outra Entidade",4119526],
+  ["+","4119530","DESPESAS",2,"Despesas Com Pessoal",6,"TI-Custo Pessoal - Centro de Custos",4119530],
+  ["+","4119531","DESPESAS",2,"Despesas Com Pessoal",6,"(-)TI-Custo Pessoal - Centro de Custos",4119531],
+  ["+","4121003","DESPESAS",2,"Administrativas e Gerais",7,"Alugueis e Condomínios da Entidade",4121003],
+  ["+","4121006","DESPESAS",2,"Administrativas e Gerais",7,"Atividades Externas",4121006],
+  ["+","4121009","DESPESAS",2,"Administrativas e Gerais",7,"Aluguéis de Equipamentos",4121009],
+  ["+","4121015","DESPESAS",2,"Administrativas e Gerais",7,"Combustíveis e Lubrificantes",4121015],
+  ["+","4121017","DESPESAS",2,"Administrativas e Gerais",7,"Correios e Malotes",4121017],
+  ["+","4121028","DESPESAS",2,"Administrativas e Gerais",7,"Fotocópias",4121028],
+  ["+","4121030","DESPESAS",2,"Administrativas e Gerais",7,"Fretes e Carretos",4121030],
+  ["+","4121035","DESPESAS",2,"Administrativas e Gerais",7,"Hospedagem Terceiros",4121035],
+  ["+","4121052","DESPESAS",2,"Administrativas e Gerais",7,"Despesas com Moradia Empregados - Gerais",4121052],
+  ["+","4121058","DESPESAS",2,"Administrativas e Gerais",7,"Despesas com Moradia Empregados - Contrato",4121058],
+  ["+","4121088","DESPESAS",2,"Administrativas e Gerais",7,"Taxas de Serviços Bancários",4121088],
+  ["+","4121089","DESPESAS",2,"Administrativas e Gerais",7,"Comissão Operadoras Cartão de Crédito",4121089],
+  ["+","4121090","DESPESAS",2,"Administrativas e Gerais",7,"Telefonia",4121090],
+  ["+","4121540","DESPESAS",2,"Administrativas e Gerais",7,"Material de Embalagens",4121540],
+  ["+","4121550","DESPESAS",2,"Administrativas e Gerais",7,"Material de Escritório",4121550],
+  ["+","4121585","DESPESAS",2,"Administrativas e Gerais",7,"Material de Consumo",4121585],
+  ["+","4121899","DESPESAS",2,"Administrativas e Gerais",7,"Outras Despesas da Operação",4121899],
+  ["+","4122035","DESPESAS",2,"Administrativas e Gerais",7,"Conserv. e Manut. de Máquinas e Equipamentos",4122035],
+  ["+","4122040","DESPESAS",2,"Administrativas e Gerais",7,"Conserv. e Manut. de Veículos",4122040],
+  ["+","4122501","DESPESAS",2,"Administrativas e Gerais",7,"Serviços de Informática e Congêneres",4122501],
+  ["+","4122504","DESPESAS",2,"Administrativas e Gerais",7,"Serviços Médicos e Hospitalares",4122504],
+  ["+","4122508","DESPESAS",2,"Administrativas e Gerais",7,"Serviços de Educação e Treinamento",4122508],
+  ["+","4122510","DESPESAS",2,"Administrativas e Gerais",7,"Serviços de Agenciamento e Corretagem",4122510],
+  ["+","4122514","DESPESAS",2,"Administrativas e Gerais",7,"Serviços Técnicos Diversos",4122514],
+  ["+","4122522","DESPESAS",2,"Administrativas e Gerais",7,"Serviços de Pedágio",4122522],
+  ["+","4122524","DESPESAS",2,"Administrativas e Gerais",7,"Serviços de Chaveiros, Placas e Banners",4122524],
+  ["+","4122593","DESPESAS",2,"Administrativas e Gerais",7,"(-)Transf. p/Despesas Gerais - Serviços PJ",4122593],
+  ["+","4123015","DESPESAS",2,"Administrativas e Gerais",7,"Depreciação de Móveis e Utensílios",4123015],
+  ["+","4123020","DESPESAS",2,"Administrativas e Gerais",7,"Depreciação de Máquinas e Equipamentos",4123020],
+  ["+","4123025","DESPESAS",2,"Administrativas e Gerais",7,"Depreciação de Automotores",4123025],
+  ["+","4124016","DESPESAS",2,"Administrativas e Gerais",7,"Desp. C/Provisão p/ Perdas de Estoques",4124016],
+  ["+","4125010","DESPESAS",2,"Administrativas e Gerais",7,"Impostos, Taxas e Contribuições",4125010],
+  ["+","4126010","DESPESAS",2,"Administrativas e Gerais",7,"Juros e Encargos Pagos",4126010],
+  ["+","4129101","DESPESAS",2,"Administrativas e Gerais",7,"Contribuição Associativa - CA",4129101],
+  ["+","4129102","DESPESAS",2,"Administrativas e Gerais",7,"Contribuição Associativa - CP",4129102],
+  ["+","4129112","DESPESAS",2,"Administrativas e Gerais",7,"(-)Contribuição Associativa - CP",4129112],
+  ["+","4129121","DESPESAS",2,"Administrativas e Gerais",7,"Contribuição Associativa - Soluções Tecnológicas",4129121],
+  ["+","4129510","DESPESAS",2,"Administrativas e Gerais",7,"(-)Reembolso Desp. Administrativas e Gerais",4129510],
+  ["+","4142022","DESPESAS",2,"Marketing e Promoção",8,"Brindes, Prêmios e Amostras Grátis",4142022],
+  ["+","4191005","DESPESAS",2,"Subvenções e Transferências Enviadas",9,"TI-Transf. Entre Centro de Custos",4191005],
+  ["+","4192240","DESPESAS",2,"Subvenções e Transferências Enviadas",9,"Subv. Env.a Ent. Internas-Mesma Região-Não Dízimo",4192240],
+  ["+","4193230","DESPESAS",2,"Subvenções e Transferências Enviadas",9,"TI-Subv. Enviadas Especiais - Não Dízimo",4193230],
+  ["+","4195223","DESPESAS",2,"Subvenções e Transferências Enviadas",9,"Subv. Enviada Entidades Congêneres - Não Dízimo",4195223],
 ];
 
 const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -601,9 +629,9 @@ function classificaBP(conta) {
 }
 
 /* De/Para Entidade (aba "Campos" da planilha: Entidade / Nome / Tipo) */
-let mapaEntidades = { "1622": { nome: "ANP", tipo: "Campo" } };
+let mapaEntidades = { "1012": { nome: "Associação Norte Catarinense - Loja", tipo: "Loja" } };
 const nomeDe = e => (mapaEntidades[e] && mapaEntidades[e].nome) || e;
-const tipoDe = e => (mapaEntidades[e] && mapaEntidades[e].tipo) || "Campo";
+const tipoDe = e => (mapaEntidades[e] && mapaEntidades[e].tipo) || "Loja";
 
 /* =====================================================================
    DADOS DE EXEMPLO (reproduzem os totais do print do BI, 2026 m1-4)
@@ -1088,14 +1116,14 @@ function tabelaBalanco(idTabela, contas, totalLado, rotuloTotal) {
    ===================================================================== */
 function renderSubvencoes(linhas) {
   // cartões-resumo
-  const recebidas = linhas.filter(l => l.dre3 === "Subvenções Recebidas");
-  const enviadas = linhas.filter(l => l.dre2 === "DESPESAS" && l.dre3 === "Outorgamentos");
+  const recebidas = linhas.filter(l => l.dre3 === DRE3.subv);
+  const enviadas = linhas.filter(l => l.dre3 === DRE3.subvEnv);
   const somaR = recebidas.reduce((s, l) => s + l.saldo, 0);
   const somaE = -enviadas.reduce((s, l) => s + l.saldo, 0);  // despesa: mostra positivo
   document.getElementById("subv-cartoes").innerHTML = `
     <div class="cartao"><div class="titulo">Subvenções Recebidas</div>
       <div class="valor" data-tipo="num" data-valor="${somaR}"></div></div>
-    <div class="cartao"><div class="titulo">Repasses Enviados (Outorgamentos)</div>
+    <div class="cartao"><div class="titulo">Subvenções e Repasses Enviados</div>
       <div class="valor" data-tipo="num" data-valor="${somaE}"></div></div>
     <div class="cartao"><div class="titulo">Líquido (recebido − enviado)</div>
       <div class="valor" data-tipo="num" data-valor="${somaR - somaE}"></div></div>`;
@@ -1283,13 +1311,17 @@ function desenharCascata(linhas) {
   if (!linhas.length) { alvo.innerHTML = `<div class="vazio">Sem dados para os filtros selecionados</div>`; return; }
   const m = calcularMedidas(linhas);
   const somaGrupo = filtro => linhas.reduce((s, l) => filtro(l) ? s + l.saldo : s, 0);
+  // Cascata do varejo: parte das Vendas Líquidas e desce até o Resultado.
+  // Cada passo é a contribuição COM SINAL, e a soma fecha no resultado.
   const passos = [
-    { nome: "Receitas", v: somaGrupo(l => l.dre2 === "RECEITAS") },
+    { nome: "Vendas Líq.", v: m.prest },
+    { nome: "CMV", v: -m.educ },
     { nome: "Pessoal", v: -m.pessoal },
     { nome: "Adm e Gerais", v: -m.adm },
-    { nome: "Educ. Assist.", v: -m.educ },
-    { nome: "Outorgamentos", v: somaGrupo(l => l.dre3 === "Outorgamentos") },
-    { nome: "Subvenções", v: m.subv },
+    { nome: "Marketing", v: somaGrupo(l => l.dre3 === DRE3.marketing) },
+    { nome: "Outras Rec.", v: somaGrupo(l => l.dre3 === DRE3.outras) },
+    { nome: "Subv. Receb.", v: m.subv },
+    { nome: "Subv. Env.", v: somaGrupo(l => l.dre3 === DRE3.subvEnv) },
   ];
   if (Math.abs(m.naoRec) > 0.5) passos.push({ nome: "Não Recorrente", v: m.naoRec });
 
