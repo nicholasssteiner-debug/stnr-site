@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O Fim do Monopólio da Virtude — Pré-venda</title>
+<meta name="description" content="Pré-venda do livro O Fim do Monopólio da Virtude, de Nicholas Steiner. Liberalismo Social-Pragmático: usar a riqueza como combustível para exterminar a miséria. Primeiras cópias entram em produção em 10 de novembro.">
+<meta property="og:title" content="O Fim do Monopólio da Virtude — Pré-venda">
+<meta property="og:image" content="https://stnr.com.br/livro/assets/capa.jpg">
+<meta property="og:url" content="https://stnr.com.br/livro/">
+<meta property="og:description" content="Não é preciso odiar a riqueza para combater a pobreza. Pré-venda aberta: livro físico e e-book.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4efe6;
+    --paper-2:#ebe4d7;
+    --ink:#16140f;
+    --ink-2:#4a463d;
+    --muted:#7a7468;
+    --rule:#d3cab9;
+    --red:#8a6a2f;       /* bronze — acento principal, tirado da moldura da capa */
+    --red-dark:#6b5122;
+    --gold:#d6c69c;      /* champanhe da capa, para fundos escuros */
+    --strike:#b3261e;    /* vermelho só para as "baixas" do livro-razão */
+    --green:#2f6b3a;
+    --serif:"Fraunces", Georgia, serif;
+    --sans:"Inter", system-ui, -apple-system, Segoe UI, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --max:1120px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.1;margin:0;letter-spacing:-.01em}
+  h2{font-size:clamp(30px,4.2vw,46px)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+  section{padding:96px 0;border-top:1px solid var(--rule)}
+
+  /* faixa */
+  .strip{background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-align:center;padding:10px 16px}
+  .strip b{color:var(--gold);font-weight:500}
+
+  /* nav */
+  nav{display:flex;justify-content:space-between;align-items:center;padding:20px 0}
+  nav .brand{font-family:var(--serif);font-weight:600;font-size:18px;text-decoration:none}
+  nav .brand span{color:var(--red)}
+
+  .btn{display:inline-flex;align-items:center;gap:10px;background:var(--red);color:#fff;text-decoration:none;font-weight:600;font-size:16px;padding:16px 26px;border-radius:2px;border:0;cursor:pointer;transition:background .15s, transform .15s}
+  .btn:hover{background:var(--red-dark);transform:translateY(-1px)}
+  .btn.small{padding:10px 16px;font-size:14px}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+  .btn.ghost:hover{background:var(--ink);color:var(--paper)}
+
+  /* hero */
+  .hero{padding:40px 0 96px;border-top:0}
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:64px;align-items:center}
+  .hero h1{font-size:clamp(44px,7vw,84px);font-weight:800;letter-spacing:-.025em;margin:18px 0 20px}
+  .hero h1 em{font-style:italic;font-weight:400;color:var(--red)}
+  .hero .sub{font-size:20px;color:var(--ink-2);max-width:34ch;margin:0 0 28px}
+  .hero .by{font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:36px}
+
+  .countdown{display:flex;gap:10px;margin:0 0 28px;flex-wrap:wrap}
+  .cd{background:var(--paper-2);border:1px solid var(--rule);min-width:78px;padding:12px 10px 8px;text-align:center}
+  .cd b{display:block;font-family:var(--mono);font-size:32px;font-weight:500;line-height:1}
+  .cd small{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .cd-label{font-family:var(--mono);font-size:12px;color:var(--ink-2);margin:0 0 10px;letter-spacing:.04em}
+  .cta-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .cta-note{font-size:13px;color:var(--muted)}
+
+  /* capa em CSS */
+  .cover-stage{display:flex;justify-content:center;perspective:1400px}
+  .cover{position:relative;width:min(380px,80vw);box-shadow:24px 30px 60px rgba(22,20,15,.4);transform:rotateY(-12deg) rotateX(3deg);transition:transform .5s}
+  .cover:hover{transform:rotateY(-3deg) rotateX(1deg)}
+  .cover img{display:block;width:100%;height:auto}
+  .cover::before{content:"";position:absolute;left:0;top:0;bottom:0;width:12px;background:linear-gradient(90deg,rgba(255,255,255,.18),transparent);z-index:1}
+  .stamp{position:absolute;right:-18px;top:8%;transform:rotate(10deg);border:2px solid var(--red);color:var(--red);background:var(--paper);font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;text-align:center;line-height:1.3}
+
+  /* citação */
+  .quote{background:var(--ink);color:var(--paper);border:0}
+  .quote blockquote{margin:0;font-family:var(--serif);font-size:clamp(28px,4vw,48px);line-height:1.2;font-weight:400;max-width:22ch}
+  .quote blockquote em{color:var(--gold);font-style:italic}
+  .quote cite{display:block;margin-top:28px;font-family:var(--mono);font-style:normal;font-size:13px;letter-spacing:.08em;color:rgba(244,239,230,.6)}
+
+  /* livro-razão das convicções */
+  .two{display:grid;grid-template-columns:.9fr 1.1fr;gap:64px;align-items:start}
+  .lead{font-size:19px;color:var(--ink-2)}
+  .ledger{border:1px solid var(--ink);background:#fbf8f2}
+  .ledger-head,.ledger-row{display:grid;grid-template-columns:44px 1fr 120px;gap:0}
+  .ledger-head{background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+  .ledger-head div,.ledger-row div{padding:14px 16px}
+  .ledger-row{border-top:1px solid var(--rule)}
+  .ledger-row .n{font-family:var(--mono);color:var(--muted)}
+  .ledger-row .t{font-family:var(--serif);font-size:18px;line-height:1.35}
+  .ledger-row.out .t{text-decoration:line-through;text-decoration-color:var(--strike);text-decoration-thickness:2px;color:var(--ink-2)}
+  .ledger-row .s{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center}
+  .ledger-row.out .s{color:var(--strike)}
+  .ledger-row.keep .s{color:var(--green)}
+  .ledger-row .ch{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:none;margin-top:4px}
+  .ledger-foot{border-top:2px solid var(--ink);display:flex;justify-content:space-between;padding:14px 16px;font-family:var(--mono);font-size:13px}
+
+  /* quatro peças */
+  .pieces{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:48px;border-top:1px solid var(--ink)}
+  .piece{padding:28px 24px 8px 0;border-right:1px solid var(--rule)}
+  .piece + .piece{padding-left:24px}
+  .piece:last-child{border-right:0}
+  .piece .num{font-family:var(--mono);font-size:13px;color:var(--red)}
+  .piece h3{font-size:22px;margin:10px 0 12px}
+  .piece p{margin:0;font-size:15px;color:var(--ink-2)}
+  .thesis{margin-top:56px;font-family:var(--serif);font-size:clamp(22px,2.6vw,30px);font-style:italic;max-width:30ch;border-left:3px solid var(--red);padding-left:22px}
+
+  /* método - números */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:48px}
+  .stat{border-top:2px solid var(--ink);padding-top:16px}
+  .stat b{display:block;font-family:var(--serif);font-weight:800;font-size:64px;line-height:1;letter-spacing:-.03em}
+  .stat span{display:block;font-size:15px;color:var(--ink-2);margin-top:10px}
+  .tag{font-family:var(--mono);font-size:13px;background:var(--paper-2);border:1px dashed var(--muted);padding:2px 6px;white-space:nowrap}
+
+  /* sumário */
+  .parts{margin-top:48px;border-top:1px solid var(--ink)}
+  details.part{border-bottom:1px solid var(--rule)}
+  details.part summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:110px 1fr auto;gap:20px;align-items:baseline;padding:22px 0}
+  details.part summary::-webkit-details-marker{display:none}
+  .part .pn{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--red);text-transform:uppercase}
+  .part .pt{font-family:var(--serif);font-size:26px;font-weight:600}
+  .part .pt small{display:block;font-family:var(--sans);font-size:14px;font-weight:400;color:var(--muted);margin-top:4px}
+  .part .pc{font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .part .pc::after{content:" +";color:var(--ink)}
+  .part[open] .pc::after{content:" –"}
+  .part ol{margin:0 0 26px;padding:0 0 0 130px;columns:2;column-gap:40px;font-size:15px;color:var(--ink-2)}
+  .part ol li{break-inside:avoid;padding:4px 0}
+  .part ol li span{font-family:var(--mono);font-size:12px;color:var(--muted);margin-right:8px}
+
+  /* aviso */
+  .warn{background:var(--paper-2)}
+  .warn-box{max-width:760px;margin:0 auto;text-align:center}
+  .warn-box p{font-family:var(--serif);font-size:clamp(22px,2.8vw,30px);line-height:1.35;margin:20px 0 0}
+  .warn-box p.small{font-family:var(--sans);font-size:17px;color:var(--ink-2)}
+
+  /* autor */
+  .author{display:grid;grid-template-columns:200px 1fr;gap:48px;align-items:start}
+  .portrait{display:block;width:200px;height:auto;aspect-ratio:3/4;object-fit:cover;filter:grayscale(.35) contrast(1.05);border:1px solid var(--ink)}
+  .author h3{font-size:34px;margin:10px 0 16px}
+  .author p{margin:0 0 14px;color:var(--ink-2);max-width:62ch}
+  .creds{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .creds span{font-family:var(--mono);font-size:12px;border:1px solid var(--rule);padding:6px 10px;background:#fbf8f2}
+
+  /* oferta */
+  .offer{background:var(--ink);color:var(--paper);border:0}
+  .offer .eyebrow{color:var(--gold)}
+  .offer-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+  .offer h2{color:var(--paper)}
+  .offer p{color:rgba(244,239,230,.75)}
+  .ticket{background:var(--paper);color:var(--ink);padding:36px;position:relative}
+  .ticket::before,.ticket::after{content:"";position:absolute;top:50%;width:28px;height:28px;border-radius:50%;background:var(--ink);transform:translateY(-50%)}
+  .ticket::before{left:-14px}.ticket::after{right:-14px}
+  .ticket .row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:14px;padding:10px 0;border-bottom:1px dashed var(--rule)}
+  .ticket .row span:first-child{color:var(--muted)}
+  .ticket .price{font-family:var(--serif);font-weight:800;font-size:52px;letter-spacing:-.02em;margin:22px 0 4px}
+  .ticket .price-note{font-size:13px;color:var(--muted);margin:0 0 22px}
+  .ticket .old-price{font-family:var(--mono);font-size:14px;color:var(--muted);margin-top:22px}
+  .ticket .old-price s{text-decoration-color:var(--strike);text-decoration-thickness:2px}
+  .ticket .old-price + .price{margin-top:2px}
+  .ticket .off{display:inline-block;background:var(--green);color:#fff;font-family:var(--mono);font-size:12px;padding:3px 8px;margin-left:8px;vertical-align:middle;letter-spacing:.04em}
+  .ticket .btn{width:100%;justify-content:center}
+  .formats{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--ink);margin-bottom:18px}
+  .fmt{font:inherit;font-weight:600;font-size:15px;padding:12px 10px;background:transparent;color:var(--ink);border:0;cursor:pointer;line-height:1.25}
+  .fmt + .fmt{border-left:1px solid var(--ink)}
+  .fmt small{display:block;font-family:var(--mono);font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+  .fmt[aria-checked=true]{background:var(--ink);color:var(--paper)}
+  .fmt[aria-checked=true] small{color:var(--gold)}
+  .fmt:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+  .wa-link{display:block;text-align:center;margin-top:14px;font-size:14px;color:var(--ink-2)}
+
+  /* whatsapp */
+  .wa-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+  .wa-small{font-size:14px;color:var(--muted)}
+  .wa-form{background:#fbf8f2;border:1px solid var(--ink);padding:32px;display:flex;flex-direction:column}
+  .wa-form label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
+  .wa-form input[type=text],.wa-form input[type=tel]{font:inherit;font-size:17px;padding:14px 14px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);margin-bottom:20px;border-radius:2px;width:100%}
+  .wa-form input:focus{outline:2px solid var(--red);outline-offset:1px;border-color:var(--red)}
+  .wa-form input[aria-invalid=true]{border-color:var(--strike)}
+  .wa-form .check{display:flex;gap:12px;align-items:flex-start;font-family:var(--sans);font-size:14px;letter-spacing:0;text-transform:none;line-height:1.45;margin:0 0 22px;cursor:pointer}
+  .wa-form .check input{margin-top:3px;width:18px;height:18px;accent-color:var(--red);flex:none}
+  .wa-form .btn{justify-content:center}
+  .wa-form .btn[disabled]{opacity:.6;cursor:wait}
+  .wa-msg{min-height:1.4em;margin:12px 0 0;font-size:14px;color:var(--strike)}
+  .wa-done{border-top:1px dashed var(--rule);padding-top:20px;margin-top:4px}
+  .wa-done b{font-family:var(--serif);font-size:22px;color:var(--green)}
+  .wa-done p{margin:8px 0 16px;color:var(--ink-2);font-size:15px}
+  .wa-btn{background:#1f8f4e;width:100%}
+  .wa-btn:hover{background:#18723e}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .ticket ul{list-style:none;padding:0;margin:22px 0 0;font-size:15px}
+  .ticket li{padding:6px 0 6px 26px;position:relative}
+  .ticket li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:700}
+
+  /* faq */
+  .faq{max-width:800px}
+  .faq details{border-bottom:1px solid var(--rule);padding:20px 0}
+  .faq summary{cursor:pointer;font-family:var(--serif);font-size:21px;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:20px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-family:var(--mono);color:var(--red)}
+  .faq details[open] summary::after{content:"–"}
+  .faq p{margin:12px 0 0;color:var(--ink-2)}
+
+  footer{border-top:1px solid var(--rule);padding:40px 0 120px;font-size:14px;color:var(--muted)}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+
+  /* barra fixa mobile */
+  .sticky{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--ink);padding:12px 16px;display:none;justify-content:space-between;align-items:center;gap:12px;z-index:20;transform:translateY(100%);transition:transform .25s}
+  .sticky.show{transform:none}
+  .sticky .s-info{font-family:var(--mono);font-size:12px;line-height:1.3}
+  .sticky .s-info b{display:block;font-size:14px}
+
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease, transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.cover{transform:none}}
+
+  @media (max-width:900px){
+    .hero-grid,.two,.offer-grid,.wa-grid{grid-template-columns:1fr;gap:48px}
+    .cover-stage{order:-1}
+    .pieces{grid-template-columns:1fr 1fr}
+    .piece{border-right:0;padding:24px 0!important;border-bottom:1px solid var(--rule)}
+    .piece:nth-child(odd){padding-right:20px!important;border-right:1px solid var(--rule)}
+    .piece:nth-child(even){padding-left:20px!important}
+    .stats{grid-template-columns:1fr 1fr}
+    .part ol{padding-left:0;columns:1}
+    details.part summary{grid-template-columns:1fr auto}
+    .part .pn{grid-column:1/-1}
+    .author{grid-template-columns:1fr}
+    .portrait{width:160px}
+    .sticky{display:flex}
+  }
+  @media (max-width:560px){
+    body{font-size:16px}
+    .wrap{padding:0 16px}
+    section{padding:72px 0}
+    .pieces{grid-template-columns:1fr}
+    .piece:nth-child(odd){border-right:0;padding-right:0!important}
+    .piece:nth-child(even){padding-left:0!important}
+    .stat b{font-size:48px}
+    .ledger-head,.ledger-row{grid-template-columns:34px 1fr 86px}
+    .ledger-head div,.ledger-row div{padding:12px 10px}
+    .ledger-row .t{font-size:16px}
+    .cd{min-width:0;flex:1}
+    .cd b{font-size:26px}
+    nav .btn{display:none}
+    .stamp{right:-6px}
+    .ticket{padding:28px 22px}
+    .wa-form{padding:24px 18px}
+  }
+</style>
+</head>
+<body>
+
+<div class="strip">PRÉ-VENDA · Primeiras cópias entram em produção em <b>10 de novembro</b> · físico e e-book</div>
+
+<header class="wrap">
+  <nav>
+    <a class="brand" href="#">O Fim do Monopólio <span>da Virtude</span></a>
+    <a class="btn small js-cta" href="#oferta">Reservar cópia</a>
+  </nav>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow">Liberalismo Social-Pragmático</div>
+        <h1>O Fim do Monopólio <em>da Virtude</em></h1>
+        <p class="sub">Usar a riqueza como combustível para exterminar a miséria. Um analista de controladoria audita a política social brasileira e as próprias convicções.</p>
+        <div class="by">por Nicholas Steiner · ~230 páginas · 31 capítulos</div>
+
+        <p class="cd-label" id="cd-label">Faltam para as primeiras cópias entrarem em produção (10/11):</p>
+        <div class="countdown" id="countdown" aria-live="polite">
+          <div class="cd"><b id="cd-d">--</b><small>dias</small></div>
+          <div class="cd"><b id="cd-h">--</b><small>horas</small></div>
+          <div class="cd"><b id="cd-m">--</b><small>min</small></div>
+          <div class="cd"><b id="cd-s">--</b><small>seg</small></div>
+        </div>
+
+        <div class="cta-row">
+          <a class="btn js-cta" href="#oferta">Garantir minha cópia →</a>
+          <a class="btn ghost" href="#livro">Ler sobre o livro</a>
+        </div>
+      </div>
+
+      <div class="cover-stage">
+        <div class="cover">
+          <img src="assets/capa.jpg" width="1000" height="1374" alt="Capa do livro O Fim do Monopólio da Virtude, de Nicholas Silva Steiner Ganhadeiro: um capitel coríntio partido sobre fundo preto com moldura dourada">
+          <div class="stamp">Pré-venda<br>10 · 11</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CITAÇÃO -->
+  <section class="quote">
+    <div class="wrap reveal">
+      <blockquote>“Não é preciso odiar a riqueza para combater a pobreza. Basta ter o pragmatismo de usar <em>a primeira como combustível</em> para exterminar a segunda.”</blockquote>
+      <cite>— a frase que abre e fecha o livro</cite>
+    </div>
+  </section>
+
+  <!-- CONVICÇÕES -->
+  <section id="livro">
+    <div class="wrap two">
+      <div class="reveal">
+        <div class="eyebrow">A gênese</div>
+        <h2 style="margin:14px 0 20px">Este livro começou com quatro opiniões. Três estavam erradas.</h2>
+        <p class="lead">O autor vem da direita liberal brasileira. Começou a estudar o tema carregando as convicções que se repetem em coluna de jornal econômico e em conversa de escritório.</p>
+        <p class="lead">Depois aplicou a elas a mesma régua que aplica a um balanço todos os dias: <strong>o que você acha não importa; o que fecha, importa.</strong> E teve que dar baixa em três delas.</p>
+      </div>
+
+      <div class="ledger reveal" aria-label="Livro-razão das quatro convicções">
+        <div class="ledger-head"><div>#</div><div>Convicção inicial</div><div>Apuração</div></div>
+        <div class="ledger-row out">
+          <div class="n">01</div>
+          <div class="t">O problema do Brasil é a carga tributária.<span class="ch">ver Cap. 6</span></div>
+          <div class="s">✕ Baixa</div>
+        </div>
+        <div class="ledger-row out">
+          <div class="n">02</div>
+          <div class="t">Transferência de renda cria dependência.<span class="ch">ver Cap. 7</span></div>
+          <div class="s">✕ Baixa</div>
+        </div>
+        <div class="ledger-row out">
+          <div class="n">03</div>
+          <div class="t">O mercado resolve o social sozinho.<span class="ch">ver Cap. 8</span></div>
+          <div class="s">✕ Baixa</div>
+        </div>
+        <div class="ledger-row keep">
+          <div class="n">04</div>
+          <div class="t">Quem defende gasto social não fez a conta.<span class="ch">ver Conclusão</span></div>
+          <div class="s">✓ Mantida</div>
+        </div>
+        <div class="ledger-foot"><span>Saldo</span><span>3 baixas · 1 mantida</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- O MODELO -->
+  <section>
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow">O modelo, em uma página</div>
+        <h2 style="margin:14px 0 18px;max-width:22ch">Nem meio-termo morno. Maximização das duas pontas.</h2>
+        <p class="lead" style="max-width:62ch">O mercado é o melhor gerador de riqueza que a humanidade já construiu e é um distribuidor terrível. As duas frases são verdadeiras ao mesmo tempo. O livro propõe um mercado mais livre do que a direita jamais defendeu, financiando um piso social mais firme do que a esquerda jamais entregou.</p>
+      </div>
+
+      <div class="pieces reveal">
+        <div class="piece">
+          <div class="num">01</div>
+          <h3>Estado guardião e árbitro</h3>
+          <p>Recua da operação: deixa de produzir aço e administrar banco. Avança na arbitragem: contrato, segurança jurídica, infraestrutura e um fundo social blindado.</p>
+        </div>
+        <div class="piece">
+          <div class="num">02</div>
+          <h3>Motor de riqueza</h3>
+          <p>Base tributária larga, alíquota baixa, burocracia digital. Abrir e fechar empresa em processo rápido. Arrecadar mais cobrando menos de muito mais gente.</p>
+        </div>
+        <div class="piece">
+          <div class="num">03</div>
+          <h3>Imposto de Renda Negativo</h3>
+          <p>Uma fórmula única, contínua e automática no lugar da colcha de programas. Cada real ganho pelo esforço aumenta a renda final. Sem degrau, sem armadilha.</p>
+        </div>
+        <div class="piece">
+          <div class="num">04</div>
+          <h3>Vouchers de saúde e educação</h3>
+          <p>A família da periferia com o mesmo poder de escolha que a classe média sempre teve, com auditoria de resultado na ponta e trava antifraude na origem.</p>
+        </div>
+      </div>
+
+      <p class="thesis reveal">A riqueza precisa ser gerada de forma agressiva e livre, e o piso da sociedade precisa ser inabalável.</p>
+    </div>
+  </section>
+
+  <!-- MÉTODO -->
+  <section>
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow">As regras deste livro</div>
+        <h2 style="margin:14px 0 18px;max-width:20ch">Não peça para acreditar. Traga o número.</h2>
+        <p class="lead" style="max-width:64ch">Onde o argumento depende de um dado verificável, o texto traz a marca <span class="tag">[ONDE CONFERIR: fonte]</span>: o órgão que produz o dado, a série, o período. Dado envelhece; fonte não. O livro passa a bola para você refazer a conta.</p>
+      </div>
+      <div class="stats reveal">
+        <div class="stat"><b data-count="90">90</b><span>marcas de verificação apontando onde cada dado mora</span></div>
+        <div class="stat"><b data-count="3">3</b><span>resultados, escritos no Capítulo 1, que fariam o autor abandonar o modelo</span></div>
+        <div class="stat"><b data-count="12">12</b><span>objeções enfrentadas no “Tribunal do Modelo”, com placar honesto</span></div>
+        <div class="stat"><b data-count="2">2</b><span>lados atacados, nessa ordem: primeiro a esquerda, depois a direita</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUMÁRIO -->
+  <section id="sumario">
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow">Sumário</div>
+        <h2 style="margin:14px 0 0">Cinco partes. Trinta e um capítulos.</h2>
+      </div>
+      <div class="parts reveal">
+        <details class="part">
+          <summary><span class="pn">Parte I</span><span class="pt">A Desconstrução da Esquerda<small>O falso monopólio da bondade</small></span><span class="pc">Cap. 1–7</span></summary>
+          <ol>
+            <li><span>01</span>O Sequestro da Palavra “Bondade”</li>
+            <li><span>02</span>O Estado que Tudo Faz e Nada Entrega</li>
+            <li><span>03</span>A Contabilidade da Compaixão</li>
+            <li><span>04</span>A Armadilha da Pobreza</li>
+            <li><span>05</span>Curral Eleitoral: Quando o Pobre Vira Ativo Político</li>
+            <li><span>06</span>A Asfixia da Riqueza</li>
+            <li><span>07</span>O Que a Esquerda Acertou</li>
+          </ol>
+        </details>
+        <details class="part">
+          <summary><span class="pn">Parte II</span><span class="pt">O Choque na Extrema-Direita<small>A cegueira ideológica</small></span><span class="pc">Cap. 8–13</span></summary>
+          <ol start="8">
+            <li><span>08</span>A Falácia do Mercado que se Autorregula no Social</li>
+            <li><span>09</span>Externalidades: O Custo Invisível da Miséria</li>
+            <li><span>10</span>A Necessidade Matemática da Estabilidade</li>
+            <li><span>11</span>A Morte das Cartilhas</li>
+            <li><span>12</span>Meritocracia sem Piso é Loteria</li>
+            <li><span>13</span>O Que a Direita Acertou</li>
+          </ol>
+        </details>
+        <details class="part">
+          <summary><span class="pn">Parte III</span><span class="pt">A Arquitetura<small>O modelo, peça por peça</small></span><span class="pc">Cap. 14–22</span></summary>
+          <ol start="14">
+            <li><span>14</span>O Estado Guardião e Árbitro</li>
+            <li><span>15</span>Segurança Jurídica como Ativo Econômico</li>
+            <li><span>16</span>O Motor de Riqueza</li>
+            <li><span>17</span>A Regra de Ouro Social</li>
+            <li><span>18</span>Imposto de Renda Negativo: A Matemática</li>
+            <li><span>19</span>IRN: Custo, Calibragem e Financiamento</li>
+            <li><span>20</span>Vouchers: Saúde e Educação</li>
+            <li><span>21</span>Auditoria de Resultados e a Trava Antifraude</li>
+            <li><span>22</span>O Fundo Social: Governança e Blindagem</li>
+          </ol>
+        </details>
+        <details class="part">
+          <summary><span class="pn">Parte IV</span><span class="pt">A Prova<small>Evidência, história e letra miúda</small></span><span class="pc">Cap. 23–27</span></summary>
+          <ol start="23">
+            <li><span>23</span>Tigres Asiáticos: O Que Copiar e o Que Não</li>
+            <li><span>24</span>Irlanda: O Milagre e Sua Letra Miúda</li>
+            <li><span>25</span>As Experiências Reais de Renda Garantida</li>
+            <li><span>26</span>Vouchers no Mundo</li>
+            <li><span>27</span>O Caso Brasileiro: Por Que Aqui é Mais Difícil</li>
+          </ol>
+        </details>
+        <details class="part">
+          <summary><span class="pn">Parte V</span><span class="pt">A Transição<small>Como sair daqui</small></span><span class="pc">Cap. 28–31</span></summary>
+          <ol start="28">
+            <li><span>28</span>O Plano de Oito Anos</li>
+            <li><span>29</span>Reforma Administrativa e o Problema Humano</li>
+            <li><span>30</span>A Economia Política: Quem Perde e Como Reage</li>
+            <li><span>31</span>O Tribunal do Modelo</li>
+          </ol>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- AVISO -->
+  <section class="warn">
+    <div class="wrap warn-box reveal">
+      <div class="eyebrow">Um aviso</div>
+      <p>Se você está esperando confirmação, este não é o seu livro.</p>
+      <p class="small">Ele vai desagradar quem defende o Estado máximo nos primeiros sete capítulos e quem defende o mercado absoluto nos seis seguintes. Se você terminar a Parte I satisfeito e a Parte II irritado, o texto funcionou como projetado.</p>
+    </div>
+  </section>
+
+  <!-- AUTOR -->
+  <section id="autor">
+    <div class="wrap author">
+      <img class="portrait reveal" src="assets/autor.jpg" width="600" height="800" alt="Foto de Nicholas Steiner" loading="lazy">
+      <div class="reveal">
+        <div class="eyebrow">Sobre o autor</div>
+        <h3>Nicholas Steiner</h3>
+        <p>Analista de controladoria no ramo contábil, em instituição educacional sem fins lucrativos. É dessa rotina que vem o método do livro: conciliação, rateio de custos indiretos, apropriação de despesa e a pergunta que a profissão faz todo dia — se o número fecha.</p>
+        <p>Estreou como autor com <em>Teísmo: (Ir)racionalidade</em>, aplicando o mesmo procedimento a outro objeto: apresentar o argumento na versão mais forte, confrontá-lo com a objeção mais dura e dizer o que sobrou.</p>
+        <p>“Não é um livro de economista, e o autor não finge que seja.” É o livro de alguém que passa os dias apurando se o dinheiro foi para onde disseram que iria, e que resolveu dirigir essa pergunta ao maior orçamento do país.</p>
+        <div class="creds">
+          <span>Ciências Contábeis · FAP</span>
+          <span>Gestão Financeira · FASUL</span>
+          <span>MBA Controladoria e Finanças</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OFERTA -->
+  <section class="offer" id="oferta">
+    <div class="wrap offer-grid">
+      <div class="reveal">
+        <div class="eyebrow">Pré-venda</div>
+        <h2 style="margin:14px 0 20px">Garanta uma das primeiras cópias.</h2>
+        <p>Em <strong style="color:var(--paper)">10 de novembro</strong> as primeiras cópias entram em produção. Quem reserva na pré-venda está na frente da fila.</p>
+        <p>Escolha o formato: o livro impresso, com preço especial de pré-venda, ou o e-book, por um valor simbólico.</p>
+        <p>Se o livro estiver certo, ele precisa ser testado. Se estiver errado, precisa ser derrubado com dados. Nos dois casos, começa pela leitura.</p>
+      </div>
+      <div class="ticket reveal">
+        <div class="formats" role="radiogroup" aria-label="Formato do livro">
+          <button type="button" class="fmt" role="radio" aria-checked="true" data-fmt="fisico">Livro físico<small id="fmt-fisico-price"></small></button>
+          <button type="button" class="fmt" role="radio" aria-checked="false" data-fmt="digital">E-book<small id="fmt-digital-price"></small></button>
+        </div>
+        <div class="row"><span>Título</span><span>O Fim do Monopólio da Virtude</span></div>
+        <div class="row"><span>Autor</span><span>Nicholas Steiner</span></div>
+        <div class="row"><span id="when-label">Produção</span><span id="when-value">a partir de 10/11/2026</span></div>
+        <div class="old-price" id="old-price" hidden></div>
+        <div class="price" id="price">R$ --,--</div>
+        <p class="price-note" id="price-note">Preço especial de pré-venda</p>
+        <a class="btn js-cta" id="buy" href="#">Reservar meu livro →</a>
+        <a class="wa-link" href="#whatsapp">Ainda não? Receba o aviso no WhatsApp</a>
+        <ul id="perks"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHATSAPP -->
+  <section id="whatsapp" class="wa">
+    <div class="wrap wa-grid">
+      <div class="reveal">
+        <div class="eyebrow">Lista do WhatsApp</div>
+        <h2 style="margin:14px 0 20px">Fique sabendo de tudo pelo WhatsApp.</h2>
+        <p class="lead">Deixe seu número e receba as novidades do livro direto no WhatsApp: o início da produção em 10/11, o envio das primeiras cópias e o que mais vier.</p>
+        <p class="wa-small">Sem spam. Só mensagens sobre o livro. Para sair, é só responder <strong>SAIR</strong>.</p>
+      </div>
+
+      <form class="wa-form reveal" id="wa-form" novalidate>
+        <label for="wa-name">Seu nome</label>
+        <input id="wa-name" name="nome" type="text" autocomplete="given-name" required maxlength="80" placeholder="Como você quer ser chamado">
+
+        <label for="wa-phone">WhatsApp com DDD</label>
+        <input id="wa-phone" name="whatsapp" type="tel" inputmode="numeric" autocomplete="tel-national" required placeholder="(11) 91234-5678">
+
+        <label class="check">
+          <input id="wa-consent" name="consentimento" type="checkbox" required>
+          <span>Autorizo receber mensagens sobre o livro <em>O Fim do Monopólio da Virtude</em> no meu WhatsApp. Posso cancelar a qualquer momento.</span>
+        </label>
+
+        <!-- campo-isca contra robôs: fica invisível para pessoas -->
+        <input type="text" name="site" id="wa-hp" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
+
+        <button class="btn" type="submit" id="wa-submit">Quero receber as novidades →</button>
+        <p class="wa-msg" id="wa-msg" role="status" aria-live="polite"></p>
+
+        <div class="wa-done" id="wa-done" hidden>
+          <b>Pronto, você está na lista! ✓</b>
+          <p>Último passo: salve o nosso número nos seus contatos e mande um “oi” por lá, para as mensagens chegarem certinho.</p>
+          <a class="btn wa-btn" id="wa-chat" href="#" target="_blank" rel="noopener">Abrir conversa no WhatsApp</a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Perguntas frequentes</div>
+      <h2 style="margin:14px 0 32px">Antes de reservar</h2>
+      <div class="faq">
+        <details>
+          <summary>Quando recebo o livro?</summary>
+          <p>O livro físico entra em produção em 10 de novembro de 2026. Depois da impressão, as cópias são enviadas na ordem das reservas — por isso a entrega pode levar alguns dias a mais. O frete é fixo: R$ 5,00 para todo o Brasil. O e-book chega na hora, assim que o pagamento é aprovado.</p>
+        </details>
+        <details>
+          <summary>Qual a diferença entre o físico e o e-book?</summary>
+          <p>O conteúdo é o mesmo. O físico é o livro impresso, enviado para o seu endereço. O e-book é o arquivo digital, para ler no celular, computador ou leitor de e-book, e custa bem menos porque não tem impressão nem frete.</p>
+        </details>
+        <details>
+          <summary>Preciso entender de economia para ler?</summary>
+          <p>Não. O livro foi escrito por um analista de controladoria, não por um economista, e cada conceito técnico é explicado quando aparece. O que ele pede é disposição para conferir os números.</p>
+        </details>
+        <details>
+          <summary>É um livro de direita ou de esquerda?</summary>
+          <p>Nenhum dos dois. A Parte I desconstrói a esquerda; a Parte II desconstrói a direita. O modelo proposto abandona o eixo em que os dois lados discutem.</p>
+        </details>
+        <details>
+          <summary>Por que o livro não imprime os números, e sim as fontes?</summary>
+          <p>Porque dado envelhece e fonte não. As 90 marcas [ONDE CONFERIR] apontam onde cada dado é publicado, para que você o busque atualizado e tire a própria conclusão.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Nicholas Steiner · O Fim do Monopólio da Virtude</span>
+    <span class="mono">Traga o número.</span>
+  </div>
+</footer>
+
+<div class="sticky" id="sticky">
+  <div class="s-info"><b id="sticky-price">Pré-venda aberta</b>Físico ou e-book · produção em 10/11</div>
+  <a class="btn small js-cta" href="#oferta">Reservar</a>
+</div>
+
+<script>
+  /* ===== CONFIGURAÇÃO — edite aqui ===== */
+  const CONFIG = {
+    // Data/hora de liberação das primeiras cópias (horário de Brasília)
+    launch: "2026-11-10T00:00:00-03:00",
+    // Os dois formatos. checkoutUrl = link de pagamento de cada produto (Kiwify, Hotmart...).
+    // fullPrice é opcional: aparece riscado ao lado do preço.
+    formats: {
+      fisico: {
+        price: "R$ 38,90",
+        fullPrice: "R$ 57,20",
+        checkoutUrl: "",
+        when: ["Produção", "a partir de 10/11/2026"],
+        button: "Reservar meu livro físico →",
+        shipping: "R$ 5,00",
+        perks: ["Livro impresso enviado para sua casa (frete fixo de R$ 5,00)", "Na frente da fila de produção", "Preço exclusivo da pré-venda"]
+      },
+      digital: {
+        price: "R$ 5,00",
+        fullPrice: "",
+        checkoutUrl: "",
+        when: ["Entrega", "na hora, após o pagamento"],
+        button: "Garantir meu e-book →",
+        perks: ["Arquivo digital para ler em qualquer tela", "Chega na hora, assim que o pagamento é aprovado", "Sem frete"]
+      }
+    },
+    // URL do Google Apps Script que grava os cadastros na planilha (veja controle-pre-venda.gs)
+    leadsUrl: "https://script.google.com/macros/s/AKfycbwbNtQZB-viwEsvuztYLOaf3IaThlLLpUSRq_w7cujUgJlFOiUCNdTsmYNTa6YCSC61/exec",
+    // Seu número de WhatsApp, só dígitos com 55 + DDD. Ex.: "5541999998888"
+    whatsappNumber: "5524981141508"
+  };
+  /* ===================================== */
+
+  (function(){
+    const target = new Date(CONFIG.launch).getTime();
+    const pad = n => String(n).padStart(2,"0");
+    const el = id => document.getElementById(id);
+    function tick(){
+      const diff = target - Date.now();
+      if (diff <= 0){
+        el("cd-label").textContent = "As primeiras cópias já estão em produção.";
+        el("countdown").style.display = "none";
+        document.querySelector(".strip").innerHTML = "<b>Primeiras cópias em produção</b> · garanta a sua";
+        clearInterval(timer); return;
+      }
+      const s = Math.floor(diff/1000);
+      el("cd-d").textContent = pad(Math.floor(s/86400));
+      el("cd-h").textContent = pad(Math.floor(s%86400/3600));
+      el("cd-m").textContent = pad(Math.floor(s%3600/60));
+      el("cd-s").textContent = pad(s%60);
+    }
+    const timer = setInterval(tick, 1000); tick();
+
+    // formatos e preço
+    const toNum = s => parseFloat(String(s).replace(/[^\d,]/g,"").replace(",", "."));
+    const F = CONFIG.formats, buy = el("buy");
+    el("fmt-fisico-price").textContent = F.fisico.price;
+    el("fmt-digital-price").textContent = F.digital.price;
+    el("sticky-price").textContent = "Físico " + F.fisico.price + " · E-book " + F.digital.price;
+    function showFormat(key){
+      const f = F[key];
+      document.querySelectorAll(".fmt").forEach(b => b.setAttribute("aria-checked", b.dataset.fmt === key));
+      el("price").textContent = f.price;
+      el("when-label").textContent = f.when[0];
+      el("when-value").textContent = f.when[1];
+      el("perks").innerHTML = f.perks.map(p => "<li>" + p + "</li>").join("");
+      buy.textContent = f.button;
+      const off = f.fullPrice ? Math.round((1 - toNum(f.price) / toNum(f.fullPrice)) * 100) : 0;
+      el("old-price").hidden = !f.fullPrice;
+      if (f.fullPrice){
+        el("old-price").innerHTML = 'de <s>' + f.fullPrice + '</s> por' + (off > 0 ? '<span class="off">−' + off + '%</span>' : '');
+        el("price-note").textContent = (f.shipping ? "+ " + f.shipping + " de frete. " : "") + "Preço exclusivo da pré-venda; depois, volta para " + f.fullPrice + ".";
+      } else {
+        el("price-note").textContent = key === "digital" ? "Valor simbólico: sem impressão, sem frete." : "Preço especial de pré-venda";
+      }
+      if (f.checkoutUrl){ buy.href = f.checkoutUrl; buy.target = "_blank"; buy.rel = "noopener"; }
+      else { buy.href = "#oferta"; buy.removeAttribute("target"); }
+    }
+    document.querySelectorAll(".fmt").forEach(b => b.addEventListener("click", () => showFormat(b.dataset.fmt)));
+    showFormat("fisico");
+
+    // cadastro de WhatsApp
+    const form = el("wa-form"), phone = el("wa-phone"), msg = el("wa-msg"), submit = el("wa-submit");
+    const digits = v => v.replace(/\D/g, "");
+    function localDigits(v){
+      let d = digits(v);
+      if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2);
+      return d.slice(0, 11);
+    }
+    phone.addEventListener("input", () => {
+      const d = localDigits(phone.value);
+      let out = d;
+      if (d.length > 2) out = "(" + d.slice(0,2) + ") " + d.slice(2);
+      if (d.length > 6) out = "(" + d.slice(0,2) + ") " + d.slice(2, d.length - 4) + "-" + d.slice(-4);
+      phone.value = out;
+      phone.removeAttribute("aria-invalid");
+    });
+    function validPhone(d){
+      if (!/^[1-9][1-9]/.test(d)) return false;               // DDD válido
+      return d.length === 11 ? d[2] === "9" : d.length === 10; // celular com 9 ou fixo
+    }
+    form.addEventListener("submit", async ev => {
+      ev.preventDefault();
+      msg.textContent = "";
+      const nome = el("wa-name").value.trim();
+      const d = localDigits(phone.value);
+      if (!nome){ msg.textContent = "Digite seu nome."; el("wa-name").focus(); return; }
+      if (!validPhone(d)){ msg.textContent = "Confira o número: DDD + celular, ex.: (11) 91234-5678."; phone.setAttribute("aria-invalid","true"); phone.focus(); return; }
+      if (!el("wa-consent").checked){ msg.textContent = "Marque a autorização para podermos te mandar mensagens."; return; }
+      if (el("wa-hp").value) return; // robô
+      if (!CONFIG.leadsUrl){
+        console.warn("CONFIG.leadsUrl vazio: configure o Google Apps Script (controle-pre-venda.gs).");
+        msg.textContent = "O cadastro ainda não está ativo. Tente novamente mais tarde.";
+        return;
+      }
+      submit.disabled = true; submit.textContent = "Enviando…";
+      const body = new URLSearchParams({
+        nome, whatsapp: "55" + d, consentimento: "sim",
+        origem: location.href, utm: location.search
+      });
+      try {
+        await fetch(CONFIG.leadsUrl, { method: "POST", mode: "no-cors", body });
+        submit.hidden = true;
+        form.querySelectorAll("input, label").forEach(n => n.disabled = true);
+        el("wa-done").hidden = false;
+        if (CONFIG.whatsappNumber){
+          const txt = "Oi! Sou " + nome + " e entrei na lista do livro O Fim do Monopólio da Virtude!";
+          el("wa-chat").href = "https://wa.me/" + digits(CONFIG.whatsappNumber) + "?text=" + encodeURIComponent(txt);
+        } else {
+          el("wa-chat").hidden = true;
+          el("wa-done").querySelector("p").textContent = "Em breve você recebe as novidades no seu WhatsApp.";
+        }
+      } catch (e) {
+        msg.textContent = "Não foi possível enviar agora. Verifique sua internet e tente de novo.";
+        submit.disabled = false; submit.textContent = "Quero receber as novidades →";
+      }
+    });
+
+    // barra fixa no mobile
+    const sticky = el("sticky"), hero = document.querySelector(".hero"), offer = el("oferta");
+    addEventListener("scroll", () => {
+      const heroVisible = hero.getBoundingClientRect().bottom > 0;
+      const r = offer.getBoundingClientRect();
+      sticky.classList.toggle("show", !heroVisible && !(r.top < innerHeight && r.bottom > 0));
+    }, {passive:true});
+
+    // animação de entrada
+    const rv = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ e.target.classList.add("in"); rv.unobserve(e.target); } }), {threshold:.12});
+    document.querySelectorAll(".reveal").forEach(n => rv.observe(n));
+  })();
+</script>
+</body>
+</html>

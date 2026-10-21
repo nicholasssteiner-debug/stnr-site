@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel da Pré-venda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4efe6; --paper-2:#ebe4d7; --card:#fbf8f2; --ink:#16140f; --ink-2:#4a463d; --muted:#7a7468; --rule:#d3cab9;
+    --bronze:#8a6a2f; --gold:#d6c69c; --green:#2f6b3a; --amber:#a86b00; --red:#b3261e; --violet:#5b4a8a;
+    --serif:"Fraunces", Georgia, serif; --sans:"Inter", system-ui, sans-serif; --mono:"IBM Plex Mono", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header{background:var(--ink);color:var(--paper)}
+  header .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 24px;flex-wrap:wrap}
+  header h1{font-family:var(--serif);font-weight:600;font-size:20px;margin:0}
+  header h1 span{color:var(--gold)}
+  .hdr-r{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:12px;color:rgba(244,239,230,.7);flex-wrap:wrap}
+  button,.btn{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:2px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  button.ghost,.btn.ghost{background:transparent;color:var(--ink)}
+  header button{background:transparent;border-color:rgba(244,239,230,.4);color:var(--paper)}
+  header button:hover{border-color:var(--gold)}
+  button:disabled{opacity:.5;cursor:wait}
+
+  /* conexão */
+  .connect{max-width:520px;margin:64px auto;background:var(--card);border:1px solid var(--ink);padding:32px}
+  .connect h2{font-family:var(--serif);font-size:28px;margin:0 0 8px}
+  .connect p{color:var(--ink-2);margin:0 0 20px}
+  .connect label{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
+  .connect input{width:100%;font:inherit;font-size:15px;padding:12px;border:1px solid var(--rule);background:var(--paper);margin-bottom:16px}
+  .connect .row{display:flex;gap:10px;flex-wrap:wrap}
+  .err{color:var(--red);font-size:14px;min-height:1.4em;margin:10px 0 0}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--ink);background:var(--card);margin:28px 0 0}
+  .kpi{padding:18px 18px 16px;border-right:1px solid var(--rule)}
+  .kpi:last-child{border-right:0}
+  .kpi small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .kpi b{display:block;font-family:var(--serif);font-weight:800;font-size:32px;line-height:1.1;margin:6px 0 4px;letter-spacing:-.02em}
+  .kpi span{font-size:13px;color:var(--ink-2)}
+  .kpi.money b{color:var(--green)}
+  .kpi.warn b{color:var(--amber)}
+
+  /* barra de formato */
+  .split{margin:20px 0 0;display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+  .bar{flex:1;min-width:220px;height:12px;background:var(--paper-2);display:flex;border:1px solid var(--rule)}
+  .bar i{display:block;height:100%}
+  .bar .f{background:var(--ink)} .bar .d{background:var(--gold)}
+  .legend{display:flex;gap:16px}
+  .legend span::before{content:"";display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+  .legend .lf::before{background:var(--ink)} .legend .ld::before{background:var(--gold)}
+
+  /* filtros */
+  .tools{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:32px 0 0;flex-wrap:wrap}
+  .tabs{display:flex;flex-wrap:wrap;border:1px solid var(--ink)}
+  .tabs button{background:transparent;color:var(--ink);border:0;border-right:1px solid var(--rule);font-weight:500;padding:9px 12px}
+  .tabs button:last-child{border-right:0}
+  .tabs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+  .tabs button em{font-style:normal;font-family:var(--mono);font-size:12px;opacity:.7;margin-left:4px}
+  .search{font:inherit;padding:9px 12px;border:1px solid var(--rule);background:var(--card);min-width:220px}
+
+  /* tabela */
+  .tbl-wrap{margin:14px 0 64px;border:1px solid var(--ink);background:var(--card);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:820px}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--paper);background:var(--ink);text-align:left;padding:10px 12px;white-space:nowrap}
+  td{padding:11px 12px;border-top:1px solid var(--rule);vertical-align:middle}
+  td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+  td.mono{font-family:var(--mono);font-size:13px;white-space:nowrap}
+  td .sub{display:block;font-size:12px;color:var(--muted)}
+  .chip{display:inline-block;font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:20px;white-space:nowrap;border:1px solid}
+  .s-pago{color:var(--green);background:#e3f1e5;border-color:#b9dcbf}
+  .s-aguardando{color:var(--amber);background:#fff3d1;border-color:#f1d68a}
+  .s-abandonado{color:#a5521b;background:#ffe6d1;border-color:#f3c39b}
+  .s-recusado{color:var(--red);background:#f9dfdc;border-color:#eab5b0}
+  .s-cancelado{color:var(--muted);background:#eeeeee;border-color:#d6d6d6}
+  .s-reembolsado{color:var(--violet);background:#e9e4f5;border-color:#cbc1e6}
+  .s-lista{color:var(--ink-2);background:var(--paper-2);border-color:var(--rule)}
+  .fmt{font-family:var(--mono);font-size:12px}
+  .wa{color:#1f8f4e;font-weight:600;text-decoration:none;white-space:nowrap}
+  .wa:hover{text-decoration:underline}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .demo-flag{background:var(--gold);color:var(--ink);font-family:var(--mono);font-size:12px;text-align:center;padding:6px}
+  footer{font-size:13px;color:var(--muted);padding:0 0 40px}
+
+  @media (max-width:900px){ .kpis{grid-template-columns:1fr 1fr} .kpi{border-bottom:1px solid var(--rule)} .kpi:nth-child(2n){border-right:0} }
+  @media (max-width:560px){ .wrap{padding:0 16px} header .wrap{padding:14px 16px} .kpi b{font-size:26px} .search{min-width:0;width:100%} .connect{margin:32px 16px;padding:24px} }
+</style>
+</head>
+<body>
+
+<div class="demo-flag" id="demo-flag" hidden>Dados de exemplo — conecte sua planilha para ver os pedidos reais</div>
+<header>
+  <div class="wrap">
+    <h1>Painel da pré-venda · <span>O Fim do Monopólio da Virtude</span></h1>
+    <div class="hdr-r" id="hdr-r" hidden>
+      <span id="updated"></span>
+      <a class="btn ghost" id="sheet-link" href="#" target="_blank" rel="noopener" style="color:var(--paper);border-color:rgba(244,239,230,.4)">Abrir planilha</a>
+      <button id="refresh">Atualizar</button>
+      <button id="logout">Sair</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- conexão -->
+  <section class="connect" id="connect">
+    <h2>Conectar à planilha</h2>
+    <p>Cole a URL do Apps Script (termina em <code>/exec</code>) e a senha do painel definida no <code>controle-pre-venda.gs</code>. Ficam salvas só neste navegador.</p>
+    <form id="connect-form">
+      <label for="c-url">URL do Apps Script</label>
+      <input id="c-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" required>
+      <label for="c-key">Senha do painel</label>
+      <input id="c-key" type="password" required>
+      <div class="row">
+        <button type="submit" id="c-go">Conectar</button>
+        <button type="button" class="ghost" id="c-demo">Ver com dados de exemplo</button>
+      </div>
+      <p class="err" id="c-err" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- painel -->
+  <section id="dash" hidden>
+    <div class="kpis">
+      <div class="kpi money"><small>Receita confirmada</small><b id="k-rev">—</b><span id="k-rev-sub"></span></div>
+      <div class="kpi"><small>Pedidos pagos</small><b id="k-paid">—</b><span id="k-paid-sub"></span></div>
+      <div class="kpi warn"><small>Não pagaram</small><b id="k-unpaid">—</b><span id="k-unpaid-sub"></span></div>
+      <div class="kpi"><small>Físicos a enviar</small><b id="k-ship">—</b><span id="k-ship-sub"></span></div>
+      <div class="kpi"><small>Lista do WhatsApp</small><b id="k-leads">—</b><span id="k-leads-sub"></span></div>
+    </div>
+
+    <div class="split">
+      <span>Pagos por formato</span>
+      <div class="bar" aria-hidden="true"><i class="f" id="bar-f"></i><i class="d" id="bar-d"></i></div>
+      <div class="legend"><span class="lf" id="lg-f">Físico</span><span class="ld" id="lg-d">E-book</span></div>
+    </div>
+
+    <div class="tools">
+      <div class="tabs" id="tabs" role="group" aria-label="Filtro"></div>
+      <input class="search" id="search" type="search" placeholder="Buscar nome, e-mail ou número">
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Nome</th><th>WhatsApp</th><th>Formato</th><th style="text-align:right">Valor</th><th>Status</th><th>Envio</th><th>Data</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">Para mudar o status de envio ou lançar uma venda feita fora da plataforma, edite a aba “Pedidos” da planilha e clique em Atualizar.</footer>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const store = { get(k){ try { return localStorage.getItem(k) || ""; } catch(e){ return ""; } },
+                  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+                  del(k){ try { localStorage.removeItem(k); } catch(e){} } };
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const brl = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  const dig = v => String(v ?? "").replace(/\D/g,"");
+  const tail = v => dig(v).slice(-8);
+  const fone = v => { const d = dig(v).replace(/^55/,""); return d.length >= 10 ? "(" + d.slice(0,2) + ") " + d.slice(2,-4) + "-" + d.slice(-4) : (d || "—"); };
+  const dt = v => { const d = new Date(v); return isNaN(d) ? "" : d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) + " " + d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); };
+  const LIVRO = "O Fim do Monopólio da Virtude";
+
+  const STATUS_CLS = { "Pago":"pago", "Aguardando pagamento":"aguardando", "Carrinho abandonado":"abandonado", "Recusado":"recusado", "Cancelado":"cancelado", "Reembolsado":"reembolsado" };
+  const NAO_PAGOU = ["Aguardando pagamento","Carrinho abandonado","Recusado","Cancelado"];
+
+  let data = null, lastData = null, tab = "todos", query = "";
+
+  /* ---------- conexão ---------- */
+  async function load(){
+    const url = store.get("painel-url"), key = store.get("painel-key");
+    if (!url || !key) return showConnect();
+    $("refresh").disabled = true;
+    try {
+      const r = await fetch(url + (url.includes("?") ? "&" : "?") + "chave=" + encodeURIComponent(key) + "&t=" + Date.now());
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.erro === "senha" ? "Senha incorreta." : "Resposta inesperada da planilha.");
+      $("demo-flag").hidden = true;
+      render(j);
+    } catch (e) {
+      showConnect(e.message && e.message.length < 80 ? e.message : "Não consegui ler a planilha. Confira a URL e se a implantação está como “Qualquer pessoa”.");
+    } finally { $("refresh").disabled = false; }
+  }
+  function showConnect(err){
+    $("connect").hidden = false; $("dash").hidden = true; $("hdr-r").hidden = true;
+    $("c-url").value = store.get("painel-url");
+    $("c-err").textContent = err || "";
+  }
+  $("connect-form").addEventListener("submit", e => {
+    e.preventDefault();
+    store.set("painel-url", $("c-url").value.trim()); store.set("painel-key", $("c-key").value);
+    $("c-err").textContent = "Conectando…"; load();
+  });
+  $("c-demo").addEventListener("click", () => { $("demo-flag").hidden = false; render(demo()); });
+  $("refresh").addEventListener("click", () => $("demo-flag").hidden ? load() : render(demo()));
+  $("logout").addEventListener("click", () => { store.del("painel-key"); $("demo-flag").hidden = true; showConnect(); });
+
+  /* ---------- cálculo ---------- */
+  function render(j){
+    lastData = j;
+    $("connect").hidden = true; $("dash").hidden = false; $("hdr-r").hidden = false;
+    $("updated").textContent = "Atualizado " + dt(j.gerado || new Date());
+    $("sheet-link").href = j.planilha || "#"; $("sheet-link").hidden = !j.planilha;
+
+    const pedidos = (j.pedidos || []).map(p => ({
+      tipo: "pedido", nome: p["Nome"], email: p["E-mail"], whats: p["WhatsApp"], formato: p["Formato"] || "Físico",
+      valor: Number(String(p["Valor"]).replace(",", ".")) || 0, status: p["Status"] || "Aguardando pagamento",
+      envio: p["Envio"] || "—", data: p["Data"], obs: p["Observação"], produto: p["Produto"], pagamento: p["Pagamento"]
+    }));
+    const pagos = pedidos.filter(p => p.status === "Pago");
+    const compradores = new Set(pagos.map(p => tail(p.whats)).filter(Boolean));
+    // quem tentou e não pagou, mas depois pagou em outro pedido, não conta como pendente
+    const naoPagou = pedidos.filter(p => NAO_PAGOU.includes(p.status) && !compradores.has(tail(p.whats)));
+    const aEnviar = pagos.filter(p => p.formato === "Físico" && ["—","A enviar","Em produção",""].includes(p.envio));
+    const leads = (j.cadastros || []).map(c => ({ tipo:"lista", nome:c["Nome"], whats:c["WhatsApp"], data:c["Data"], status:"Na lista", formato:"", valor:0, envio:"" }));
+    const leadsSemCompra = leads.filter(l => !compradores.has(tail(l.whats)));
+    const reemb = pedidos.filter(p => p.status === "Reembolsado");
+
+    const fis = pagos.filter(p => p.formato === "Físico"), dig_ = pagos.filter(p => p.formato === "Digital");
+    const sum = a => a.reduce((s,p) => s + p.valor, 0);
+    $("k-rev").textContent = brl(sum(pagos));
+    $("k-rev-sub").textContent = "Físico " + brl(sum(fis)) + " · E-book " + brl(sum(dig_));
+    $("k-paid").textContent = pagos.length;
+    $("k-paid-sub").textContent = fis.length + " físico · " + dig_.length + " e-book";
+    $("k-unpaid").textContent = naoPagou.length;
+    $("k-unpaid-sub").textContent = brl(sum(naoPagou)) + " em aberto";
+    $("k-ship").textContent = aEnviar.length;
+    $("k-ship-sub").textContent = "Já enviados: " + (fis.length - aEnviar.length);
+    $("k-leads").textContent = leads.length;
+    $("k-leads-sub").textContent = leadsSemCompra.length + " ainda não compraram";
+    const tot = pagos.length || 1;
+    $("bar-f").style.width = (fis.length / tot * 100) + "%"; $("bar-d").style.width = (dig_.length / tot * 100) + "%";
+    $("lg-f").textContent = "Físico " + fis.length; $("lg-d").textContent = "E-book " + dig_.length;
+
+    data = {
+      todos: { label:"Todos os pedidos", rows: pedidos },
+      pagos: { label:"Pagos", rows: pagos },
+      naopagou: { label:"Não pagaram", rows: naoPagou },
+      enviar: { label:"A enviar", rows: aEnviar },
+      reemb: { label:"Reembolsados", rows: reemb },
+      lista: { label:"Lista sem compra", rows: leadsSemCompra }
+    };
+    $("tabs").innerHTML = Object.entries(data).map(([k,v]) =>
+      '<button type="button" data-tab="' + k + '" aria-pressed="' + (k === tab) + '">' + v.label + '<em>' + v.rows.length + '</em></button>').join("");
+    drawRows();
+  }
+
+  function msgFor(r){
+    const n = (r.nome || "").split(" ")[0];
+    if (r.tipo === "lista") return "Oi " + n + "! Aqui é o Nicholas, autor de " + LIVRO + ". Obrigado por entrar na lista!";
+    if (r.status === "Pago") return "Oi " + n + "! Aqui é o Nicholas. Obrigado por garantir " + LIVRO + "!";
+    if (NAO_PAGOU.includes(r.status)) return "Oi " + n + "! Aqui é o Nicholas, autor de " + LIVRO + ". Vi que seu pedido não foi concluído. Posso te ajudar com alguma coisa?";
+    return "Oi " + n + "! Aqui é o Nicholas, autor de " + LIVRO + ".";
+  }
+
+  function drawRows(){
+    const q = query.toLowerCase(), qd = dig(query);
+    const rows = data[tab].rows
+      .filter(r => !q || (r.nome||"").toLowerCase().includes(q) || (r.email||"").toLowerCase().includes(q) || (qd && dig(r.whats).includes(qd)))
+      .sort((a,b) => new Date(b.data) - new Date(a.data));
+    if (!rows.length){ $("rows").innerHTML = '<tr><td colspan="8" class="empty">Nada por aqui.</td></tr>'; return; }
+    $("rows").innerHTML = rows.map(r => {
+      const w = dig(r.whats);
+      const wa = w ? '<a class="wa" target="_blank" rel="noopener" href="https://wa.me/' + (w.length <= 11 ? "55" + w : w) + '?text=' + encodeURIComponent(msgFor(r)) + '">WhatsApp ↗</a>' : "";
+      const cls = r.tipo === "lista" ? "lista" : (STATUS_CLS[r.status] || "aguardando");
+      return '<tr>' +
+        '<td>' + esc(r.nome || "—") + (r.email ? '<span class="sub">' + esc(r.email) + '</span>' : "") + '</td>' +
+        '<td class="mono">' + esc(fone(r.whats)) + '</td>' +
+        '<td class="fmt">' + esc(r.formato === "Digital" ? "E-book" : r.formato || "—") + '</td>' +
+        '<td class="num">' + (r.tipo === "lista" ? "—" : brl(r.valor)) + '</td>' +
+        '<td><span class="chip s-' + cls + '">' + esc(r.status) + '</span></td>' +
+        '<td>' + esc(r.envio || "—") + '</td>' +
+        '<td class="mono">' + esc(dt(r.data)) + '</td>' +
+        '<td>' + wa + '</td></tr>';
+    }).join("");
+  }
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.tab; render(lastData); });
+  $("search").addEventListener("input", e => { query = e.target.value; drawRows(); });
+
+
+  /* ---------- exemplo ---------- */
+  function demo(){
+    const now = Date.now(), h = 3600e3;
+    const P = (nome, whats, formato, status, envio, horas, email) => ({ "Nome":nome, "E-mail":email||"", "WhatsApp":whats, "Formato":formato,
+      "Valor": formato === "Digital" ? 5 : 38.9, "Status":status, "Envio":envio, "Data": new Date(now - horas*h).toISOString() });
+    return { ok:true, gerado:new Date().toISOString(), planilha:"",
+      pedidos:[
+        P("Ana Paula Ribeiro","5541998761234","Físico","Pago","A enviar",2,"ana@exemplo.com"),
+        P("Bruno Carvalho","5511987654321","Digital","Pago","E-book liberado",5),
+        P("Camila Souza","5521991112222","Físico","Aguardando pagamento","—",7,"camila@exemplo.com"),
+        P("Diego Martins","5531988887777","Físico","Pago","Enviado",30),
+        P("Elisa Nogueira","5541996665555","Digital","Carrinho abandonado","—",12),
+        P("Felipe Andrade","5551993334444","Físico","Recusado","—",20),
+        P("Gabriela Lima","5561990001111","Digital","Pago","E-book liberado",26),
+        P("Henrique Prado","5571982223333","Físico","Reembolsado","—",48),
+        P("Isabela Costa","5541995556666","Físico","Pago","Em produção",50)
+      ],
+      cadastros:[
+        { "Nome":"Ana Paula", "WhatsApp":"5541998761234", "Data":new Date(now-60*h).toISOString() },
+        { "Nome":"João Pedro", "WhatsApp":"5541991234567", "Data":new Date(now-40*h).toISOString() },
+        { "Nome":"Marina", "WhatsApp":"5511976543210", "Data":new Date(now-30*h).toISOString() },
+        { "Nome":"Camila", "WhatsApp":"5521991112222", "Data":new Date(now-9*h).toISOString() }
+      ] };
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
