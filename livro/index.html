@@ -614,16 +614,17 @@
       fisico: {
         price: "R$ 38,90",
         fullPrice: "R$ 57,20",
-        checkoutUrl: "",
+        checkoutUrl: "https://pay.kiwify.com.br/nqom4DD",
         when: ["Produção", "a partir de 10/11/2026"],
         button: "Reservar meu livro físico →",
         shipping: "R$ 5,00",
+        total: "R$ 43,90",
         perks: ["Livro impresso enviado para sua casa (frete fixo de R$ 5,00)", "Na frente da fila de produção", "Preço exclusivo da pré-venda"]
       },
       digital: {
         price: "R$ 5,00",
         fullPrice: "",
-        checkoutUrl: "",
+        checkoutUrl: "https://pay.kiwify.com.br/UsmlGHC",
         when: ["Entrega", "na hora, após o pagamento"],
         button: "Garantir meu e-book →",
         perks: ["Arquivo digital para ler em qualquer tela", "Chega na hora, assim que o pagamento é aprovado", "Sem frete"]
@@ -674,7 +675,7 @@
       el("old-price").hidden = !f.fullPrice;
       if (f.fullPrice){
         el("old-price").innerHTML = 'de <s>' + f.fullPrice + '</s> por' + (off > 0 ? '<span class="off">−' + off + '%</span>' : '');
-        el("price-note").textContent = (f.shipping ? "+ " + f.shipping + " de frete. " : "") + "Preço exclusivo da pré-venda; depois, volta para " + f.fullPrice + ".";
+        el("price-note").textContent = (f.shipping ? "+ " + f.shipping + " de frete (total de " + f.total + " no pagamento). " : "") + "Preço exclusivo da pré-venda; depois, volta para " + f.fullPrice + ".";
       } else {
         el("price-note").textContent = key === "digital" ? "Valor simbólico: sem impressão, sem frete." : "Preço especial de pré-venda";
       }
