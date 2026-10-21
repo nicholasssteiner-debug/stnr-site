@@ -196,7 +196,7 @@
   function showConnect(err){
     $("connect").hidden = false; $("dash").hidden = true; $("hdr-r").hidden = true;
     const salva = store.get("painel-url");
-    $("c-url").value = /^https://script.google.com//.test(salva) ? salva : URL_PADRAO;
+    $("c-url").value = String(salva).startsWith("https://script.google.com/") ? salva : URL_PADRAO;
     $("c-err").textContent = err || "";
   }
   $("connect-form").addEventListener("submit", e => {
