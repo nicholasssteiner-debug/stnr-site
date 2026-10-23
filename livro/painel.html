@@ -151,6 +151,10 @@
   .cal-cap{background:var(--paper);border-left:3px solid var(--gold);padding:12px 14px;white-space:pre-wrap}
   .cal-copy{justify-self:start}
   .cal-note{border-left:3px solid var(--amber);padding-left:10px;font-size:14px}
+  .cal-obs{display:block;width:100%;font:inherit;font-size:14px;line-height:1.5;padding:10px 12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);resize:vertical}
+  .cal-box .cal-obs{width:calc(100% - 32px);margin:0 16px 16px}
+  .cal-obs:focus{outline:2px solid var(--gold);outline-offset:1px}
+  .cal-day .has-obs{font-family:var(--mono);font-size:11px;color:var(--bronze)}
   .cal-fill{color:var(--bronze);font-style:italic}
   .cal-baixa{color:var(--red);font-weight:600}
   .cal-mantida{color:var(--green);font-weight:600}
@@ -262,7 +266,12 @@
       <div class="kpi"><small>Pré-venda</small><b id="cal-faltam">—</b><span id="cal-faltam-sub"></span></div>
       <div class="kpi money"><small>Posts publicados</small><b id="cal-feitos">—</b><span id="cal-feitos-sub"></span><div class="cal-progress"><i id="cal-bar"></i></div></div>
     </div>
-    <p class="cal-note-top">Marque cada dia quando publicar. As marcações ficam salvas neste navegador.</p>
+    <p class="cal-note-top">Marque cada dia quando publicar. <span id="cal-sync">Conectando…</span></p>
+
+    <details class="cal-box" open>
+      <summary>Observações gerais</summary>
+      <textarea class="cal-obs" id="cal-obs-geral" data-k="geral" rows="4" placeholder="Ideias, resultados, o que funcionou, o que mudar…"></textarea>
+    </details>
 
     <details class="cal-box">
       <summary>Regras do calendário</summary>

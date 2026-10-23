@@ -176,9 +176,48 @@ Obrigado a cada pessoa que reservou. A pré-venda termina hoje. Link na bio.` }
   const POSTS = DAYS.filter(d => d.t !== "descanso");
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  let done = {}, filtro = "todos";
-  try { done = JSON.parse(localStorage.getItem("calendario-postados") || "{}") || {}; } catch(e){}
-  const salvar = () => { try { localStorage.setItem("calendario-postados", JSON.stringify(done)); } catch(e){} };
+  let done = {}, obs = {}, filtro = "todos";
+  try {
+    const s = JSON.parse(localStorage.getItem("calendario-estado") || "null");
+    if (s) { done = s.done || {}; obs = s.obs || {}; }
+    else done = JSON.parse(localStorage.getItem("calendario-postados") || "{}") || {};
+  } catch(e){}
+  const guardarLocal = () => { try { localStorage.setItem("calendario-estado", JSON.stringify({ done, obs })); } catch(e){} };
+
+  /* ---------- sincronização: Firestore do projeto relatorio-do-poco, coleção própria "calendario-livro" ---------- */
+  const FIREBASE = { apiKey: "AIzaSyB4HfH6sI65OD_zPHxsj5DedJjunD1fwyw", authDomain: "relatorio-do-poco.firebaseapp.com", projectId: "relatorio-do-poco" };
+  let fs = null, ref = null, timer = null, pendente = 0;
+  const status = t => { const el = $("cal-sync"); if (el) el.textContent = t; };
+  const OFFLINE = "Sem conexão com a nuvem: salvo só neste navegador.";
+  function salvar(){
+    guardarLocal();
+    if (!ref) return;
+    status("Salvando…");
+    clearTimeout(timer);
+    pendente++;
+    timer = setTimeout(() => fs.setDoc(ref, { done, obs, atualizado: fs.serverTimestamp() })
+      .then(() => status("Marcações e observações sincronizadas entre seus aparelhos."), () => status(OFFLINE))
+      .finally(() => { pendente = 0; }), 700);
+  }
+  (async () => {
+    try {
+      const [{ initializeApp }, f] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js")
+      ]);
+      fs = f;
+      ref = f.doc(f.getFirestore(initializeApp(FIREBASE, "calendario")), "calendario-livro", "estado");
+      f.onSnapshot(ref, snap => {
+        // enquanto houver alteração local ainda não salva, a versão da nuvem está atrasada: não sobrescreve
+        if (snap.metadata.hasPendingWrites || pendente) return;
+        if (!snap.exists()) { salvar(); return; } // primeira vez: sobe o que já estava neste navegador
+        const d = snap.data();
+        done = d.done || {}; obs = d.obs || {};
+        guardarLocal(); render();
+        status("Marcações e observações sincronizadas entre seus aparelhos.");
+      }, () => status(OFFLINE));
+    } catch(e) { status(OFFLINE); }
+  })();
   const hojeKey = () => { const n = new Date(); return String(n.getDate()).padStart(2,"0") + String(n.getMonth()+1).padStart(2,"0"); };
 
   function contagem(){
@@ -192,6 +231,11 @@ Obrigado a cada pessoa que reservou. A pré-venda termina hoje. Link na bio.` }
   function render(){
     const hk = hojeKey();
     const box = $("cal-days");
+    // guarda o que está aberto e onde o cursor está, para uma atualização vinda da nuvem não atrapalhar quem está digitando
+    const abertos = new Set([...box.querySelectorAll("details.cal-day[open]")].map(el => el.dataset.k));
+    const primeira = !box.children.length;
+    const foco = document.activeElement && document.activeElement.classList.contains("cal-obs") ? document.activeElement : null;
+    const fk = foco && foco.dataset.k, sel = foco ? [foco.selectionStart, foco.selectionEnd] : null;
     let html = "";
     DAYS.forEach(d => {
       if (WEEKS[d.k] && filtro === "todos") html += '<div class="cal-week">' + WEEKS[d.k] + '</div>';
@@ -207,20 +251,38 @@ Obrigado a cada pessoa que reservou. A pré-venda termina hoje. Link na bio.` }
       if (d.script) body += '<div><h4>Roteiro</h4><ol class="cal-list cal-script">' + d.script.map(s => '<li><span>' + s[0] + '</span><div>' + F(esc(s[1])) + '</div></li>').join("") + '</ol></div>';
       if (d.cap) body += '<div><h4>Legenda</h4><div class="cal-cap" id="cal-cap-' + d.k + '">' + F(esc(d.cap)) + '</div></div><button type="button" class="cal-copy" data-k="' + d.k + '">Copiar legenda</button>';
       if (d.note) body += '<p class="cal-note">' + esc(d.note) + '</p>';
-      html += '<details class="cal-day' + (d.k === hk ? " is-today" : "") + (done[d.k] ? " is-done" : "") + '"' + (d.k === hk ? " open" : "") + '>' +
+      body += '<div><h4>Observações</h4><textarea class="cal-obs" data-k="' + d.k + '" rows="3" placeholder="Como foi? Números, comentários, o que mudar…"></textarea></div>';
+      const aberto = primeira ? d.k === hk : abertos.has(d.k);
+      html += '<details class="cal-day' + (d.k === hk ? " is-today" : "") + (done[d.k] ? " is-done" : "") + '" data-k="' + d.k + '"' + (aberto ? " open" : "") + '>' +
         '<summary><span class="cal-date">' + d.d + '<small>' + d.w + '</small></span>' +
-        '<span class="cal-what"><span class="cal-tag t-' + d.t + '">' + d.tag + '</span><strong>' + esc(d.title) + '</strong>' + (d.k === hk ? '<span class="cal-hoje">Hoje</span>' : "") + '</span>' +
+        '<span class="cal-what"><span class="cal-tag t-' + d.t + '">' + d.tag + '</span><strong>' + esc(d.title) + '</strong>' + (d.k === hk ? '<span class="cal-hoje">Hoje</span>' : "") + (obs[d.k] ? '<span class="has-obs">✎ com observação</span>' : "") + '</span>' +
         '<input type="checkbox" id="cal-ck-' + d.k + '" data-k="' + d.k + '"' + (done[d.k] ? " checked" : "") + ' aria-label="Publicado em ' + d.d + '"></summary>' +
         '<div class="cal-body">' + body + '</div></details>';
     });
     box.innerHTML = html;
+    box.querySelectorAll(".cal-obs").forEach(t => { t.value = obs[t.dataset.k] || ""; });
+    const geral = $("cal-obs-geral");
+    if (geral && geral !== foco) geral.value = obs.geral || "";
+    if (fk && fk !== "geral") {
+      const t = box.querySelector('.cal-obs[data-k="' + fk + '"]');
+      if (t) { t.value = foco.value; t.focus(); t.setSelectionRange(sel[0], sel[1]); }
+    }
     const n = POSTS.filter(d => done[d.k]).length;
     $("cal-feitos").textContent = n + "/" + POSTS.length;
     $("cal-feitos-sub").textContent = n === POSTS.length ? "tudo publicado" : (POSTS.length - n) + " pendentes";
     $("cal-bar").style.width = (100 * n / POSTS.length) + "%";
   }
 
+  // observações: salvam sozinhas enquanto você digita, sem redesenhar a lista
+  document.addEventListener("input", e => {
+    const t = e.target; if (!t.classList || !t.classList.contains("cal-obs")) return;
+    const v = t.value.trim();
+    if (v) obs[t.dataset.k] = t.value; else delete obs[t.dataset.k];
+    salvar();
+  });
+
   $("cal-days").addEventListener("change", e => {
+    if (e.target.type !== "checkbox") return;
     const k = e.target.dataset.k; if (!k) return;
     if (e.target.checked) done[k] = true; else delete done[k];
     salvar(); render();
