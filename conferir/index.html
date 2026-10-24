@@ -92,6 +92,9 @@
   .selo{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center}
   .selo .stamp{position:static;transform:rotate(-2deg);text-align:center;font-size:15px}
   .correcoes{border:1px dashed var(--rule);padding:16px;color:var(--ink-2);font-size:15px}
+  .correcoes p{margin:0}
+  .correcoes p+p{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+  .correcoes b{color:var(--ink)}
 
   /* livro */
   .livro{display:grid;grid-template-columns:120px 1fr;gap:20px;align-items:center;background:var(--ink);color:var(--paper);padding:22px;margin:40px 0 0}
@@ -168,7 +171,11 @@
   <section id="correcoes">
     <p class="sec-t">Correções</p>
     <h2>Errou? <em>Corrige em público.</em></h2>
-    <div class="correcoes" id="lista-correcoes">Nenhuma correção nesta edição.</div>
+    <div class="correcoes" id="lista-correcoes">
+      <p><b>24/10/2026 · nº 8 e nº 15 (Flávio Bolsonaro):</b> o selo mudou de Mantida para Ressalva. Na nº 8, o valor da tabela do SUS confere, mas não é o que o médico recebe por consulta. Na nº 15, as obras foram entregues, mas boa parte começou em governos anteriores, e a concessão de aeroportos, que estava na lista, não é obra.</p>
+      <p><b>24/10/2026 · nº 12 (Lula):</b> faltava dizer que o Brasil saiu de novo do Mapa da Fome no relatório da FAO de 2025. O selo não mudou.</p>
+      <p><b>24/10/2026 · nº 6 (Flávio Bolsonaro):</b> os constituintes do PT assinaram a Constituição na promulgação, em 05/10/1988, e não no dia seguinte à votação, como estava escrito. O selo não mudou.</p>
+    </div>
   </section>
 
   <aside class="livro">
@@ -187,7 +194,7 @@
 <script>
 /* As checagens ficam nesta lista (depois pode vir de uma planilha ou do Firebase).
    selo: m = mantida, b = baixa, r = ressalva, a = apuração. */
-const EDICAO = { exemplo: false, atualizado: "23/10/2026" };
+const EDICAO = { exemplo: false, atualizado: "24/10/2026" };
 const CANDIDATOS = ["Lula", "Flávio Bolsonaro"];
 const CHECAGENS = [
   { n: 1, quem: "Flávio Bolsonaro", tema: "Infraestrutura", selo: "r",
@@ -212,15 +219,15 @@ const CHECAGENS = [
     fonte: "IBGE, Sistema de Contas Nacionais, variação anual do PIB" },
   { n: 6, quem: "Flávio Bolsonaro", tema: "Saúde", selo: "r",
     fala: "Lula foi contra a Constituição de 1988 e contra o SUS.",
-    dado: "O PT votou contra o texto final da Constituição (15 dos 16 deputados, Lula entre eles), mas assinou a Carta no dia seguinte. A rejeição foi ao conjunto do texto. O partido apoiava os artigos 196 a 200, que criaram o SUS.",
-    fonte: "Diário da Assembleia Nacional Constituinte, votação de 22/09/1988; Constituição Federal, arts. 196 a 200" },
+    dado: "A bancada do PT, da qual Lula fazia parte, votou contra o texto final da Constituição em 22/09/1988, mas os seus constituintes assinaram a Carta na promulgação, em 05/10/1988. A rejeição foi ao conjunto do texto. O partido apoiava os artigos 196 a 200, que criaram o SUS.",
+    fonte: "Diário da Assembleia Nacional Constituinte, votação de 22/09/1988 e promulgação de 05/10/1988; Constituição Federal, arts. 196 a 200" },
   { n: 7, quem: "Flávio Bolsonaro", tema: "Economia", selo: "r",
     fala: "Lula disse que, se a comida está cara, é só não comprar.",
     dado: "A fala existe, mas foi cortada. No discurso completo, Lula falava de o consumidor trocar produtos quando os preços sobem e defendeu o aumento real do salário mínimo. Isolada, a frase sugere que ele mandou a população deixar de comprar comida.",
     fonte: "Vídeo do discurso original, na íntegra" },
-  { n: 8, quem: "Flávio Bolsonaro", tema: "Saúde", selo: "m",
+  { n: 8, quem: "Flávio Bolsonaro", tema: "Saúde", selo: "r",
     fala: "A tabela do SUS paga R$ 10 por consulta médica.",
-    dado: "Na tabela do SUS (SIGTAP), a consulta médica em atenção especializada vale R$ 10,00, valor congelado há mais de uma década. Na prática, o médico não recebe só isso: estados e municípios complementam o valor, e a maioria dos médicos do SUS tem salário fixo.",
+    dado: "O valor da tabela confere: no SIGTAP, a consulta médica em atenção especializada vale R$ 10,00, congelada há mais de uma década. Mas a tabela não é o que o médico recebe por consulta: estados e municípios complementam o valor, e a maioria dos médicos do SUS tem salário fixo. O número é real, mas não dá para concluir que o médico ganha R$ 10 por consulta.",
     fonte: "Ministério da Saúde, SIGTAP (Tabela de Procedimentos do SUS)" },
   { n: 9, quem: "Flávio Bolsonaro", tema: "Educação", selo: "r",
     fala: "O governo Bolsonaro foi o que mais investiu na renegociação das dívidas do Fies.",
@@ -236,8 +243,8 @@ const CHECAGENS = [
     fonte: "Alerj, registros de homenagens (2005) e discursos em plenário (2007); MPRJ, investigação do caso das rachadinhas" },
   { n: 12, quem: "Lula", tema: "Fome", selo: "r",
     fala: "Lula acabou com a fome no Brasil em 2012.",
-    dado: "O marco é real, mas a data e o presidente não batem. O Brasil saiu do Mapa da Fome da ONU em 2014, no governo Dilma, quando a subalimentação caiu abaixo de 5% da população (não chegou a zero). As bases vieram dos governos Lula, como o Bolsa Família e a valorização do salário mínimo. O país voltou ao Mapa da Fome no relatório de 2022.",
-    fonte: "FAO, relatório O Estado da Segurança Alimentar e Nutricional no Mundo (edições de 2014 e 2022)" },
+    dado: "O marco é real, mas a data e o presidente não batem. O Brasil saiu do Mapa da Fome da ONU em 2014, no governo Dilma, quando a subalimentação caiu abaixo de 5% da população (não chegou a zero). As bases vieram dos governos Lula, como o Bolsa Família e a valorização do salário mínimo. O país voltou ao Mapa da Fome no relatório de 2022 e saiu de novo no relatório de 2025, já no atual governo Lula.",
+    fonte: "FAO, relatório O Estado da Segurança Alimentar e Nutricional no Mundo (edições de 2014, 2022 e 2025)" },
   { n: 13, quem: "Flávio Bolsonaro", tema: "Saneamento", selo: "r",
     fala: "A bancada do PT votou contra levar água e esgoto para a região Norte.",
     dado: "O PT votou contra o Novo Marco Legal do Saneamento (Lei 14.026/2020), que abriu o setor às empresas privadas para universalizar água e esgoto. Não houve votação específica contra o Norte. O argumento do partido era que as empresas privadas deixariam de lado as regiões menos lucrativas, citando justamente o Norte e o Nordeste.",
@@ -246,9 +253,9 @@ const CHECAGENS = [
     fala: "Lula citou a transposição do Rio São Francisco como obra do governo dele.",
     dado: "Lula tirou o projeto do papel: as obras começaram em 2007, no PAC. Mas a promessa de entrega até 2012 não se cumpriu, e os dois eixos principais foram inaugurados depois, por Temer (Eixo Leste, 2017) e Bolsonaro (Eixo Norte, 2020 a 2022). No mandato atual, o governo trabalha nos ramais que levam a água até as cidades.",
     fonte: "Ministério da Integração e do Desenvolvimento Regional, Projeto de Integração do Rio São Francisco (PISF)" },
-  { n: 15, quem: "Flávio Bolsonaro", tema: "Infraestrutura", selo: "m",
+  { n: 15, quem: "Flávio Bolsonaro", tema: "Infraestrutura", selo: "r",
     fala: "Flávio citou as obras entregues pelo governo Bolsonaro no Nordeste.",
-    dado: "O governo Bolsonaro entregou obras importantes na região, como o Eixo Norte da transposição, o Ramal do Agreste, trechos duplicados da BR-101 e a concessão de seis aeroportos do Nordeste. A ressalva é que boa parte dessas obras foi iniciada em governos anteriores, o que é comum em infraestrutura.",
+    dado: "O governo Bolsonaro entregou obras importantes na região, como o Eixo Norte da transposição, o Ramal do Agreste e trechos duplicados da BR-101. A ressalva é que boa parte delas foi iniciada em governos anteriores, e ele concluiu a etapa final, o que é comum em infraestrutura. A concessão de seis aeroportos do Nordeste (2019) foi um leilão, não uma obra entregue.",
     fonte: "Ministério da Integração e do Desenvolvimento Regional; Ministério dos Transportes (DNIT); ANAC, leilão do Bloco Nordeste (2019)" },
   { n: 16, quem: "Flávio Bolsonaro", tema: "Assistência social", selo: "r",
     fala: "O governo Bolsonaro aumentou o Bolsa Família para no mínimo R$ 600.",
