@@ -99,6 +99,9 @@
   .livro p{margin:0 0 12px;color:rgba(244,239,230,.8)}
   .livro b{font-family:var(--serif);font-size:22px;display:block;margin-bottom:6px;color:var(--paper)}
   .livro a{display:inline-block;background:var(--gold);color:var(--ink);font-weight:600;text-decoration:none;padding:10px 16px}
+  .livro a[aria-disabled="true"]{background:transparent;color:rgba(244,239,230,.45);border:1px dashed rgba(244,239,230,.35);cursor:not-allowed}
+  .trava{margin:10px 0 0!important;font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--gold)!important}
+  .trava span{display:block;font-size:22px;font-weight:600;letter-spacing:.06em;margin-top:4px;font-variant-numeric:tabular-nums}
   footer{font-size:13px;color:var(--muted);padding:26px 0 40px}
 
   @media (max-width:600px){
@@ -173,7 +176,8 @@
     <div>
       <b>De onde vem o método</b>
       <p>O "Onde Conferir" nasceu das 90 marcas de verificação do livro O Fim do Monopólio da Virtude, de Nicholas Steiner.</p>
-      <a href="/livro/">Conhecer o livro →</a>
+      <a id="btn-livro" data-href="/livro/" aria-disabled="true">Conhecer o livro →</a>
+      <p class="trava" id="trava" hidden>Volta depois do pôr do sol de sábado.<span id="trava-tempo"></span></p>
     </div>
   </aside>
 </main>
@@ -316,6 +320,35 @@ $("lista").addEventListener("click", e => {
 });
 
 placar(); filtros(); lista();
+
+/* Trava do botão do livro até o pôr do sol de sábado, 24/10/2026, em Maringá (PR).
+   O pôr do sol é calculado pelo algoritmo do Almanaque Náutico (NOAA), com precisão de cerca de 1 minuto. */
+const TRAVA = { data: [2026, 10, 24], lat: -23.42, lon: -51.94 };
+function porDoSol([a, m, d], lat, lon){
+  const rad = Math.PI / 180, N = Math.floor((Date.UTC(a, m - 1, d) - Date.UTC(a, 0, 0)) / 864e5);
+  const t = N + (18 - lon / 15) / 24, M = 0.9856 * t - 3.289;
+  let L = (M + 1.916 * Math.sin(M * rad) + 0.020 * Math.sin(2 * M * rad) + 282.634 + 360) % 360;
+  let RA = Math.atan(0.91764 * Math.tan(L * rad)) / rad; RA = (RA + 360) % 360;
+  RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+  const sinD = 0.39782 * Math.sin(L * rad), cosD = Math.cos(Math.asin(sinD));
+  const cosH = (Math.cos(90.833 * rad) - sinD * Math.sin(lat * rad)) / (cosD * Math.cos(lat * rad));
+  const H = Math.acos(cosH) / rad / 15;
+  const UT = ((H + RA - 0.06571 * t - 6.622 - lon / 15) % 24 + 24) % 24;
+  return new Date(Date.UTC(a, m - 1, d) + UT * 36e5);
+}
+const fimTrava = porDoSol(TRAVA.data, TRAVA.lat, TRAVA.lon);
+function trava(){
+  const btn = $("btn-livro"), resta = fimTrava - Date.now();
+  if (resta <= 0){
+    btn.href = btn.dataset.href; btn.removeAttribute("aria-disabled"); $("trava").hidden = true;
+    return;
+  }
+  btn.removeAttribute("href"); btn.setAttribute("aria-disabled", "true"); $("trava").hidden = false;
+  const s = Math.floor(resta / 1000), p = n => String(n).padStart(2, "0");
+  $("trava-tempo").textContent = p(Math.floor(s / 3600)) + ":" + p(Math.floor(s / 60) % 60) + ":" + p(s % 60);
+  setTimeout(trava, 1000);
+}
+trava();
 </script>
 </body>
 </html>
