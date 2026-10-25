@@ -402,7 +402,7 @@ window.MAPA_BR={viewBox:"0 0 613 639",d:{"ac":"m 30.73,238.03 -2.08,-0.04 0.54,-
     var s = j.s || {}, e = j.e || {}, v = j.v || {};
     return {
       s: int(s.ts), st: int(s.st), pst: dec(s.pstn || s.pst),
-      e: int(e.te), c: int(e.c), a: int(e.a), vb: int(v.vb), vn: int(v.tvn != null ? v.tvn : v.vn),
+      e: int(e.est || e.te), c: int(e.c),   // eleitorado das seções já totalizadas, como o TSE calcula o comparecimento a: int(e.a), vb: int(v.vb), vn: int(v.tvn != null ? v.tvn : v.vn),
       md: String(j.md || "").toLowerCase() === "s" ? "s" : "", hg: j.hg || "", dg: j.dg || "", cand: cand
     };
   }
