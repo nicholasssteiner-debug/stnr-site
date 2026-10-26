@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Extrato Custo Transferência</title>
+<style>
+  :root { --azul:#12355b; --azul2:#e4ebf3; --borda:#d9e2ec; --texto:#1f2933; --cinza:#627d98; --verm:#9b2c2c; --verde:#1f6f43; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--texto); background: #f5f7fa; margin: 0; font-size: 14px; }
+  header { background: var(--azul); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header .info { font-size: 12px; color: #bcccdc; }
+  header .acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; border: 1px solid var(--borda); background: #fff; color: var(--azul); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+  button:hover { background: var(--azul2); }
+  button.prim { background: var(--azul); color: #fff; border-color: var(--azul); }
+  button.prim:hover { background: #1d4b7d; }
+  button:disabled { opacity: .5; cursor: default; }
+  header button { border-color: #3d5f85; }
+  header button.prim { background: #fff; color: var(--azul); border-color: #fff; font-weight: 600; }
+  header button.prim:hover { background: var(--azul2); }
+  header label { font-size: 13px; color: #dbe5ef; display: flex; gap: 5px; align-items: center; }
+  main { padding: 18px 24px 40px; max-width: 1280px; margin: 0 auto; }
+  .cartoes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .cartao { background: #fff; border: 1px solid var(--borda); border-radius: 6px; padding: 10px 12px; }
+  .cartao b { display: block; font-size: 11px; color: var(--cinza); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+  .cartao span { font-size: 20px; font-weight: 600; color: var(--azul); }
+  .cartao.alerta span { color: var(--verm); }
+  .grupo { background: #fff; border: 1px solid var(--borda); border-radius: 6px; margin-bottom: 16px; overflow: hidden; }
+  .grupo h2 { margin: 0; font-size: 15px; padding: 10px 14px; background: var(--azul2); color: var(--azul); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .grupo h2 .tot { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .grupo.semdest h2 { background: #fdf3f3; color: var(--verm); }
+  .grupo.pagos h2 { background: #eef7f1; color: var(--verde); }
+  .tabela { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; color: var(--cinza); font-weight: 600; padding: 7px 8px; border-bottom: 1px solid var(--borda); }
+  td { padding: 6px 8px; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mono { font-family: Consolas, monospace; }
+  input[type=text], input[type=number] { font: inherit; border: 1px solid var(--borda); border-radius: 4px; padding: 4px 6px; }
+  input.ded { width: 100px; text-align: right; }
+  input.dest { width: 260px; }
+  .tag { font-size: 11px; border-radius: 3px; padding: 1px 5px; margin-left: 4px; }
+  .tag.sug { background: #fff4d6; color: #8a5a00; }
+  .tag.man { background: #e4ebf3; color: var(--azul); }
+  .rodape-grupo { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid var(--borda); background: #fafbfc; flex-wrap: wrap; }
+  .vazio { color: var(--cinza); padding: 30px; text-align: center; background: #fff; border: 1px dashed var(--borda); border-radius: 6px; }
+  .nota { font-size: 12px; color: var(--cinza); margin: -8px 0 14px; }
+  #msg { position: fixed; bottom: 18px; right: 18px; background: var(--azul); color: #fff; padding: 10px 16px; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.2); display: none; max-width: 420px; z-index: 60; }
+  #msg.erro { background: var(--verm); }
+  .carregando { opacity: .5; pointer-events: none; }
+  details { font-size: 12px; color: var(--cinza); }
+  details table td { padding: 2px 6px; font-size: 12px; }
+  .so-local { display: none; }
+  body.local .so-local { display: inline-block; }
+  #gate { position: fixed; inset: 0; background: var(--azul); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  #gate .caixa { background: #fff; border-radius: 8px; padding: 34px 30px; width: 100%; max-width: 340px; box-shadow: 0 8px 30px rgba(0,0,0,.3); text-align: center; }
+  #gate h1 { color: var(--azul); font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  #gate p.sub { color: var(--cinza); font-size: 13px; margin: 0 0 22px; }
+  #gate label { display: block; text-align: left; font-size: 13px; color: #556; margin: 12px 0 4px; }
+  #gate input { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #c9d6e2; border-radius: 4px; font-family: inherit; }
+  #gate button { width: 100%; margin-top: 20px; padding: 11px; background: var(--azul); color: #fff; border: none; border-radius: 4px; font-size: 15px; }
+  #gate .erro { color: var(--verm); font-size: 13px; margin-top: 12px; min-height: 18px; }
+  body.trancado header, body.trancado main { visibility: hidden; }
+  @media (max-width: 900px) { .cartoes { grid-template-columns: repeat(2, 1fr); } input.dest { width: 170px; } main { padding: 12px; } header { padding: 12px; } }
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="caixa">
+    <h1>Custo de Transferência</h1>
+    <p class="sub">ANP – acesso restrito</p>
+    <form id="form-login">
+      <label for="usuario">Usuário</label>
+      <input type="text" id="usuario" autocomplete="username">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" autocomplete="current-password">
+      <button type="submit">Entrar</button>
+      <div class="erro" id="erro"></div>
+    </form>
+  </div>
+</div>
+<header>
+  <div>
+    <h1>Extrato de Pagamento – Custo por Transferência</h1>
+    <div class="info" id="info">Carregando…</div>
+  </div>
+  <div class="acoes">
+    <label><input type="checkbox" id="verPagos"> Mostrar pagos</label>
+    <button id="btnPasta" class="so-local">Abrir pasta de extratos</button>
+    <button id="btnAtualizar" class="prim so-local">Atualizar APS / AASI e publicar</button>
+  </div>
+</header>
+<main id="main">
+  <div class="cartoes" id="cartoes"></div>
+  <p class="nota" id="nota"></p>
+  <div id="grupos"></div>
+</main>
+<datalist id="ents"></datalist>
+<div id="msg"></div>
+
+<script>
+/* Preenchidos pelo extrato_transferencia.py:
+   BASE   = dados do APS/AASI (no site vem embutido; no computador vem da API local)
+   MODELO = modelo do extrato em PDF; LOGO = logo em base64 */
+const BASE = {"pagamentos": [{"id": "1086210", "matricula": "4409", "nome": "Erica Cristina Lima de Miranda", "competencia": "02/2026", "comp_ord": 202602, "verbas": [{"codigo": "95022", "valor": 1137.91, "ref": 1.0}, {"codigo": "95029", "valor": 6939.63, "ref": 11.0}, {"codigo": "95030", "valor": 4172.35, "ref": 11.0}, {"codigo": "95033", "valor": 979.99, "ref": 8.0}], "bruto": 13229.88, "sugestao": "", "saldo_1135015": 0.0}, {"id": "1086213", "matricula": "4951", "nome": "Lucas Juliano de Oliveira", "competencia": "02/2026", "comp_ord": 202602, "verbas": [{"codigo": "95022", "valor": 1126.31, "ref": 1.0}, {"codigo": "95025", "valor": 3711.75, "ref": 6.0}, {"codigo": "95026", "valor": 2252.61, "ref": 6.0}, {"codigo": "95029", "valor": 1855.88, "ref": 3.0}, {"codigo": "95030", "valor": 1126.31, "ref": 3.0}, {"codigo": "95033", "valor": 805.83, "ref": 8.0}], "bruto": 10878.69, "sugestao": "", "saldo_1135015": 0.0}, {"id": "1086207", "matricula": "5152", "nome": "Maria Raimunda Lopes Reis Mendes", "competencia": "02/2026", "comp_ord": 202602, "verbas": [{"codigo": "95022", "valor": 164.22, "ref": 1.0}, {"codigo": "95029", "valor": 1943.2, "ref": 12.0}, {"codigo": "95030", "valor": 656.89, "ref": 12.0}, {"codigo": "95033", "valor": 221.14, "ref": 8.0}], "bruto": 2985.45, "sugestao": "", "saldo_1135015": 0.0}, {"id": "1086209", "matricula": "5395", "nome": "Martinha Rocha da Silva Gouvea", "competencia": "02/2026", "comp_ord": 202602, "verbas": [{"codigo": "95022", "valor": 149.72, "ref": 1.0}, {"codigo": "95029", "valor": 1642.12, "ref": 11.0}, {"codigo": "95030", "valor": 548.98, "ref": 11.0}, {"codigo": "95033", "valor": 187.27, "ref": 8.0}], "bruto": 2528.09, "sugestao": "", "saldo_1135015": 0.0}, {"id": "1086211", "matricula": "5239", "nome": "Nelson Raimundo de Miranda Junior", "competencia": "02/2026", "comp_ord": 202602, "verbas": [{"codigo": "95022", "valor": 532.86, "ref": 1.0}, {"codigo": "95029", "valor": 5861.46, "ref": 11.0}, {"codigo": "95030", "valor": 1953.82, "ref": 11.0}, {"codigo": "95033", "valor": 667.85, "ref": 8.0}], "bruto": 9015.99, "sugestao": "", "saldo_1135015": 0.0}, {"id": "1090887", "matricula": "5306", "nome": "Merabe Rodrigues de Sousa", "competencia": "05/2026", "comp_ord": 202605, "verbas": [{"codigo": "95022", "valor": 765.92, "ref": 4.0}, {"codigo": "95029", "valor": 1697.97, "ref": 9.0}, {"codigo": "95030", "valor": 574.44, "ref": 9.0}, {"codigo": "95033", "valor": 243.07, "ref": 8.0}], "bruto": 3281.4, "sugestao": "1611", "saldo_1135015": 0.0}, {"id": "1095309", "matricula": "5374", "nome": "Jakeline Stasczak Lauermann", "competencia": "08/2026", "comp_ord": 202608, "verbas": [{"codigo": "95022", "valor": 214.04, "ref": 1.0}, {"codigo": "95029", "valor": 1498.25, "ref": 7.0}, {"codigo": "95030", "valor": 499.42, "ref": 7.0}, {"codigo": "95033", "valor": 176.94, "ref": 8.0}], "bruto": 2388.65, "sugestao": "", "saldo_1135015": 0.0}, {"id": "1096082", "matricula": "5531", "nome": "Leoneide Tereza de Oliveira Aguiar", "competencia": "09/2026", "comp_ord": 202609, "verbas": [{"codigo": "95022", "valor": 543.2, "ref": 2.0}, {"codigo": "95025", "valor": 3251.8, "ref": 12.0}, {"codigo": "95026", "valor": 1086.4, "ref": 12.0}, {"codigo": "95029", "valor": 1896.88, "ref": 7.0}, {"codigo": "95030", "valor": 633.73, "ref": 7.0}, {"codigo": "95033", "valor": 592.96, "ref": 8.0}], "bruto": 8004.97, "sugestao": "", "saldo_1135015": 0.0}], "entidades": {"1000": "União Sul Brasileira", "1011": "União Sul Brasileira da IASD - ANC", "101320": "UNASP", "101324": "Instituto Adventista de Ensino", "101325": "Instituto Adventista de Ensino", "101331": "INSTITUTO ADVENTISTA DE ENSINO", "101332": "COLÉGIO ADVENTISTA UNASP - UNIDADE HORTOLÂNDIA", "101334": "COLÉGIO ADVENTISTA UNASP - UNIDADE SÃO PAULO", "102111": "Associação Paulistana - UCB", "102122": "Associação Paulistana", "1022": "Associação Norte Catarinense - Educação", "103111": "União Central Brasileira da IASD", "103122": "Inst Pta Adven de Educ e Assist Social", "104111": "União Central Brasileira da IASD", "105111": "Associação Paulista Central", "105122": "APAC", "106111": "Associação Paulista Oeste", "106122": "Instituição Pta. Adv. de Educ. e Assist. Social", "107111": "União Central Brasileira da IASD", "107122": "Inst. Pta. Adv. de Educ. e Assist. Social", "108122": "Inst. Adv. Central Bras. de Educ. e Assist. Social", "108124": "Inst. Adv. Central Bras. de Educ. e Assist. Social", "109122": "APLAC", "1093": "União Sul Brasileira da IASD - IGREJAS", "1100": "União Sul Brasileira", "110122": "AMT - IACBEAS", "1110": "União Sul Brasileira da IASD", "1111": "União Sul Brasileira das I.A.S.D.", "1113": "SERVIÇO EDUCACIONAL LAR E SAÚDE - SELS", "1120": "IASBEAS - Sede", "1121": "Instituição Adv. Sul Bras. de Educ. Assist. Social", "112111": "APSO", "112122": "Inst. Paulista Adv. de Educ. e Assist. Social", "1122": "INSTITUICAO ADVENTISTA SUL BRASILEIRA DE EDUCAÇÃO", "1130": "Fundação Maranata de Comunicação Social - Sede", "1131": "Fundação Maranata de Comunicação Social", "113122": "Instituto Paulista Adventista de Educ e ASS SOCI", "1151": "AGENCIA ADV DE DESEN E RECURSOS ASSISTENCIAIS SUL", "1200": "Associação Leste Sul Riograndense", "1210": "Associação Leste Sul Riograndense", "1211": "Associação Sul Riograndense da IASD", "1212": "Serviço Educacional Lar e Saúde - ALSR", "1213": "Centro de Vendas de Literaturas - ALSR", "1215": "UNIAO SUL BRASILEIRA DA IASD - LOJA/ASR", "1220": "IASREAS - Região Leste Sul Riograndense", "1221": "Região Adm. Leste - IASREAS", "1222": "INSTITUICAO ADVENTISTA S.R.G.EDUC.ASSIST.SOCIAL", "1223": "Clínica Adventista de Porto Alegre - IASREAS", "1224": "Instituto Adventista Cruzeiro do Sul - IASREAS", "1230": "FMCS - Rádio Novo Tempo - Porto Alegre", "1231": "Rádio Novo Tempo - Porto Alegre - FMCS", "1300": "Missão Ocidental Sul Riograndense", "1310": "Missão Ocidental Sul Riograndense", "1311": "Missão Ocidental Sul Riograndense - MOSR", "131111": "União Leste Brasileira", "1312": "Serviço Educacional Lar e Saúde - MOS", "1313": "Centro de Vendas de Literaturas - MOS", "1320": "IASREAS - Região Ocidental Sul Riograndense", "1321": "Inst. Adv.Sulriograndense de Educ. e Assis. Social", "1322": "Inst. Adv.Sulriograndense de Educ. e Assis. Social", "134011": "Missao Bahia Sudoeste da Igreja Adventista do", "134093": "Igrejas da Missao Bahia do Sudoeste da IASD", "134711": "Missão Sergipe da IASD", "134811": "Associacao Bahia Central da IASD", "1400": "Associação Catarinense", "1410": "Associação Catarinense", "1411": "Uniao Sul Brasileira da IASD - AC", "14111": "União Centro Oeste Brasileira da IASD", "141111": "União Centro-Oeste Brasileira da IASD", "141125": "Inst.Advt.Central Bras.de Educ.e Ass.Social - HAP", "1412": "Serviço Educacional Lar e Saúde - AC", "1413": "Centro de Vendas de Literaturas - AC", "1420": "IAUSBEAS - Região Catarinense", "1421": "IASBEAS - Região Administrativa Santa Catarina", "142111": "Associação Brasil Central", "1422": "IASBEAS - Depto. Educação - Região Adm. SC", "1424": "Instituto Adventista de Ensino de Santa Catarina", "1430": "Fundação Maranata de Comunicação Social - SC", "1431": "Rádio Novo Tempo - Florianópolis - FMCS", "14311": "Associação Planalto Central da IASD", "143111": "Associação Planalto Central da IASD", "143192": "Uniao Centro Oeste Bras. da Igr. Adv.do Setimo Dia", "144111": "União Centro-Oeste Brasileira", "145111": "União Centro Oeste Brasileira da IASD-ASM", "145112": "Uniao Cent Oeste Bras da Igreja Adv do Setimo Dia", "145122": "INSTITUICAO CENTRAL BRAS.EDUC.ASSIST SOCIAL", "146111": "União Centro Oeste Brasileira da IASD", "146121": "Inst Adventista Central Bras de Educ e Assi Social", "146122": "Inst. Adv. Central Bras. de Educ. A. Social - EDUC", "147111": "UNIAO CENTRO OESTE BRASILEIRA DA IGREJA ADVENTISTA", "147122": "Inst. Adv. Central Bras. de Educ. e Assist. Social", "1500": "Associação Sul Paranaense", "1510": "Associação Sul Paranaense", "1511": "Associação Sul Paranaense - ASP", "1512": "Serviço Educacional Lar e Saúde - ASP", "1513": "Centro de Vendas de Literaturas - ASP'", "1520": "IAUSBEAS - Sul Paranaense", "1521": "Região Adm. Sul Paranaense - IASBEAS", "1522": "Inst. Adv. Sul Brasileira de Educ.e Assist. Social", "1523": "Clínica Adventista de Curitiba - IASBEAS", "1530": "Fundação Maranata de Comunicação Social - ASP", "1531": "Rádio Novo Tempo - Curitiba - FMCS", "1600": "Associação Norte Paranaense", "1610": "Associação Norte Paranaense", "1611": "Associação Norte Paranaense - USB", "161111": "União Noroeste Brasileira da IASD", "1613": "Uniao Sul Bras. da Igreja Adventista Do 7 Dia", "1615": "União Sul Brasileira da IASD - Loja", "1616": "Uniao Sul Brasileira da IASD - NT Store Londrina", "1620": "IAUSBEAS - Norte Paranaense", "1621": "INST ADV SUL BRAS DE EDUC. E ASSIST.SOCIAL", "162111": "UNIAO NOROESTE BRASILEIRA DA IGREJA ADVENTISTA DO", "1622": "INSTITUIÇÃO ADVENTISTA SUL BRAS DE EDUCAÇÃO", "1624": "INST. ADV. SUL BRAS. DE EDUC E ASSIST. SOCIAL", "1630": "Fundação Maranata de Comunicação Social - ANP", "1631": "Fundacao Maranata de Comunicacao Social", "163111": "UNOB-Associação Amazônia Ocidental", "164111": "UNoB Associação Central Amazonas", "1651": "Agencia Adv de Desenv e Recursos Assistenciais Sul", "165111": "Associação Sul de Rondonia", "1690": "Associacao Norte Paranaense - Consolidado", "1691": "Associacao Norte Paranaense - Consolidado", "1692": "Sistema Corporativo Igrejas - ANP", "1693": "União Sul Brasileira da IASD", "1694": "INSTITUICAO ADV SUL BRAS DE EDUC. E ASSIST.SOCIAL", "1700": "Associação Sul Matogrossense", "1711": "União Sul Brasileira da IASD", "1712": "Serviço Educacional Lar e Saúde - ASM", "1713": "Centro de Vendas de Literaturas - ASM", "1720": "IAUSBEAS - Região Mato Grosso do Sul", "1721": "Região Adm. Mato Grosso do Sul - IASBEAS", "1722": "Dpto. de Educação - Região Adm. M. Grosso- IASBEAS", "1725": "Hospital Adventista de Campo Grande - IASBEAS", "1811": "UNIÃO SUL BRASILEIRA DA IASD - ACSR", "1813": "Uniao Sul Brasileira da IASD SELS - ACSR", "1815": "UNIÃO SUL BRASILEIRA DA IASD - ACSR", "1822": "Instituição Adventista Sul Riograndense de Educaçã", "1911": "União Sul Brasileira da IASD - ACP", "1913": "União Sul Brasileira da IASD - SELS ACP", "1915": "União Sul Brasileira da IASD - Loja", "1922": "Instituição Adventista Sul Brasileira de Educação", "1993": "União Sul Brasileira da IASD", "2011": "Associação Oeste Paranaense da IASD", "2012": "Missão Oeste Paranaense da IASD - Loja", "2022": "Missão Oeste Paranaense da IASD - Educação", "205": "Escola Adventista Maringá - Zona 07", "206": "Colégio Adventista de Campo Mourão", "207": "Escola Adventista de Cascavel", "209": "Colégio Adventista de Fóz do Iguaçu", "2093": "Missão Oeste Paranaense da IASD - Igrejas", "2111": "Sistema Adventista de Comunicação", "213": "Colégio Adventista de Londrina", "2141": "Fundação Maranata de Comunicação Social", "215": "Colégio Adventista de Maringá", "3111": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3124": "INSTITUIÇÃO ADV. DE EDUC. ASSIST. SOCIAL ESTE BRAS", "3211": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3224": "IPAE", "3311": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3321": "INSTITUICAO ADV. DE EDUC. ASSIST. SOCIAL ESTE BRAS", "33211": "Missão Mineira Oeste", "3411": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3412": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3511": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3512": "ASSOCIACAO DA UNIAO ESTE BRASILEIRA DOS ASD", "3521": "INSTITUICAO ADV. DE EDUC. ASSIST. SOCIAL ESTE BRAS", "3611": "Associação Mineira Leste", "3621": "Associação Mineira Leste", "3711": "Associação Espirito Santense", "3721": "Inst Adv de Educ e Assist Social Este Brasileira", "3724": "INSTITUICAO ADV. DE EDUC. ASSIST. SOCIAL ESTE BRAS", "3811": "ASSOCIAÇÃO RIO FLUMINENSE", "3821": "Associação Rio Fluminense - Educação", "3911": "Associacao Sul Espirito Santense da IASD", "3921": "Região Administrativa Sul do Espírito Santo", "4011": "Missão Bahia do Sudoeste da IASD", "4111": "União Nordeste Brasileira da IASD", "4114": "União Nordeste Brasileira da IASD", "4125": "IANDBEAS- Instituicao Adventista Nordeste Brasil", "4211": "União Nordeste Brasileira da IASD", "4221": "Instit. Adv. Educ. e Assit. Soc. Este Brasileira", "4222": "IANDBEAS - Região Administrativa da Bahia", "4311": "Associação Bahia Sul da IASD", "4511": "Associação Costa Norte da IASD", "45111": "Associação Sul Matogrossense", "4521": "Missão Costa Norte", "4611": "Missao Nordeste da IASD", "4711": "Missao Sergipe Alagoas da IASD", "4722": "Missão Sergipe Alagoas", "4812": "Missao Bahia Central da IASD - Sels", "4822": "IANDBEAS - Regiao Adm. Bahia Central", "4911": "Missão Pernambucana Central da IASD", "5011": "Uniao Norte Brasileira da IASD - Missão Oste do Pa", "5122": "Inst Adventista de Educ e Assist Soc Norte Bras", "5211": "Associação Amazônia Ocidental", "5221": "AAMO - Inst Adv de Educ e Assist Social Norte Bras", "5411": "Associação Central Amazonas da IASD", "5421": "IAEASNB", "5511": "UNB - MISSAO MARANHENSE", "5512": "SERVIÇO EDUCACIONAL LAR E SAÚDE", "5521": "Inst Norte Brasileira", "55211": "UNIÃO NORTE BRASILEIRA DA IASD", "5611": "União Norte Brasileira da IASD", "5621": "Instituição Adv. de Educ. e Assist. Social Norte B", "5711": "UNIAO NORTE BRASILEIRA DA IGREJA ADVENTISTA DO SET", "6011": "Missão Pará Amapá", "9199": "Confederacao das Unioes Brasileiras da I.A.S.D.", "9311": "Casa Publicadora Brasileira"}, "verbas": {"95020": ["Salário – Custo – Transferência", "Salário"], "95021": ["Salário – Custo Descontado – Transferência", "Salário (descontado)"], "95022": ["13º Salário – Custo – Transferência", "13º Salário"], "95025": ["Férias Vencidas – Custo – Transferência", "Férias Vencidas"], "95026": ["1/3 Férias Vencidas – Custo – Transferência", "1/3 Férias Vencidas"], "95029": ["Férias Proporcionais – Custo – Transferência", "Férias Proporcionais"], "95030": ["1/3 Férias Proporcionais – Custo – Transferência", "1/3 Férias Proporcionais"], "95033": ["Impostos (INSS e FGTS) – Custo – Transferência", "Impostos (INSS e FGTS)"]}, "competencia_inicial": 202601, "atualizado": "26/10/2026 08:32"};
+const MODELO = "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"utf-8\">\n<title>Extrato de Pagamento – Custo de Transferência<\/title>\n<style>\n  @page { size: A4 portrait; margin: 11mm 12mm 8mm; }\n  body { font-family: \"Segoe UI\", Arial, sans-serif; color: #1f2933; font-size: 10pt; margin: 0; background: #fff; }\n  .topo { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #12355b; padding-bottom: 6px; margin-bottom: 12px; }\n  .logo { width: 118px; height: 38px; overflow: hidden; flex: none; }\n  .logo img { height: 44px; margin: -4px 0 0 -14px; }\n  h1 { font-size: 14pt; margin: 0 0 2px; color: #12355b; }\n  .sub { color: #52606d; font-size: 9.5pt; }\n  .meta { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; margin-bottom: 14px; }\n  .meta div { border: 1px solid #d9e2ec; border-radius: 4px; padding: 6px 8px; }\n  .meta b { display: block; font-size: 8pt; color: #627d98; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }\n  .meta span { font-size: 11pt; font-weight: 600; }\n  .meta .destaque { background: #12355b; border-color: #12355b; }\n  .meta .destaque b { color: #bcccdc; }\n  .meta .destaque span { color: #fff; font-size: 13pt; }\n  .meta small { display: block; font-size: 8pt; color: #627d98; font-weight: 400; }\n  table { width: 100%; border-collapse: collapse; }\n  th { background: #12355b; color: #fff; font-size: 8.5pt; text-align: left; padding: 5px 6px; font-weight: 600; }\n  td { padding: 4px 6px; border-bottom: 1px solid #e4e7eb; font-size: 9pt; vertical-align: top; }\n  tbody.linhas tr:nth-child(even) td { background: #f5f7fa; }\n  tr.func td { background: #e4ebf3 !important; color: #12355b; font-weight: 600; border-bottom: 1px solid #bcccdc; }\n  tr.subtot td { font-weight: 600; border-bottom: 1px solid #9fb3c8; background: #fff !important; }\n  tr.subtot.bruto td { font-weight: 400; }\n  tr.ded td { color: #9b2c2c; background: #fdf3f3 !important; }\n  tr { page-break-inside: avoid; }\n  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }\n  .c { text-align: center; }\n  .mono { font-family: Consolas, monospace; white-space: nowrap; }\n  tfoot td { font-weight: 700; background: #e4ebf3 !important; border-top: 2px solid #12355b; font-size: 10pt; }\n  .tres { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 16px; page-break-inside: avoid; }\n  .obs { margin-top: 14px; page-break-inside: avoid; }\n  h2 { font-size: 10.5pt; color: #12355b; margin: 0 0 4px; }\n  ul { margin: 0; padding-left: 18px; font-size: 9pt; color: #334e68; }\n  li { margin-bottom: 2px; }\n  .resumo td, .liq td { font-size: 8.8pt; padding: 3px 6px; }\n  .resumo tfoot td { font-size: 9pt; }\n  .liq .final td { background: #12355b !important; color: #fff; font-weight: 700; font-size: 9.5pt; border-top: none; }\n  .fim { page-break-inside: avoid; }\n  .assin { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin: 64px 30px 0; text-align: center; font-size: 8.5pt; color: #52606d; }\n  .assin div { border-top: 1px solid #52606d; padding-top: 4px; }\n  .rodape { margin-top: 12px; font-size: 8pt; color: #829ab1; border-top: 1px solid #d9e2ec; padding-top: 5px; }\n<\/style>\n<\/head>\n<body>\n  <div class=\"topo\">\n    <div>\n      <h1>Extrato de Pagamento – Custo por Transferência de Funcionários<\/h1>\n      <div class=\"sub\">Saldos proporcionais de 13º salário, férias e encargos<\/div>\n    <\/div>\n    <div class=\"logo\"><img src=\"{{LOGO}}\" alt=\"CTec\"><\/div>\n  <\/div>\n\n  <div class=\"meta\">\n    <div><b>Entidade pagadora (debitada)<\/b><span>{{PAGADORA}}<\/span><\/div>\n    <div><b>Entidade beneficiária (creditada)<\/b><span>{{DESTINO}}<\/span><small>Entidade que deve receber<\/small><\/div>\n    <div><b>Data de emissão<\/b><span>{{EMISSAO}}<\/span><\/div>\n    <div class=\"destaque\"><b>Valor líquido a receber<\/b><span>R$ {{LIQUIDO}}<\/span><small style=\"color:#bcccdc\">{{QTD}} · deduções R$ {{DEDUCOES}}<\/small><\/div>\n  <\/div>\n\n  <table>\n    <thead>\n      <tr>\n        <th style=\"width:9%\">Verba<\/th><th>Descrição<\/th><th class=\"c\" style=\"width:11%\">Referência<\/th><th class=\"num\" style=\"width:14%\">Valor (R$)<\/th>\n      <\/tr>\n    <\/thead>\n{{LINHAS}}\n    <tfoot>\n      <tr><td colspan=\"3\">Total líquido a pagar (bruto {{BRUTO}} − deduções {{DEDUCOES}})<\/td><td class=\"num\">R$ {{LIQUIDO}}<\/td><\/tr>\n    <\/tfoot>\n  <\/table>\n\n  <div class=\"tres\">\n    <div>\n      <h2>Resumo por verba<\/h2>\n      <table class=\"resumo\">\n        <tbody class=\"linhas\">\n{{RESUMO}}\n        <\/tbody>\n        <tfoot><tr><td colspan=\"2\">Total bruto<\/td><td class=\"num\">{{BRUTO}}<\/td><\/tr><\/tfoot>\n      <\/table>\n    <\/div>\n    <div>\n      <h2>Deduções e valor líquido<\/h2>\n      <table class=\"liq\">\n        <tbody>\n          <tr><td>Total bruto<\/td><td class=\"num\">{{BRUTO}}<\/td><\/tr>\n          <tr class=\"ded\"><td>(−) Total de deduções (Adto 13º Salário)<\/td><td class=\"num\">{{DEDUCOES}}<\/td><\/tr>\n          <tr class=\"final\"><td>(=) Valor líquido a pagar<\/td><td class=\"num\">R$ {{LIQUIDO}}<\/td><\/tr>\n        <\/tbody>\n      <\/table>\n    <\/div>\n  <\/div>\n  <div class=\"obs\">\n    <h2>Observações<\/h2>\n    <ul>\n      <li>Valores do relatório “Custo por Transferência – Saldos Proporcionais” do APS, competência {{COMPETENCIAS}}.<\/li>\n      <li>Deduções: abatimento do adiantamento de 13º salário de cada funcionário.<\/li>\n    <\/ul>\n  <\/div>\n\n  <div class=\"fim\">\n    <div class=\"assin\">\n      <div>Responsável RH<\/div>\n      <div>Responsável Contábil<\/div>\n    <\/div>\n    <div class=\"rodape\">Fonte: APS – Custo por Transferência; AASI – conta 1135015 · Extraído em {{EMISSAO}} · Uso interno – contém dados de funcionários.<\/div>\n  <\/div>\n<\/body>\n<\/html>\n";
+const LOGO = "data:image/png;base64,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";
+const LOCAL = BASE === null;          // rodando pelo servidor do computador
+if (LOCAL) document.body.classList.add('local');
+
+/* Controle (destino, dedução, pago) fica no Firebase para o computador e o
+   site enxergarem a mesma coisa. Documento transf_controle/1622, campo json. */
+const FB = { chave: 'AIzaSyDlHIgR3kuTpsugpMjbI1uxLN2G4JlLoTQ', projeto: 'relatorio-cartao-corporativo',
+             doc: 'transf_controle/1622' };
+const URL_DOC = `https://firestore.googleapis.com/v1/projects/${FB.projeto}/databases/(default)/documents/${FB.doc}`;
+let token = null;
+
+async function obterToken(novo) {
+  if (token && !novo) return token;
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB.chave}`,
+    {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"returnSecureToken":true}'});
+  token = (await r.json()).idToken;
+  return token;
+}
+async function fb(metodo, corpo, tentativa) {
+  const r = await fetch(URL_DOC, {method: metodo, headers: {'Authorization': 'Bearer ' + await obterToken(tentativa),
+    'Content-Type': 'application/json'}, body: corpo ? JSON.stringify(corpo) : undefined});
+  if (r.status === 401 && !tentativa) return fb(metodo, corpo, true);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('Firebase ' + r.status);
+  return r.json();
+}
+function vazio() { return {competencia_inicial: 202601, destinos: {}, pagos: {}, deducoes: {}, nomes_entidade: {}}; }
+async function lerControle() {
+  const d = await fb('GET');
+  const c = d ? JSON.parse(d.fields.json.stringValue) : vazio();
+  return Object.assign(vazio(), c);
+}
+/* lê, aplica e grava em seguida — assim duas pessoas mexendo não se atropelam */
+async function alterarControle(fn) {
+  const c = await lerControle();
+  fn(c);
+  await fb('PATCH', {fields: {json: {stringValue: JSON.stringify(c)},
+                              atualizado: {timestampValue: new Date().toISOString()}}});
+  CTRL = c;
+}
+
+const fmt = v => (v ?? 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let B = null, CTRL = null, ITENS = [], NOMES = {};
+const sel = new Set();
+
+function aviso(t, erro) {
+  const m = document.getElementById('msg');
+  m.textContent = t; m.className = erro ? 'erro' : ''; m.style.display = 'block';
+  clearTimeout(aviso.t); aviso.t = setTimeout(() => m.style.display = 'none', erro ? 9000 : 4500);
+}
+async function api(url, corpo) {
+  const r = await fetch(url, corpo ? {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(corpo)} : {});
+  const j = await r.json();
+  if (j.erro) throw new Error(j.erro);
+  return j;
+}
+
+async function carregar(atualizar) {
+  document.getElementById('main').classList.add('carregando');
+  try {
+    B = LOCAL ? await api('/api/base' + (atualizar ? '?atualizar=1' : '')) : BASE;
+    CTRL = await lerControle();
+    if (atualizar) aviso(B.publicacao || 'Dados atualizados do APS e do AASI.', !!B.publicacao && !B.publicacao.startsWith('Publicado'));
+    render();
+  } catch (e) { aviso('Erro ao carregar: ' + e.message, true); }
+  document.getElementById('main').classList.remove('carregando');
+}
+
+function montar() {
+  NOMES = {...B.entidades, ...CTRL.nomes_entidade};
+  ITENS = B.pagamentos.map(p => {
+    const destino = CTRL.destinos[p.id] || p.sugestao || '';
+    const manual = p.id in CTRL.deducoes;
+    const ded = manual ? Number(CTRL.deducoes[p.id]) : p.saldo_1135015;
+    return {...p, destino, destino_sugerido: !CTRL.destinos[p.id] && !!p.sugestao,
+            deducao: ded, deducao_manual: manual, liquido: Math.round((p.bruto - ded) * 100) / 100,
+            pago: CTRL.pagos[p.id] || null};
+  });
+}
+function nomeEnt(cod) { return cod ? `${cod} – ${NOMES[cod] || '(entidade não cadastrada)'}` : ''; }
+
+function render() {
+  montar();
+  const ci = String(B.competencia_inicial);
+  document.getElementById('info').textContent =
+    `Entidade pagadora 1622 · dados do APS/AASI de ${B.atualizado} · rescisões a partir de ${ci.slice(4)}/${ci.slice(0,4)}`;
+  document.getElementById('nota').textContent = LOCAL ? '' :
+    'Os valores são atualizados quando o sistema é aberto no computador do contábil. Destino, dedução e pagos gravam na hora.';
+  document.getElementById('ents').innerHTML = Object.entries(NOMES)
+    .map(([c, n]) => `<option value="${esc(c + ' – ' + n)}">`).join('');
+
+  const pend = ITENS.filter(i => !i.pago);
+  const semDest = pend.filter(i => !i.destino);
+  const grupos = {};
+  pend.filter(i => i.destino).forEach(i => (grupos[i.destino] ??= []).push(i));
+  for (const id of [...sel]) if (!pend.some(i => i.id === id)) sel.delete(id);
+
+  document.getElementById('cartoes').innerHTML = `
+    <div class="cartao"><b>Líquido a pagar</b><span>R$ ${fmt(pend.reduce((s, i) => s + i.liquido, 0))}</span></div>
+    <div class="cartao"><b>Funcionários pendentes</b><span>${pend.length}</span></div>
+    <div class="cartao"><b>Entidades a receber</b><span>${Object.keys(grupos).length}</span></div>
+    <div class="cartao ${semDest.length ? 'alerta' : ''}"><b>Sem entidade definida</b><span>${semDest.length}</span></div>`;
+
+  let h = '';
+  if (semDest.length) h += grupo(semDest, null);
+  Object.keys(grupos).sort().forEach(k => h += grupo(grupos[k], k));
+  if (!pend.length) h += '<div class="vazio">Nenhum custo de transferência pendente.</div>';
+  if (document.getElementById('verPagos').checked) h += grupoPagos(ITENS.filter(i => i.pago));
+  document.getElementById('grupos').innerHTML = h;
+}
+
+function linha(i) {
+  return `<tr data-id="${i.id}">
+    <td><input type="checkbox" class="chk" ${sel.has(i.id) ? 'checked' : ''}></td>
+    <td>${esc(i.competencia)}</td>
+    <td class="mono">${esc(i.matricula)}</td>
+    <td>${esc(i.nome)}
+      <details><summary>verbas</summary><table>${i.verbas.map(v =>
+        `<tr><td class="mono">${v.codigo}</td><td>${esc(B.verbas[v.codigo][1])}</td><td class="num">${fmt(v.valor)}</td></tr>`).join('')}</table></details></td>
+    <td class="num">${fmt(i.bruto)}</td>
+    <td class="num"><input type="number" step="0.01" min="0" class="ded" value="${i.deducao.toFixed(2)}"
+        title="Saldo da 1135015 no AASI: ${fmt(i.saldo_1135015)}">${i.deducao_manual ? '<span class="tag man" title="Valor digitado à mão">manual</span>' : ''}</td>
+    <td class="num"><b>${fmt(i.liquido)}</b></td>
+    <td><input type="text" class="dest" list="ents" placeholder="Escolha a entidade…" value="${esc(nomeEnt(i.destino))}">
+      ${i.destino_sugerido ? '<span class="tag sug" title="Mesma pessoa admitida nessa entidade no APS">sugerido</span>' : ''}</td>
+    <td><button class="btnPago">Pago</button></td>
+  </tr>`;
+}
+
+function grupo(lista, dest) {
+  const tot = lista.reduce((s, i) => s + i.liquido, 0);
+  const titulo = dest ? esc(nomeEnt(dest)) : 'Sem entidade definida – escolha para quem vai o pagamento';
+  return `<section class="grupo ${dest ? '' : 'semdest'}" data-dest="${dest || ''}">
+    <h2>${titulo}<span class="tot">${lista.length} func. · R$ ${fmt(tot)}</span></h2>
+    <div class="tabela"><table><thead><tr><th><input type="checkbox" class="chkTodos"></th><th>Comp.</th><th>Matr.</th><th>Funcionário</th>
+      <th class="num">Bruto</th><th class="num">(−) Adto 13º</th><th class="num">Líquido</th><th>Entidade creditada</th><th></th></tr></thead>
+    <tbody>${lista.map(linha).join('')}</tbody></table></div>
+    ${dest ? `<div class="rodape-grupo">
+      <button class="btnPagarSel">Marcar selecionados como pagos</button>
+      <button class="prim btnExtrato">Gerar extrato em PDF</button></div>` : ''}
+  </section>`;
+}
+
+function grupoPagos(lista) {
+  if (!lista.length) return '';
+  return `<section class="grupo pagos"><h2>Já pagos<span class="tot">${lista.length} func.</span></h2>
+    <div class="tabela"><table><thead><tr><th>Comp.</th><th>Matr.</th><th>Funcionário</th><th>Entidade</th><th class="num">Líquido</th><th>Marcado em</th><th></th></tr></thead><tbody>
+    ${lista.map(i => `<tr data-id="${i.id}"><td>${esc(i.competencia)}</td><td class="mono">${esc(i.matricula)}</td><td>${esc(i.nome)}</td>
+      <td><input type="text" class="dest" list="ents" placeholder="Escolha a entidade…" value="${esc(nomeEnt(i.destino))}"></td>
+      <td class="num">${fmt(i.liquido)}</td>
+      <td>${esc(i.pago.data.split('-').reverse().join('/'))} ${esc(i.pago.obs || '')}</td>
+      <td><button class="btnDesfazer">Desfazer</button></td></tr>`).join('')}
+    </tbody></table></div></section>`;
+}
+
+async function salvar(fn, texto) {
+  try { await alterarControle(fn); if (texto) aviso(texto); render(); }
+  catch (e) { aviso('Erro ao salvar: ' + e.message, true); }
+}
+function hojeISO() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
+
+/* ------------------------------------------------------------ o extrato */
+function montarExtrato(dest, lista) {
+  lista = [...lista].sort((a, b) => a.comp_ord - b.comp_ord || a.nome.localeCompare(b.nome));
+  const ordem = Object.keys(B.verbas), resumo = {}, linhas = [];
+  for (const i of lista) {
+    linhas.push(`<tbody><tr class="func"><td colspan="4">Matrícula ${esc(i.matricula)} · ${esc(i.nome)} · competência ${esc(i.competencia)}</td></tr></tbody><tbody class="linhas">`);
+    for (const v of i.verbas) {
+      linhas.push(`<tr><td class="mono">${v.codigo}</td><td>${esc(B.verbas[v.codigo][0])}</td><td class="c">${v.ref ? fmt(v.ref) : ''}</td><td class="num">${fmt(v.valor)}</td></tr>`);
+      resumo[v.codigo] = (resumo[v.codigo] || 0) + v.valor;
+    }
+    linhas.push(`</tbody><tbody>
+      <tr class="subtot bruto"><td colspan="3">Total bruto – ${esc(i.nome)}</td><td class="num">${fmt(i.bruto)}</td></tr>
+      <tr class="ded"><td class="mono">Dedução</td><td>(−) Adto 13º Salário</td><td class="c"></td><td class="num">${fmt(i.deducao)}</td></tr>
+      <tr class="subtot"><td colspan="3">Líquido – ${esc(i.nome)}</td><td class="num">${fmt(i.liquido)}</td></tr></tbody>`);
+  }
+  const bruto = lista.reduce((s, i) => s + i.bruto, 0), ded = lista.reduce((s, i) => s + i.deducao, 0);
+  const liq = lista.reduce((s, i) => s + i.liquido, 0);
+  const comps = [...new Map(lista.map(i => [i.comp_ord, i.competencia])).entries()].sort((a, b) => a[0] - b[0]).map(c => c[1]);
+  const n = lista.length;
+  const valores = {
+    LOGO, PAGADORA: esc(nomeEnt('1622')), DESTINO: esc(nomeEnt(dest)),
+    EMISSAO: new Date().toLocaleDateString('pt-BR'), LIQUIDO: fmt(liq), BRUTO: fmt(bruto), DEDUCOES: fmt(ded),
+    QTD: `${n} funcionário${n > 1 ? 's' : ''}`, LINHAS: linhas.join('\n'), COMPETENCIAS: comps.join(', '),
+    RESUMO: ordem.filter(c => c in resumo).map(c =>
+      `<tr><td class="mono">${c}</td><td>${esc(B.verbas[c][1])}</td><td class="num">${fmt(resumo[c])}</td></tr>`).join('\n'),
+  };
+  const nome = `Extrato_Custo_Transferencia_${dest}_` + (comps.length === 1 ? comps[0].replace('/', '-') : hojeISO());
+  let pagina = MODELO.replace(/\{\{(\w+)\}\}/g, (_, k) => valores[k] ?? '');
+  pagina = pagina.replace(/<title>.*?<\/title>/, `<title>${nome}</title>`);
+  return {pagina, nome};
+}
+
+async function gerarExtrato(dest, ids, botao) {
+  const lista = ITENS.filter(i => ids.includes(i.id) && i.destino === dest);
+  if (!lista.length) return aviso('Nenhum funcionário para essa entidade.', true);
+  const {pagina, nome} = montarExtrato(dest, lista);
+  if (LOCAL) {
+    botao.disabled = true; botao.textContent = 'Gerando…';
+    try { const r = await api('/api/pdf', {html: pagina, nome}); aviso(`Extrato gerado: ${r.arquivo} (pasta Extratos)`); }
+    catch (e) { aviso('Erro ao gerar: ' + e.message, true); }
+    botao.disabled = false; botao.textContent = 'Gerar extrato em PDF';
+  } else {
+    /* no site: abre o extrato e chama a impressão (escolher "Salvar como PDF") */
+    const w = window.open('', '_blank');
+    if (!w) return aviso('O navegador bloqueou a janela do extrato. Libere pop-ups para o site.', true);
+    w.document.open(); w.document.write(pagina); w.document.close();
+    setTimeout(() => w.print(), 600);
+    aviso('Na janela de impressão, escolha "Salvar como PDF".');
+  }
+}
+
+/* ------------------------------------------------------------- eventos */
+function codigoDe(txt) { const m = String(txt).trim().match(/^(\d+)/); return m ? m[1] : ''; }
+
+document.addEventListener('change', e => {
+  const tr = e.target.closest('tr[data-id]');
+  if (e.target.classList.contains('chkTodos')) {
+    e.target.closest('table').querySelectorAll('tbody tr[data-id]').forEach(r => {
+      r.querySelector('.chk').checked = e.target.checked;
+      e.target.checked ? sel.add(r.dataset.id) : sel.delete(r.dataset.id);
+    });
+    return;
+  }
+  if (!tr) return;
+  const id = tr.dataset.id;
+  if (e.target.classList.contains('chk')) e.target.checked ? sel.add(id) : sel.delete(id);
+  if (e.target.classList.contains('ded')) {
+    const item = ITENS.find(i => i.id === id);
+    const v = e.target.value === '' ? null : Math.round(Number(e.target.value) * 100) / 100;
+    const volta = v === null || Math.abs(v - item.saldo_1135015) < 0.005;
+    salvar(c => { if (volta) delete c.deducoes[id]; else c.deducoes[id] = v; }, volta ? 'Dedução voltou ao saldo da 1135015.' : 'Dedução salva.');
+  }
+  if (e.target.classList.contains('dest')) {
+    const cod = codigoDe(e.target.value);
+    if (e.target.value.trim() && !cod) return aviso('Informe o código da entidade (ex.: 105122).', true);
+    let nome = null;
+    if (cod && !NOMES[cod]) nome = prompt(`A entidade ${cod} não está cadastrada no APS. Qual o nome dela?`);
+    salvar(c => { if (cod) c.destinos[id] = cod; else delete c.destinos[id]; if (nome) c.nomes_entidade[cod] = nome; },
+           cod ? `Destino salvo: ${cod}` : 'Destino removido.');
+  }
+});
+
+document.addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-id]');
+  if (e.target.classList.contains('btnPago')) {
+    const i = ITENS.find(x => x.id === tr.dataset.id);
+    if (confirm(`Marcar como pago: ${i.nome} (R$ ${fmt(i.liquido)})?`))
+      salvar(c => c.pagos[i.id] = {data: hojeISO(), obs: ''}, 'Marcado como pago.');
+  }
+  if (e.target.classList.contains('btnDesfazer')) salvar(c => delete c.pagos[tr.dataset.id], 'Voltou para pendentes.');
+  const sec = e.target.closest('section.grupo');
+  if (!sec) return;
+  const todos = [...sec.querySelectorAll('tbody tr[data-id]')].map(r => r.dataset.id);
+  const idsSel = todos.filter(id => sel.has(id));
+  if (e.target.classList.contains('btnPagarSel')) {
+    if (!idsSel.length) return aviso('Selecione os funcionários.', true);
+    if (confirm(`Marcar ${idsSel.length} funcionário(s) como pagos?`))
+      salvar(c => idsSel.forEach(id => c.pagos[id] = {data: hojeISO(), obs: ''}), 'Marcados como pagos.');
+  }
+  if (e.target.classList.contains('btnExtrato')) gerarExtrato(sec.dataset.dest, idsSel.length ? idsSel : todos, e.target);
+});
+
+document.getElementById('btnAtualizar').onclick = () => carregar(true);
+document.getElementById('btnPasta').onclick = () => api('/api/abrir_pasta', {}).catch(e => aviso(e.message, true));
+document.getElementById('verPagos').onchange = render;
+
+/* Trela simples, igual à dos demais painéis da pasta /anp (mesma chave anp_ok).
+   No computador (servidor local) entra direto. */
+(function trela() {
+  if (LOCAL || location.protocol === 'file:' || sessionStorage.getItem('anp_ok') === '1') { carregar(); return; }
+  document.body.classList.add('trancado');
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('usuario').focus();
+  document.getElementById('form-login').addEventListener('submit', ev => {
+    ev.preventDefault();
+    const u = document.getElementById('usuario').value.trim(), s = document.getElementById('senha').value;
+    if (u === 'ANP@IASD' && s === 'Anp1622') {
+      sessionStorage.setItem('anp_ok', '1');
+      document.getElementById('gate').style.display = 'none';
+      document.body.classList.remove('trancado');
+      carregar();
+    } else {
+      document.getElementById('erro').textContent = 'Usuário ou senha incorretos.';
+      document.getElementById('senha').value = '';
+    }
+  });
+})();
+</script>
+</body>
+</html>
