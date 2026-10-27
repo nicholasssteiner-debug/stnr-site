@@ -151,6 +151,35 @@ td.cod { font: 12px var(--f-mono); color: var(--muted); white-space: nowrap; }
 .chip.bom { background: var(--good-bg); } .chip.bom i { background: var(--good); }
 .chip.atencao { background: var(--warn-bg); } .chip.atencao i { background: var(--warn); color: #241a00; }
 .chip.ruim { background: var(--crit-bg); } .chip.ruim i { background: var(--crit); }
+.chip.neutro { background: var(--surface-2); color: var(--text-2); } .chip.neutro i { background: var(--muted); }
+.chip.tend i { font-size: 8px; }
+/* indicadores clicáveis */
+[data-ind] { cursor: pointer; }
+.kpi[data-ind] { transition: border-color .15s, box-shadow .15s; }
+.kpi[data-ind]:hover { border-color: var(--total); box-shadow: var(--shadow); }
+.kpi .t { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.info { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--total); color: var(--sec); font: 700 10px/1 var(--f-body); letter-spacing: 0; }
+.ind-nome { display: inline-flex; align-items: center; gap: 7px; }
+#tabInd tr[data-ind]:hover td { background: var(--accent-soft); }
+.diag li[data-ind]:hover { color: var(--accent); }
+.resumo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; }
+.resumo:empty { display: none; }
+.res-n { display: flex; align-items: center; gap: 6px; font: 600 18px/1 var(--f-display); }
+.res-n b { margin-right: 10px; }
+.res-t { font-size: 13px; color: var(--text-2); flex: 1 1 280px; }
+.res-t b { color: var(--text); }
+dialog.ind-dlg { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; padding: 0 24px 22px; }
+.ind-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; position: sticky; top: 0; background: var(--surface); padding: 20px 0 12px; border-bottom: 1.5px solid var(--total); margin-bottom: 14px; z-index: 1; }
+.ind-top h2 { margin: 2px 0 0 !important; }
+.ind-grupo { font: 500 10.5px/1.2 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sec); }
+.ind-x { border: none; background: none; padding: 4px 8px; color: var(--text-2); font-size: 15px; }
+.ind-valor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ind-valor > b { font: 600 34px/1.1 var(--f-display); font-variant-numeric: lining-nums tabular-nums; }
+.ind-dlg h3 { font-size: 11px; margin: 18px 0 6px; color: var(--sec); text-transform: uppercase; letter-spacing: .08em; }
+.ind-dlg p { margin: 0 0 6px; line-height: 1.55; }
+.ind-dlg ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; line-height: 1.5; }
+.ind-contas { margin-top: 8px; font-size: 13px; }
+.ind-contas th { position: static; }
 .up, .dn { color: var(--text-2); }
 .delta { font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .delta.melhor::before { content: "▲ "; color: var(--good); }
@@ -326,6 +355,7 @@ dialog.at-dlg input, dialog.at-dlg select { width: 100%; }
   <section class="tab" id="tab-painel">
     <div class="print-only"><h2>Painel</h2></div>
     <div id="painelAviso"></div>
+    <div class="resumo" id="resumo"></div>
     <div class="kpis" id="kpis"></div>
     <div class="two">
       <div class="card diag" id="diag"></div>
@@ -362,6 +392,14 @@ dialog.at-dlg input, dialog.at-dlg select { width: 100%; }
     <p id="dlgConfirmaMsg" style="margin:0 0 16px"></p>
     <div class="row" style="justify-content:flex-end"><button value="cancelar">Cancelar</button><button class="pri" value="ok" id="dlgConfirmaOk">Continuar</button></div>
   </form>
+</dialog>
+<dialog id="dlgInd" class="at-dlg ind-dlg" aria-labelledby="indNome">
+  <div class="ind-top">
+    <div><div class="ind-grupo" id="indGrupo"></div><h2 id="indNome"></h2></div>
+    <button type="button" id="indFechar" class="ind-x" aria-label="Fechar">✕</button>
+  </div>
+  <div id="indCorpo"></div>
+  <div class="row" style="justify-content:flex-end; margin-top:16px"><button type="button" class="pri" id="indAtena" hidden>Perguntar à Atena sobre isto</button></div>
 </dialog>
 <dialog id="dlgPeriodo" class="at-dlg">
   <form method="dialog" id="formPeriodo">
@@ -1234,6 +1272,76 @@ const IND = [
     f: (r, c) => { const a = IND_BY.GAO.f(r, c), b = IND_BY.GAF.f(r, c); return nn(a, b) ? a * b : null; }, dica: 'Efeito total de uma variação nas vendas sobre o resultado.' },
 ];
 const IND_BY = Object.fromEntries(IND.map(i => [i.id, i]));
+
+/* Guia de cada indicador, mostrado na caixa que abre ao clicar: m = o que avalia, r = referência, f = o que fazer */
+const GUIA = {
+  LC: { m: 'Quanto de bens e direitos de curto prazo (caixa, clientes, estoques) a entidade tem para cada R$ 1 de dívida que vence em até 12 meses.', r: 'Adequado a partir de 1,5 · Atenção entre 1 e 1,5 · Crítico abaixo de 1.', f: ['Alongar dívidas de curto prazo, trocando por financiamento de longo prazo.', 'Reduzir estoques parados e acelerar o recebimento de clientes.', 'Negociar prazos maiores com fornecedores.', 'Avaliar aporte dos sócios ou venda de ativos que não geram receita.'] },
+  LS: { m: 'A mesma conta da liquidez corrente, mas sem os estoques: mostra se dá para pagar o curto prazo sem depender de vender o que está na prateleira.', r: 'Adequado a partir de 1 · Atenção entre 0,7 e 1 · Crítico abaixo de 0,7.', f: ['Girar ou liquidar estoques de baixa saída.', 'Reforçar caixa e aplicações de curto prazo.', 'Rever a política de compras para não prender dinheiro em estoque.'] },
+  LI: { m: 'Quanto das dívidas de curto prazo o caixa e as aplicações pagariam hoje, sem receber de ninguém.', r: 'Adequado a partir de 0,3 · Atenção entre 0,1 e 0,3 · Crítico abaixo de 0,1.', f: ['Montar uma reserva mínima de caixa, de 1 a 2 meses de despesas.', 'Antecipar recebíveis só se o custo for menor que o da dívida.', 'Programar os pagamentos por um fluxo de caixa semanal.'] },
+  LG: { m: 'Tudo o que vira dinheiro, no curto e no longo prazo, contra toda a dívida com terceiros.', r: 'Adequado a partir de 1 · Atenção entre 0,8 e 1 · Crítico abaixo de 0,8.', f: ['Reter lucros em vez de distribuí-los até recompor o patrimônio.', 'Reduzir o endividamento, começando pelas dívidas mais caras.', 'Rever investimentos em imobilizado financiados com dívida.'] },
+  PCT: { m: 'Quanto de capital de terceiros (dívidas) existe para cada R$ 1 de capital próprio (patrimônio líquido).', r: 'Adequado até 100% · Atenção entre 100% e 200% · Crítico acima de 200% ou com PL negativo.', f: ['Reter lucros e evitar distribuição enquanto o índice estiver alto.', 'Considerar aumento de capital pelos sócios.', 'Amortizar primeiro as dívidas de maior custo.'] },
+  EG: { m: 'Que parte de tudo o que a entidade tem (ativo total) foi financiada com dinheiro de terceiros.', r: 'Adequado até 50% · Atenção entre 50% e 70% · Crítico acima de 70%.', f: ['Reduzir dívida com a geração de caixa da operação.', 'Vender ativos que não geram receita e usar o valor para quitar dívidas.', 'Reter lucros para aumentar o patrimônio.'] },
+  CE: { m: 'Que parte da dívida total vence no curto prazo, em até 12 meses.', r: 'Adequado até 50% · Atenção entre 50% e 70% · Crítico acima de 70%.', f: ['Renegociar empréstimos para prazos mais longos.', 'Trocar capital de giro bancário de curto prazo por linhas de longo prazo.', 'Escalonar vencimentos para não concentrar pagamentos no mesmo mês.'] },
+  IPL: { m: 'Quanto do patrimônio próprio está aplicado em ativos fixos (investimentos, imobilizado e intangível).', r: 'Adequado até 100% · Atenção entre 100% e 130% · Crítico acima de 130%.', f: ['Evitar novos investimentos fixos financiados com dívida curta.', 'Avaliar vender e alugar de volta imóveis próprios (sale-leaseback).', 'Reforçar o patrimônio com retenção de lucros ou aporte.'] },
+  IRNC: { m: 'Se os ativos fixos estão cobertos por recursos de longo prazo (patrimônio líquido mais passivo não circulante).', r: 'Adequado até 100% · Crítico acima de 100%: parte do imobilizado está sendo bancada com dívida de curto prazo.', f: ['Alongar dívidas para casar o prazo do financiamento com o do ativo.', 'Financiar novos investimentos fixos só com linhas de longo prazo ou capital próprio.'] },
+  DBPL: { m: 'Peso dos empréstimos e financiamentos (a dívida que cobra juros) sobre o patrimônio próprio.', r: 'Adequado até 50% · Atenção entre 50% e 100% · Crítico acima de 100%.', f: ['Priorizar a quitação das linhas mais caras.', 'Renegociar taxas e prazos.', 'Evitar distribuição de lucros enquanto a dívida estiver alta.'] },
+  DLE: { m: 'Em quantos anos a geração operacional de caixa (EBITDA) pagaria a dívida líquida, isto é, empréstimos menos caixa.', r: 'Adequado até 2 · Atenção entre 2 e 3,5 · Crítico acima de 3,5. Negativo quer dizer que o caixa é maior que a dívida.', f: ['Aumentar o EBITDA com preço, margem e corte de despesas fixas.', 'Usar caixa excedente para reduzir a dívida.', 'Renegociar cláusulas (covenants) com os bancos antes de estourar o limite.'] },
+  COBJ: { m: 'Quantas vezes o lucro operacional (EBIT) cobre as despesas financeiras do período.', r: 'Adequado a partir de 3× · Atenção entre 1,5× e 3× · Crítico abaixo de 1,5×: a operação mal paga os juros.', f: ['Reduzir a dívida ou trocá-la por linhas mais baratas.', 'Melhorar o resultado operacional antes de contratar novas dívidas.', 'Rever a antecipação de recebíveis, que costuma pesar nas despesas financeiras.'] },
+  PMR: { m: 'Quantos dias, em média, leva para receber dos clientes depois da venda.', r: 'Sem faixa única: compare com o prazo de pagamento (PMP) e com o período anterior. Quanto menor, melhor.', f: ['Rever prazos e limites de crédito concedidos.', 'Cobrar mais rápido os atrasados.', 'Incentivar pagamento à vista ou por Pix com um desconto pequeno.'] },
+  PME: { m: 'Quantos dias, em média, o estoque fica parado até ser vendido.', r: 'Sem faixa única: depende do setor. Compare com o período anterior e com concorrentes. Quanto menor, melhor.', f: ['Identificar itens de baixo giro e fazer promoção ou liquidação.', 'Comprar em lotes menores e com mais frequência.', 'Ajustar o mix ao que realmente vende.'] },
+  PMP: { m: 'Quantos dias, em média, leva para pagar os fornecedores.', r: 'Quanto maior, melhor para o caixa, desde que sem atrasos e sem juros embutidos. O ideal é ser maior que PMR + PME.', f: ['Negociar prazos maiores com os principais fornecedores.', 'Concentrar compras para ganhar poder de negociação.', 'Evitar pagar adiantado sem um desconto que compense.'] },
+  CO: { m: 'Quantos dias passam entre comprar a mercadoria e receber do cliente (estocagem mais recebimento).', r: 'Sem faixa única: quanto menor, melhor. Compare com o período anterior.', f: ['Reduzir estoques e o prazo de recebimento.'] },
+  CF: { m: 'Quantos dias a operação precisa ser financiada com dinheiro próprio ou de banco: o ciclo operacional menos o prazo de pagamento.', r: 'Adequado até 0 dias · Atenção entre 1 e 60 · Crítico acima de 60 dias.', f: ['Encurtar o recebimento e o tempo de estoque.', 'Alongar o prazo com fornecedores.', 'Planejar capital de giro barato para cobrir esses dias.'] },
+  GA: { m: 'Quantas vezes, no ano, o ativo total gerou receita. Mede a eficiência no uso dos recursos.', r: 'Sem faixa única: varejo e serviços costumam girar mais que indústria. Compare com o período anterior.', f: ['Vender ou desmobilizar ativos ociosos.', 'Vender mais com a mesma estrutura.'] },
+  LLV: { m: 'O resultado final do período: lucro ou prejuízo, superávit ou déficit, sobras ou perdas.', r: 'Adequado quando positivo · Crítico quando negativo.', f: ['Ver na DRE onde o resultado se perde: margem bruta, despesas operacionais ou resultado financeiro.', 'Atacar primeiro a maior linha negativa.'] },
+  EBITDA: { m: 'A geração operacional de caixa: o resultado da operação antes de juros, impostos, depreciação e amortização.', r: 'Adequado quando positivo · Crítico quando negativo: a operação em si consome caixa.', f: ['Rever preço e mix de produtos.', 'Cortar despesas fixas que não geram receita.'] },
+  MB: { m: 'Quanto sobra da receita depois do custo do que foi vendido. Mostra poder de preço e eficiência de compra ou produção.', r: 'Sem faixa única: varia muito por setor. Compare com o período anterior.', f: ['Renegociar custos com fornecedores.', 'Rever preços e descontos concedidos.', 'Priorizar produtos e serviços de maior margem.'] },
+  MO: { m: 'Quanto da receita vira lucro operacional (EBIT), antes de juros e impostos.', r: 'Adequado a partir de 10% · Atenção entre 0% e 10% · Crítico quando negativa.', f: ['Cortar despesas administrativas e comerciais sem retorno.', 'Melhorar a margem bruta.'] },
+  MEBITDA: { m: 'Quanto da receita vira geração operacional de caixa (EBITDA).', r: 'Sem faixa única: compare com o período anterior e com o setor.', f: ['Melhorar a margem bruta e reduzir despesas fixas.'] },
+  ML: { m: 'Quanto de cada R$ 1 de receita sobra como resultado final, depois de custos, despesas, juros e impostos.', r: 'Adequado a partir de 10% · Atenção entre 0% e 10% · Crítico quando negativa.', f: ['Ver na DRE qual grupo mais consome a receita.', 'Se for o resultado financeiro, reduzir a dívida antes de cortar a operação.', 'Se for despesa operacional, cortar o que não gera receita.'] },
+  ROA: { m: 'Quanto o resultado do ano rende sobre tudo o que a entidade tem (ativo total).', r: 'Adequado quando supera a Selic/TMA informada · Atenção entre 0 e a Selic · Crítico quando negativo.', f: ['Melhorar a margem líquida.', 'Vender ativos ociosos para aumentar o giro.'] },
+  ROE: { m: 'Quanto o resultado do ano rende sobre o capital dos donos (patrimônio líquido). É o retorno do sócio.', r: 'Adequado quando supera a Selic/TMA informada · Atenção entre 0 e a Selic, quando a renda fixa renderia mais · Crítico quando negativo.', f: ['Ver na análise DuPont, no Painel, se o problema é margem, giro ou alavancagem.', 'Melhorar a margem antes de aumentar a dívida.'] },
+  GAFE: { m: 'Se a dívida está ajudando ou atrapalhando o retorno do sócio: compara o ROE com o retorno do ativo antes dos juros.', r: 'Adequado acima de 1, quando a dívida rende mais do que custa · Atenção até 1.', f: ['Reduzir a dívida cara que não está se pagando.', 'Buscar linhas com taxa menor que o retorno da operação.'] },
+  CGL: { m: 'Capital de giro líquido: ativo circulante menos passivo circulante. É a folga de curto prazo, em reais.', r: 'Adequado quando positivo · Crítico quando negativo.', f: ['Alongar dívidas de curto prazo.', 'Reter lucros.', 'Reduzir estoques e recebíveis em excesso.'] },
+  NCG: { m: 'Necessidade de capital de giro: quanto dinheiro fica preso na operação (clientes e estoques menos fornecedores e outras contas operacionais).', r: 'Sem faixa: compare com o capital de giro (CDG). Negativa quer dizer que a operação gera recursos.', f: ['Reduzir o prazo de recebimento e os estoques.', 'Alongar o prazo com fornecedores.'] },
+  ST: { m: 'Saldo em tesouraria: o caixa livre depois de financiar a operação (caixa e aplicações menos empréstimos de curto prazo).', r: 'Adequado quando positivo · Crítico quando negativo: a entidade depende de banco no dia a dia.', f: ['Trocar dívida curta por longa.', 'Reduzir a necessidade de capital de giro.'] },
+  FLE: { m: 'Situação financeira pelo modelo Fleuriet, que combina os sinais de CDG, NCG e saldo em tesouraria.', r: 'I Excelente e II Sólida: adequado · III Insatisfatória: atenção · IV Péssima, V Muito ruim e VI Alto risco: crítico.', f: ['Olhe qual dos três está negativo. CDG negativo pede dívida mais longa ou capital próprio.', 'NCG alta pede ciclo operacional mais curto.', 'Tesouraria negativa pede menos dívida de curto prazo.'] },
+  TES: { m: 'Efeito tesoura: a necessidade de capital de giro cresce mais rápido que o capital de giro, e o caixa fica cada vez mais no vermelho.', r: 'Ausente: adequado · Presente: crítico.', f: ['Frear o crescimento financiado com dívida curta.', 'Reduzir prazos de recebimento e estoques.', 'Reforçar o capital de giro próprio.'] },
+  KAN: { m: 'Termômetro de Kanitz: fórmula brasileira que combina rentabilidade, liquidez e endividamento para estimar o risco de insolvência.', r: 'Acima de 0: solvente · Entre 0 e −3: penumbra (atenção) · Abaixo de −3: insolvência.', f: ['Atacar os componentes de maior peso: liquidez seca e liquidez geral.', 'Reduzir o endividamento.', 'Recuperar a rentabilidade do patrimônio.'] },
+  MC: { m: 'Margem de contribuição: quanto de cada R$ 1 de receita sobra para pagar os custos fixos, depois dos custos variáveis.', r: 'Sem faixa única: quanto maior, mais segura a operação.', f: ['Rever preço e custos variáveis, como comissões, frete e insumos.'] },
+  PEC: { m: 'Ponto de equilíbrio contábil: o faturamento que zera o resultado, sem lucro nem prejuízo.', r: 'Adequado quando a receita do período passou do ponto de equilíbrio · Crítico quando ficou abaixo.', f: ['Reduzir custos fixos.', 'Aumentar a margem de contribuição.'] },
+  MS: { m: 'Margem de segurança: quanto a receita pode cair antes de entrar no prejuízo.', r: 'Adequado a partir de 20% · Atenção entre 0% e 20% · Crítico quando negativa.', f: ['Reduzir custos fixos.', 'Aumentar o volume de vendas ou a margem.'] },
+  GAOE: { m: 'Grau de alavancagem operacional: quanto o lucro operacional varia quando as vendas variam 1%.', r: 'Sem faixa: valores altos indicam muito custo fixo, com lucro que sobe rápido mas também cai rápido.', f: ['Se estiver muito alto, transformar custos fixos em variáveis quando possível.'] },
+  SIN: { m: 'Sinistralidade: a parte dos prêmios ganhos consumida pelo pagamento de sinistros.', r: 'Adequado até 60% · Atenção entre 60% e 75% · Crítico acima de 75%.', f: ['Rever a precificação e a seleção dos riscos aceitos.', 'Reforçar a regulação de sinistros e o combate a fraudes.'] },
+  COMI: { m: 'Custo de aquisição (corretagem e comissões) sobre os prêmios ganhos.', r: 'Sem faixa única: compare com o período anterior e com o mercado.', f: ['Renegociar comissões e diversificar canais de venda.'] },
+  DADMS: { m: 'Despesas administrativas sobre os prêmios ganhos.', r: 'Sem faixa única: quanto menor, mais eficiente.', f: ['Automatizar processos e cortar estruturas sem retorno.'] },
+  COMB: { m: 'Índice combinado: sinistros, aquisição, despesas administrativas e tributos sobre os prêmios. Mostra se a operação de seguros dá lucro.', r: 'Adequado abaixo de 100% · Atenção entre 100% e 105% · Crítico acima de 105%.', f: ['Reprecificar carteiras deficitárias.', 'Reduzir sinistralidade e despesas.'] },
+  COMBA: { m: 'Índice combinado incluindo o resultado financeiro das aplicações.', r: 'Adequado abaixo de 100% · Crítico acima.', f: ['Não depender do resultado financeiro para cobrir a operação.'] },
+  COBPT: { m: 'Quanto os ativos aplicados cobrem as provisões técnicas, que são as obrigações com os segurados.', r: 'Adequado a partir de 100% · Atenção entre 90% e 100% · Crítico abaixo de 90%.', f: ['Reforçar os ativos garantidores.', 'Rever o cálculo das provisões.'] },
+  PTPL: { m: 'Provisões técnicas sobre o patrimônio líquido: a alavancagem técnica da seguradora.', r: 'Sem faixa única: quanto maior, mais risco por real de capital.', f: ['Reforçar o capital se o índice crescer muito.'] },
+  ALAVB: { m: 'Quantas vezes o ativo do banco é maior que o patrimônio líquido.', r: 'Adequado até 12× · Atenção entre 12× e 16× · Crítico acima de 16×.', f: ['Reter lucros ou captar capital.', 'Reduzir ativos de maior risco.'] },
+  PLAT: { m: 'Quanto do ativo do banco é bancado com capital próprio. É o colchão contra perdas.', r: 'Adequado a partir de 8% · Atenção entre 6% e 8% · Crítico abaixo de 6%.', f: ['Reter lucros ou captar capital.'] },
+  BAS: { m: 'Índice de Basileia informado pelo banco: capital regulatório sobre ativos ponderados pelo risco.', r: 'Adequado a partir de 13% · Atenção entre 10,5% e 13% · Crítico abaixo de 10,5%, o mínimo regulatório com adicional.', f: ['Reter lucros, emitir capital ou reduzir ativos de alto risco.'] },
+  IMOBB: { m: 'Investimentos, imobilizado e intangível sobre o patrimônio líquido do banco.', r: 'Adequado até 50%, o limite regulatório · Crítico acima.', f: ['Desmobilizar imóveis e participações.'] },
+  CREDDEP: { m: 'Carteira de crédito sobre os depósitos. Mostra se o crédito depende de captações mais caras.', r: 'Adequado até 100% · Atenção entre 100% e 130% · Crítico acima de 130%.', f: ['Aumentar a captação em depósitos.', 'Desacelerar a concessão de crédito.'] },
+  DEPCAP: { m: 'Peso dos depósitos na captação total. Depósito é a fonte mais estável e mais barata.', r: 'Sem faixa única: quanto maior, mais estável.', f: ['Ampliar a base de clientes depositantes.'] },
+  LIQB: { m: 'Disponibilidades e aplicações interfinanceiras sobre os depósitos.', r: 'Adequado a partir de 20% · Atenção entre 10% e 20% · Crítico abaixo de 10%.', f: ['Aumentar a reserva de liquidez.'] },
+  COBPDD: { m: 'Provisão para perdas sobre a carteira de crédito.', r: 'Sem faixa: alta pode ser carteira mais arriscada ou provisão conservadora.', f: ['Comparar com a inadimplência da carteira.'] },
+  CCRED: { m: 'Despesa anual com provisão para perdas sobre a carteira: quanto do crédito vira perda esperada.', r: 'Sem faixa única: quanto menor, melhor.', f: ['Rever a concessão e a cobrança.'] },
+  NIM: { m: 'Margem financeira: o spread líquido que o banco ganha sobre os ativos que rendem juros.', r: 'Sem faixa única: compare com o período anterior.', f: ['Rever o preço do crédito e o custo da captação.'] },
+  EFIC: { m: 'Índice de eficiência: quanto o banco gasta com pessoal e administração para cada R$ 1 de receita.', r: 'Adequado até 50% · Atenção entre 50% e 65% · Crítico acima de 65%.', f: ['Reduzir despesas administrativas e digitalizar processos.'] },
+  COBS: { m: 'Quanto das despesas de pessoal é pago pelas receitas de serviços e tarifas.', r: 'Adequado a partir de 100% · Atenção entre 70% e 100% · Crítico abaixo de 70%.', f: ['Ampliar receitas de serviços ou conter a folha.'] },
+  VREC: { m: 'Crescimento da receita mensal média frente ao período de comparação.', r: 'Positivo é melhor. Compare com a inflação do período.', f: ['Se caiu, ver se foi preço, volume ou perda de clientes.'] },
+  VLL: { m: 'Variação do resultado mensal médio frente ao período de comparação.', r: 'Positivo é melhor.', f: ['Ver na análise horizontal quais contas puxaram a variação.'] },
+  VAT: { m: 'Crescimento do ativo total.', r: 'Sem faixa: crescer só faz sentido se a receita e o resultado acompanharem.', f: ['Comparar com o crescimento da receita e do resultado.'] },
+  VPL: { m: 'Variação do patrimônio líquido: se a entidade acumulou ou consumiu patrimônio.', r: 'Positivo é melhor.', f: ['Se caiu, ver se foi prejuízo ou distribuição de lucros.'] },
+  VDISP: { m: 'Variação de caixa e aplicações.', r: 'Positivo é melhor, salvo quando o caixa foi usado para quitar dívida.', f: ['Conferir na DFC de onde veio e para onde foi o caixa.'] },
+  VCRED: { m: 'Crescimento da carteira de crédito.', r: 'Sem faixa: leia junto com a qualidade da carteira.', f: ['Acompanhar a inadimplência junto com o crescimento.'] },
+  VDEP: { m: 'Crescimento dos depósitos.', r: 'Positivo é melhor.', f: ['Ampliar a base de depositantes.'] },
+  GAO: { m: 'Grau de alavancagem operacional entre os dois períodos: variação % do EBIT dividida pela variação % da receita.', r: 'Sem faixa: acima de 1 quer dizer que o lucro operacional varia mais que as vendas.', f: ['Se estiver alto, cuidado com quedas de venda.'] },
+  GAF: { m: 'Grau de alavancagem financeira entre os períodos: variação % do resultado dividida pela variação % do EBIT.', r: 'Sem faixa: acima de 1 quer dizer que a dívida amplia o efeito do EBIT sobre o resultado.', f: ['Se estiver alto, a entidade fica sensível aos juros.'] },
+  GAC: { m: 'Alavancagem combinada (GAO × GAF): quanto o resultado final varia para cada 1% de variação nas vendas.', r: 'Sem faixa: quanto maior, mais arriscado.', f: ['Reduzir custo fixo ou dívida para diminuir a sensibilidade.'] },
+};
 function m(v, c) { return v == null ? null : v / c.meses; }
 function compras(r, c) {
   if (r.COMPRAS != null) return Math.abs(r.COMPRAS);
@@ -1368,7 +1476,7 @@ function renderAnalise() {
 
   if (!ca || !ca.temDados) {
     const msg = '<div class="alert">Preencha ou importe o balanço na aba <b>1. Dados</b> para ver a análise.</div>';
-    $('painelAviso').innerHTML = msg; $('kpis').innerHTML = ''; $('diag').innerHTML = ''; $('estrutura').innerHTML = ''; $('dupontCard').style.display = 'none';
+    $('painelAviso').innerHTML = msg; $('kpis').innerHTML = ''; $('resumo').innerHTML = ''; $('diag').innerHTML = ''; $('estrutura').innerHTML = ''; $('dupontCard').style.display = 'none';
     $('tabInd').innerHTML = ''; $('tabAVAH').innerHTML = '';
     return;
   }
@@ -1387,6 +1495,7 @@ function renderAnalise() {
     const fator = (ind.fluxo && cbValida && ca.meses !== cbValida.meses) ? ca.meses / cbValida.meses : 1;
     return { ind, a, b, fator };
   });
+  renderResumo(res);
   renderKPIs(res);
   renderDiag(res, ca, cbValida);
   renderEstrutura(ca, cbValida, pa, pb);
@@ -1399,6 +1508,85 @@ function chip(st) {
   if (!st) return '';
   const t = { bom: ['✓', 'Adequado'], atencao: ['!', 'Atenção'], ruim: ['✕', 'Crítico'] }[st];
   return `<span class="chip ${st}"><i>${t[0]}</i>${t[1]}</span>`;
+}
+// indicador sem faixa fixa: o veredito é a direção frente à base (melhorou ou piorou)
+function tendencia(ind, a, b, fator = 1) {
+  if (ind.base && ind.dir && typeof a.v === 'number' && a.v !== 0) return a.v * ind.dir > 0 ? 'melhor' : 'pior';   // variações: crescer ou cair
+  if (ind.base || !ind.dir || typeof a.v !== 'number' || typeof b.v !== 'number') return null;
+  const d = (a.v - b.v * fator) * ind.dir;
+  return Math.abs(d) < 1e-9 ? null : d > 0 ? 'melhor' : 'pior';
+}
+function chipSit(r) {
+  if (r.a.st) return chip(r.a.st);
+  const t = tendencia(r.ind, r.a, r.b, r.fator);
+  if (t) return `<span class="chip ${t === 'melhor' ? 'bom' : 'ruim'} tend"><i>${t === 'melhor' ? '▲' : '▼'}</i>${t === 'melhor' ? 'Melhorou' : 'Piorou'}</span>`;
+  return r.a.v == null ? '' : '<span class="chip neutro"><i>·</i>Sem faixa</span>';
+}
+function renderResumo(res) {
+  const n = { bom: 0, atencao: 0, ruim: 0 };
+  for (const r of res) if (r.a.st) n[r.a.st]++;
+  const total = n.bom + n.atencao + n.ruim;
+  let leitura = '';
+  if (total) {
+    if (n.ruim > total / 2) leitura = 'A maior parte dos indicadores está crítica.';
+    else if (n.ruim + n.atencao > total / 2) leitura = 'Mais da metade dos indicadores pede atenção.';
+    else leitura = 'A maior parte dos indicadores está adequada.';
+  }
+  $('resumo').innerHTML = total ? `<div class="res-n">${chip('bom')}<b>${n.bom}</b> ${chip('atencao')}<b>${n.atencao}</b> ${chip('ruim')}<b>${n.ruim}</b></div>` +
+    `<div class="res-t"><b>${esc(leitura)}</b> Clique em qualquer indicador para ver o que ele avalia e o que fazer.</div>` : '';
+}
+
+function abreInd(id) {
+  const ind = IND_BY[id], g = GUIA[id];
+  if (!ind) return;
+  const pa = periodoAtual(), pb = periodoBase();
+  const ca = pa ? calcula(pa.id) : null;
+  if (!ca || !ca.temDados) return;
+  const cbx = pb ? calcula(pb.id) : null, cb = cbx && cbx.temDados ? cbx : null;
+  const a = avalia(ind, ca, cb);
+  const b = (cb && !ind.base) ? avalia(ind, cb, null) : { v: null };
+  const fator = (ind.fluxo && cb && ca.meses !== cb.meses) ? ca.meses / cb.meses : 1;
+  const r = { ind, a, b, fator };
+  const termo = MODELOS[S.tipo].termoLucro;
+  const nome = id === 'LLV' ? termo + ' do Período' : ind.n;
+  const val = a.v == null ? '—' : fmtInd(a.v, ind.fmt);
+  const tend = tendencia(ind, a, b, fator);
+
+  let como;
+  if (a.v == null) como = `Não foi possível calcular: ${a.motivo}.`;
+  else if (a.st === 'bom') como = `Está <b>adequado</b>: ${esc(val)} fica dentro da faixa considerada saudável.`;
+  else if (a.st === 'atencao') como = `Pede <b>atenção</b>: ${esc(val)} ainda não é crítico, mas está fora da faixa saudável.`;
+  else if (a.st === 'ruim') como = `Está <b>crítico</b>: ${esc(val)} fica na faixa de risco.`;
+  else como = `Este indicador não tem uma faixa fixa de bom ou ruim. Leia o valor de ${esc(val)} junto com o setor e com o período anterior.`;
+  if (b.v != null && typeof a.v === 'number') como += ` No período de comparação era ${esc(fmtInd(b.v, ind.fmt))}${tend ? `, então <b>${tend === 'melhor' ? 'melhorou' : 'piorou'}</b>` : ''}.`;
+
+  let fazer;
+  if (a.v == null) fazer = '<p>Preencha as contas que faltam na aba Dados para calcular este indicador.</p>';
+  else if (a.st === 'bom') fazer = '<p>Nada urgente. Mantenha o acompanhamento a cada período para perceber cedo se ele começar a piorar.</p>' +
+    (g ? `<p class="note">Se ele piorar, os caminhos usuais são:</p><ul>${g.f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
+  else fazer = g ? `<ul>${g.f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : `<p>${esc(ind.dica)}</p>`;
+
+  const contas = (ind.usa || []).filter((p, i, arr) => arr.indexOf(p) === i);
+  const linhasContas = contas.map(p => `<tr><td>${esc(PAPEL_NOME[p] || p)}</td><td class="num">${ca.papeis[p] == null ? '<span class="why">sem dado</span>' : esc(fmtValor(ca.papeis[p]))}</td>` +
+    (cb ? `<td class="num">${cb.papeis[p] == null ? '' : esc(fmtValor(cb.papeis[p]))}</td>` : '') + '</tr>').join('');
+
+  $('indGrupo').textContent = ind.g;
+  $('indNome').textContent = nome;
+  $('indCorpo').innerHTML =
+    `<div class="ind-valor"><b>${esc(val)}</b>${chipSit(r)}${b.v != null ? `<span class="note">Base ${esc(fmtInd(b.v, ind.fmt))} ${deltaHTML(ind, a.v, b.v, fator)}</span>` : ''}</div>` +
+    `<h3>O que avalia</h3><p>${esc(g ? g.m : ind.dica)}</p>` +
+    `<h3>Como está</h3><p>${como}</p>${g ? `<p class="note">Referência: ${esc(g.r)}</p>` : ''}` +
+    `<h3>O que fazer</h3>${fazer}` +
+    `<h3>Como é calculado</h3><p class="formula">${esc(ind.fx)}</p>` +
+    (linhasContas ? `<div class="scroll"><table class="ind-contas"><thead><tr><th>Conta usada</th><th class="num">${esc(rotuloPeriodo(pa))}</th>${cb ? `<th class="num">${esc(rotuloPeriodo(pb))}</th>` : ''}</tr></thead><tbody>${linhasContas}</tbody></table></div>` : '');
+  const atena = $('atenaBtn') && !$('atenaBtn').hidden && window.Atena;
+  $('indAtena').hidden = !atena;
+  $('indAtena').onclick = () => {
+    $('dlgInd').close();
+    $('atena').hidden = false;
+    window.Atena.perguntar(`Explique o indicador "${nome}" deste balanço: o valor de ${val}, por que está assim e o que a entidade pode fazer.`);
+  };
+  $('dlgInd').showModal();
 }
 function deltaHTML(ind, a, b, fator = 1) {
   if (a == null || b == null || typeof a !== 'number' || typeof b !== 'number') return '';
@@ -1425,8 +1613,8 @@ function renderKPIs(res) {
     let nome = r.ind.n.replace(/ — .*/, '');
     if (id === 'LLV') nome = termo + ' do Período';
     const val = r.a.v == null ? '—' : fmtInd(r.a.v, r.ind.fmt);
-    h += `<div class="kpi"><div class="t">${esc(nome)}</div><div class="v" ${r.ind.fmt === 'txt' ? 'style="font-size:17px"' : ''}>${esc(val)}</div>` +
-      `<div>${chip(r.a.st)}</div>` +
+    h += `<div class="kpi" data-ind="${id}" tabindex="0" role="button" aria-label="${esc(nome)}: ver o que avalia e o que fazer"><div class="t"><span>${esc(nome)}</span><span class="info" aria-hidden="true">?</span></div><div class="v" ${r.ind.fmt === 'txt' ? 'style="font-size:17px"' : ''}>${esc(val)}</div>` +
+      `<div>${chipSit(r)}</div>` +
       `<div class="b">${r.b.v != null ? 'Base: ' + esc(fmtInd(r.b.v, r.ind.fmt)) + ' ' + deltaHTML(r.ind, r.a.v, r.b.v, r.fator) : (r.a.v == null ? esc(r.a.motivo) : '')}</div></div>`;
   }
   $('kpis').innerHTML = h;
@@ -1437,7 +1625,7 @@ function renderDiag(res, ca, cb) {
   const bons = [], aten = [], crit = [], evol = [];
   for (const { ind, a, b } of res) {
     if (a.v == null || !a.st) continue;
-    const linha = `<b>${esc(ind.n.replace(/ — .*/, ''))}: ${esc(fmtInd(a.v, ind.fmt))}.</b> ${esc(ind.dica)}`;
+    const linha = `<li data-ind="${ind.id}" tabindex="0" role="button"><b>${esc(ind.n.replace(/ — .*/, ''))}: ${esc(fmtInd(a.v, ind.fmt))}.</b> ${esc(ind.dica)}</li>`;
     (a.st === 'bom' ? bons : a.st === 'atencao' ? aten : crit).push(linha);
   }
   for (const { ind, a, b, fator } of res) {
@@ -1445,14 +1633,14 @@ function renderDiag(res, ca, cb) {
     const d = (a.v - b.v * fator) * ind.dir;
     const rel = Math.abs(varPct(a.v, b.v * fator) ?? 0);
     if (rel < 0.05) continue;
-    evol.push({ rel, t: `<b>${esc(ind.n.replace(/ — .*/, ''))}</b> ${d > 0 ? 'melhorou' : 'piorou'}: ${esc(fmtInd(b.v, ind.fmt))} → ${esc(fmtInd(a.v, ind.fmt))}${fator !== 1 ? ' (comparado pela média mensal)' : ''}` });
+    evol.push({ rel, id: ind.id, t: `<b>${esc(ind.n.replace(/ — .*/, ''))}</b> ${d > 0 ? 'melhorou' : 'piorou'}: ${esc(fmtInd(b.v, ind.fmt))} → ${esc(fmtInd(a.v, ind.fmt))}${fator !== 1 ? ' (comparado pela média mensal)' : ''}` });
   }
   evol.sort((x, y) => y.rel - x.rel);
   let h = '<h2>Diagnóstico automático</h2>';
-  if (crit.length) h += `<h3>${chip('ruim')} Pontos críticos</h3><ul>${crit.map(x => '<li>' + x + '</li>').join('')}</ul>`;
-  if (aten.length) h += `<h3>${chip('atencao')} Pontos de atenção</h3><ul>${aten.map(x => '<li>' + x + '</li>').join('')}</ul>`;
-  if (bons.length) h += `<h3>${chip('bom')} Pontos fortes</h3><ul>${bons.map(x => '<li>' + x + '</li>').join('')}</ul>`;
-  if (evol.length) h += `<h3>Evolução frente à base</h3><ul>${evol.slice(0, 8).map(x => '<li>' + x.t + '</li>').join('')}</ul>`;
+  if (crit.length) h += `<h3>${chip('ruim')} Pontos críticos</h3><ul>${crit.join('')}</ul>`;
+  if (aten.length) h += `<h3>${chip('atencao')} Pontos de atenção</h3><ul>${aten.join('')}</ul>`;
+  if (bons.length) h += `<h3>${chip('bom')} Pontos fortes</h3><ul>${bons.join('')}</ul>`;
+  if (evol.length) h += `<h3>Evolução frente à base</h3><ul>${evol.slice(0, 8).map(x => `<li data-ind="${x.id}" tabindex="0" role="button">${x.t}</li>`).join('')}</ul>`;
   else if (!cb) h += '<p class="note">Sem período de comparação: análise de evolução, AH, GAO/GAF e efeito tesoura indisponíveis.</p>';
   if (ca.avisos.length) h += `<h3>Consistência dos dados</h3>${ca.avisos.map(a => `<div class="alert ${a.t === 'err' ? 'err' : ''}">${esc(a.m)}</div>`).join('')}`;
   h += `<p class="note">Faixas de referência genéricas; ROA e ROE comparados à Selic/TMA de ${NF2.format(S.selic || 0)}% a.a. Em entidades sem fins lucrativos, leia "lucro" como ${termo}.</p>`;
@@ -1540,9 +1728,9 @@ function renderTabInd(res, temBase) {
   for (const { ind, a, b, fator } of res) {
     if (ind.g !== g) { g = ind.g; h += `<tr class="ind-g"><td colspan="${temBase ? 7 : 5}">${esc(g)}</td></tr>`; }
     const nome = ind.id === 'LLV' ? termo + ' do Período' : ind.n;
-    h += `<tr><td>${esc(nome)}</td><td class="num">${a.v == null ? `<span class="why">${esc(a.motivo)}</span>` : esc(fmtInd(a.v, ind.fmt))}</td>` +
+    h += `<tr data-ind="${ind.id}" tabindex="0" role="button"><td><span class="ind-nome">${esc(nome)}<span class="info" aria-hidden="true">?</span></span></td><td class="num">${a.v == null ? `<span class="why">${esc(a.motivo)}</span>` : esc(fmtInd(a.v, ind.fmt))}</td>` +
       (temBase ? `<td class="num">${ind.base ? '<span class="why">—</span>' : esc(fmtInd(b.v, ind.fmt))}</td><td class="num">${ind.base ? '' : deltaHTML(ind, a.v, b.v, fator)}</td>` : '') +
-      `<td>${chip(a.st)}</td><td class="formula">${esc(ind.fx)}</td><td class="note">${esc(ind.dica)}</td></tr>`;
+      `<td>${chipSit({ ind, a, b, fator })}</td><td class="formula">${esc(ind.fx)}</td><td class="note">${esc(ind.dica)}</td></tr>`;
   }
   $('tabInd').innerHTML = h + '</tbody>';
 }
@@ -1897,6 +2085,17 @@ function init() {
   ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) processa(f); });
+
+  // clicar em um indicador (cartão, linha da tabela ou item do diagnóstico) abre a explicação
+  document.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('[data-ind]');
+    if (t) abreInd(t.dataset.ind);
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-ind]')) { e.preventDefault(); abreInd(e.target.dataset.ind); }
+  });
+  $('indFechar').addEventListener('click', () => $('dlgInd').close());
+  $('dlgInd').addEventListener('click', e => { if (e.target === $('dlgInd')) $('dlgInd').close(); });
 
   const tip = $('tip');
   document.addEventListener('mousemove', e => {
