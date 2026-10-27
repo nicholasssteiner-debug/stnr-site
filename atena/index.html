@@ -964,6 +964,7 @@ const nivel = c => c.split('.').length - 1;
 const paiDe = c => c.includes('.') ? c.slice(0, c.lastIndexOf('.')) : null;
 function efetivo(v, flag, conta) {
   if (v == null) return null;
+  if (flag === 's') return v;   // sinal veio do arquivo (padrão CVM): IR positivo é crédito, não despesa
   if (flag === 'n' || /^\(-\)/.test(conta)) return -Math.abs(v);
   return v;
 }
@@ -1690,12 +1691,15 @@ function importaCSV(txt, nomeArq) {
     linhas.forEach((l, i) => { if (l.cod === e.cod || l.cod.startsWith(e.cod + '.') || (paiDe(e.cod) && (l.cod === paiDe(e.cod) || l.cod.startsWith(paiDe(e.cod) + '.')))) pos = i; });
     if (pos < 0) linhas.push(e); else linhas.splice(pos + 1, 0, e);
   }
+  // arquivo com despesas já negativas (como a DFP da CVM): respeita o sinal de cada valor em vez de forçar despesa
+  const assinado = linhas.some(l => (l.flag === 'n' || /^\(-\)/.test(l.conta)) && Object.values(l.v).some(x => x < 0));
+  if (assinado) for (const l of linhas) if (l.flag === 'n' || /^\(-\)/.test(l.conta)) l.flag = 's';
   S.tipo = tipo; S.empresa = empresa || S.empresa; S.unidade = unidade;
   S.periodos = periodos.map(p => ({ id: p.id, data: p.data }));
   S.linhas = linhas;
   S.atual = S.periodos[0].id;
   S.base = S.periodos[1] ? S.periodos[1].id : '';
-  return { periodos: S.periodos.length, linhas: dados.length, extras: extras.length, tipo };
+  return { periodos: S.periodos.length, linhas: dados.length, extras: extras.length, tipo, assinado };
 }
 
 // confirmação dentro da página (no artefato do claude.ai o confirm() do navegador não aparece)
@@ -1882,7 +1886,8 @@ function init() {
       render();
       msg.innerHTML = `<div class="alert ok">Importado <b>${esc(file.name)}</b>: ${r.linhas} linhas, ${r.periodos} período(s), modelo “${esc(MODELOS[r.tipo].nome)}”.` +
         (r.periodos === 1 ? ' Só um período com dados — indicadores de comparação ficam em branco.' : '') +
-        (r.extras ? ` ${r.extras} linha(s) fora do modelo foram adicionadas como contas extras.` : '') + '</div>';
+        (r.extras ? ` ${r.extras} linha(s) fora do modelo foram adicionadas como contas extras.` : '') +
+        (r.assinado ? ' As despesas já vieram negativas, então os sinais do arquivo foram mantidos (IR positivo conta como crédito).' : '') + '</div>';
     } catch (err) {
       msg.innerHTML = `<div class="alert err">Não foi possível importar: ${esc(err.message)}</div>`;
     }
