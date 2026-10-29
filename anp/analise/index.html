@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Análise Financeira — Educação ANP</title>
+<script>
+  // Mesma trava do painel. Local (file://) abre direto.
+  if (location.protocol !== "file:" && sessionStorage.getItem("anp_ok") !== "1") {
+    location.replace("../login.html");
+  }
+</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --azul-escuro: #2c5f7c;
+    --azul-header: #33607d;
+    --azul-tabela: #2c5f7c;
+    --azul-claro: #5b9bd5;
+    --cinza-titulo: #8aa8bd;
+    --fundo: #eef1f4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: #334; font-size: 14px;
+         font-family: "Segoe UI", Tahoma, sans-serif; }
+  header { background: var(--azul-header); color: #fff; padding: 14px 22px;
+           display: flex; align-items: center; gap: 18px; }
+  header h1 { margin: 0; font-size: 21px; font-weight: 600; flex: 1; text-align: center; }
+  header .info { font-size: 12px; text-align: right; line-height: 1.45; min-width: 170px; }
+  .voltar { color: #fff; text-decoration: none; font-size: 13px; border: 1px solid rgba(255,255,255,.45);
+            padding: 6px 13px; border-radius: 3px; white-space: nowrap; }
+  .voltar:hover { background: rgba(255,255,255,.14); }
+
+  .navegacao { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 22px 0; }
+  .nav-btn { padding: 7px 14px; border: 1px solid #c9d6e2; border-radius: 3px; background: #fff;
+             font-family: inherit; font-size: 13px; color: #567; cursor: pointer; }
+  .nav-btn:hover { border-color: var(--azul-claro); color: var(--azul-escuro); }
+  .nav-btn.ativa { background: var(--azul-tabela); border-color: var(--azul-tabela); color: #fff; font-weight: 600; }
+
+  main { padding: 14px 22px 40px; display: flex; flex-direction: column; gap: 14px; }
+  .painel { background: #fff; border: 1px solid #dde4ea; border-radius: 4px; padding: 16px 18px; }
+  .painel h2 { margin: 0 0 4px; font-size: 16px; color: var(--cinza-titulo); font-weight: 600; }
+  .desc { font-size: 12.5px; color: #778; margin: 0 0 12px; }
+
+  .cartoes { display: grid; gap: 12px; margin-bottom: 4px; }
+  .cartao { background: #fff; border: 1px solid #dde4ea; border-radius: 4px; padding: 12px 14px; text-align: center; }
+  .cartao .titulo { font-size: 12px; color: #8198ab; margin-bottom: 5px; }
+  .cartao .valor { font-size: 24px; font-weight: 600; color: var(--azul-escuro); }
+  .cartao .faixa { font-size: 11.5px; color: #8a9aa8; margin-top: 4px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  thead th { background: var(--azul-tabela); color: #fff; padding: 7px 10px; text-align: left;
+             font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
+  th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tbody td { padding: 5px 10px; border-bottom: 1px solid #e9eef2; }
+  tr.grupo td { background: #eef3f8; font-weight: 600; }
+  tr.total td { background: #e3ecf3; font-weight: 700; border-top: 2px solid var(--azul-tabela); }
+  tr.sub td:first-child { padding-left: 26px; color: #566; }
+  .rolagem { overflow-x: auto; }
+  .positivo { color: #2e7d4f; } .negativo { color: #b3423a; }
+  .selo { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
+  .selo-ok { background: #e2f3e8; color: #2e7d4f; } .selo-alerta { background: #fbe4e2; color: #b3423a; }
+  .aviso { background: #fff8e6; border: 1px solid #f0dca8; border-radius: 4px; padding: 10px 14px;
+           font-size: 12.5px; color: #765; }
+  .carregando { padding: 40px; text-align: center; color: #8198ab; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="voltar" href="../index.html">← Painel</a>
+  <h1>Análise Financeira — Educação ANP</h1>
+  <div class="info">Contabilidade CTec<br><span id="carimbo">—</span></div>
+</header>
+
+<div class="navegacao" id="navegacao"></div>
+<main id="conteudo"><div class="carregando">Carregando os dados…</div></main>
+
+<script>
+/* =====================================================================
+   ANÁLISE FINANCEIRA — APRESENTAÇÃO
+   Página irmã do painel: lê a mesma ../dados.xlsx e monta os blocos da
+   apresentação mensal (Balanço, DRE, Capital Operativo, Disponível,
+   Imobilizado, Prestação de Serviço, Pessoal e Despesas), cada um com a
+   série dos anos que a extração traz.
+   ===================================================================== */
+
+/* ---------- formatação ---------- */
+const fmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+const fmtP = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const n = v => (v == null || !isFinite(v)) ? "—" : fmt.format(Math.round(v));
+const pct = v => (v == null || !isFinite(v)) ? "—" : fmtP.format(v * 100) + "%";
+const sinal = v => v < 0 ? "negativo" : "positivo";
+const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+/* ---------- De/Para do Balanço (aba "Contas BP" dos parâmetros) ---------- */
+const MAPA_BP = [
+  ["1112001","ATIVO CIRCULANTE",1,"Disponível",1],
+  ["1113001","ATIVO CIRCULANTE",1,"Disponível",1],
+  ["1131000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1132000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1135000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1136000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1137000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1138500","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1139000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
+  ["1160000","ATIVO CIRCULANTE",1,"Despesas Antecipadas",3],
+  ["1211000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1215000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1216000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1219000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
+  ["1230000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
+  ["1240000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
+  ["2130100","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130300","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130500","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130600","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2130800","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2131000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2135000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2136000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2137000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2139000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
+  ["2141000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2142000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2143000","PASSIVO CIRCULANTE",3,"Provisões",7],
+  ["2150000","PASSIVO CIRCULANTE",3,"Fundos em Confiança",8],
+  ["2311000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+  ["2320000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+];
+const GRUPOS_BP = MAPA_BP
+  .map(([c, grupo, og, sub, os]) => ({ prefixo: c.replace(/0+$/, ""), grupo, og, sub, os }))
+  .sort((a, b) => b.prefixo.length - a.prefixo.length);
+function classificaBP(conta) {
+  for (const g of GRUPOS_BP) if (conta.startsWith(g.prefixo)) return g;
+  if (conta[0] === "1") return { grupo: "ATIVO", og: 1, sub: "Outras Contas do Ativo", os: 90 };
+  return { grupo: "PASSIVO", og: 3, sub: "Outras Contas do Passivo", os: 91 };
+}
+
+/* ---------- escola/serviço a partir do departamento ---------- */
+const ESCOLAS = { "3310":"Sede","3311":"CAL","3312":"CAM","3313":"EAM",
+                  "3314":"EAC","3315":"EAA","3316":"CALGP","3317":"CAME" };
+function partesDepto(cod, nome) {
+  let p = String(nome || "").split(" - ").map(s => s.trim()).filter(Boolean);
+  if (p.length && /^\d+$/.test(p[0])) p = p.slice(1);
+  const porCodigo = ESCOLAS[String(cod).slice(0, 4)] || "Outros";
+  if (p.length >= 2) return { escola: p[0], servico: p.slice(1).join(" - ") };
+  return { escola: porCodigo, servico: p[0] || String(cod) };
+}
+
+/* ---------- estado ---------- */
+let dados = [];        // linhas brutas da aba Dados
+let regrasDRE = [];    // De/Para da DRE
+let linhasDRE = [];    // linhas já com sinal da DRE aplicado
+let anos = [];
+let ehAnalitica = () => true;
+let mesFimAno = {};    // ano -> último mês com movimento
+
+/* ---------- leitura ---------- */
+const limpa = v => String(v ?? "").trim().replace(/\.0$/, "");
+
+async function carregar() {
+  const resp = await fetch("../dados.xlsx", { cache: "no-store" });
+  if (!resp.ok) throw new Error("não encontrei a planilha ../dados.xlsx");
+  const wb = XLSX.read(await resp.arrayBuffer(), { type: "array" });
+
+  let abaDados = null, abaDRE = null, abaMeta = null;
+  for (const nome of wb.SheetNames) {
+    const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
+    if (!json.length) continue;
+    const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
+    if (!abaMeta && cols.includes("chave") && cols.includes("valor")) abaMeta = json;
+    else if (!abaDRE && cols.includes("sinal") && cols.includes("conta")) abaDRE = json;
+    else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
+  }
+  if (!abaDados) throw new Error("a aba de dados não foi encontrada na planilha");
+
+  const val = (l, nome) => {
+    const par = Object.entries(l).find(([k]) => k.trim().toLowerCase() === nome.toLowerCase());
+    return par ? par[1] : null;
+  };
+  const chaves = Object.keys(abaDados[0]);
+  const acha = nome => chaves.find(k => k.trim().toLowerCase() === nome.toLowerCase());
+  const cMes = acha("Mês") || acha("Mes");
+  const cDep = acha("Departamento"), cDepNome = acha("Nome_Depto");
+
+  dados = abaDados.map(l => ({
+    Ano: +l[acha("Ano")],
+    Mes: l[cMes] == null ? null : +l[cMes],
+    Entidade: limpa(l[acha("Entidade")]),
+    Conta: limpa(l[acha("Conta")]),
+    NomeConta: String(l[acha("Nome_Conta")] ?? "").trim(),
+    Subconta: String(l[acha("Subconta")] ?? "").trim(),
+    Dep: cDep ? limpa(l[cDep]) : "",
+    DepNome: cDepNome ? String(l[cDepNome] ?? "").trim() : "",
+    Legal: +l[acha("Saldo_Legal")] || 0,
+    Ajust: +l[acha("Saldo_Ajustado")] || 0,
+  })).filter(d => d.Ano && d.Mes != null && isFinite(d.Mes));
+
+  if (abaDRE) {
+    regrasDRE = abaDRE
+      .filter(l => val(l, "sinal") != null && val(l, "conta") != null)
+      .map(l => ({
+        sinal: String(val(l, "sinal")).trim(),
+        conta: limpa(val(l, "conta")),
+        dre2: String(val(l, "dre 2") ?? "").trim(),
+        dre3: String(val(l, "dre 3") ?? "").trim(),
+      }));
+  }
+  if (abaMeta) {
+    const linha = abaMeta.find(l => String(val(l, "chave") ?? "").trim().toLowerCase() === "atualizado");
+    if (linha) document.getElementById("carimbo").textContent =
+      "Atualizado em " + String(val(linha, "valor") ?? "").trim();
+  }
+  preparar();
+}
+
+function preparar() {
+  anos = [...new Set(dados.map(d => d.Ano))].sort((a, b) => a - b);
+
+  // contas sintéticas (que já somam as filhas) ficam de fora dos totais
+  const codigos = [...new Set(dados.map(d => d.Conta))];
+  const sinteticas = new Set();
+  for (const c of codigos) {
+    if (!/00$/.test(c)) continue;
+    const tronco = c.replace(/0+$/, "");
+    if (!tronco) continue;
+    for (const o of codigos) if (o !== c && o.startsWith(tronco)) { sinteticas.add(c); break; }
+  }
+  ehAnalitica = c => !sinteticas.has(c);
+
+  // último mês com movimento de resultado em cada ano
+  for (const a of anos) mesFimAno[a] = 0;
+  for (const d of dados) {
+    if (d.Subconta || d.Mes < 1) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    if ((d.Conta[0] === "3" || d.Conta[0] === "4") && d.Mes > mesFimAno[d.Ano]) mesFimAno[d.Ano] = d.Mes;
+  }
+
+  // linhas da DRE com o sinal aplicado (mesma regra do painel)
+  const porConta = {};
+  for (const r of regrasDRE) (porConta[r.conta] = porConta[r.conta] || []).push(r);
+  linhasDRE = [];
+  for (const d of dados) {
+    if (d.Subconta || !d.Mes) continue;
+    const regras = porConta[d.Conta];
+    if (!regras) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    for (const r of regras)
+      linhasDRE.push({ Ano: d.Ano, Mes: d.Mes, conta: d.Conta, nome: d.NomeConta,
+                       dep: d.Dep, depNome: d.DepNome, dre2: r.dre2, dre3: r.dre3,
+                       saldo: (r.sinal === "+" ? base : -base) * -1 });
+  }
+}
+
+/* ---------- cálculos ---------- */
+const BLOCOS_RECEITA = new Set(["Prestação de Serviços", "Dízimo Líquidos de Repasses",
+  "Subvenções Recebidas", "Outras Receitas Recorrentes", "Doações E Contribuições Recebidas"]);
+
+/* Saldo de balanço por conta analítica, acumulado da abertura até mesFim. */
+function balanco(ano, mesFim) {
+  const contas = new Map();
+  let ativo = 0, passPL = 0;
+  for (const d of dados) {
+    if (d.Subconta) continue;
+    const g = d.Conta[0];
+    if (g !== "1" && g !== "2") continue;
+    if (d.Ano !== ano || d.Mes > mesFim) continue;
+    if (!ehAnalitica(d.Conta)) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    const cls = classificaBP(d.Conta);
+    const ehAtivo = cls.grupo.startsWith("ATIVO");
+    const valor = ehAtivo ? base : -base;
+    const reg = contas.get(d.Conta) || { conta: d.Conta, nome: d.NomeConta, ...cls, total: 0 };
+    reg.total += valor;
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    contas.set(d.Conta, reg);
+    if (ehAtivo) ativo += valor; else passPL += valor;
+  }
+  return { contas: [...contas.values()], ativo, passPL };
+}
+
+/* Resultado da DRE do ano (jan..mesFim), por bloco. */
+function dreAno(ano, mesFim = 12, filtro = null) {
+  const porBloco = new Map();
+  let total = 0, receita = 0, despesa = 0;
+  for (const l of linhasDRE) {
+    if (l.Ano !== ano || l.Mes > mesFim) continue;
+    if (filtro && !filtro(l)) continue;
+    total += l.saldo;
+    const ehRec = BLOCOS_RECEITA.has(l.dre3);
+    if (ehRec) receita += l.saldo; else despesa -= l.saldo;
+    const k = l.dre3 || l.dre2 || "Outros";
+    porBloco.set(k, (porBloco.get(k) || 0) + l.saldo);
+  }
+  return { total, receita, despesa, porBloco };
+}
+
+/* DRE numa JANELA de 12 meses terminando em (anoFim, mesFim) — é o que o
+   modelo pede em "despesas essenciais (12 meses)". Num ano incompleto, pega
+   o resto do ano anterior para fechar os 12. */
+function dreJanela12(anoFim, mesFim) {
+  const porBloco = new Map();
+  let total = 0, receita = 0, despesa = 0;
+  for (const l of linhasDRE) {
+    const dentro = (l.Ano === anoFim && l.Mes <= mesFim) ||
+                   (l.Ano === anoFim - 1 && l.Mes > mesFim);
+    if (!dentro) continue;
+    total += l.saldo;
+    if (BLOCOS_RECEITA.has(l.dre3)) receita += l.saldo; else despesa -= l.saldo;
+    const k = l.dre3 || l.dre2 || "Outros";
+    porBloco.set(k, (porBloco.get(k) || 0) + l.saldo);
+  }
+  return { total, receita, despesa, porBloco };
+}
+
+/* Despesa das contas ANALÍTICAS de classe 4, numa janela de 12 meses. */
+function despesasAnaliticas12(anoFim, mesFim) {
+  const mapa = new Map();
+  for (const d of dados) {
+    if (d.Subconta || d.Conta[0] !== "4" || !ehAnalitica(d.Conta)) continue;
+    if (d.Mes < 1) continue;
+    const dentro = (d.Ano === anoFim && d.Mes <= mesFim) ||
+                   (d.Ano === anoFim - 1 && d.Mes > mesFim);
+    if (!dentro) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    const reg = mapa.get(d.Conta) || { nome: d.NomeConta, total: 0 };
+    reg.total += base;
+    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
+    mapa.set(d.Conta, reg);
+  }
+  return mapa;
+}
+
+/* Último mês do ano cuja receita de serviços já parece lançada por inteiro.
+   O mês corrente costuma ter despesa lançada e receita ainda não — incluí-lo
+   na comparação ano a ano inventa uma queda que não existe. */
+function mesComparavel(ano) {
+  const porMes = [];
+  for (let m = 1; m <= 12; m++) {
+    let s = 0;
+    for (const l of linhasDRE)
+      if (l.Ano === ano && l.Mes === m && l.dre3 === "Prestação de Serviços") s += l.saldo;
+    if (s) porMes.push([m, s]);
+  }
+  if (!porMes.length) return 12;
+  const ord = porMes.map(([, s]) => s).sort((a, b) => a - b);
+  const mediana = ord[Math.floor(ord.length / 2)];
+  let ultimo = 0;
+  for (const [m, s] of porMes) if (s >= mediana * 0.5) ultimo = Math.max(ultimo, m);
+  return ultimo || 12;
+}
+
+/* Série de um bloco da DRE por ano, sempre na MESMA janela de meses. Só
+   assim a comparação ano a ano é honesta enquanto o ano corrente não fecha:
+   comparar 12 meses de 2025 com 10 meses de 2026 inventa uma queda. */
+function serieBloco(bloco, mesLimite) {
+  const s = anos.map(() => 0);
+  for (const l of linhasDRE) {
+    if (l.Mes > mesLimite || l.dre3 !== bloco) continue;
+    const i = anos.indexOf(l.Ano);
+    if (i >= 0) s[i] += l.saldo;
+  }
+  return s;
+}
+
+/* Linhas de crescimento comparável, para reaproveitar nos blocos. */
+function linhasCrescimento(rotulo, serieComp, mesLimite, inverter) {
+  const v = inverter ? serieComp.map(x => -x) : serieComp;
+  const jan = `Jan–${NOMES_MESES[mesLimite - 1]}`;
+  let h = `<tr class="sub"><td>${rotulo} — mesmo período (${jan})</td>` +
+    v.map(x => `<td class="num">${n(x)}</td>`).join("") + `</tr>`;
+  h += `<tr><td>Crescimento sobre o ano anterior (${jan})</td>` + v.map((x, i) =>
+    `<td class="num ${i === 0 ? "" : sinal(x - v[i - 1])}">${i === 0 ? "—" : pct(v[i - 1] ? x / v[i - 1] - 1 : null)}</td>`).join("") + `</tr>`;
+  const prim = v[0], ult = v[v.length - 1];
+  h += `<tr class="total"><td>Crescimento de ${anos[0]} a ${anos[anos.length - 1]} (${jan})</td>` +
+    v.map((_, i) => i === v.length - 1
+      ? `<td class="num ${sinal(ult - prim)}">${pct(prim ? ult / prim - 1 : null)}</td>` : `<td></td>`).join("") + `</tr>`;
+  return h;
+}
+
+/* Soma de contas do razão (não-DRE) por prefixo, no ano. */
+function somaContas(ano, mesFim, teste, acumulado) {
+  let s = 0;
+  for (const d of dados) {
+    if (d.Subconta || d.Ano !== ano) continue;
+    if (!ehAnalitica(d.Conta)) continue;
+    if (!acumulado && d.Mes < 1) continue;
+    if (d.Mes > mesFim) continue;
+    if (!teste(d.Conta, d.NomeConta)) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    s += base;
+  }
+  return s;
+}
+
+/* ---------- blocos da apresentação ---------- */
+const BLOCOS = [];
+const registra = (id, titulo, render) => BLOCOS.push({ id, titulo, render });
+
+/* 1. BALANÇO ------------------------------------------------------- */
+registra("balanco", "Balanço", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const dadosAno = colunas.map(c => balanco(c.ano, c.mes));
+
+  // agrupa por grupo/subgrupo
+  const linhas = new Map();   // "og|grupo|os|sub" -> valores por ano
+  dadosAno.forEach((bal, i) => {
+    for (const c of bal.contas) {
+      const k = [c.og, c.grupo, c.os, c.sub].join("|");
+      const reg = linhas.get(k) || { og: c.og, grupo: c.grupo, os: c.os, sub: c.sub, v: anos.map(() => 0) };
+      reg.v[i] += c.total;
+      linhas.set(k, reg);
+    }
+  });
+  const ord = [...linhas.values()].sort((a, b) => a.og - b.og || a.os - b.os);
+
+  let html = cabecalhoAnos("Grupo", colunas);
+  let grupoAtual = null;
+  for (const l of ord) {
+    if (l.grupo !== grupoAtual) {
+      grupoAtual = l.grupo;
+      const tot = anos.map((_, i) => ord.filter(x => x.grupo === l.grupo).reduce((s, x) => s + x.v[i], 0));
+      html += `<tr class="grupo"><td>${l.grupo}</td>` + tot.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+    }
+    html += `<tr class="sub"><td>${l.sub}</td>` + l.v.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  }
+  // totais e conferência
+  html += `<tr class="total"><td>TOTAL DO ATIVO</td>` +
+    dadosAno.map(b => `<td class="num">${n(b.ativo)}</td>`).join("") + `</tr>`;
+  const resultados = colunas.map(c => dreAno(c.ano, c.mes).total);
+  html += `<tr class="total"><td>TOTAL DO PASSIVO + PL + RESULTADO</td>` +
+    dadosAno.map((b, i) => `<td class="num">${n(b.passPL + resultados[i])}</td>`).join("") + `</tr>`;
+  html += `<tr><td>Diferença</td>` + dadosAno.map((b, i) => {
+    const dif = b.ativo - (b.passPL + resultados[i]);
+    return `<td class="num"><span class="selo ${Math.abs(dif) < 1 ? "selo-ok" : "selo-alerta"}">${n(dif)}</span></td>`;
+  }).join("") + `</tr>`;
+  html += `</tbody></table></div>`;
+
+  return painel("Balanço Patrimonial",
+    "Contas analíticas de ativo e passivo, acumuladas da abertura até o último mês de cada ano. " +
+    "O resultado do exercício entra do lado do passivo para o balanço fechar.", html);
+});
+
+/* 2. BALANÇO POR UNIDADE ------------------------------------------- */
+registra("balanco-unidade", "Balanço Unidades", () => {
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  // ativo/passivo por escola, a partir do departamento
+  const porEscola = new Map();
+  for (const d of dados) {
+    if (d.Subconta || d.Ano !== ano || d.Mes > mes) continue;
+    const g = d.Conta[0];
+    if (g !== "1" && g !== "2") continue;
+    if (!ehAnalitica(d.Conta) || !d.Dep) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    const { escola } = partesDepto(d.Dep, d.DepNome);
+    const cls = classificaBP(d.Conta);
+    const ehAtivo = cls.grupo.startsWith("ATIVO");
+    const reg = porEscola.get(escola) || { ativo: 0, passPL: 0, circAtivo: 0, circPass: 0 };
+    const valor = ehAtivo ? base : -base;
+    if (ehAtivo) { reg.ativo += valor; if (cls.og === 1) reg.circAtivo += valor; }
+    else { reg.passPL += valor; if (cls.og === 3) reg.circPass += valor; }
+    porEscola.set(escola, reg);
+  }
+  const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }))
+    .sort((a, b) => b.ativo - a.ativo);
+  if (!itens.length) return painel("Balanço por Unidade",
+    "A planilha não traz o departamento. Rode o Atualizar Dados uma vez.", "");
+
+  let html = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
+    <th class="num">Ativo</th><th class="num">Ativo Circulante</th>
+    <th class="num">Passivo + PL</th><th class="num">Passivo Circulante</th>
+    <th class="num">Capital de Giro</th></tr></thead><tbody>`;
+  for (const r of itens) {
+    const giro = r.circAtivo - r.circPass;
+    html += `<tr><td><b>${r.escola}</b></td>
+      <td class="num">${n(r.ativo)}</td><td class="num">${n(r.circAtivo)}</td>
+      <td class="num">${n(r.passPL)}</td><td class="num">${n(r.circPass)}</td>
+      <td class="num ${sinal(giro)}">${n(giro)}</td></tr>`;
+  }
+  const t = itens.reduce((s, r) => ({ ativo: s.ativo + r.ativo, circAtivo: s.circAtivo + r.circAtivo,
+    passPL: s.passPL + r.passPL, circPass: s.circPass + r.circPass }), { ativo:0, circAtivo:0, passPL:0, circPass:0 });
+  html += `<tr class="total"><td>TOTAL</td><td class="num">${n(t.ativo)}</td>
+    <td class="num">${n(t.circAtivo)}</td><td class="num">${n(t.passPL)}</td>
+    <td class="num">${n(t.circPass)}</td><td class="num">${n(t.circAtivo - t.circPass)}</td></tr>`;
+  html += `</tbody></table></div>`;
+  return painel(`Balanço por Unidade — ${NOMES_MESES[mes - 1]}/${ano}`,
+    "Ativo e passivo de cada escola, pelo departamento em que a conta foi lançada. " +
+    "Capital de giro = ativo circulante − passivo circulante.", html);
+});
+
+/* 3. DRE ----------------------------------------------------------- */
+registra("dre", "DRE", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const porAno = colunas.map(c => dreAno(c.ano, c.mes));
+  const blocos = [...new Set(porAno.flatMap(d => [...d.porBloco.keys()]))];
+  const receitas = blocos.filter(b => BLOCOS_RECEITA.has(b));
+  const despesas = blocos.filter(b => !BLOCOS_RECEITA.has(b));
+
+  let html = cabecalhoAnos("Bloco", colunas);
+  html += `<tr class="grupo"><td>RECEITAS</td>` +
+    porAno.map(d => `<td class="num">${n(d.receita)}</td>`).join("") + `</tr>`;
+  for (const b of receitas)
+    html += `<tr class="sub"><td>${b}</td>` +
+      porAno.map(d => `<td class="num">${n(d.porBloco.get(b) || 0)}</td>`).join("") + `</tr>`;
+  html += `<tr class="grupo"><td>DESPESAS</td>` +
+    porAno.map(d => `<td class="num">${n(d.despesa)}</td>`).join("") + `</tr>`;
+  for (const b of despesas)
+    html += `<tr class="sub"><td>${b}</td>` +
+      porAno.map(d => `<td class="num">${n(-(d.porBloco.get(b) || 0))}</td>`).join("") + `</tr>`;
+  html += `<tr class="total"><td>RESULTADO</td>` +
+    porAno.map(d => `<td class="num ${sinal(d.total)}">${n(d.total)}</td>`).join("") + `</tr>`;
+  html += `<tr><td>Margem sobre a receita</td>` +
+    porAno.map(d => `<td class="num">${pct(d.receita ? d.total / d.receita : null)}</td>`).join("") + `</tr>`;
+  html += `</tbody></table></div>`;
+  return painel("Demonstração do Resultado",
+    "Blocos da DRE em cada ano. O ano corrente vai até o último mês com lançamento.", html);
+});
+
+/* 4. DRE POR UNIDADE ----------------------------------------------- */
+registra("dre-unidade", "DRE Unidades", () => {
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const porEscola = new Map();
+  for (const l of linhasDRE) {
+    if (l.Ano !== ano || l.Mes > mes || !l.dep) continue;
+    const { escola } = partesDepto(l.dep, l.depNome);
+    const reg = porEscola.get(escola) || { rec: 0, desp: 0, res: 0 };
+    reg.res += l.saldo;
+    if (BLOCOS_RECEITA.has(l.dre3)) reg.rec += l.saldo; else reg.desp -= l.saldo;
+    porEscola.set(escola, reg);
+  }
+  const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }))
+    .sort((a, b) => b.rec - a.rec);
+  if (!itens.length) return painel("DRE por Unidade", "Sem departamento na planilha.", "");
+
+  const totRec = itens.reduce((s, r) => s + r.rec, 0);
+  let html = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
+    <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
+    <th class="num">(=) Resultado</th><th class="num">(÷) Margem</th>
+    <th class="num">(AV) % da Receita</th></tr></thead><tbody>`;
+  for (const r of itens) {
+    const m = r.rec > 5000 ? r.res / r.rec : null;
+    html += `<tr><td><b>${r.escola}</b></td><td class="num">${n(r.rec)}</td>
+      <td class="num">${n(r.desp)}</td><td class="num ${sinal(r.res)}">${n(r.res)}</td>
+      <td class="num">${Math.abs(m) <= 3 ? pct(m) : "—"}</td>
+      <td class="num">${pct(totRec ? r.rec / totRec : null)}</td></tr>`;
+  }
+  const tRes = itens.reduce((s, r) => s + r.res, 0);
+  html += `<tr class="total"><td>TOTAL</td><td class="num">${n(totRec)}</td>
+    <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
+    <td class="num ${sinal(tRes)}">${n(tRes)}</td><td></td><td></td></tr></tbody></table></div>`;
+  return painel(`DRE por Unidade — ${ano} até ${NOMES_MESES[mes - 1]}`,
+    "Receita e despesa lançadas no departamento de cada escola.", html);
+});
+
+/* 5. CAPITAL OPERATIVO --------------------------------------------- */
+const PERC_MINIMO = 0.26;   // % das despesas essenciais recomendado
+registra("capital", "Capital Operativo", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const linhas = colunas.map(c => {
+    // despesas essenciais sempre em 12 meses, como manda o modelo
+    const d = dreJanela12(c.ano, c.mes);
+    const analiticas = despesasAnaliticas12(c.ano, c.mes);
+    let deprec = 0;
+    for (const [conta, r] of analiticas)
+      if (conta.startsWith("4123") || /deprecia|amortiza/i.test(r.nome || "")) deprec += r.total;
+    const subvRec = d.porBloco.get("Subvenções Recebidas") || 0;
+    const outorg = -(d.porBloco.get("Outorgamentos") || 0);
+    const subvLiq = outorg - subvRec;
+    const operacionais = d.despesa - deprec - outorg;
+    const essenciais = operacionais + deprec + subvLiq;
+    const bal = balanco(c.ano, c.mes);
+    let circAtivo = 0, circPass = 0;
+    for (const x of bal.contas) { if (x.og === 1) circAtivo += x.total; if (x.og === 3) circPass += x.total; }
+    const disponivel = circAtivo - circPass;
+    const minimo = essenciais * PERC_MINIMO;
+    return { ...c, operacionais, deprec, subvLiq, essenciais, circAtivo, circPass,
+             disponivel, minimo, superavit: disponivel - minimo,
+             meses: essenciais ? disponivel / (essenciais / 12) : null,
+             perc: minimo ? disponivel / minimo : null };
+  });
+
+  const linha = (rotulo, campo, classe = "sub", f = n) =>
+    `<tr class="${classe}"><td>${rotulo}</td>` +
+    linhas.map(l => `<td class="num">${f(l[campo])}</td>`).join("") + `</tr>`;
+
+  let html = `<div class="rolagem"><table><thead><tr><th>Base de cálculo</th>` +
+    colunas.map(c => `<th class="num">${c.ano}${c.mes < 12 ? " até " + NOMES_MESES[c.mes - 1] : ""}</th>`).join("") +
+    `</tr></thead><tbody>`;
+  html += `<tr class="grupo"><td>DESPESAS ESSENCIAIS (12 meses)</td>` + linhas.map(() => `<td></td>`).join("") + `</tr>`;
+  html += linha("Despesas Operacionais", "operacionais");
+  html += linha("(+) Depreciação / Amortização", "deprec");
+  html += linha("(+) Subvenções Líquidas", "subvLiq");
+  html += linha("TOTAL DE DESPESAS ESSENCIAIS", "essenciais", "total");
+  html += `<tr class="grupo"><td>CAPITAL OPERATIVO DISPONÍVEL</td>` + linhas.map(() => `<td></td>`).join("") + `</tr>`;
+  html += linha("Ativo Circulante", "circAtivo");
+  html += linha("(−) Passivo Circulante", "circPass");
+  html += linha("CAPITAL OPERATIVO DISPONÍVEL", "disponivel", "total");
+  html += `<tr class="grupo"><td>MÍNIMO RECOMENDADO (${pct(PERC_MINIMO)} das essenciais)</td>` +
+    linhas.map(() => `<td></td>`).join("") + `</tr>`;
+  html += linha("Mínimo recomendado", "minimo");
+  html += linha("Superávit / (Déficit) do mínimo", "superavit", "total");
+  html += linha("Capital operativo em meses", "meses", "sub", v => v == null ? "—" : fmtP.format(v));
+  html += linha("% do mínimo recomendado", "perc", "sub", pct);
+  html += `</tbody></table></div>`;
+
+  const ult = linhas[linhas.length - 1];
+  const cartoes = `<div class="cartoes" style="grid-template-columns:repeat(4,1fr)">
+    <div class="cartao"><div class="titulo">Capital Operativo Disponível</div>
+      <div class="valor ${sinal(ult.disponivel)}">${n(ult.disponivel)}</div>
+      <div class="faixa">ativo circ. − passivo circ.</div></div>
+    <div class="cartao"><div class="titulo">Mínimo Recomendado</div>
+      <div class="valor">${n(ult.minimo)}</div><div class="faixa">${pct(PERC_MINIMO)} das essenciais</div></div>
+    <div class="cartao"><div class="titulo">Superávit / Déficit</div>
+      <div class="valor ${sinal(ult.superavit)}">${n(ult.superavit)}</div>
+      <div class="faixa">disponível − mínimo</div></div>
+    <div class="cartao"><div class="titulo">Cobertura</div>
+      <div class="valor">${ult.meses == null ? "—" : fmtP.format(ult.meses)}</div>
+      <div class="faixa">meses de despesa essencial</div></div></div>`;
+
+  return cartoes + painel("Base de cálculo do Capital Operativo",
+    "Mesma estrutura do modelo denominacional. As <b>despesas essenciais são sempre de 12 meses</b> — " +
+    "num ano ainda aberto, a janela fecha com os meses do ano anterior, senão o mínimo recomendado sairia " +
+    "subdimensionado. O saldo do capital é a posição do último mês de cada coluna. " +
+    "<b>Confira o sinal de \"Subvenções Líquidas\"</b>: está como outorgamentos enviados menos subvenções " +
+    "recebidas, seguindo o modelo que você mandou.", html);
+});
+
+/* 6. DISPONÍVEL E APLICAÇÕES --------------------------------------- */
+registra("disponivel", "Disponível e Aplicações", () => {
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const bal = balanco(ano, mes);
+  const disp = bal.contas.filter(c => c.sub === "Disponível").sort((a, b) => b.total - a.total);
+  const total = disp.reduce((s, c) => s + c.total, 0);
+
+  let html = `<div class="rolagem"><table><thead><tr><th>Conta</th><th>Descrição</th>
+    <th class="num">Saldo</th><th class="num">(AV) %</th></tr></thead><tbody>`;
+  for (const c of disp)
+    html += `<tr><td>${c.conta}</td><td>${c.nome || "—"}</td>
+      <td class="num">${n(c.total)}</td><td class="num">${pct(total ? c.total / total : null)}</td></tr>`;
+  html += `<tr class="total"><td></td><td>TOTAL DISPONÍVEL</td>
+    <td class="num">${n(total)}</td><td class="num">100,00%</td></tr></tbody></table></div>`;
+
+  // rendimento das aplicações (receita financeira)
+  const rend = anos.map(a => somaContas(a, a === ano ? mes : 12,
+    (conta, nome) => /rendiment|aplica/i.test(nome || "") && conta[0] === "3", false));
+  let htmlR = `<div class="rolagem"><table><thead><tr><th>Ano</th>
+    <th class="num">Rendimento de Aplicações</th></tr></thead><tbody>`;
+  anos.forEach((a, i) => { htmlR += `<tr><td>${a}</td><td class="num">${n(-rend[i])}</td></tr>`; });
+  htmlR += `</tbody></table></div>`;
+
+  return painel(`Disponível — ${NOMES_MESES[mes - 1]}/${ano}`,
+      "Caixa, bancos e aplicações financeiras, conta a conta.", html) +
+    painel("Rendimento das Aplicações", "Receita financeira reconhecida em cada ano.", htmlR);
+});
+
+/* 7. IMOBILIZADO E BENS EM FORMAÇÃO -------------------------------- */
+registra("imobilizado", "Imobilizado", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const imob = colunas.map(c => somaContas(c.ano, c.mes, co => co.startsWith("123") || co.startsWith("124"), true));
+  const bens = colunas.map(c => somaContas(c.ano, c.mes, co => co.startsWith("1231"), true));
+  const deprec = colunas.map(c => -somaContas(c.ano, c.mes,
+    (co, nome) => co.startsWith("4123") || /deprecia|amortiza/i.test(nome || ""), false));
+
+  let html = cabecalhoAnos("Item", colunas);
+  html += `<tr class="total"><td>Imobilizado + Intangível</td>` + imob.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  html += `<tr class="sub"><td>dos quais Bens em Formação</td>` + bens.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  html += `<tr class="sub"><td>Depreciação do período</td>` + deprec.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  html += `<tr><td>Crescimento sobre o ano anterior</td>` + imob.map((v, i) =>
+    `<td class="num">${i === 0 ? "—" : pct(imob[i - 1] ? v / imob[i - 1] - 1 : null)}</td>`).join("") + `</tr>`;
+  html += `</tbody></table></div>`;
+
+  // bens em formação, conta a conta
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const detalhe = new Map();
+  for (const d of dados) {
+    if (d.Subconta || d.Ano !== ano || d.Mes > mes) continue;
+    if (!d.Conta.startsWith("1231") || !ehAnalitica(d.Conta)) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    const reg = detalhe.get(d.Conta) || { nome: d.NomeConta, total: 0 };
+    reg.total += base; detalhe.set(d.Conta, reg);
+  }
+  let htmlB = `<div class="rolagem"><table><thead><tr><th>Conta</th><th>Descrição</th>
+    <th class="num">Saldo</th></tr></thead><tbody>`;
+  for (const [conta, r] of [...detalhe.entries()].sort((a, b) => b[1].total - a[1].total))
+    htmlB += `<tr><td>${conta}</td><td>${r.nome || "—"}</td><td class="num">${n(r.total)}</td></tr>`;
+  htmlB += `<tr class="total"><td></td><td>TOTAL</td><td class="num">${n(
+    [...detalhe.values()].reduce((s, r) => s + r.total, 0))}</td></tr></tbody></table></div>`;
+
+  return painel("Imobilizado", "Saldo acumulado do imobilizado e intangível em cada ano.", html) +
+    painel(`Bens em Formação — ${NOMES_MESES[mes - 1]}/${ano}`,
+      "Obras e aquisições ainda não transferidas para o imobilizado.", htmlB);
+});
+
+/* 8. PRESTAÇÃO DE SERVIÇO ------------------------------------------ */
+registra("prestacao", "Prestação de Serviço", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const serie = colunas.map(c => dreAno(c.ano, c.mes).porBloco.get("Prestação de Serviços") || 0);
+
+  let html = cabecalhoAnos("Prestação de Serviços", colunas);
+  html += `<tr class="total"><td>Receita de Prestação de Serviços</td>` +
+    serie.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  const mesLim = mesComparavel(anos[anos.length - 1]);
+  html += linhasCrescimento("Prestação de Serviços", serieBloco("Prestação de Serviços", mesLim), mesLim, false);
+  html += `</tbody></table></div>`;
+
+  // por escola
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const porEscola = new Map();
+  for (const l of linhasDRE) {
+    if (l.dre3 !== "Prestação de Serviços" || !l.dep) continue;
+    const { escola } = partesDepto(l.dep, l.depNome);
+    const reg = porEscola.get(escola) || anos.map(() => 0);
+    const i = anos.indexOf(l.Ano);
+    if (i >= 0 && l.Mes <= (l.Ano === ano ? mes : 12)) reg[i] += l.saldo;
+    porEscola.set(escola, reg);
+  }
+  let htmlE = cabecalhoAnos("Unidade", colunas);
+  const ordE = [...porEscola.entries()].sort((a, b) => b[1][anos.length - 1] - a[1][anos.length - 1]);
+  for (const [escola, v] of ordE)
+    htmlE += `<tr><td><b>${escola}</b></td>` + v.map(x => `<td class="num">${n(x)}</td>`).join("") + `</tr>`;
+  htmlE += `<tr class="total"><td>TOTAL</td>` + anos.map((_, i) =>
+    `<td class="num">${n(ordE.reduce((s, [, v]) => s + v[i], 0))}</td>`).join("") + `</tr></tbody></table></div>`;
+
+  return painel("Prestação de Serviço", "Faturamento do campo e crescimento ano a ano.", html) +
+    painel("Faturamento por Unidade", "A mesma receita, aberta por escola.", htmlE);
+});
+
+/* 9. PESSOAL -------------------------------------------------------- */
+registra("pessoal", "Despesas com Pessoal", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const porAno = colunas.map(c => dreAno(c.ano, c.mes));
+  const pessoal = porAno.map(d => -(d.porBloco.get("Despesas Com Pessoal") || 0));
+  const prest = porAno.map(d => d.porBloco.get("Prestação de Serviços") || 0);
+
+  let html = cabecalhoAnos("Pessoal", colunas);
+  html += `<tr class="total"><td>Despesas com Pessoal</td>` + pessoal.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  html += `<tr><td>% sobre a Prestação de Serviços</td>` + pessoal.map((v, i) =>
+    `<td class="num">${pct(prest[i] ? v / prest[i] : null)}</td>`).join("") + `</tr>`;
+  const mesLimP = mesComparavel(anos[anos.length - 1]);
+  html += linhasCrescimento("Despesas com Pessoal", serieBloco("Despesas Com Pessoal", mesLimP), mesLimP, true);
+  html += `</tbody></table></div>`;
+
+  // abertura por conta no ano corrente
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const porConta = new Map();
+  for (const l of linhasDRE) {
+    if (l.Ano !== ano || l.Mes > mes || l.dre3 !== "Despesas Com Pessoal") continue;
+    const reg = porConta.get(l.conta) || { nome: l.nome, total: 0 };
+    reg.total -= l.saldo; porConta.set(l.conta, reg);
+  }
+  const ordC = [...porConta.entries()].sort((a, b) => b[1].total - a[1].total);
+  const totC = ordC.reduce((s, [, r]) => s + r.total, 0);
+  let htmlC = `<div class="rolagem"><table><thead><tr><th>Conta</th><th>Descrição</th>
+    <th class="num">Valor</th><th class="num">(AV) %</th></tr></thead><tbody>`;
+  for (const [conta, r] of ordC)
+    htmlC += `<tr><td>${conta}</td><td>${r.nome || "—"}</td><td class="num">${n(r.total)}</td>
+      <td class="num">${pct(totC ? r.total / totC : null)}</td></tr>`;
+  htmlC += `<tr class="total"><td></td><td>TOTAL</td><td class="num">${n(totC)}</td>
+    <td class="num">100,00%</td></tr></tbody></table></div>`;
+
+  return painel("Despesas com Pessoal", "Evolução e peso sobre a receita de serviços.", html) +
+    painel(`Composição — ${ano} até ${NOMES_MESES[mes - 1]}`, "Conta a conta.", htmlC);
+});
+
+/* 10. ADMINISTRATIVAS E GERAIS -------------------------------------- */
+registra("adm", "Administrativas e Gerais", () => {
+  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const porAno = colunas.map(c => dreAno(c.ano, c.mes));
+  const adm = porAno.map(d => -(d.porBloco.get("Administrativas e Gerais") || 0));
+  const prest = porAno.map(d => d.porBloco.get("Prestação de Serviços") || 0);
+
+  let html = cabecalhoAnos("Administrativas e Gerais", colunas);
+  html += `<tr class="total"><td>Despesas Administrativas e Gerais</td>` + adm.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  html += `<tr><td>% sobre a Prestação de Serviços</td>` + adm.map((v, i) =>
+    `<td class="num">${pct(prest[i] ? v / prest[i] : null)}</td>`).join("") + `</tr>`;
+  const mesLimA = mesComparavel(anos[anos.length - 1]);
+  html += linhasCrescimento("Administrativas e Gerais", serieBloco("Administrativas e Gerais", mesLimA), mesLimA, true);
+  html += `</tbody></table></div>`;
+  return painel("Despesas Administrativas e Gerais", "Evolução e peso sobre a receita.", html);
+});
+
+/* 11. MAIORES DESPESAS ---------------------------------------------- */
+registra("ranking", "20 Maiores Despesas", () => {
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  // contas ANALÍTICAS de despesa (não as sintéticas do De/Para da DRE),
+  // que é o nível em que o modelo lista as maiores despesas
+  const analiticas = despesasAnaliticas12(ano, mes);
+  // Fora da conta: depreciação (como no modelo) e TRANSFERÊNCIAS INTERNAS —
+  // contas "TI-" e as contrapartidas "(-)Transf." andam em par e se anulam;
+  // deixá-las dentro colocaria no topo do ranking dinheiro que nunca saiu.
+  const ehTransfInterna = (conta, nome) => /^TI-|^\(-\)\s*Transf|Transf\. p\//i.test(nome || "");
+  const porConta = new Map(); const excluidas = []; const contras = [];
+  for (const [conta, r] of analiticas) {
+    if (conta.startsWith("4123") || /deprecia|amortiza/i.test(r.nome || "")) continue;
+    if (ehTransfInterna(conta, r.nome)) {
+      if (r.total > 0) excluidas.push([conta, r]); else contras.push([conta, r]);
+      continue;
+    }
+    if (r.total <= 0) { contras.push([conta, r]); continue; }
+    porConta.set(conta, r);
+  }
+  const totContra = contras.reduce((s, [, r]) => s + r.total, 0);
+  const ord = [...porConta.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 20);
+  const totGeral = [...porConta.values()].reduce((s, r) => s + r.total, 0);
+  const somaTop = ord.reduce((s, [, r]) => s + r.total, 0);
+  const maior = ord.length ? ord[0][1].total : 0;
+
+  let html = `<div class="rolagem"><table><thead><tr><th>#</th><th>Conta</th><th>Descrição</th>
+    <th class="num">Valor (12 meses)</th><th class="num">(AV) %</th></tr></thead><tbody>`;
+  ord.forEach(([conta, r], i) => {
+    const w = maior ? (r.total / maior * 100).toFixed(1) : 0;
+    html += `<tr><td>${i + 1}</td><td>${conta}</td><td>${r.nome || "—"}</td>
+      <td class="num" style="background:linear-gradient(to left, rgba(44,95,124,.16) ${w}%, transparent ${w}%)">${n(r.total)}</td>
+      <td class="num">${pct(totGeral ? r.total / totGeral : null)}</td></tr>`;
+  });
+  html += `<tr class="total"><td></td><td></td><td>SOMA DAS 20 MAIORES</td>
+    <td class="num">${n(somaTop)}</td>
+    <td class="num">${pct(totGeral ? somaTop / totGeral : null)}</td></tr>`;
+  html += `<tr><td></td><td></td><td>Despesa bruta (${porConta.size} contas)</td>
+    <td class="num">${n(totGeral)}</td><td class="num">100,00%</td></tr>`;
+  html += `<tr><td></td><td></td><td>(−) Transferências e reclassificações</td>
+    <td class="num">${n(totContra)}</td><td class="num">${pct(totGeral ? totContra / totGeral : null)}</td></tr>`;
+  html += `<tr class="total"><td></td><td></td><td>(=) DESPESA LÍQUIDA</td>
+    <td class="num">${n(totGeral + totContra)}</td><td class="num"></td></tr>`;
+  html += `</tbody></table></div>`;
+
+  let nota = "";
+  if (excluidas.length) {
+    const ord2 = excluidas.sort((a, b) => b[1].total - a[1].total).slice(0, 6);
+    nota = `<div class="aviso" style="margin-top:12px"><b>Transferências internas fora do ranking.</b>
+      Estas contas têm contrapartida de mesmo valor e se anulam — entrariam no topo sem representar
+      saída de dinheiro: ` + ord2.map(([c, r]) => `${c} ${r.nome} (${n(r.total)})`).join("; ") +
+      `. Repare também que contas como <b>4122507</b> aparecem pelo valor <b>bruto</b>: boa parte vira
+      imobilizado via "(−)Transf. p/Imobilizado", que está na linha de transferências no rodapé.
+      Se alguma dessas contas for despesa de verdade para a sua análise, me avise que eu trago de volta.</div>`;
+  }
+  return painel(`20 Maiores Despesas — 12 meses até ${NOMES_MESES[mes - 1]}/${ano}`,
+    "Contas analíticas, desconsiderando depreciação e amortização, como no modelo.", html + nota);
+});
+
+/* ---------- helpers de montagem ---------- */
+function cabecalhoAnos(rotulo, colunas) {
+  return `<div class="rolagem"><table><thead><tr><th>${rotulo}</th>` +
+    colunas.map(c => `<th class="num">${c.ano}${c.mes < 12 ? " até " + NOMES_MESES[c.mes - 1] : ""}</th>`).join("") +
+    `</tr></thead><tbody>`;
+}
+function painel(titulo, desc, html) {
+  return `<div class="painel"><h2>${titulo}</h2><p class="desc">${desc}</p>${html}</div>`;
+}
+
+/* ---------- navegação ---------- */
+let blocoAtivo = BLOCOS[0].id;
+function montarNavegacao() {
+  document.getElementById("navegacao").innerHTML = BLOCOS.map(b =>
+    `<button type="button" class="nav-btn${b.id === blocoAtivo ? " ativa" : ""}" data-bloco="${b.id}">${b.titulo}</button>`).join("");
+  document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => {
+    blocoAtivo = b.dataset.bloco; montarNavegacao(); desenhar();
+  }));
+}
+function desenhar() {
+  const bloco = BLOCOS.find(b => b.id === blocoAtivo);
+  try {
+    document.getElementById("conteudo").innerHTML = bloco.render();
+  } catch (e) {
+    document.getElementById("conteudo").innerHTML =
+      `<div class="painel"><div class="aviso">Não consegui montar "${bloco.titulo}": ${e.message}</div></div>`;
+  }
+  window.scrollTo(0, 0);
+}
+
+carregar().then(() => { montarNavegacao(); desenhar(); })
+  .catch(e => {
+    document.getElementById("conteudo").innerHTML =
+      `<div class="painel"><div class="aviso"><b>Não consegui carregar os dados:</b> ${e.message}<br>
+       Esta página lê a mesma planilha do painel (<code>../dados.xlsx</code>).</div></div>`;
+  });
+</script>
+</body>
+</html>
