@@ -140,18 +140,22 @@ function classificaBP(conta) {
 /* ---------- escola/serviço a partir do departamento ---------- */
 const ESCOLAS = { "3310":"Sede","3311":"CAL","3312":"CAM","3313":"EAM",
                   "3314":"EAC","3315":"EAA","3316":"CALGP","3317":"CAME" };
+/* A escola sai do CÓDIGO do departamento, não do nome: a contabilidade chama
+   de "CAM" e o APS de "CAM-Z4", e os dois precisam cair na mesma linha. */
 function partesDepto(cod, nome) {
   let p = String(nome || "").split(" - ").map(s => s.trim()).filter(Boolean);
   if (p.length && /^\d+$/.test(p[0])) p = p.slice(1);
-  const porCodigo = ESCOLAS[String(cod).slice(0, 4)] || "Outros";
-  if (p.length >= 2) return { escola: p[0], servico: p.slice(1).join(" - ") };
-  return { escola: porCodigo, servico: p[0] || String(cod) };
+  const porCodigo = ESCOLAS[String(cod).slice(0, 4)];
+  const servico = p.length >= 2 ? p.slice(1).join(" - ") : (p[0] || String(cod));
+  if (porCodigo) return { escola: porCodigo, servico };
+  return { escola: p.length >= 2 ? p[0] : "Outros", servico };
 }
 
 /* ---------- estado ---------- */
 let dados = [];        // linhas brutas da aba Dados
 let regrasDRE = [];    // De/Para da DRE
 let linhasDRE = [];    // linhas já com sinal da DRE aplicado
+let pessoal = [];      // movimentação de funcionários e rescisões (já agregada)
 let anos = [];
 let ehAnalitica = () => true;
 let mesFimAno = {};    // ano -> último mês com movimento
@@ -164,12 +168,13 @@ async function carregar() {
   if (!resp.ok) throw new Error("não encontrei a planilha ../dados.xlsx");
   const wb = XLSX.read(await resp.arrayBuffer(), { type: "array" });
 
-  let abaDados = null, abaDRE = null, abaMeta = null;
+  let abaDados = null, abaDRE = null, abaMeta = null, abaPessoal = null;
   for (const nome of wb.SheetNames) {
     const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
     if (!json.length) continue;
     const cols = Object.keys(json[0]).map(k => k.trim().toLowerCase());
-    if (!abaMeta && cols.includes("chave") && cols.includes("valor")) abaMeta = json;
+    if (!abaPessoal && cols.includes("tipo") && cols.includes("quantidade")) abaPessoal = json;
+    else if (!abaMeta && cols.includes("chave") && cols.includes("valor")) abaMeta = json;
     else if (!abaDRE && cols.includes("sinal") && cols.includes("conta")) abaDRE = json;
     else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
   }
@@ -206,6 +211,17 @@ async function carregar() {
         dre2: String(val(l, "dre 2") ?? "").trim(),
         dre3: String(val(l, "dre 3") ?? "").trim(),
       }));
+  }
+  if (abaPessoal) {
+    pessoal = abaPessoal.map(l => ({
+      tipo: String(val(l, "tipo") ?? "").trim(),
+      ano: +val(l, "ano") || 0,
+      mes: +val(l, "mes") || 0,
+      dep: limpa(val(l, "departamento")),
+      depNome: String(val(l, "nome_depto") ?? "").trim(),
+      qtd: +val(l, "quantidade") || 0,
+      valor: +val(l, "valor") || 0,
+    })).filter(p => p.tipo);
   }
   if (abaMeta) {
     const linha = abaMeta.find(l => String(val(l, "chave") ?? "").trim().toLowerCase() === "atualizado");
@@ -767,6 +783,131 @@ registra("pessoal", "Despesas com Pessoal", () => {
 
   return painel("Despesas com Pessoal", "Evolução e peso sobre a receita de serviços.", html) +
     painel(`Composição — ${ano} até ${NOMES_MESES[mes - 1]}`, "Conta a conta.", htmlC);
+});
+
+/* 9b. MOVIMENTAÇÃO DE FUNCIONÁRIOS ---------------------------------- */
+registra("funcionarios", "Movimentação de Funcionários", () => {
+  if (!pessoal.length) return painel("Movimentação de Funcionários",
+    "A planilha ainda não traz a aba de pessoal. Rode o Atualizar Dados uma vez.", "");
+
+  const soma = (tipo, ano) => pessoal.filter(p => p.tipo === tipo && (!ano || p.ano === ano))
+    .reduce((s, p) => s + p.qtd, 0);
+  const ativos = soma("Ativos");
+
+  // por ano
+  let html = cabecalhoAnos("Movimento", anos.map(a => ({ ano: a, mes: 12 })));
+  html += `<tr class="sub"><td>Admitidos no ano</td>` +
+    anos.map(a => `<td class="num">${n(soma("Admitidos", a))}</td>`).join("") + `</tr>`;
+  html += `<tr class="sub"><td>Desligados no ano</td>` +
+    anos.map(a => `<td class="num">${n(soma("Desligados", a))}</td>`).join("") + `</tr>`;
+  html += `<tr class="total"><td>Saldo do ano (admitidos − desligados)</td>` +
+    anos.map(a => { const v = soma("Admitidos", a) - soma("Desligados", a);
+      return `<td class="num ${sinal(v)}">${n(v)}</td>`; }).join("") + `</tr>`;
+  html += `<tr><td>Rotatividade sobre o quadro atual</td>` +
+    anos.map(a => `<td class="num">${pct(ativos ? soma("Desligados", a) / ativos : null)}</td>`).join("") + `</tr>`;
+  html += `</tbody></table></div>`;
+
+  // quadro atual por escola
+  const porEscola = new Map();
+  for (const p of pessoal) {
+    if (!p.dep) continue;
+    const { escola } = partesDepto(p.dep, p.depNome);
+    const reg = porEscola.get(escola) || { ativos: 0, adm: 0, des: 0 };
+    const anoAtual = anos[anos.length - 1];
+    if (p.tipo === "Ativos") reg.ativos += p.qtd;
+    if (p.tipo === "Admitidos" && p.ano === anoAtual) reg.adm += p.qtd;
+    if (p.tipo === "Desligados" && p.ano === anoAtual) reg.des += p.qtd;
+    porEscola.set(escola, reg);
+  }
+  const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }))
+    .filter(r => r.ativos || r.adm || r.des).sort((a, b) => b.ativos - a.ativos);
+  let htmlE = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
+    <th class="num">Ativos hoje</th><th class="num">Admitidos ${anos[anos.length - 1]}</th>
+    <th class="num">Desligados ${anos[anos.length - 1]}</th>
+    <th class="num">Saldo</th><th class="num">(AV) % do quadro</th></tr></thead><tbody>`;
+  const totA = itens.reduce((s, r) => s + r.ativos, 0);
+  for (const r of itens) {
+    const saldo = r.adm - r.des;
+    htmlE += `<tr><td><b>${r.escola}</b></td><td class="num">${n(r.ativos)}</td>
+      <td class="num">${n(r.adm)}</td><td class="num">${n(r.des)}</td>
+      <td class="num ${sinal(saldo)}">${n(saldo)}</td>
+      <td class="num">${pct(totA ? r.ativos / totA : null)}</td></tr>`;
+  }
+  htmlE += `<tr class="total"><td>TOTAL</td><td class="num">${n(totA)}</td>
+    <td class="num">${n(itens.reduce((s, r) => s + r.adm, 0))}</td>
+    <td class="num">${n(itens.reduce((s, r) => s + r.des, 0))}</td>
+    <td class="num">${n(itens.reduce((s, r) => s + r.adm - r.des, 0))}</td>
+    <td class="num">100,00%</td></tr></tbody></table></div>`;
+
+  const cartoes = `<div class="cartoes" style="grid-template-columns:repeat(3,1fr)">
+    <div class="cartao"><div class="titulo">Funcionários Ativos</div>
+      <div class="valor">${n(ativos)}</div><div class="faixa">quadro de hoje</div></div>
+    <div class="cartao"><div class="titulo">Admitidos em ${anos[anos.length - 1]}</div>
+      <div class="valor">${n(soma("Admitidos", anos[anos.length - 1]))}</div></div>
+    <div class="cartao"><div class="titulo">Desligados em ${anos[anos.length - 1]}</div>
+      <div class="valor">${n(soma("Desligados", anos[anos.length - 1]))}</div></div></div>`;
+
+  return cartoes + painel("Movimentação de Funcionários",
+      "Admissões e desligamentos por ano. O quadro de ativos é a foto de hoje, não do fim de cada ano.", html) +
+    painel("Quadro por Unidade", "Funcionários ativos e movimento do ano em cada escola.", htmlE);
+});
+
+/* 9c. RESCISÕES ------------------------------------------------------ */
+registra("rescisoes", "Rescisões", () => {
+  const resc = pessoal.filter(p => p.tipo === "Rescisao");
+  if (!resc.length) return painel("Rescisões",
+    "A planilha ainda não traz a aba de pessoal. Rode o Atualizar Dados uma vez.", "");
+
+  const porAno = anos.map(a => {
+    const f = resc.filter(p => p.ano === a);
+    return { pessoas: f.reduce((s, p) => s + p.qtd, 0), valor: f.reduce((s, p) => s + p.valor, 0) };
+  });
+  let html = cabecalhoAnos("Rescisões", anos.map(a => ({ ano: a, mes: 12 })));
+  html += `<tr class="sub"><td>Rescisões pagas</td>` +
+    porAno.map(r => `<td class="num">${n(r.pessoas)}</td>`).join("") + `</tr>`;
+  html += `<tr class="total"><td>Valor líquido pago</td>` +
+    porAno.map(r => `<td class="num">${n(r.valor)}</td>`).join("") + `</tr>`;
+  html += `<tr><td>Custo médio por rescisão</td>` +
+    porAno.map(r => `<td class="num">${n(r.pessoas ? r.valor / r.pessoas : null)}</td>`).join("") + `</tr>`;
+  html += `</tbody></table></div>`;
+
+  // mês a mês do ano corrente
+  const ano = anos[anos.length - 1];
+  let htmlM = `<div class="rolagem"><table><thead><tr><th>Mês</th>
+    <th class="num">Rescisões</th><th class="num">Valor líquido</th>
+    <th class="num">Custo médio</th></tr></thead><tbody>`;
+  let tq = 0, tv = 0;
+  for (let m = 1; m <= 12; m++) {
+    const f = resc.filter(p => p.ano === ano && p.mes === m);
+    if (!f.length) continue;
+    const q = f.reduce((s, p) => s + p.qtd, 0), v = f.reduce((s, p) => s + p.valor, 0);
+    tq += q; tv += v;
+    htmlM += `<tr><td>${NOMES_MESES[m - 1]}</td><td class="num">${n(q)}</td>
+      <td class="num">${n(v)}</td><td class="num">${n(q ? v / q : null)}</td></tr>`;
+  }
+  htmlM += `<tr class="total"><td>TOTAL ${ano}</td><td class="num">${n(tq)}</td>
+    <td class="num">${n(tv)}</td><td class="num">${n(tq ? tv / tq : null)}</td></tr></tbody></table></div>`;
+
+  // por escola no ano corrente
+  const porEscola = new Map();
+  for (const p of resc) {
+    if (p.ano !== ano || !p.dep) continue;
+    const { escola } = partesDepto(p.dep, p.depNome);
+    const reg = porEscola.get(escola) || { q: 0, v: 0 };
+    reg.q += p.qtd; reg.v += p.valor; porEscola.set(escola, reg);
+  }
+  let htmlE = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
+    <th class="num">Rescisões</th><th class="num">Valor líquido</th>
+    <th class="num">(AV) %</th></tr></thead><tbody>`;
+  const ordE = [...porEscola.entries()].sort((a, b) => b[1].v - a[1].v);
+  for (const [escola, r] of ordE)
+    htmlE += `<tr><td><b>${escola}</b></td><td class="num">${n(r.q)}</td>
+      <td class="num">${n(r.v)}</td><td class="num">${pct(tv ? r.v / tv : null)}</td></tr>`;
+  htmlE += `</tbody></table></div>`;
+
+  return painel("Rescisões", "Quantidade e custo líquido das rescisões em cada ano.", html) +
+    painel(`Rescisões mês a mês — ${ano}`, "Valor pago no mês do desligamento.", htmlM) +
+    painel(`Rescisões por Unidade — ${ano}`, "Onde o custo se concentrou.", htmlE);
 });
 
 /* 10. ADMINISTRATIVAS E GERAIS -------------------------------------- */
