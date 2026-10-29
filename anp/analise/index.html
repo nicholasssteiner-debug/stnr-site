@@ -57,6 +57,25 @@
   tr.total td { background: #e3ecf3; font-weight: 700; border-top: 2px solid var(--azul-tabela); }
   tr.sub td:first-child { padding-left: 26px; color: #566; }
   .rolagem { overflow-x: auto; }
+
+  /* Balanço no formato da demonstração: seções, grupos com régua e itens recuados */
+  table.bp tbody td { border-bottom: none; padding: 3px 10px; }
+  table.bp tr.bp-secao td { padding-top: 14px; font-weight: 700; font-size: 14px;
+    color: var(--azul-escuro); letter-spacing: .3px; }
+  table.bp tr.bp-grupo td { font-weight: 700; padding-top: 7px; }
+  table.bp tr.bp-grupo td.num { border-bottom: 2px solid #8aa8bd; }
+  table.bp tr.bp-item td { color: #4a5a68; }
+  table.bp tr.bp-item td:nth-child(2) { padding-left: 4px; }
+  table.bp td.bp-cod { color: #94a7b6; font-size: 12px; white-space: nowrap; width: 54px; }
+  table.bp tr.bp-total td { font-weight: 700; padding: 8px 10px; background: #eef3f8;
+    border-top: 2px solid var(--azul-tabela); border-bottom: 2px solid var(--azul-tabela); }
+  table.bp tr.bp-conf td { padding-top: 10px; color: #778; font-size: 12.5px; }
+  table.bp tr.bp-item:hover td { background: #f6f9fb; }
+  /* descrição numa linha só e colunas de ano com largura confortável */
+  table.bp td:nth-child(2), table.bp tr.bp-grupo td:first-child,
+  table.bp tr.bp-total td:first-child { white-space: nowrap; min-width: 300px; }
+  table.bp th.num, table.bp td.num { min-width: 128px; }
+  table.bp thead th:first-child { width: 54px; }
   .positivo { color: #2e7d4f; } .negativo { color: #b3423a; }
   .selo { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
   .selo-ok { background: #e2f3e8; color: #2e7d4f; } .selo-alerta { background: #fbe4e2; color: #b3423a; }
@@ -128,6 +147,57 @@ const MAPA_BP = [
   ["2311000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
   ["2320000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
 ];
+/* Estrutura oficial do balanço denominacional (códigos A1xx/A2xx), ligada ao
+   nosso plano de contas por PREFIXO. A casa mais específica ganha: "1113"
+   (aplicações) tem de ser testada antes de "111" (caixa e bancos). */
+const ESTRUTURA_BP = [
+  { secao: "ATIVO", grupos: [
+    { titulo: "ATIVO CIRCULANTE", itens: [
+      ["A111", "Caixa e Equivalentes de Caixa", ["1111", "1112"]],
+      ["A112", "Aplicações Financeiras", ["1113"]],
+      ["A113", "Contas a Receber", ["113"]],
+      ["A114", "Estoques", ["114"]],
+      ["A116", "Despesas Antecipadas", ["116"]],
+      ["", "Outras Contas do Circulante", ["115", "117", "118", "119", "110"]],
+    ]},
+    { titulo: "ATIVO NÃO CIRCULANTE", itens: [
+      ["A121", "Realizável a Longo Prazo", ["121"]],
+      ["A131", "Investimentos", ["122"]],
+      ["A132", "Imobilizado", ["123"]],
+      ["A133", "Intangível", ["124"]],
+      ["", "Outras Contas do Não Circulante", ["125", "126", "127", "128", "129", "120"]],
+    ]},
+  ]},
+  { secao: "PASSIVO", grupos: [
+    { titulo: "PASSIVO CIRCULANTE", itens: [
+      ["A213", "Contas a Pagar", ["213"]],
+      ["A214", "Passivos por Competência e Outros", ["214"]],
+      ["A215", "Fundos em Confiança", ["215"]],
+      ["A216", "Adiantamentos Recebidos", ["216"]],
+      ["", "Outras Contas do Circulante", ["210", "211", "212", "217", "218", "219"]],
+    ]},
+    { titulo: "PASSIVO NÃO CIRCULANTE", itens: [
+      ["A221", "Exigível a Longo Prazo", ["22"]],
+    ]},
+  ]},
+];
+/* prefixo -> item, do mais longo para o mais curto */
+const ITENS_BP = (() => {
+  const lista = [];
+  for (const s of ESTRUTURA_BP)
+    for (const g of s.grupos)
+      for (const [cod, nome, prefixos] of g.itens)
+        for (const p of prefixos) lista.push({ p, cod, nome, grupo: g.titulo, secao: s.secao });
+  return lista.sort((a, b) => b.p.length - a.p.length);
+})();
+const ehPL = conta => conta.startsWith("23");
+function itemBP(conta) {
+  for (const i of ITENS_BP) if (conta.startsWith(i.p)) return i;
+  return conta[0] === "1"
+    ? { cod: "", nome: "Outras Contas do Ativo", grupo: "ATIVO NÃO CIRCULANTE", secao: "ATIVO" }
+    : { cod: "", nome: "Outras Contas do Passivo", grupo: "PASSIVO CIRCULANTE", secao: "PASSIVO" };
+}
+
 const GRUPOS_BP = MAPA_BP
   .map(([c, grupo, og, sub, os]) => ({ prefixo: c.replace(/0+$/, ""), grupo, og, sub, os }))
   .sort((a, b) => b.prefixo.length - a.prefixo.length);
@@ -272,8 +342,17 @@ function preparar() {
 }
 
 /* ---------- cálculos ---------- */
-const BLOCOS_RECEITA = new Set(["Prestação de Serviços", "Dízimo Líquidos de Repasses",
-  "Subvenções Recebidas", "Outras Receitas Recorrentes", "Doações E Contribuições Recebidas"]);
+/* Nomes dos blocos da DRE, iguais aos do De/Para (aba "Contas DRE"). */
+const DRE3 = {
+  prest: "Prestação de Serviços",
+  dizimo: "Dízimo Líquidos de Repasses",
+  pessoal: "Despesas Com Pessoal",
+  adm: "Administrativas e Gerais",
+  educ: "Educação, Assistência E Orientação Social",
+  subv: "Subvenções Recebidas",
+};
+const BLOCOS_RECEITA = new Set([DRE3.prest, DRE3.dizimo, DRE3.subv,
+  "Outras Receitas Recorrentes", "Doações E Contribuições Recebidas"]);
 
 /* Saldo de balanço por conta analítica, acumulado da abertura até mesFim. */
 function balanco(ano, mesFim) {
@@ -421,45 +500,86 @@ const registra = (id, titulo, render) => BLOCOS.push({ id, titulo, render });
 /* 1. BALANÇO ------------------------------------------------------- */
 registra("balanco", "Balanço", () => {
   const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
-  const dadosAno = colunas.map(c => balanco(c.ano, c.mes));
 
-  // agrupa por grupo/subgrupo
-  const linhas = new Map();   // "og|grupo|os|sub" -> valores por ano
-  dadosAno.forEach((bal, i) => {
-    for (const c of bal.contas) {
-      const k = [c.og, c.grupo, c.os, c.sub].join("|");
-      const reg = linhas.get(k) || { og: c.og, grupo: c.grupo, os: c.os, sub: c.sub, v: anos.map(() => 0) };
-      reg.v[i] += c.total;
-      linhas.set(k, reg);
+  // saldo de cada item do balanço em cada ano + a abertura e o movimento do PL
+  const porAno = colunas.map(c => {
+    const itens = new Map();              // "secao|grupo|cod|nome" -> valor
+    let plAbertura = 0, plMovimento = 0;
+    for (const d of dados) {
+      if (d.Subconta) continue;
+      const g = d.Conta[0];
+      if (g !== "1" && g !== "2") continue;
+      if (d.Ano !== c.ano || d.Mes > c.mes) continue;
+      if (!ehAnalitica(d.Conta)) continue;
+      const base = d.Mes === 12 ? d.Ajust : d.Legal;
+      if (!base) continue;
+      if (ehPL(d.Conta)) {                // patrimônio: separa abertura de movimento
+        if (d.Mes === 0) plAbertura += -base; else plMovimento += -base;
+        continue;
+      }
+      const it = itemBP(d.Conta);
+      const valor = it.secao === "ATIVO" ? base : -base;
+      const k = [it.secao, it.grupo, it.cod, it.nome].join("|");
+      itens.set(k, (itens.get(k) || 0) + valor);
     }
+    const resultado = dreAno(c.ano, c.mes).total;
+    return { itens, plAbertura, variacao: plMovimento + resultado,
+             pl: plAbertura + plMovimento + resultado };
   });
-  const ord = [...linhas.values()].sort((a, b) => a.og - b.og || a.os - b.os);
 
-  let html = cabecalhoAnos("Grupo", colunas);
-  let grupoAtual = null;
-  for (const l of ord) {
-    if (l.grupo !== grupoAtual) {
-      grupoAtual = l.grupo;
-      const tot = anos.map((_, i) => ord.filter(x => x.grupo === l.grupo).reduce((s, x) => s + x.v[i], 0));
-      html += `<tr class="grupo"><td>${l.grupo}</td>` + tot.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+  const v = (k, i) => porAno[i].itens.get(k) || 0;
+  const soma = (filtro, i) => {
+    let s = 0;
+    for (const [k, val] of porAno[i].itens) if (filtro(k.split("|"))) s += val;
+    return s;
+  };
+  const cel = x => `<td class="num">${x ? n(x) : "–"}</td>`;
+
+  let html = `<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>` +
+    colunas.map(c => `<th class="num">${c.ano}${c.mes < 12 ? "<br><span style=\"font-weight:400;font-size:11px\">até " + NOMES_MESES[c.mes - 1] + "</span>" : ""}</th>`).join("") +
+    `</tr></thead><tbody>`;
+
+  for (const s of ESTRUTURA_BP) {
+    html += `<tr class="bp-secao"><td colspan="${colunas.length + 2}">${s.secao}</td></tr>`;
+    for (const g of s.grupos) {
+      html += `<tr class="bp-grupo"><td colspan="2">${g.titulo}</td>` +
+        colunas.map((_, i) => cel(soma(pt => pt[0] === s.secao && pt[1] === g.titulo, i))).join("") + `</tr>`;
+      for (const [cod, nome] of g.itens) {
+        const k = [s.secao, g.titulo, cod, nome].join("|");
+        const vals = colunas.map((_, i) => v(k, i));
+        if (!vals.some(x => x)) continue;          // item zerado em todos os anos não aparece
+        html += `<tr class="bp-item"><td class="bp-cod">${cod}</td><td>${nome}</td>` +
+          vals.map(cel).join("") + `</tr>`;
+      }
     }
-    html += `<tr class="sub"><td>${l.sub}</td>` + l.v.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
+    if (s.secao === "ATIVO")
+      html += `<tr class="bp-total"><td colspan="2">TOTAL DO ATIVO</td>` +
+        colunas.map((_, i) => cel(soma(pt => pt[0] === "ATIVO", i))).join("") + `</tr>`;
   }
-  // totais e conferência
-  html += `<tr class="total"><td>TOTAL DO ATIVO</td>` +
-    dadosAno.map(b => `<td class="num">${n(b.ativo)}</td>`).join("") + `</tr>`;
-  const resultados = colunas.map(c => dreAno(c.ano, c.mes).total);
-  html += `<tr class="total"><td>TOTAL DO PASSIVO + PL + RESULTADO</td>` +
-    dadosAno.map((b, i) => `<td class="num">${n(b.passPL + resultados[i])}</td>`).join("") + `</tr>`;
-  html += `<tr><td>Diferença</td>` + dadosAno.map((b, i) => {
-    const dif = b.ativo - (b.passPL + resultados[i]);
-    return `<td class="num"><span class="selo ${Math.abs(dif) < 1 ? "selo-ok" : "selo-alerta"}">${n(dif)}</span></td>`;
-  }).join("") + `</tr>`;
+
+  // Patrimônio Líquido no formato do modelo: saldo inicial + variação
+  html += `<tr class="bp-grupo"><td colspan="2">PATRIMÔNIO LÍQUIDO</td>` +
+    porAno.map(a => cel(a.pl)).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td class="bp-cod">A231</td><td>Saldo Inicial 01/01</td>` +
+    porAno.map(a => cel(a.plAbertura)).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td class="bp-cod"></td><td><b>Variação Patrimonial</b></td>` +
+    porAno.map(a => cel(a.variacao)).join("") + `</tr>`;
+
+  const totPass = colunas.map((_, i) => soma(pt => pt[0] === "PASSIVO", i) + porAno[i].pl);
+  html += `<tr class="bp-total"><td colspan="2">TOTAL DO PASSIVO E PATR. LÍQUIDO</td>` +
+    totPass.map(cel).join("") + `</tr>`;
+  html += `<tr class="bp-conf"><td colspan="2">Conferência (ativo − passivo)</td>` +
+    colunas.map((_, i) => {
+      const dif = soma(pt => pt[0] === "ATIVO", i) - totPass[i];
+      return `<td class="num"><span class="selo ${Math.abs(dif) < 1 ? "selo-ok" : "selo-alerta"}">${
+        Math.abs(dif) < 1 ? "fecha" : n(dif)}</span></td>`;
+    }).join("") + `</tr>`;
   html += `</tbody></table></div>`;
 
   return painel("Balanço Patrimonial",
-    "Contas analíticas de ativo e passivo, acumuladas da abertura até o último mês de cada ano. " +
-    "O resultado do exercício entra do lado do passivo para o balanço fechar.", html);
+    "Estrutura do balanço denominacional. O <b>Patrimônio Líquido</b> aparece como no modelo: " +
+    "saldo inicial de 01/01 mais a <b>variação patrimonial</b> do período — é aí que entra o resultado " +
+    "do exercício, e é o que faz os dois lados fecharem.", html);
 });
 
 /* 2. BALANÇO POR UNIDADE ------------------------------------------- */
@@ -514,28 +634,70 @@ registra("balanco-unidade", "Balanço Unidades", () => {
 registra("dre", "DRE", () => {
   const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
   const porAno = colunas.map(c => dreAno(c.ano, c.mes));
-  const blocos = [...new Set(porAno.flatMap(d => [...d.porBloco.keys()]))];
-  const receitas = blocos.filter(b => BLOCOS_RECEITA.has(b));
-  const despesas = blocos.filter(b => !BLOCOS_RECEITA.has(b));
+  const b = (i, bloco) => porAno[i].porBloco.get(bloco) || 0;
 
-  let html = cabecalhoAnos("Bloco", colunas);
-  html += `<tr class="grupo"><td>RECEITAS</td>` +
-    porAno.map(d => `<td class="num">${n(d.receita)}</td>`).join("") + `</tr>`;
-  for (const b of receitas)
-    html += `<tr class="sub"><td>${b}</td>` +
-      porAno.map(d => `<td class="num">${n(d.porBloco.get(b) || 0)}</td>`).join("") + `</tr>`;
-  html += `<tr class="grupo"><td>DESPESAS</td>` +
-    porAno.map(d => `<td class="num">${n(d.despesa)}</td>`).join("") + `</tr>`;
-  for (const b of despesas)
-    html += `<tr class="sub"><td>${b}</td>` +
-      porAno.map(d => `<td class="num">${n(-(d.porBloco.get(b) || 0))}</td>`).join("") + `</tr>`;
-  html += `<tr class="total"><td>RESULTADO</td>` +
-    porAno.map(d => `<td class="num ${sinal(d.total)}">${n(d.total)}</td>`).join("") + `</tr>`;
-  html += `<tr><td>Margem sobre a receita</td>` +
-    porAno.map(d => `<td class="num">${pct(d.receita ? d.total / d.receita : null)}</td>`).join("") + `</tr>`;
+  // Estrutura do modelo: subvenção NÃO entra na receita — vem depois, como
+  // ponte entre o resultado operacional sem e com subvenção.
+  const RECEITAS = [
+    ["A311", "Dízimos Líquidos de Repasses", DRE3.dizimo, 1],
+    ["A313", "Doações e Contribuições Recebidas", "Doações E Contribuições Recebidas", 1],
+    ["A314", "Prestação de Serviços", DRE3.prest, 1],
+    ["A318B", "Outras Receitas Recorrentes", "Outras Receitas Recorrentes", 1],
+  ];
+  const DESPESAS = [
+    ["A411", "Despesas com Pessoal", DRE3.pessoal, -1],
+    ["A412", "Administrativas e Gerais", DRE3.adm, -1],
+    ["A414", "Educação, Assistência e Orientação Social", DRE3.educ, -1],
+    ["A419", "Subvenções, Contribuições e Doações Enviadas", "Outorgamentos", -1],
+  ];
+  const usados = new Set([...RECEITAS, ...DESPESAS].map(x => x[2]).concat([DRE3.subv]));
+  const outros = [...new Set(porAno.flatMap(d => [...d.porBloco.keys()]))].filter(k => !usados.has(k));
+
+  const totRec = colunas.map((_, i) => RECEITAS.reduce((s, [, , bl]) => s + b(i, bl), 0)
+    + outros.filter(k => porAno.some(d => (d.porBloco.get(k) || 0) > 0)).reduce((s, k) => s + b(i, k), 0));
+  const totDesp = colunas.map((_, i) => DESPESAS.reduce((s, [, , bl]) => s - b(i, bl), 0)
+    - outros.filter(k => !porAno.some(d => (d.porBloco.get(k) || 0) > 0)).reduce((s, k) => s + b(i, k), 0));
+  const subv = colunas.map((_, i) => b(i, DRE3.subv));
+  const opSemSubv = colunas.map((_, i) => totRec[i] - totDesp[i]);
+  const resultado = porAno.map(d => d.total);
+
+  const cel = x => `<td class="num">${x ? n(x) : "–"}</td>`;
+  let html = `<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>` +
+    colunas.map(c => `<th class="num">${c.ano}${c.mes < 12 ? "<br><span style=\"font-weight:400;font-size:11px\">até " + NOMES_MESES[c.mes - 1] + "</span>" : ""}</th>`).join("") +
+    `</tr></thead><tbody>`;
+
+  const grupo = (titulo, vals) => `<tr class="bp-grupo"><td colspan="2">${titulo}</td>` +
+    vals.map(cel).join("") + `</tr>`;
+  const item = (cod, nome, vals) => `<tr class="bp-item"><td class="bp-cod">${cod}</td><td>${nome}</td>` +
+    vals.map(cel).join("") + `</tr>`;
+
+  html += grupo("RECEITAS", totRec);
+  for (const [cod, nome, bloco, sg] of RECEITAS)
+    html += item(cod, nome, colunas.map((_, i) => b(i, bloco) * sg));
+  for (const k of outros) if (porAno.some(d => (d.porBloco.get(k) || 0) > 0))
+    html += item("", k, colunas.map((_, i) => b(i, k)));
+
+  html += grupo("DESPESAS", totDesp);
+  for (const [cod, nome, bloco, sg] of DESPESAS)
+    html += item(cod, nome, colunas.map((_, i) => b(i, bloco) * sg));
+  for (const k of outros) if (!porAno.some(d => (d.porBloco.get(k) || 0) > 0))
+    html += item("", k, colunas.map((_, i) => -b(i, k)));
+
+  html += `<tr class="bp-total"><td colspan="2">RESULTADO OPERACIONAL S/ SUBVENÇÕES</td>` +
+    opSemSubv.map(cel).join("") + `</tr>`;
+  html += item("A319", "Subvenções Recebidas Líquidas", subv);
+  html += `<tr class="bp-total"><td colspan="2">RESULTADO DO EXERCÍCIO</td>` +
+    resultado.map(cel).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td></td><td>Margem sobre a receita</td>` +
+    colunas.map((_, i) => `<td class="num">${pct(totRec[i] ? resultado[i] / totRec[i] : null)}</td>`).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td></td><td>Margem sem subvenção</td>` +
+    colunas.map((_, i) => `<td class="num">${pct(totRec[i] ? opSemSubv[i] / totRec[i] : null)}</td>`).join("") + `</tr>`;
   html += `</tbody></table></div>`;
+
   return painel("Demonstração do Resultado",
-    "Blocos da DRE em cada ano. O ano corrente vai até o último mês com lançamento.", html);
+    "Estrutura do modelo denominacional. Repare que a <b>subvenção não entra na receita</b>: ela vem " +
+    "depois, como ponte entre o resultado operacional <i>sem</i> subvenção e o resultado do exercício. " +
+    "É assim que se vê se a operação se paga sozinha.", html);
 });
 
 /* 4. DRE POR UNIDADE ----------------------------------------------- */
