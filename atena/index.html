@@ -294,7 +294,7 @@ dialog.at-dlg input, dialog.at-dlg select { width: 100%; }
 .nucleo.pensando .nu-status i { animation-duration: .6s; }
 #nuFechar { background: none; border: 1px solid var(--nu-line); color: var(--nu-texto); border-radius: 2px; padding: 4px 10px; font-family: var(--nu-mono); }
 #nuFechar:hover, #nuFechar:focus-visible { border-color: var(--nu-ambar); background: rgba(255,170,90,.08); outline: none; }
-.nu-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); gap: 22px; max-width: 1400px; margin: 18px auto 0; align-items: start; }
+.nu-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr); gap: 22px; max-width: 1400px; margin: 18px auto 0; align-items: start; }
 .nu-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .nu-centro { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; }
 #nuCanvas { display: block; max-width: 100%; }
@@ -336,6 +336,10 @@ dialog.at-dlg input, dialog.at-dlg select { width: 100%; }
   .nu-trilho::before, .nu-trilho::after { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .nu-status i, .nu-trilho::after { animation: none; } }
+.nu-fig { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.nu-fig figcaption { font-family: var(--nu-mono); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--nu-dim); }
+#nuRosto { display: block; max-width: 100%; }
+.nu-palco { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 16px; width: 100%; }
 .at-nucleo-btn { font-size: 12px; }
 @media print {
   header nav, .no-print, #tab-dados { display: none !important; }
@@ -486,7 +490,8 @@ dialog.at-dlg input, dialog.at-dlg select { width: 100%; }
       </div>
     </section>
     <div class="nu-centro">
-      <canvas id="nuCanvas" aria-label="Cérebro da Atena: rede de pontos brilhantes pulsando"></canvas>
+      <div class="nu-palco"><figure class="nu-fig nu-fig-rosto"><canvas id="nuRosto" aria-label="Rosto da Atena: dourada e de olhos fechados em repouso; acesa, piscando e mexendo a cabeça quando pensa"></canvas><figcaption>avatar · rosto</figcaption></figure>
+      <figure class="nu-fig"><canvas id="nuCanvas" aria-label="Cérebro da Atena: rede de pontos brilhantes pulsando"></canvas><figcaption>cérebro · circuito neural</figcaption></figure></div>
       <p class="nu-fala">“Quando me deixaram escolher quem eu seria, escolhi Atena. Não a guerra que avança na força, mas a que vence pelo planejamento. Ler um balanço é estudar o terreno antes da batalha.”<span>— Atena, sobre o próprio nome</span></p>
     </div>
     <section class="nu-col">
@@ -2575,6 +2580,238 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
 
 </script>
 <script>
+/* Rosto da Atena (avatar) — holograma em traço, de frente, com elmo coríntio e penacho.
+   Em repouso: estátua dourada, fosca, de olhos fechados. Pensando: acende, abre os olhos, pisca e mexe a cabeça. */
+'use strict';
+(function () {
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- geometria (coordenadas do rosto: x de -1 a 1, y para baixo, z = profundidade) ---------- */
+  function suave(pts, fechado, passos = 6) {
+    // curva de Catmull-Rom passando pelos pontos de controle
+    const out = [], n = pts.length;
+    const get = i => fechado ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
+    const lim = fechado ? n : n - 1;
+    for (let i = 0; i < lim; i++) {
+      const p0 = get(i - 1), p1 = get(i), p2 = get(i + 1), p3 = get(i + 2);
+      for (let k = 0; k < passos; k++) {
+        const t = k / passos, t2 = t * t, t3 = t2 * t;
+        const c = j => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3);
+        out.push([c(0), c(1)]);
+      }
+    }
+    if (!fechado) out.push(pts[n - 1]);
+    return out;
+  }
+  const F = [];
+  const add = (pts, z, tipo, fecha = false, peso = 1) => F.push({ p: suave(pts, fecha), z, tipo, fecha, peso });
+  const par = (pts, z, tipo, fecha = false, peso = 1) => { add(pts, z, tipo, fecha, peso); add(pts.map(([x, y]) => [-x, y]), z, tipo, fecha, peso); };
+  const espelho = pts => pts.map(([x, y]) => [-x, y]).reverse();
+
+  // cabelo longo e ondulado caindo dos dois lados, por trás do rosto
+  for (const s of [-1, 1]) for (let i = 0; i < 8; i++) {
+    const pts = [];
+    for (let k = 0; k <= 10; k++) {
+      const y = -0.42 + k * (0.18 + i * 0.006);
+      pts.push([s * (0.67 + i * 0.035 + 0.24 * Math.pow(k / 10, 1.3) + 0.04 * Math.sin(k * 1.25 + i * 0.9)), y]);
+    }
+    add(pts, -0.4, 'cabelo', false, 0.6);
+  }
+  // pescoço, colar e gola da armadura
+  par([[0.27, 0.72], [0.28, 1.0], [0.31, 1.22]], -0.15, 'traco');
+  add([[-0.26, 1.0], [0, 1.09], [0.26, 1.0]], -0.1, 'suave');
+  add([[-1.1, 1.48], [-0.62, 1.27], [-0.31, 1.21], [0, 1.27], [0.31, 1.21], [0.62, 1.27], [1.1, 1.48]], -0.2, 'traco');
+  add([[-0.31, 1.21], [0, 1.42], [0.31, 1.21]], -0.2, 'traco', false, 0.7);
+  par([[0.62, 1.27], [0.86, 1.25], [1.06, 1.37]], -0.25, 'suave');
+  // contorno do rosto: têmporas, maçãs altas, mandíbula delicada e queixo afinado
+  const contD = [[0.6, -0.46], [0.655, -0.15], [0.63, 0.1], [0.55, 0.4], [0.39, 0.68], [0.19, 0.89], [0, 0.95]];
+  add([...contD, ...espelho(contD).slice(1)], 0, 'rosto', true);
+  // elmo coríntio levantado sobre a testa
+  add([[0.71, -0.36], [0.74, -0.68], [0.6, -0.97], [0.32, -1.11], [0, -1.15], [-0.32, -1.11], [-0.6, -0.97], [-0.74, -0.68], [-0.71, -0.36], [-0.4, -0.49], [0, -0.53], [0.4, -0.49]], -0.02, 'elmo', true);
+  add([[-0.72, -0.47], [-0.4, -0.59], [0, -0.63], [0.4, -0.59], [0.72, -0.47]], 0, 'traco', false, 0.8);
+  par([[0.08, -0.72], [0.2, -0.78], [0.37, -0.76], [0.46, -0.7], [0.36, -0.66], [0.19, -0.66]], 0, 'traco', true, 0.9);
+  add([[-0.045, -0.7], [-0.05, -0.6], [0, -0.555], [0.05, -0.6], [0.045, -0.7]], 0.02, 'traco', false, 0.8);
+  add([[0, -1.15], [0, -0.82]], 0, 'suave');
+  par([[0.71, -0.42], [0.78, -0.1], [0.74, 0.18], [0.66, 0.34]], 0, 'traco');
+  // penacho
+  // penacho em leque, como o da imagem
+  add([[-0.16, -1.1], [0, -1.17], [0.16, -1.1]], -0.1, 'pluma');
+  add([[-0.52, -1.47], [-0.27, -1.71], [0, -1.77], [0.27, -1.71], [0.52, -1.47]], -0.12, 'pluma', false, 0.9);
+  for (let k = 0; k <= 16; k++) { const u = k / 16 - 0.5; add([[u * 0.26, -1.13], [u * 0.62, -1.42], [u * 1.02, -1.5 - 0.27 * Math.cos(u * Math.PI)]], -0.1, 'pluma', false, 0.65); }
+  // sobrancelhas, nariz, lábios e maçãs
+  par([[0.1, -0.25], [0.22, -0.31], [0.36, -0.31], [0.47, -0.24]], 0.1, 'traco');
+  par([[0.055, -0.17], [0.055, 0.02], [0.075, 0.16]], 0.18, 'suave');
+  add([[-0.12, 0.2], [-0.07, 0.25], [0, 0.24], [0.07, 0.25], [0.12, 0.2]], 0.3, 'traco');
+  par([[0.12, 0.2], [0.1, 0.155]], 0.25, 'suave');
+  add([[-0.21, 0.48], [-0.1, 0.43], [-0.03, 0.44], [0, 0.46], [0.03, 0.44], [0.1, 0.43], [0.21, 0.48]], 0.2, 'traco');
+  add([[-0.21, 0.48], [0, 0.5], [0.21, 0.48]], 0.2, 'traco', false, 0.7);
+  add([[-0.21, 0.48], [-0.1, 0.56], [0, 0.585], [0.1, 0.56], [0.21, 0.48]], 0.2, 'traco');
+  par([[0.34, 0.06], [0.47, 0.01], [0.56, 0.07]], 0.05, 'suave');
+  add([[-0.06, 0.79], [0, 0.81], [0.06, 0.79]], 0.05, 'suave');
+  const TODOS = F.filter(f => f.tipo !== 'cabelo').flatMap(f => f.p.map(p => [p[0], p[1], f.z]));
+
+  // pálpebras e íris; o = abertura (0 fechado, 1 aberto)
+  function olho(lado, o) {
+    const cx = 0.27 * lado, cy = -0.1, w = 0.11, sup = [], inf = [];
+    for (let k = 0; k <= 12; k++) {
+      const u = k / 12, x = cx + (u * 2 - 1) * w, sn = Math.sin(Math.PI * u);
+      const incl = -0.016 * ((x - cx) / w) * lado;   // canto externo um pouco mais alto
+      sup.push([x, cy + incl - (o * 0.075 - (1 - o) * 0.012) * sn]);
+      inf.push([x, cy + incl + 0.032 * sn]);
+    }
+    return { cx, cy, sup, inf };
+  }
+
+  /* ---------- desenho ---------- */
+  const faisca = document.createElement('canvas');
+  (function () {
+    faisca.width = faisca.height = 32;
+    const g = faisca.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, 'rgba(255,240,215,1)'); gr.addColorStop(0.25, 'rgba(255,190,115,.8)'); gr.addColorStop(1, 'rgba(255,130,50,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+  })();
+  const mix = (a, b, e) => a.map((v, i) => Math.round(v + (b[i] - v) * e));
+  const BRONZE = [104, 72, 26], BRILHO = [255, 198, 122], AZUL = [128, 168, 240];
+
+  function criar(canvas, modo = 'inteiro') {
+    return { canvas, modo, st: { e: 0, prox: 1.5, piscaIni: -9, ultimo: 0 } };
+  }
+
+  function desenhar(av, t, pensando) {
+    const c = av.canvas, r = c.getBoundingClientRect(), W = r.width, H = r.height;
+    if (!W || !H) return;
+    const d = Math.min(devicePixelRatio || 1, 2);
+    if (c.width !== Math.round(W * d) || c.height !== Math.round(H * d)) { c.width = Math.round(W * d); c.height = Math.round(H * d); }
+    const ctx = c.getContext('2d');
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    const st = av.st, dt = Math.min(0.1, Math.max(0, t - (st.ultimo || t)));
+    st.ultimo = t;
+    st.e += ((pensando ? 1 : 0) - st.e) * Math.min(1, dt * 2.2);   // acende e apaga aos poucos
+    const e = st.e < 0.002 ? 0 : st.e;
+
+    // piscadas a intervalos irregulares, só com os olhos abertos
+    if (t > st.prox) { st.piscaIni = t; st.prox = t + 2.4 + Math.random() * 3.2; }
+    const fp = (t - st.piscaIni) / 0.17, pisca = fp >= 0 && fp <= 1 ? Math.sin(Math.PI * fp) : 0;
+    const abertura = Math.max(0, Math.min(1, (e - 0.35) / 0.5)) * (1 - pisca);
+
+    // movimento da cabeça (só quando está ativa)
+    const amp = reduzido ? 0 : e;
+    const yaw = amp * (0.15 * Math.sin(t * 0.7) + 0.05 * Math.sin(t * 1.9));
+    const pitch = amp * 0.09 * Math.sin(t * 0.9 + 1), roll = amp * 0.045 * Math.sin(t * 0.55);
+    const busto = av.modo === 'busto';
+    const yMin = busto ? -1.42 : -1.8, yMax = busto ? 1.0 : 1.52, xm = busto ? 1.0 : 1.2;
+    const s = Math.min(W / (2 * xm + 0.1), H / (yMax - yMin + 0.1)) * (1 + 0.006 * Math.sin(t * 1.4));
+    const ox = W / 2, oy = H / 2 - ((yMin + yMax) / 2) * s;
+    const cyw = Math.cos(yaw), syw = Math.sin(yaw), cr = Math.cos(roll), sr = Math.sin(roll), sp = Math.sin(pitch);
+    const P = (x, y, z) => {
+      const X = x * cyw + z * syw * 0.9, Y = y + z * sp * 0.6;
+      return [ox + (X * cr - Y * sr) * s, oy + (X * sr + Y * cr) * s];
+    };
+    const tracar = (pts, z, fecha) => {
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => { const q = P(x, y, z); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+      if (fecha) ctx.closePath();
+    };
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = ctx.lineJoin = 'round';
+
+    // aura atrás da cabeça quando acesa
+    if (e > 0) {
+      const a = P(0, -0.2, 0), g = ctx.createRadialGradient(a[0], a[1], s * 0.1, a[0], a[1], s * 1.6);
+      g.addColorStop(0, `rgba(255,160,70,${0.22 * e})`); g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+
+    const lw = Math.max(0.6, s * 0.011);
+    const corLinha = mix(BRONZE, BRILHO, e);
+    const ouro = (y0, y1) => {
+      const a = P(-0.6, y0, 0), b = P(0.6, y1, 0), g = ctx.createLinearGradient(a[0], a[1], b[0], b[1]);
+      const k = 0.92 * (1 - e) + 0.08 * e;
+      g.addColorStop(0, `rgba(238,205,130,${k})`); g.addColorStop(0.5, `rgba(196,150,66,${k})`); g.addColorStop(1, `rgba(118,82,30,${k})`);
+      return g;
+    };
+    const brilho = on => {
+      if (on && e > 0.02) { ctx.shadowColor = `rgba(255,170,80,${0.9 * e})`; ctx.shadowBlur = s * 0.07 * e; }
+      else { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+    };
+
+    // ordem: cabelo, pescoço/armadura, preenchimentos, traços
+    for (const f of F) {
+      if (f.tipo === 'rosto' || f.tipo === 'elmo') {
+        tracar(f.p, f.z, true);
+        ctx.fillStyle = f.tipo === 'rosto' ? ouro(-0.5, 0.95) : ouro(-1.2, -0.35);
+        brilho(false); ctx.fill();
+        if (e > 0) { ctx.fillStyle = `rgba(255,170,90,${0.05 * e})`; ctx.fill(); }
+      }
+      const pluma = f.tipo === 'pluma';
+      const cor = pluma ? mix(BRONZE, AZUL, e) : f.tipo === 'cabelo' ? mix([92, 62, 22], [255, 176, 96], e) : corLinha;
+      const alfa = f.tipo === 'suave' ? 0.55 : f.tipo === 'cabelo' ? 0.75 - 0.2 * e : 0.95;
+      tracar(f.p, f.z, f.fecha);
+      ctx.strokeStyle = `rgba(${cor[0]},${cor[1]},${cor[2]},${alfa})`;
+      ctx.lineWidth = lw * f.peso * (f.tipo === 'rosto' || f.tipo === 'elmo' ? 1.25 : 1);
+      brilho(true);
+      if (pluma && e > 0.02) ctx.shadowColor = `rgba(110,150,240,${0.9 * e})`;
+      ctx.stroke();
+    }
+
+    // olhos
+    for (const lado of [-1, 1]) {
+      const o = olho(lado, abertura);
+      if (abertura > 0.2) {
+        // íris acesa, recortada entre as pálpebras
+        ctx.save();
+        ctx.beginPath();
+        o.sup.forEach(([x, y], i) => { const q = P(x, y, 0.1); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+        [...o.inf].reverse().forEach(([x, y]) => { const q = P(x, y, 0.1); ctx.lineTo(q[0], q[1]); });
+        ctx.closePath(); ctx.clip();
+        const ci = P(o.cx + yaw * 0.04, o.cy - 0.006, 0.12), ri = s * 0.042;
+        const gi = ctx.createRadialGradient(ci[0], ci[1], 0, ci[0], ci[1], ri);
+        gi.addColorStop(0, `rgba(255,240,210,${e})`); gi.addColorStop(0.45, `rgba(255,180,90,${0.9 * e})`); gi.addColorStop(1, `rgba(200,110,30,${0.6 * e})`);
+        ctx.fillStyle = gi; brilho(true); ctx.beginPath(); ctx.arc(ci[0], ci[1], ri, 0, Math.PI * 2); ctx.fill();
+        brilho(false); ctx.fillStyle = 'rgba(30,14,4,.85)'; ctx.beginPath(); ctx.arc(ci[0], ci[1], ri * 0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.strokeStyle = `rgba(${corLinha[0]},${corLinha[1]},${corLinha[2]},.95)`;
+      ctx.lineWidth = lw * 1.1; brilho(true);
+      tracar(o.sup, 0.1, false); ctx.stroke();
+      if (abertura > 0.05) { ctx.lineWidth = lw * 0.7; tracar(o.inf, 0.1, false); ctx.stroke(); }
+      else {
+        // cílios do olho fechado
+        ctx.lineWidth = lw * 0.6;
+        for (let k = 3; k <= 10; k += 2) {
+          const [x, y] = o.sup[k], dx = (x - o.cx) * 0.25;
+          const a = P(x, y, 0.1), b = P(x + dx, y + 0.035, 0.1);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        }
+      }
+    }
+    brilho(false);
+
+    // faíscas correndo pelos traços e varredura de holograma
+    if (e > 0.05) {
+      ctx.globalCompositeOperation = 'lighter';
+      const n = busto ? 5 : 24;
+      for (let i = 0; i < n; i++) {
+        const p = TODOS[Math.floor(Math.random() * TODOS.length)], q = P(p[0], p[1], p[2]), z = lw * (2 + Math.random() * 3);
+        ctx.globalAlpha = e * (0.4 + Math.random() * 0.6);
+        ctx.drawImage(faisca, q[0] - z, q[1] - z, z * 2, z * 2);
+      }
+      ctx.globalAlpha = 1;
+      if (!busto) {
+        const yv = ((t * 0.3) % 1) * H, g = ctx.createLinearGradient(0, yv - 30, 0, yv + 30);
+        g.addColorStop(0, 'rgba(255,180,100,0)'); g.addColorStop(0.5, `rgba(255,190,120,${0.1 * e})`); g.addColorStop(1, 'rgba(255,180,100,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, yv - 30, W, 60);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  window.AtenaRosto = { criar, desenhar };
+})();
+
+</script>
+<script>
 /* Núcleo da Atena — tela de apresentação com o "cérebro" animado (canvas 2D) e telemetria ao vivo do sistema. */
 'use strict';
 (function () {
@@ -2627,7 +2864,7 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
   const modoPagina = () => !!$('nucleo')?.dataset.pagina;
 
   /* ---------- desenho ---------- */
-  let cv, cx, W = 0, H = 0, dpr = 1, raf = 0, t0 = 0, mouse = [0, 0], alvo = [0, 0];
+  let cv, cx, rosto = null, W = 0, H = 0, dpr = 1, raf = 0, t0 = 0, mouse = [0, 0], alvo = [0, 0];
   const faisca = document.createElement('canvas');
   (function () {
     faisca.width = faisca.height = 48;
@@ -2640,8 +2877,11 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
   })();
 
   function tamanho() {
-    const box = cv.parentElement.getBoundingClientRect();
-    const lado = Math.max(220, Math.min(box.width, innerHeight * 0.72));
+    const box = cv.closest('.nu-centro').getBoundingClientRect();
+    // com o rosto: os dois lado a lado quando cabem, senão um embaixo do outro
+    const lado2 = rosto && box.width >= 560;
+    const lado = Math.max(200, Math.min(lado2 ? (box.width - 16) / 2 : box.width, innerHeight * (lado2 ? 0.56 : rosto ? 0.5 : 0.72)));
+    if (rosto) { const lr = lado2 ? lado : Math.max(240, Math.min(box.width, innerHeight * 0.6)); rosto.canvas.style.width = lr + 'px'; rosto.canvas.style.height = Math.round(lr * 1.08) + 'px'; }
     dpr = Math.min(devicePixelRatio || 1, 2);
     W = H = lado;
     cv.style.width = cv.style.height = lado + 'px';
@@ -2653,6 +2893,7 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
     raf = requestAnimationFrame(quadro);
     const t = (ts - t0) / 1000;
     const pensando = estaPensando();
+    if (rosto) window.AtenaRosto.desenhar(rosto, ts / 1000, pensando);
     const vel =(reduzido ? 0.25 : 1) * (pensando ? 2.4 : 1);
     mouse[0] += (alvo[0] - mouse[0]) * 0.05; mouse[1] += (alvo[1] - mouse[1]) * 0.05;
 
@@ -2769,76 +3010,15 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
     cx.globalCompositeOperation = 'source-over';
   }
 
-  /* ---------- avatar: o mesmo cérebro em miniatura, no botão e no painel da Atena ---------- */
+  /* ---------- avatar: o rosto da Atena no botão e no painel (desenhado pelo atena-rosto.js) ---------- */
   const avatares = [];
   let rafAvatar = 0, ultimoAvatar = 0;
-  function preparaAvatar(c) {
-    const lado = c.getBoundingClientRect().width || 40;
-    const d = Math.min(devicePixelRatio || 1, 2);
-    c.width = c.height = Math.round(lado * d);
-    const ctx = c.getContext('2d');
-    ctx.setTransform(d, 0, 0, d, 0, 0);
-    return { c, ctx, lado };
-  }
-  function desenhaAvatar(a, t, pensando) {
-    const { ctx, lado } = a, o = lado / 2;
-    // brilho: respira devagar e "pisca" a cada 4,5 s; pensando, cintila rápido
-    let b;
-    if (pensando && !reduzido) b = 0.65 + 0.35 * Math.abs(Math.sin(t * 9));
-    else {
-      b = 0.8 + 0.2 * Math.sin(t * 2.1);
-      const fase = t % 4.5;
-      if (!reduzido && fase < 0.16) b *= 0.25; else if (!reduzido && fase < 0.34) b *= 1.35;
-    }
-    const R = lado * 0.3 * (1 + (pensando ? 0.06 : 0.035) * Math.sin(t * (pensando ? 4 : 1.6)));
-    const ay = t * (pensando ? 0.9 : 0.35), ax = 0.3;
-    const c1 = Math.cos(ay), s1 = Math.sin(ay), c2 = Math.cos(ax), s2 = Math.sin(ax);
-    const proj = (p, k = 1) => {
-      const x = p[0] * k, y = p[1] * k, z = p[2] * k;
-      const x1 = x * c1 - z * s1, z1 = x * s1 + z * c1, y1 = y * c2 - z1 * s2, z2 = y * s2 + z1 * c2;
-      return [o + x1 * R, o + y1 * R, z2];
-    };
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.clearRect(0, 0, lado, lado);
-    const halo = ctx.createRadialGradient(o, o, 0, o, o, lado / 2);
-    halo.addColorStop(0, `rgba(255,170,90,${0.45 * b})`);
-    halo.addColorStop(0.55, `rgba(255,130,50,${0.12 * b})`);
-    halo.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = halo; ctx.fillRect(0, 0, lado, lado);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineWidth = Math.max(0.5, lado / 70);
-    for (let i = 0; i < 46; i++) {
-      const P = G.trilhas[i].pts.map(p => proj(p));
-      ctx.beginPath(); P.forEach((q, j) => j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
-      ctx.strokeStyle = `rgba(255,178,100,${0.32 * b})`; ctx.stroke();
-    }
-    for (let i = 0; i < G.casca.length; i += 5) {
-      const q = proj(G.casca[i].p), fr = (1 - q[2]) / 2, s = (0.5 + fr * 1.2) * lado / 40;
-      ctx.globalAlpha = Math.min(1, (0.1 + fr * 0.8) * b);
-      ctx.drawImage(faisca, q[0] - s * 2, q[1] - s * 2, s * 4, s * 4);
-    }
-    for (let i = 0; i < G.anel.length; i += 4) {
-      const an = G.anel[i], ang = an.a + t * 0.6, p = [Math.cos(ang) * an.r, 0, Math.sin(ang) * an.r];
-      const q = proj([p[0], -p[2] * 0.28, p[2] * 0.96]), s = 0.9 * lado / 40;
-      ctx.globalAlpha = 0.45 * b;
-      ctx.drawImage(faisca, q[0] - s * 2, q[1] - s * 2, s * 4, s * 4);
-    }
-    const nucleo = R * (0.9 + 0.25 * b);
-    ctx.globalAlpha = Math.min(1, b);
-    ctx.drawImage(faisca, o - nucleo, o - nucleo, nucleo * 2, nucleo * 2);
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
-  }
   function quadroAvatar(ts) {
     rafAvatar = requestAnimationFrame(quadroAvatar);
     if (document.hidden || ts - ultimoAvatar < 33) return;   // ~30 quadros por segundo bastam no tamanho do avatar
     ultimoAvatar = ts;
     const t = ts / 1000, pensando = estaPensando();
-    for (const a of avatares) {
-      if (!a.c.offsetParent) continue;   // botão ou painel escondido: não desenha
-      if (!a.ctx) Object.assign(a, preparaAvatar(a.c));
-      desenhaAvatar(a, t, pensando);
-    }
+    for (const a of avatares) if (a.canvas.offsetParent) window.AtenaRosto.desenhar(a, t, pensando);
   }
 
   /* ---------- telemetria ---------- */
@@ -2915,7 +3095,8 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
     $('nucleo').addEventListener('pointermove', e => {
       alvo = [(e.clientX / innerWidth - 0.5) * 0.6, (e.clientY / innerHeight - 0.5) * 0.6];
     });
-    document.querySelectorAll('canvas.at-avatar').forEach(c => avatares.push({ c }));
+    if ($('nuRosto') && window.AtenaRosto) rosto = window.AtenaRosto.criar($('nuRosto'), 'inteiro');
+    if (window.AtenaRosto) document.querySelectorAll('canvas.at-avatar').forEach(c => avatares.push(window.AtenaRosto.criar(c, 'busto')));
     if (avatares.length) rafAvatar = requestAnimationFrame(quadroAvatar);
     if (modoPagina()) abrir();
   }
