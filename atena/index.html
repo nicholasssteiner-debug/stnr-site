@@ -2621,6 +2621,11 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
   for (let i = 0; i < 26; i++) G.trilhas.push(trilha(-0.95, 0.12, rnd(1.12, 1.18), Math.floor(rnd(20, 50)), true));  // faixa inferior
   for (let i = 0; i < 40; i++) G.trilhas.push(trilha(0, 1.1, rnd(0.55, 0.62), Math.floor(rnd(14, 30)), false));      // núcleo interno
 
+  // na página de apresentação não há Atena conectada: o botão de demonstração liga o modo "pensando"
+  let demoPensando = false;
+  const estaPensando = () => demoPensando || !!window.Atena?.estado?.().ocupada;
+  const modoPagina = () => !!$('nucleo')?.dataset.pagina;
+
   /* ---------- desenho ---------- */
   let cv, cx, W = 0, H = 0, dpr = 1, raf = 0, t0 = 0, mouse = [0, 0], alvo = [0, 0];
   const faisca = document.createElement('canvas');
@@ -2647,8 +2652,8 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
   function quadro(ts) {
     raf = requestAnimationFrame(quadro);
     const t = (ts - t0) / 1000;
-    const pensando = !!window.Atena?.estado?.().ocupada;
-    const vel = (reduzido ? 0.25 : 1) * (pensando ? 2.4 : 1);
+    const pensando = estaPensando();
+    const vel =(reduzido ? 0.25 : 1) * (pensando ? 2.4 : 1);
     mouse[0] += (alvo[0] - mouse[0]) * 0.05; mouse[1] += (alvo[1] - mouse[1]) * 0.05;
 
     const R = W * 0.27 * (1 + (pensando ? 0.045 : 0.025) * Math.sin(t * (pensando ? 3.2 : 1.3)));
@@ -2828,7 +2833,7 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
     rafAvatar = requestAnimationFrame(quadroAvatar);
     if (document.hidden || ts - ultimoAvatar < 33) return;   // ~30 quadros por segundo bastam no tamanho do avatar
     ultimoAvatar = ts;
-    const t = ts / 1000, pensando = !!window.Atena?.estado?.().ocupada;
+    const t = ts / 1000, pensando = estaPensando();
     for (const a of avatares) {
       if (!a.c.offsetParent) continue;   // botão ou painel escondido: não desenha
       if (!a.ctx) Object.assign(a, preparaAvatar(a.c));
@@ -2839,6 +2844,12 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
   /* ---------- telemetria ---------- */
   let teleTimer = 0;
   function telemetria() {
+    if (typeof S === 'undefined' || !$('nuTele')) {   // página de apresentação: só o estado do núcleo
+      const p = estaPensando();
+      $('nuStatus').textContent = p ? 'pensando' : 'online';
+      $('nucleo').classList.toggle('pensando', p);
+      return;
+    }
     const st = window.Atena?.estado?.() || {};
     const linhas = S.linhas.filter(l => S.periodos.some(p => l.v[p.id] != null)).length;
     let inds = 0, avisos = 0;
@@ -2873,12 +2884,16 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
   function abrir() {
     foco = document.activeElement;
     $('nucleo').hidden = false;
-    document.body.style.overflow = 'hidden';
+    if (!modoPagina()) document.body.style.overflow = 'hidden';
     tamanho();
     t0 = performance.now();
     cancelAnimationFrame(raf); raf = requestAnimationFrame(quadro);
     telemetria(); clearInterval(teleTimer); teleTimer = setInterval(telemetria, 1000);
-    $('nuFechar').focus();
+    $('nuFechar')?.focus();
+  }
+  function pensar(sim) {
+    demoPensando = !!sim;
+    telemetria();
   }
   function fechar() {
     $('nucleo').hidden = true;
@@ -2894,17 +2909,18 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
       b.closest('dialog')?.close();
       abrir();
     }));
-    $('nuFechar').addEventListener('click', fechar);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('nucleo').hidden) fechar(); });
+    $('nuFechar')?.addEventListener('click', fechar);
+    if (!modoPagina()) document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('nucleo').hidden) fechar(); });
     addEventListener('resize', () => { if (!$('nucleo').hidden) tamanho(); });
     $('nucleo').addEventListener('pointermove', e => {
       alvo = [(e.clientX / innerWidth - 0.5) * 0.6, (e.clientY / innerHeight - 0.5) * 0.6];
     });
     document.querySelectorAll('canvas.at-avatar').forEach(c => avatares.push({ c }));
     if (avatares.length) rafAvatar = requestAnimationFrame(quadroAvatar);
+    if (modoPagina()) abrir();
   }
 
-  window.AtenaNucleo = { abrir, fechar };
+  window.AtenaNucleo = { abrir, fechar, pensar };
   init();
 })();
 
