@@ -81,9 +81,12 @@ html, body { margin: 0; background: #07060a; color: #f3e6d6; }
 .nu-fig figcaption { font-family: var(--nu-mono); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--nu-dim); }
 /* rosto: três imagens paradas (olhos fechados, semicerrados, abertos) animadas pelo atena-rosto.js */
 .ar-midia { position: relative; overflow: hidden; }
+.ar-quadro { position: absolute; inset: 0; }
 .ar-cena { position: absolute; inset: 0; will-change: transform, filter; filter: grayscale(1) sepia(1) saturate(2.1) hue-rotate(-10deg) brightness(.8) contrast(1.15); }
-.ar-cena img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
-#nuRosto { display: block; max-width: 100%; -webkit-mask-image: radial-gradient(ellipse 68% 62% at 50% 44%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 68% 62% at 50% 44%, #000 62%, transparent 100%); }
+.ar-cena .ar-fundo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* os quadros dos olhos (9:16) ocupam o centro exato da imagem 3:4; bordas suaves para não marcar a emenda */
+.ar-cena .ar-olhos { position: absolute; left: 12.3%; width: 75.4%; top: .24%; height: 100%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+#nuRosto { display: block; max-width: 100%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 84%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 84%, transparent); mask-composite: intersect; }
 .nu-fig-rosto { transition: filter .9s ease; }
 .nu-fig-rosto.acesa { filter: drop-shadow(0 0 22px rgba(80,180,255,.35)) drop-shadow(0 0 6px rgba(255,170,80,.3)); }
 .nu-palco { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 16px; width: 100%; }
@@ -184,6 +187,7 @@ html, body { margin: 0; background: #07060a; color: #f3e6d6; }
   function fontes() {
     const m = window.ATENA_MIDIA || {}, base = m.base ?? 'midia/';
     return {
+      inteiro: m.inteiro || base + 'rosto-inteiro.jpg',
       fechados: m.fechados || base + 'olhos-fechados.jpg',
       meio: m.meio || base + 'olhos-meio.jpg',
       abertos: m.abertos || base + 'olhos-abertos.jpg',
@@ -191,14 +195,16 @@ html, body { margin: 0; background: #07060a; color: #f3e6d6; }
   }
 
   function criar(el, modo = 'inteiro') {
-    const f = fontes(), cena = document.createElement('div');
-    cena.className = 'ar-cena';
-    const img = src => { const i = new Image(); i.alt = ''; i.decoding = 'async'; i.src = src; return i; };
-    const fechados = img(f.fechados), meio = img(f.meio), abertos = img(f.abertos);
+    const f = fontes(), quadro = document.createElement('div'), cena = document.createElement('div');
+    quadro.className = 'ar-quadro'; cena.className = 'ar-cena';
+    const img = (src, cls) => { const i = new Image(); i.alt = ''; i.decoding = 'async'; i.src = src; i.className = cls; return i; };
+    // a cabeça inteira (3:4) por baixo; os quadros dos olhos são o centro exato dela, encaixados por cima
+    const inteiro = img(f.inteiro, 'ar-fundo'), fechados = img(f.fechados, 'ar-olhos'), meio = img(f.meio, 'ar-olhos'), abertos = img(f.abertos, 'ar-olhos');
     meio.style.opacity = abertos.style.opacity = '0';
-    cena.append(fechados, meio, abertos);
+    cena.append(inteiro, fechados, meio, abertos);
+    quadro.append(cena);
     el.classList.add('ar-midia', modo === 'busto' ? 'ar-busto' : 'ar-inteiro');
-    el.replaceChildren(cena);
+    el.replaceChildren(quadro);
     return { el, cena, meio, abertos, busto: modo === 'busto', st: { e: 0, ultimo: 0, prox: 2, piscaIni: -9, acesa: false } };
   }
 
@@ -316,9 +322,9 @@ html, body { margin: 0; background: #07060a; color: #f3e6d6; }
     // com o rosto: os dois lado a lado quando cabem, senão um embaixo do outro
     const lado2 = rosto && box.width >= 560;
     const lado = Math.max(200, Math.min(lado2 ? (box.width - 16) / 2 : box.width, innerHeight * (lado2 ? 0.56 : rosto ? 0.5 : 0.72)));
-    if (rosto) {   // rosto em retrato 9:16, como o vídeo
-      const hr = lado2 ? lado * 1.15 : Math.min(innerHeight * 0.7, box.width / 0.5625);
-      rosto.el.style.height = Math.round(hr) + 'px'; rosto.el.style.width = Math.round(hr * 0.5625) + 'px';
+    if (rosto) {   // rosto em retrato 3:4, com a cabeça inteira
+      const hr = lado2 ? lado * 1.15 : Math.min(innerHeight * 0.7, box.width / 0.746);
+      rosto.el.style.height = Math.round(hr) + 'px'; rosto.el.style.width = Math.round(hr * 0.746) + 'px';
     }
     dpr = Math.min(devicePixelRatio || 1, 2);
     W = H = lado;
