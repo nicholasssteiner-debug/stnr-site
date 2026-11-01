@@ -1,7 +1,7 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=8';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=9';
 // Os ids taco_N e prep_N gravados nos cardápios apontam para a posição na lista: não reordene essas tabelas
-import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=8';
+import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=9';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -524,7 +524,8 @@ function viewHoje() {
       ${code === 'ARM' ? `<div class="ex-tip">Nesta versão, mantenha as elevações laterais com garrafas do Treino A e as pernas do Treino C sem academia, três vezes por semana.</div>` : ''}
     </div>`;
   } else if (code === 'R') {
-    work = `<div class="card"><h3>Descanso</h3><p class="muted">Caminhada leve. Postura e vacuum continuam; creatina também. Mantenha o cardápio e tome o segundo whey à tarde.</p></div>`;
+    work = `<div class="card"><h3>Descanso</h3><p class="muted">Caminhada leve. Postura e vacuum continuam; creatina também. Mantenha o cardápio e tome o segundo whey à tarde.</p>
+      ${k < st.end ? `<button class="btn btn-block" data-act="pullfwd" data-k="${k}">Quero treinar neste dia (adiantar o próximo treino)</button>` : ''}</div>`;
   } else if (code === 'LIVRE') {
     work = `<div class="card"><h3>Atividade livre</h3><label>O que você fez<textarea data-ch="note" placeholder="Ex.: futebol 1 h, corrida 5 km">${esc(day.note || '')}</textarea></label></div>`;
   }
@@ -637,10 +638,11 @@ function viewAgenda() {
           <span>Próximo treino</span><b>${next ? esc(fmtShort(next)) + ' · ' + esc(sch[next] === 'AL' ? 'A leve' : sch[next]) : '—'}</b></div></div>
         <div class="card"><h3>Ajustar o plano</h3><div class="actions" style="margin-top:10px">
           <button class="btn" data-act="postpone" data-k="${t >= st.start && t <= st.end ? t : st.start}">Adiar a partir de hoje (+1 dia)</button>
+          ${sch[t] === 'R' && t < st.end ? `<button class="btn" data-act="pullfwd" data-k="${t}">Adiantar: treinar hoje o próximo treino</button>` : ''}
           <button class="btn" data-act="reflow" data-k="${t >= st.start && t <= st.end ? t : st.start}">Refazer rodízio A→B→C a partir de hoje</button>
           <button class="btn" data-act="extend" data-n="7">Estender o plano em 7 dias</button>
           <button class="btn btn-ghost btn-danger" data-act="resetplan">Restaurar calendário original</button></div>
-          <p class="muted small" style="margin-bottom:0">Adiar empurra todos os treinos seguintes um dia e põe descanso no dia escolhido. Refazer rodízio continua de onde você parou, respeitando os dias de descanso.</p></div>
+          <p class="muted small" style="margin-bottom:0">Adiar empurra todos os treinos seguintes um dia e põe descanso no dia escolhido. Adiantar faz o contrário: num dia de descanso, traz o próximo treino e puxa os seguintes um dia para trás. Os dias de descanso fixos não mudam. Refazer rodízio continua de onde você parou, respeitando os dias de descanso.</p></div>
         <div class="card"><h3>Legenda</h3><div class="legend" style="margin-top:8px">
           ${['A', 'B', 'C', 'AL', 'ARM', 'LIVRE', 'R'].map(c => `<span class="chip w-${WORKOUTS[c].color}">${c === 'AL' ? 'A·' : c === 'R' ? '—' : c === 'LIVRE' ? 'L' : c} ${esc(WORKOUTS[c].title)}</span>`).join('')}
           <span class="chip">20g creatina (carga)</span><span class="chip">MED medições</span><span class="chip">GTG barra</span></div></div>
@@ -658,8 +660,10 @@ function openDaySheet(k) {
       <button class="btn btn-primary" data-act="openday" data-k="${k}">Abrir este dia</button>
       <button class="btn" data-act="swapstart" data-k="${k}">Trocar com outro dia</button>
       <button class="btn" data-act="postpone" data-k="${k}">Adiar daqui (+1 dia)</button>
+      <button class="btn" data-act="pullfwd" data-k="${k}" ${c === 'R' ? '' : 'disabled title="Só num dia de descanso"'}>Adiantar para este dia</button>
       <button class="btn" data-act="reflow" data-k="${k}">Refazer rodízio daqui</button>
-    </div>`);
+    </div>
+    <p class="muted small" style="margin-bottom:0">${c === 'R' ? 'Adiantar traz o próximo treino para este dia e puxa os seguintes um dia para trás.' : 'Adiar põe descanso neste dia e empurra os treinos seguintes um dia.'}</p>`);
 }
 
 function writeSchedule(sched, end) {
@@ -682,6 +686,23 @@ function postpone(k) {
   const end = d > st.end ? d : st.end;
   for (const x of range(k, end)) if (!sch[x]) sch[x] = 'R';
   writeSchedule(sch, end); toast(`Adiado: o plano agora termina em ${fmtShort(end)}.`);
+}
+// Adiantar: num dia de descanso, o próximo treino vem para cá e os seguintes andam um dia para trás, sem ocupar os descansos fixos
+function pullForward(k) {
+  const st = ST(), sch = clone(P().schedule), isRest = d => st.rest.includes(parseKey(d).getDay());
+  if (sch[k] && sch[k] !== 'R') return toast('Este dia já tem treino. Adiantar funciona num dia de descanso.');
+  const seq = range(addDays(k, 1), st.end).map(d => sch[d]).filter(c => c && c !== 'R');
+  if (!seq.length) return toast('Não há treino depois deste dia para adiantar.');
+  for (const d of Object.keys(sch)) if (d > k) delete sch[d];
+  sch[k] = seq[0];
+  let d = k;
+  for (const c of seq.slice(1)) {
+    d = addDays(d, 1);
+    while (isRest(d)) { sch[d] = 'R'; d = addDays(d, 1); }
+    sch[d] = c;
+  }
+  writeSchedule(sch, d);
+  toast(`Adiantado: ${WORKOUTS[seq[0]].name} em ${fmtShort(k)}; o plano agora termina em ${fmtShort(d)}.`);
 }
 function nextRotIdx(k) {
   const prev = Object.keys(P().schedule).filter(d => d < k).sort().reverse().find(d => ROT.includes(P().schedule[d]));
@@ -1425,6 +1446,7 @@ const ACT = {
   openday: el => { S.dayKey = el.dataset.k; closeSheet(); go('hoje'); },
   swapstart: el => { S.swapFrom = el.dataset.k; closeSheet(); if (S.view !== 'agenda') go('agenda'); else render(); toast('Agora toque no outro dia.'); },
   postpone: el => { closeSheet(); postpone(el.dataset.k); },
+  pullfwd: el => { closeSheet(); pullForward(el.dataset.k); },
   reflow: el => { closeSheet(); if (confirm(`Refazer o rodízio A→B→C a partir de ${fmtShort(el.dataset.k)}? Os treinos escolhidos à mão desses dias serão substituídos.`)) { reflow(el.dataset.k); toast('Rodízio refeito.'); } },
   extend: el => extendTo(addDays(ST().end, +el.dataset.n)),
   resetplan: () => { if (!confirm('Restaurar o calendário original (início, 15 dias, sábado de descanso)? Os registros são mantidos.')) return; const st = ST(); const end = addDays(st.start, 14); store.setFields({ schedule: rotation({}, st.start, end, st.rest, 0), 'settings.end': end }); toast('Calendário restaurado.'); },
