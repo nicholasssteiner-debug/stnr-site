@@ -1,10 +1,10 @@
 {
-  "id": "/treino/",
+  "id": "/treino/?app=protocolo-v",
   "name": "Protocolo V",
   "short_name": "Protocolo V",
   "description": "Treino, calendário flexível, dieta sem carne e medidas.",
   "lang": "pt-BR",
-  "start_url": "/treino/#hoje",
+  "start_url": "/treino/",
   "scope": "/treino/",
   "display": "standalone",
   "orientation": "any",
