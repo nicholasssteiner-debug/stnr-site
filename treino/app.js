@@ -1,7 +1,7 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=7';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=8';
 // Os ids taco_N e prep_N gravados nos cardápios apontam para a posição na lista: não reordene essas tabelas
-import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=7';
+import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=8';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -220,8 +220,10 @@ function exercisesOf(code, k) {
 function exercisesFor(k) {
   const code = codeOf(k);
   if (!code) return [];
-  const day = dayOf(k), perm = P().exSwap || {};
+  const day = dayOf(k), perm = P().exSwap || {}, home = (day.mode || ST().mode) === 'home';
   return exercisesOf(code, k).map(e => {
+    // Sem academia é outro exercício: histórico próprio, para a progressão comparar igual com igual
+    if (home) return { ...e, id: e.id + '__casa', slot: e.id };
     const alts = ALTS[e.id];
     if (!alts) return { ...e, slot: e.id };
     const today = day.swap?.[e.id], key = today ?? perm[e.id];
@@ -229,6 +231,138 @@ function exercisesFor(k) {
     if (!alt) return { ...e, slot: e.id };
     return { ...e, id: e.id + '__' + alt.k, slot: e.id, n: alt.n, orig: e.n, swapped: today ? 'só hoje' : 'sempre' };
   });
+}
+
+/* ---------- progressão ---------- */
+// Faixa de repetições do plano: "8–12" → {lo: 8, hi: 12}; "15" → {lo: 15, hi: 15}
+function repRange(r) {
+  const m = String(r).match(/(\d+)\s*[–-]\s*(\d+)/), one = String(r).match(/\d+/);
+  if (m) return { lo: +m[1], hi: +m[2] };
+  return one ? { lo: +one[0], hi: +one[0] } : null;
+}
+// Degrau de carga: halteres e isoladores sobem devagar; básicos com barra e máquinas, mais
+function loadStep(name) {
+  const n = norm(name);
+  if (/leg press/.test(n)) return 5;
+  if (/elevacao|rosca|crucifixo|face pull|triceps|pullover|panturrilha|y-raise|frances/.test(n)) return 1;
+  if (/halter/.test(n)) return 2;
+  return 2.5;
+}
+const e1rm = (w, r) => w > 0 ? w * (1 + r / 30) : r; // Epley; sem carga, conta as repetições
+// Sessões anteriores a k de um exercício: [{d, sets, best}] da mais antiga para a mais nova
+function sessionsOf(id, k = '9999') {
+  return Object.keys(S.days).filter(d => d < k).sort().map(d => {
+    const sets = (S.days[d].sets?.[id] || []).filter(x => x && +x.r > 0).map(x => ({ w: +x.w || 0, r: +x.r }));
+    if (!sets.length) return null;
+    return { d, sets, best: Math.max(...sets.map(x => e1rm(x.w, x.r))) };
+  }).filter(Boolean);
+}
+// Meta de hoje (dupla progressão): bateu o topo da faixa em todas as séries → sobe a carga e volta ao início da faixa
+function nextTarget(e, k) {
+  const rr = repRange(e.r), hist = sessionsOf(e.id, k), last = hist.at(-1);
+  if (!rr || /máx|fixo/.test(e.r)) return null;
+  if (!last) return { w: null, r: rr.lo, kind: 'novo', txt: `Primeira vez: escolha uma carga em que a última repetição fique difícil entre ${rr.lo} e ${rr.hi}.` };
+  const top = Math.max(...last.sets.map(x => x.w)), atTop = last.sets.filter(x => x.w === top), minR = Math.min(...atTop.map(x => x.r));
+  const enough = last.sets.length >= Math.min(e.s, 2);
+  if (top === 0) {
+    if (enough && minR >= rr.hi) return { w: 0, r: rr.hi, kind: 'up', txt: `Você bateu ${rr.hi} repetições: acrescente carga (mochila ou cinto) ou desça em 4 s.` };
+    return { w: 0, r: Math.min(rr.hi, minR + 1), kind: 'rep', txt: `Meta: ${Math.min(rr.hi, minR + 1)} repetições por série.` };
+  }
+  if (enough && minR >= rr.hi) {
+    const w = top + loadStep(e.n);
+    return { w, r: rr.lo, kind: 'up', txt: `Subir a carga: ${fmt(w, 1)} kg × ${rr.lo}–${rr.hi} (você fez ${rr.hi}+ em todas com ${fmt(top, 1)} kg).` };
+  }
+  if (minR < rr.lo - 1) {
+    const w = Math.max(0, Math.round(top * 0.9 / 0.5) * 0.5);
+    return { w, r: rr.lo, kind: 'down', txt: `Carga pesada demais (${minR} repetições): ${fmt(w, 1)} kg e busque ${rr.lo}–${rr.hi}.` };
+  }
+  const r = Math.min(rr.hi, Math.max(rr.lo, minR + 1));
+  return { w: top, r, kind: 'rep', txt: `Mesma carga, +1 repetição: ${fmt(top, 1)} kg × ${r}.` };
+}
+// Situação do exercício: estagnado = 3 sessões seguidas sem superar o melhor de antes
+function exStatus(id, k) {
+  const h = sessionsOf(id, k);
+  if (h.length < 2) return { kind: 'novo', h };
+  const bestBefore = n => Math.max(...h.slice(0, -n).map(x => x.best));
+  if (h.length >= 4 && Math.max(...h.slice(-3).map(x => x.best)) <= bestBefore(3)) return { kind: 'estagnado', h };
+  if (h.at(-1).best < bestBefore(1) * 0.93) return { kind: 'caiu', h };
+  return { kind: h.at(-1).best > bestBefore(1) ? 'subiu' : 'manteve', h };
+}
+
+// Nome legível de um id de histórico: "a4", "a4__maq" (troca) ou "a4__casa" (sem academia)
+const PLAN_EX = () => ['A', 'B', 'C'].flatMap(c => WORKOUTS[c].ex.map(e => ({ ...e, w: c })));
+function exInfo(id) {
+  const [slot, alt] = id.split('__'), base = PLAN_EX().find(e => e.id === slot);
+  if (!base) return null;
+  const a = alt && alt !== 'casa' ? ALTS[slot]?.find(x => x.k === alt) : null;
+  return { ...base, id, slot, n: alt === 'casa' ? base.home + ' (sem academia)' : a ? a.n : base.n };
+}
+
+/* ---------- balança ---------- */
+// Ganho de massa magra aos 63 kg: +0,2 a +0,5 kg por semana. A 1ª semana não conta: a creatina segura 1–2 kg de água.
+function weightTrend() {
+  const st = ST(), M = P().measures || {}, t = todayKey();
+  const all = Object.keys(M).filter(d => +M[d]?.peso > 0).sort();
+  const day1 = M[st.start]?.peso ? +M[st.start].peso : (all[0] ? +M[all[0]].peso : null);
+  const after = all.filter(d => d >= addDays(st.start, 7));
+  // Regra do plano: no dia 8, peso sem subir → shake extra
+  if (day1 && after.length && t <= addDays(st.start, 13)) {
+    const w8 = +M[after[0]].peso;
+    if (w8 <= day1) return { kind: 'low', delta: 450, shake: true, txt: `No dia 8 o peso não subiu (${fmt(day1, 1)} → ${fmt(w8, 1)} kg). Pelo plano: acrescente um shake extra de leite em pó, aveia e pasta de amendoim (~450 kcal).` };
+    return { kind: 'ok', txt: `Peso subiu ${fmt(w8 - day1, 1)} kg até o dia 8 — a creatina e a dieta estão funcionando.` };
+  }
+  const pts = after.map(d => [diffDays(st.start, d), +M[d].peso]);
+  if (pts.length < 2 || pts.at(-1)[0] - pts[0][0] < 6) return { kind: 'pouco', txt: 'Pese-se em Medidas no dia 8 e depois uma vez por semana, de manhã e em jejum: o app usa a balança para ajustar as calorias.' };
+  const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length, my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  const perWeek = pts.reduce((s, p) => s + (p[0] - mx) * (p[1] - my), 0) / pts.reduce((s, p) => s + (p[0] - mx) ** 2, 0) * 7;
+  if (perWeek < 0.15) return { kind: 'low', perWeek, delta: 200, txt: `O peso está parado (${fmt(perWeek, 2)} kg por semana). Para ganhar músculo, suba cerca de 200 kcal por dia.` };
+  if (perWeek > 0.6) return { kind: 'high', perWeek, delta: -150, txt: `O peso sobe rápido (${fmt(perWeek, 2)} kg por semana): parte vira gordura na cintura. Reduza cerca de 150 kcal por dia.` };
+  return { kind: 'ok', perWeek, txt: `Ritmo bom: ${fmt(perWeek, 2)} kg por semana (meta: 0,2 a 0,5).` };
+}
+function weightCard() {
+  const w = weightTrend(), st = ST();
+  const btns = w.delta ? `<div class="actions ${w.shake ? 'two' : ''}" style="margin-top:10px">
+      ${w.shake ? '<button class="btn btn-primary" data-act="addshake">Pôr o shake no cardápio padrão</button>' : ''}
+      <button class="btn ${w.shake ? '' : 'btn-primary'}" data-act="applykcal" data-v="${st.kcal + w.delta}">Meta de calorias: ${fmt(st.kcal)} → ${fmt(st.kcal + w.delta)} kcal</button></div>` : '';
+  return `<div class="card"><h3>Balança</h3><p class="small" style="color:var(--text-2);margin:6px 0 0">${w.kind === 'ok' ? '✓ ' : ''}${esc(w.txt)}</p>${btns}</div>`;
+}
+
+/* ----- Evolução ----- */
+function viewEvolucao() {
+  const t = todayKey(), st = ST();
+  const ids = [...new Set(Object.values(S.days).flatMap(d => Object.keys(d.sets || {})))].map(exInfo).filter(Boolean);
+  const rows = ids.map(x => ({ x, s: exStatus(x.id, '9999'), tg: nextTarget(x, addDays(t, 1)) })).filter(r => r.s.h.length);
+  const count = k => rows.filter(r => r.s.kind === k).length;
+  const label = { subiu: ['Evoluindo', 'w-c'], manteve: ['Mantendo', 'w-livre'], estagnado: ['Estagnado', 'w-b'], caiu: ['Caiu', 'w-b'], novo: ['1º registro', 'w-r'] };
+  const spark = h => { if (h.length < 2) return ''; const v = h.map(s => s.best), lo = Math.min(...v), hi = Math.max(...v), sp = hi - lo || 1; return `<svg viewBox="0 0 80 24" class="spark"><polyline points="${v.map((b, i) => `${i / (v.length - 1) * 78 + 1},${22 - (b - lo) / sp * 20}`).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/></svg>`; };
+  const card = c => {
+    const list = rows.filter(r => r.x.w === c);
+    if (!list.length) return '';
+    return `<div class="card"><h3>${WORKOUTS[c].name} — ${esc(WORKOUTS[c].title)}</h3><div class="evo-list">${list.map(({ x, s, tg }) => {
+      const last = s.h.at(-1), top = last.sets.reduce((a, b) => (b.w > a.w || (b.w === a.w && b.r > a.r) ? b : a));
+      const cur = P().exSwap?.[x.slot], nextAlt = ALTS[x.slot]?.find(a => a.k !== cur && x.id !== x.slot + '__' + a.k);
+      return `<div class="evo-row"><div class="grow" style="min-width:0"><b class="small">${esc(x.n)}</b>
+          <div class="muted small">${s.h.length} ${s.h.length === 1 ? 'treino' : 'treinos'} · último: ${top.w ? fmt(top.w, 1) + ' kg × ' : ''}${top.r} reps (${esc(fmtShort(last.d))})</div>
+          ${tg ? `<div class="target t-${tg.kind}">${esc(tg.txt)}</div>` : ''}
+          ${s.kind === 'estagnado' && nextAlt && !x.id.endsWith('__casa') ? `<button class="btn btn-sm" style="margin-top:6px" data-act="evoswap" data-slot="${x.slot}" data-k="${nextAlt.k}">Trocar por ${esc(nextAlt.n)}</button>` : ''}</div>
+        <div class="evo-side"><span class="chip ${label[s.kind][1]}">${label[s.kind][0]}</span>${spark(s.h)}</div></div>`;
+    }).join('')}</div></div>`;
+  };
+  const ended = t > st.end;
+  return `<div class="view-head"><div class="grow"><h2>Evolução</h2><div class="muted small">O app compara cada treino com os anteriores e ajusta a meta: sobe a carga quando você bate o topo da faixa de repetições, pede +1 repetição quando ainda não bateu e reduz quando a carga passou do ponto.</div></div></div>
+    <div class="grid two"><div class="grid">
+      ${rows.length ? `<div class="card"><div class="stats" style="margin-top:0"><div class="stat"><b>${count('subiu')}</b><span>Evoluindo</span></div><div class="stat"><b>${count('manteve') + count('novo')}</b><span>Mantendo</span></div><div class="stat"><b>${count('estagnado') + count('caiu')}</b><span>Atenção</span></div></div></div>` : '<div class="card"><div class="empty-state">Registre carga e repetições nos treinos (aba Hoje) para a evolução aparecer aqui.</div></div>'}
+      ${card('A')}${card('B')}${card('C')}
+    </div><div class="grid">
+      ${weightCard()}
+      <div class="card"><h3>${ended ? 'Bloco encerrado' : 'Próximo bloco'}</h3>
+        <p class="small" style="color:var(--text-2);margin:6px 0 0">${ended ? `O plano terminou em ${esc(fmtShort(st.end))}.` : `O bloco atual vai até ${esc(fmtShort(st.end))}.`} Repetir os mesmos exercícios por muito tempo trava a evolução: o novo bloco começa hoje, mantém as cargas e troca por uma variação os exercícios estagnados.</p>
+        <button class="btn ${ended ? 'btn-primary' : ''} btn-block" style="margin-top:10px" data-act="newblock">Começar novo bloco de ${planLen()} dias hoje</button></div>
+      <div class="card"><h3>Regras</h3><ul class="small" style="padding-left:18px;color:var(--text-2);margin-bottom:0">
+        <li><b>Dupla progressão:</b> fez o topo da faixa em todas as séries → sobe ${'1 kg'} (isoladores), 2 kg (halteres) ou 2,5 kg (barra e máquina) e volta ao início da faixa.</li>
+        <li><b>Estagnado:</b> 3 treinos seguidos sem superar o melhor anterior (carga × repetições).</li>
+        <li><b>Balança:</b> meta de +0,2 a +0,5 kg por semana depois da 1ª semana; fora disso, o app sugere ajustar as calorias.</li></ul></div>
+    </div></div>`;
 }
 function armNum(k) { return Object.entries(P().schedule).filter(([d, c]) => c === 'ARM' && d < k).length % 5; }
 function creatinaDoses(k) { const i = dayIdx(k); return i >= 1 && i <= 7 ? 4 : 1; }
@@ -292,8 +426,9 @@ const ICONS = {
   mais: '<circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/>'
 };
 ICONS.conta = '<circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
-const TITLES = { hoje: 'Hoje', agenda: 'Agenda', dieta: 'Dieta', medidas: 'Medidas', fichas: 'Fichas', guia: 'Guia', ajustes: 'Ajustes', conta: 'Conta', mais: 'Mais' };
-const SIDE = ['hoje', 'agenda', 'dieta', 'medidas', 'fichas', 'guia', 'ajustes', 'conta'];
+ICONS.evolucao = '<path d="M4 19h16M6 15l4-4 3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h4v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+const TITLES = { hoje: 'Hoje', agenda: 'Agenda', dieta: 'Dieta', medidas: 'Medidas', evolucao: 'Evolução', fichas: 'Fichas', guia: 'Guia', ajustes: 'Ajustes', conta: 'Conta', mais: 'Mais' };
+const SIDE = ['hoje', 'agenda', 'dieta', 'medidas', 'evolucao', 'fichas', 'guia', 'ajustes', 'conta'];
 const TABS = ['hoje', 'agenda', 'dieta', 'medidas', 'mais'];
 const svg = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -317,7 +452,7 @@ function renderNow() {
   const fk = focusKey(document.activeElement);
   const v = S.view;
   $('#side-nav').innerHTML = SIDE.map(n => `<button class="${v === n ? 'on' : ''}" data-act="go" data-v="${n}">${svg(n)}${TITLES[n]}</button>`).join('');
-  const inMais = ['fichas', 'guia', 'ajustes', 'conta', 'mais'].includes(v);
+  const inMais = ['evolucao', 'fichas', 'guia', 'ajustes', 'conta', 'mais'].includes(v);
   const who = store?.email || 'Modo de teste';
   $('#side-account').innerHTML = `<button class="acct" data-act="go" data-v="conta" title="Conta conectada">${svg('conta')}<span><small>Conectado como</small>${esc(who)}</span></button>`;
   $('#top-account').innerHTML = `<button class="icon-btn" data-act="go" data-v="conta" aria-label="Conta: ${esc(who)}" title="${esc(who)}">${esc(who[0].toUpperCase())}</button>`;
@@ -326,7 +461,7 @@ function renderNow() {
   const done = Object.values(P().status || {}).filter(s => s === 'done').length;
   const trainDays = Object.values(P().schedule).filter(c => c !== 'R').length;
   $('#side-progress').innerHTML = `<div class="meter"><div class="row between small"><span class="muted">Treinos feitos</span><b>${done}/${trainDays}</b></div><div class="bar"><i style="width:${Math.min(100, done / Math.max(1, trainDays) * 100)}%"></i></div></div>`;
-  const views = { hoje: viewHoje, agenda: viewAgenda, dieta: viewDieta, medidas: viewMedidas, fichas: viewFichas, guia: viewGuia, ajustes: viewAjustes, conta: viewConta, mais: viewMais };
+  const views = { hoje: viewHoje, agenda: viewAgenda, dieta: viewDieta, medidas: viewMedidas, evolucao: viewEvolucao, fichas: viewFichas, guia: viewGuia, ajustes: viewAjustes, conta: viewConta, mais: viewMais };
   $('#view').innerHTML = (S.permErr ? permBanner() : '') + views[v]();
   if (fk) [...document.querySelectorAll('#view [data-act], #view [data-ch]')].find(el => focusKey(el) === fk)?.focus({ preventScroll: true });
   setSync(S.sync);
@@ -395,7 +530,10 @@ function viewHoje() {
   }
 
   const t = totals(mealsOf(k), true), tp = totals(mealsOf(k));
+  const stuck = exs.filter(e => exStatus(e.id, k).kind === 'estagnado').length, wt = weightTrend();
+  const alert = stuck || wt.delta ? `<button class="card alert-card" data-act="go" data-v="evolucao"><b>Ajustes sugeridos ›</b><span class="small">${[stuck ? `${stuck} ${stuck === 1 ? 'exercício parado' : 'exercícios parados'} há 3 treinos` : '', wt.delta ? (wt.delta > 0 ? 'peso sem subir: comer mais' : 'peso subindo rápido: comer menos') : ''].filter(Boolean).join(' · ')}</span></button>` : '';
   const side = `
+    ${alert}
     ${habitsCard(k, code)}
     <div class="card"><div class="card-head"><h3>Dieta do dia</h3><button class="link small" data-act="go" data-v="dieta">Abrir ›</button></div>
       ${meter('Calorias', t.k, st.kcal, 'kcal')}${meter('Proteína', t.p, st.prot, 'g')}
@@ -419,12 +557,15 @@ function exRow(e, n, k, mode) {
   const name = mode === 'home' ? e.home : e.n;
   const alt = mode === 'home' ? 'Academia: ' + e.n : 'Sem academia: ' + e.home;
   const lastTxt = last ? last.sets.filter(x => x && (x.w || x.r)).map(x => `${x.w || '–'}×${x.r || '–'}`).join(' · ') : '';
+  const tg = nextTarget(e, k), st = exStatus(e.id, k);
   let sets = '';
   for (let i = 0; i < rows; i++) {
+    // O que aparece apagado no campo é a meta de hoje; ✓ sem digitar registra a meta
     const s = arr[i] || {}, ls = last?.sets?.[i] || {};
+    const pw = (tg?.w || ls.w) || 'kg', pr = tg?.r ?? ls.r ?? 'reps';
     sets += `<div class="set"><span class="n">${i + 1}</span>
-      <input type="number" inputmode="decimal" step="0.5" min="0" placeholder="${esc(ls.w ?? 'kg')}" value="${esc(s.w ?? '')}" data-ch="set" data-id="${e.id}" data-i="${i}" data-f="w" aria-label="Peso série ${i + 1}">
-      <input type="number" inputmode="numeric" min="0" placeholder="${esc(ls.r ?? 'reps')}" value="${esc(s.r ?? '')}" data-ch="set" data-id="${e.id}" data-i="${i}" data-f="r" aria-label="Repetições série ${i + 1}">
+      <input type="number" inputmode="decimal" step="0.5" min="0" placeholder="${esc(pw)}" value="${esc(s.w ?? '')}" data-ch="set" data-id="${e.id}" data-i="${i}" data-f="w" aria-label="Peso série ${i + 1}">
+      <input type="number" inputmode="numeric" min="0" placeholder="${esc(pr)}" value="${esc(s.r ?? '')}" data-ch="set" data-id="${e.id}" data-i="${i}" data-f="r" aria-label="Repetições série ${i + 1}">
       <button class="check ${s.ok ? 'on' : ''}" data-act="setok" data-id="${e.id}" data-i="${i}" data-rest="${e.rest}" data-name="${esc(name)}" aria-label="Série ${i + 1} feita">✓</button></div>`;
   }
   return `<div class="ex ${done ? 'done' : ''}">
@@ -434,6 +575,8 @@ function exRow(e, n, k, mode) {
       <div class="ex-alt">${esc(alt)}</div>
       ${e.swapped ? `<div class="ex-alt" style="color:var(--wlivre)">Troca (${e.swapped}) · original: ${esc(e.orig)}</div>` : ''}
       ${lastTxt ? `<div class="last">Última vez (${esc(fmtShort(last.date))}): ${esc(lastTxt)}</div>` : ''}
+      ${tg ? `<div class="target t-${tg.kind}">${esc(tg.txt)}</div>` : ''}
+      ${st.kind === 'estagnado' ? `<div class="target t-down">Sem evoluir há 3 treinos. ${ALTS[e.slot] ? 'Vale trocar por uma variação (⇄ Trocar) ou ' : ''}fazer uma semana com 1 série a menos para recuperar.</div>` : ''}
     </div>${e.tip ? `<button class="mini" data-act="tip" data-id="${e.id}" aria-label="Como executar">?</button>` : ''}</div>
     ${e.tip ? `<div class="ex-tip" id="tip-${e.id}" hidden>${esc(TIPS[e.tip])}${e.tip === 'lateral' ? '<br><br>' + esc(TIPS.dor) : ''}</div>` : ''}
     <div class="sets"><div class="set-head"><span>#</span><span>kg</span><span>reps</span><span></span></div>${sets}</div>
@@ -595,7 +738,7 @@ function viewDieta() {
         <button class="btn btn-ghost btn-block" data-act="addmeal" style="margin-top:6px">+ Refeição</button>
       </div>
       <div class="grid">
-        ${goalCard(tp, meals)}
+        ${weightCard()}${goalCard(tp, meals)}
         <div class="card"><h3>Macros</h3>${macroTable(te, tp)}</div>
         ${historyCard(k)}
         <div class="card"><h3>Cardápio</h3><p class="muted small">⇄ troca um alimento e recalcula a quantidade para manter a proteína (ou as calorias, em carboidrato, gordura e fruta). ⋯ renomeia, move ou remove a refeição.</p>
@@ -1124,7 +1267,7 @@ function viewGuia() {
 }
 function viewMais() {
   const item = (v, d) => `<button class="card" data-act="go" data-v="${v}" style="text-align:left;cursor:pointer;display:flex;gap:14px;align-items:center"><span style="color:var(--accent)">${svg(v)}</span><span class="grow"><b>${TITLES[v]}</b><br><span class="muted small">${d}</span></span>›</button>`;
-  return `<div class="grid">${item('fichas', 'Treinos A, B, C e Armstrong')}${item('guia', 'Postura, GTG, creatina, dieta, fontes')}${item('ajustes', 'Plano, metas, whey, tema, instalar o app')}${item('conta', esc(store?.email || 'Conta conectada'))}</div>`;
+  return `<div class="grid">${item('evolucao', 'Metas de carga, estagnação, balança')}${item('fichas', 'Treinos A, B, C e Armstrong')}${item('guia', 'Postura, GTG, creatina, dieta, fontes')}${item('ajustes', 'Plano, metas, whey, tema, instalar o app')}${item('conta', esc(store?.email || 'Conta conectada'))}</div>`;
 }
 function viewAjustes() {
   const st = ST(), theme = localStorage.getItem('pv-theme') || 'auto';
@@ -1250,10 +1393,11 @@ const ACT = {
     const s = arr[i] || {};
     s.ok = !s.ok;
     if (s.ok) {
-      const ls = lastSets(id, k)?.sets?.[i];
-      // Sem valores digitados: repete o da última vez (toque rápido)
-      if (s.w == null && ls?.w != null) s.w = ls.w;
-      if (s.r == null && ls?.r != null) s.r = ls.r;
+      // Sem valores digitados: registra a meta de hoje (ou, sem meta, o da última vez)
+      const ls = lastSets(id, k)?.sets?.[i], ex = exercisesFor(k).find(x => x.id === id), tg = ex && nextTarget(ex, k);
+      const w = tg?.w ?? ls?.w, r = tg?.r ?? ls?.r;
+      if (s.w == null && w != null) s.w = w;
+      if (s.r == null && r != null) s.r = r;
       startTimer(+el.dataset.rest, el.dataset.name);
     }
     arr[i] = s;
@@ -1346,6 +1490,31 @@ const ACT = {
     el.disabled = false;
   },
   airemove: () => { try { localStorage.removeItem('pv-ai'); } catch { } toast('Chave removida deste aparelho.'); render(); },
+  applykcal: el => { const v = +el.dataset.v; store.setFields({ 'settings.kcal': v }); toast(`Meta de calorias: ${fmt(v)} kcal.`); },
+  addshake: () => {
+    const shake = { id: 'shake', n: 'Shake extra', h: 'quarto', items: [{ f: 'leitepo', q: 1 }, { f: 'aveia', q: 1 }, { f: 'pasta', q: 1 }] };
+    const tpl = templateMeals();
+    if (!tpl.some(m => m.id === 'shake')) { tpl.push(shake); store.setFields({ mealTemplate: tpl }); }
+    const t = todayKey();
+    if (S.days[t]?.meals && !S.days[t].meals.some(m => m.id === 'shake')) store.saveDay(t, { meals: [...clone(S.days[t].meals), clone(shake)] });
+    toast('Shake extra adicionado ao cardápio.');
+  },
+  evoswap: el => { store.setFields({ ['exSwap.' + el.dataset.slot]: el.dataset.k }); toast('Exercício trocado nos próximos treinos.'); },
+  newblock: () => {
+    const st = ST(), len = planLen(), start = todayKey(), end = addDays(start, len - 1);
+    // Exercícios estagnados entram no bloco novo como variação; as cargas continuam no histórico
+    const swaps = {};
+    for (const e of PLAN_EX()) {
+      const cur = P().exSwap?.[e.id], id = cur && cur !== 'orig' ? e.id + '__' + cur : e.id;
+      if (exStatus(id, '9999').kind !== 'estagnado') continue;
+      const alt = ALTS[e.id]?.find(a => a.k !== cur);
+      if (alt) swaps['exSwap.' + e.id] = alt.k;
+    }
+    const n = Object.keys(swaps).length;
+    if (!confirm(`Começar um bloco novo de ${len} dias hoje (${fmtShort(start)} a ${fmtShort(end)})?${n ? ` ${n} ${n === 1 ? 'exercício estagnado será trocado' : 'exercícios estagnados serão trocados'} por uma variação.` : ''}`)) return;
+    store.setFields({ 'settings.start': start, 'settings.end': end, schedule: rotation({}, start, end, st.rest, 0), ...swaps });
+    toast('Bloco novo começou hoje.'); go('agenda');
+  },
   offsearch: () => offSearch(),
   pickoff: el => pickOff(S.offResults[+el.dataset.i]),
   barcode: () => askBarcode(pickOff),

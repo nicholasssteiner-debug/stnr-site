@@ -245,6 +245,16 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .opt .nm { font-weight: 600; font-size: .9rem; }
 .opt .nm small { display: block; color: var(--muted); font-weight: 400; font-size: .76rem; }
 .opt .val { font: 600 .78rem var(--f-mono); text-align: right; color: var(--text-2); }
+.target { font-size: .78rem; margin-top: 4px; padding: 4px 8px; border-radius: 7px; background: var(--surface-2); color: var(--text-2); display: inline-block; }
+.target.t-up { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.target.t-down { background: color-mix(in srgb, var(--wb) 15%, transparent); color: var(--wb); }
+.alert-card { display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer; border-color: color-mix(in srgb, var(--wb) 45%, var(--border)); background: color-mix(in srgb, var(--wb) 8%, var(--surface)); }
+.alert-card b { color: var(--wb); font-family: var(--f-disp); text-transform: uppercase; font-size: 1.05rem; }
+.evo-list { display: grid; margin-top: 6px; }
+.evo-row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.evo-row:first-child { border-top: 0; }
+.evo-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.spark { width: 80px; height: 24px; }
 .calc-box { background: var(--accent-soft); border-radius: 12px; padding: 12px; margin: 4px 0 8px; }
 .calc-box label { margin-bottom: 0; color: var(--text); font-size: .9rem; }
 .calc-box textarea { min-height: 54px; background: var(--surface); }
