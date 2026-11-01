@@ -1,0 +1,25 @@
+{
+  "id": "/treino/",
+  "name": "Protocolo V",
+  "short_name": "Protocolo V",
+  "description": "Treino, calendário flexível, dieta sem carne e medidas.",
+  "lang": "pt-BR",
+  "start_url": "/treino/#hoje",
+  "scope": "/treino/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e1013",
+  "theme_color": "#0e1013",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Treino de hoje", "url": "/treino/#hoje", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Agenda", "url": "/treino/#agenda", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Dieta", "url": "/treino/#dieta", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

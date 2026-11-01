@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Protocolo V</title>
+<meta name="description" content="Treino, calendário flexível, dieta sem carne e medidas do Protocolo V em 15 dias.">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f4f1" media="(prefers-color-scheme: light)">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Protocolo V">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="boot" class="boot"><div class="logo-mark">V</div></div>
+
+<!-- Login -->
+<section id="login" class="login" hidden>
+  <div class="login-card">
+    <div class="brand-row"><div class="logo-mark">V</div><div><div class="brand">Protocolo V</div><div class="muted small">Treino · calendário · dieta sem carne</div></div></div>
+    <form id="login-form" autocomplete="on">
+      <label>E-mail<input id="lg-email" type="email" autocomplete="username" required></label>
+      <label>Senha<input id="lg-pass" type="password" autocomplete="current-password" minlength="6" required></label>
+      <p id="lg-msg" class="form-msg" role="alert"></p>
+      <button class="btn btn-primary btn-block" id="lg-submit" type="submit">Entrar</button>
+      <div class="login-links">
+        <button type="button" class="link" id="lg-toggle">Criar conta</button>
+        <button type="button" class="link" id="lg-reset">Esqueci a senha</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- App -->
+<div id="app" class="app" hidden>
+  <aside class="sidebar">
+    <div class="brand-row"><div class="logo-mark">V</div><div class="brand">Protocolo V</div></div>
+    <nav class="side-nav" id="side-nav"></nav>
+    <div class="side-foot">
+      <div id="side-progress"></div>
+      <div class="sync" id="sync-state"></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="logo-mark sm">V</div>
+      <h1 id="view-title">Hoje</h1>
+      <div class="sync" id="sync-state-m"></div>
+    </header>
+    <div id="view" class="view"></div>
+  </main>
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<div id="timer" class="timer" hidden>
+  <div class="timer-ring"><span id="timer-num">0:00</span></div>
+  <div class="timer-label" id="timer-label">Descanso</div>
+  <button class="icon-btn" id="timer-plus" aria-label="Mais 15 segundos">+15</button>
+  <button class="icon-btn" id="timer-stop" aria-label="Parar">✕</button>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="sheet" class="sheet"><div class="sheet-inner" id="sheet-body"></div></dialog>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
