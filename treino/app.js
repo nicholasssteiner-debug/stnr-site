@@ -1,5 +1,7 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=6';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=7';
+// Os ids taco_N e prep_N gravados nos cardápios apontam para a posição na lista: não reordene essas tabelas
+import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=7';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -257,6 +259,8 @@ function food(f) {
     const st = ST(), r = (+st.wheyK || FOODS.whey.k) / FOODS.whey.k;
     return { ...FOODS.whey, u: `1 dose (${st.wheyG} g)`, k: +st.wheyK, p: +st.wheyP, c: FOODS.whey.c * r, f: FOODS.whey.f * r };
   }
+  if (f.startsWith('taco_')) { const r = TACO[+f.slice(5)]; if (r) return { n: r[0], u: '100 g', k: r[2], p: r[3], c: r[4], f: r[5], g: 'ext', per100: true, src: 'TACO · ' + TACO_CATS[r[1]] }; }
+  if (f.startsWith('prep_')) { const r = PREPARADOS[+f.slice(5)]; if (r) return { n: r[0], u: '100 g', k: r[1], p: r[2], c: r[3], f: r[4], g: 'ext', per100: true, med: r[5], src: 'prato pronto (estimativa)' }; }
   return FOODS[f] || P().customFoods?.[f] || { n: 'Alimento removido', u: '', k: 0, p: 0, c: 0, f: 0, g: 'ext' };
 }
 function templateMeals() {
@@ -571,10 +575,10 @@ function viewDieta() {
     const mt = totals([m]), all = m.items.length && m.items.every(i => i.ok);
     return `<div class="meal"><div class="meal-head"><b>${esc(m.n)}</b><span class="muted small">${esc(m.h || '')}</span>
         <span class="tot">${fmt(mt.k)} kcal · ${fmt(mt.p)} g P</span><button class="mini" data-act="mealmenu" data-m="${mi}" aria-label="Editar refeição">⋯</button></div>
-      ${m.items.map((it, ii) => { const f = food(it.f); return `<div class="item ${it.ok ? 'eaten' : ''}">
+      ${m.items.map((it, ii) => { const f = food(it.f), per = isPer100(f), amt = per ? `${fmt(it.q * 100)} g` : `${fmt(it.q, 1)} × ${esc(f.u)}`; return `<div class="item ${it.ok ? 'eaten' : ''}">
         <button class="tick ${it.ok ? 'on' : ''}" data-act="eat" data-m="${mi}" data-i="${ii}" aria-label="Comi">✓</button>
-        <div class="nm">${esc(f.n)}<small>${fmt(it.q, 1)} × ${esc(f.u)} · ${fmt(f.k * it.q)} kcal · ${fmt(f.p * it.q, 1)} g P</small></div>
-        <div class="acts"><span class="qty"><button data-act="qty" data-m="${mi}" data-i="${ii}" data-d="-0.5" aria-label="Menos">−</button><span>${fmt(it.q, 1)}</span><button data-act="qty" data-m="${mi}" data-i="${ii}" data-d="0.5" aria-label="Mais">+</button></span>
+        <div class="nm">${esc(f.n)}<small>${amt} · ${fmt(f.k * it.q)} kcal · ${fmt(f.p * it.q, 1)} g P</small></div>
+        <div class="acts"><span class="qty"><button data-act="qty" data-m="${mi}" data-i="${ii}" data-d="-1" aria-label="Menos">−</button><span>${per ? fmt(it.q * 100) : fmt(it.q, 1)}</span><button data-act="qty" data-m="${mi}" data-i="${ii}" data-d="1" aria-label="Mais">+</button></span>
         <button class="mini" data-act="swap" data-m="${mi}" data-i="${ii}" title="Substituir" aria-label="Substituir">⇄</button></div></div>`; }).join('') || '<div class="muted small" style="padding:6px 0">Sem alimentos.</div>'}
       <div class="row"><button class="link small" data-act="additem" data-m="${mi}">+ alimento</button><span class="grow"></span>${m.items.length ? `<button class="link small" data-act="eatall" data-m="${mi}">${all ? 'Desmarcar' : 'Comi tudo'}</button>` : ''}</div></div>`;
   }).join('');
@@ -586,6 +590,7 @@ function viewDieta() {
           <div><span class="muted small">Comido</span><b>${fmt(te.k)}<small> / ${fmt(st.kcal)} kcal</small></b><div class="bar"><i style="width:${pctK}%"></i></div></div>
           <div><span class="muted small">Proteína</span><b>${fmt(te.p)}<small> / ${fmt(st.prot)} g</small></b><div class="bar"><i style="width:${pctP}%"></i></div></div>
         </div>
+        ${calcBox(meals)}
         ${body}
         <button class="btn btn-ghost btn-block" data-act="addmeal" style="margin-top:6px">+ Refeição</button>
       </div>
@@ -708,10 +713,9 @@ function openAdd(mi, replace) {
     <div class="opt-list" id="add-list"></div>`, () => {
     const q = $('#add-q'), list = $('#add-list');
     const draw = () => {
-      const s = norm(q.value.trim());
-      const all = { ...FOODS, ...(P().customFoods || {}) };
-      const hits = Object.keys(all).filter(id => !s || norm(food(id).n).includes(s));
-      list.innerHTML = hits.slice(0, 60).map(id => { const a = food(id); return `<button class="opt" data-act="pickfood" data-f="${id}"><div class="nm">${esc(a.n)}<small>${esc(a.u)} · ${GROUPS[a.g] || ''}</small></div><div class="val">${fmt(a.k)} kcal<br>${fmt(a.p, 1)} g</div></button>`; }).join('') || '<div class="empty-state small">Nada na base local. Toque em “Buscar na internet”.</div>';
+      const s = q.value.trim();
+      const hits = s ? searchFoods(s, 40).map(x => x.id) : Object.keys({ ...FOODS, ...(P().customFoods || {}) });
+      list.innerHTML = hits.slice(0, 60).map(id => { const a = food(id), per = isPer100(a); return `<button class="opt" data-act="pickfood" data-f="${id}"><div class="nm">${esc(a.n)}<small>${per ? 'por 100 g' : esc(a.u)} · ${esc(a.src || GROUPS[a.g] || '')}</small></div><div class="val">${fmt(a.k)} kcal<br>${fmt(a.p, 1)} g</div></button>`; }).join('') || '<div class="empty-state small">Nada na tabela TACO nem na base. Toque em “Buscar na internet” para produtos de marca.</div>';
     };
     q.oninput = draw; q.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); offSearch(); } };
     draw(); setTimeout(() => q.focus(), 50);
@@ -812,6 +816,214 @@ function askBarcode(onFound) {
       } catch { $('#bc-msg').textContent = 'Não foi possível abrir a câmera.'; }
     };
   }, true);
+}
+
+/* ----- Busca na tabela e calculadora de texto livre ----- */
+// Alimentos por 100 g (TACO, pratos prontos, Open Food Facts, USDA) mostram e ajustam a quantidade em gramas
+const isPer100 = x => !!x && (x.per100 || x.u === '100 g');
+const STOP = new Set(['de', 'do', 'da', 'dos', 'das', 'com', 'sem', 'e', 'a', 'o', 'as', 'os', 'um', 'uma', 'ao', 'na', 'no', 'em', 'tipo', 'meu', 'minha', 'pra', 'para', 'comi', 'tomei', 'bebi']);
+const stem = w => { w = w.replace(/oes$|aes$/, 'ao').replace(/ns$/, 'm').replace(/res$/, 'r'); return w.length > 3 ? w.replace(/s$/, '') : w; };
+// Nomes populares que a tabela escreve de outro jeito
+const SYN = [[/\bcoca( cola)?\b|\bpepsi\b/g, 'refrigerante cola'], [/\bguarana\b(?! em po)/g, 'refrigerante guarana'], [/\bfanta\b/g, 'refrigerante laranja'], [/\bsprite\b/g, 'refrigerante limao'], [/\bxis\b|\bx (?=burguer|salada|tudo)/g, 'x-'], [/\bcafezinho\b/g, 'cafe infusao'], [/\bmacarrao\b/g, 'macarrao'], [/\bovos? mexidos?\b/g, 'ovo mexido'], [/\bpaozinho\b/g, 'pao frances']];
+const synonyms = s => SYN.reduce((t, [re, to]) => t.replace(re, to), norm(s));
+const toks = s => synonyms(s).split(/[^a-z0-9]+/).filter(w => w && !STOP.has(w)).map(stem);
+
+let INDEX = null;
+function foodIndex() {
+  if (!INDEX) {
+    INDEX = [
+      ...Object.keys(FOODS).map(id => ({ id, n: FOODS[id].n, src: 'base', bonus: 0.7 })),
+      ...PREPARADOS.map((r, i) => ({ id: 'prep_' + i, n: r[0], src: 'pronto', bonus: 0.4 })),
+      ...TACO.map((r, i) => ({ id: 'taco_' + i, n: r[0], src: 'TACO', bonus: 0 }))
+    ].map(x => ({ ...x, t: toks(x.n) }));
+  }
+  const custom = Object.entries(P().customFoods || {}).map(([id, f]) => ({ id, n: f.n, src: 'meu', bonus: 1, t: toks(f.n) }));
+  return [...custom, ...INDEX];
+}
+function searchFoods(q, limit = 8) {
+  const qt = toks(q);
+  if (!qt.length) return [];
+  const wantsRaw = qt.includes('cru') || qt.includes('crua');
+  return foodIndex().map(x => {
+    let hit = 0, score = 0;
+    for (const w of qt) {
+      if (x.t.includes(w)) { hit++; score += 3; }
+      else if (w.length >= 4 && x.t.some(t => t.length >= 4 && (t.startsWith(w) || w.startsWith(t)))) { hit++; score += 2; }
+    }
+    if (!hit) return null;
+    score += x.bonus - 0.25 * Math.max(0, x.t.length - hit);
+    // O nome que começa pela palavra buscada é quase sempre o certo ("pão de queijo", não "misto de pão e queijo")
+    const head = x.t[0] === qt[0] || (qt[0].length >= 4 && x.t[0]?.startsWith(qt[0]));
+    if (head) score += 1.5;
+    if (!wantsRaw && x.t.some(t => t === 'cru' || t === 'crua')) score -= 1.5;
+    // Sem dizer o preparo, o mais comum no prato é o cozido
+    if (qt.length <= 2 && x.t.some(t => t === 'cozido' || t === 'cozida')) score += 0.6;
+    return { ...x, hit, score, full: hit === qt.length && head };
+  }).filter(Boolean).sort((a, b) => b.hit - a.hit || b.score - a.score).slice(0, limit);
+}
+
+const NUM = { meia: 0.5, meio: 0.5, um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, dez: 10 };
+const MEAS = { fatia: 'fatia', colher: 'colher', concha: 'concha', escumadeira: 'escumadeira', xicara: 'xicara', copo: 'copo', lata: 'lata', latinha: 'lata', garrafa: 'garrafa', prato: 'prato', porcao: 'porcao', pedaco: 'pedaco', bola: 'bola', tigela: 'tigela', punhado: 'punhado', pote: 'pote', barra: 'barra', pacote: 'pacote', peca: 'peca', unidade: 'unidade', file: 'file', bife: 'bife', sache: 'sache', dose: 'dose' };
+// Gramas de uma unidade quando a frase diz só "2 ovos", "1 banana"
+const UNIT_G = [[/ovo/, 50], [/banana/, 86], [/maca/, 130], [/laranja|tangerina|mexerica/, 160], [/pao de queijo/, 40], [/pao/, 50], [/coxinha|pastel|quibe|esfiha/, 80], [/iogurte/, 170], [/bolacha|biscoito/, 8]];
+
+function portionGrams(f) { const m = String(f.u || '').match(/\((\d+)\s*(g|ml)\)/) || String(f.u || '').match(/^(\d+)\s*(g|ml)$/); return m ? +m[1] : null; }
+
+// Quantidade q (multiplicador da porção do alimento) a partir do que a frase disse
+function amountFor(row, id) {
+  const f = food(id);
+  if (isPer100(f)) {
+    let g = row.grams;
+    if (g == null) {
+      const med = f.med || {};
+      if (row.measure) g = (med[row.measure] ?? MEDIDAS[row.measure]) * (row.qty ?? 1);
+      else g = (med.unidade ?? UNIT_G.find(([re]) => re.test(norm(f.n)))?.[1] ?? 100) * (row.qty ?? 1);
+    }
+    return Math.max(0.05, Math.round(g) / 100);
+  }
+  const pg = portionGrams(f);
+  const g = row.grams ?? (row.measure && pg ? MEDIDAS[row.measure] * (row.qty ?? 1) : null);
+  if (g != null) return pg ? Math.max(0.25, Math.round(g / pg * 4) / 4) : 1;
+  return row.qty ?? 1;
+}
+
+function parseMeal(text) {
+  const parts = text.split(/\s*(?:,|;|\+|\n|\s+e\s+(?=\S)|\s+mais\s+)\s*/i).map(s => s.trim()).filter(Boolean);
+  return parts.flatMap(part => {
+    const row = parsePart(part);
+    // "arroz com feijão" são dois alimentos; "café com leite" é um só (existe com esse nome)
+    if (!/\scom\s/i.test(part) || row.full) return [row];
+    const [first, ...others] = part.split(/\s+com\s+/i);
+    return [parsePart(first), ...others.map(o => parsePart(o))];
+  });
+}
+
+function parsePart(part) {
+  {
+    let rest = norm(part).replace(/[^a-z0-9.,\s]/g, ' ').trim(), qty = null, grams = null, measure = null, m;
+    if ((m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|gr|gramas?|ml|l|litros?)\b\s*(?:de\s+)?(.*)$/))) {
+      const v = +m[1].replace(',', '.'); grams = /^k|^l/.test(m[2]) ? v * 1000 : v; rest = m[3];
+    } else {
+      if ((m = rest.match(/^(\d+(?:[.,]\d+)?|meia|meio|uma?|duas|dois|tres|quatro|cinco|seis|sete|oito|dez)\s+(.*)$/))) { qty = NUM[m[1]] ?? +m[1].replace(',', '.'); rest = m[2]; }
+      const mm = rest.match(/^([a-z]+)\s+(?:de\s+(?:sopa|cha|sobremesa)\s+)?(?:de\s+|do\s+|da\s+)?(.*)$/);
+      if (mm && MEAS[stem(mm[1])] && mm[2]) { measure = MEAS[stem(mm[1])]; rest = mm[2]; if (/colher(es)? de cha/.test(norm(part))) measure = 'colher de cha'; }
+      if ((m = rest.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*(g|ml)\b/))) { grams = +m[2].replace(',', '.') * (qty ?? 1); rest = m[1]; }
+    }
+    const cands = searchFoods(rest, 8);
+    const row = { text: part, query: rest, qty, grams, measure, cands: cands.map(c => ({ id: c.id, src: c.src })), sel: cands[0]?.id || null, on: !!cands.length, full: !!cands[0]?.full };
+    row.q = row.sel ? amountFor(row, row.sel) : 1;
+    return row;
+  }
+}
+
+function defaultMealIndex(meals) {
+  const h = new Date().getHours(), want = h < 10 ? 'cafe' : h < 12 ? 'lanche' : h < 15 ? 'almoco' : h < 18 ? 'pos' : h < 21 ? 'jantar' : 'ceia';
+  const i = meals.findIndex(m => m.id === want);
+  return i >= 0 ? i : Math.max(0, meals.length - 1);
+}
+
+function calcBox(meals) {
+  const ai = aiCfg();
+  return `<div class="calc-box">
+    <label for="calc-text">Comeu algo fora do plano?</label>
+    <textarea id="calc-text" rows="2" placeholder="Ex.: 2 fatias de pizza de calabresa e 1 lata de refrigerante de cola">${esc(S.calcDraft || '')}</textarea>
+    <div class="row" style="margin-top:8px"><select id="calc-meal" aria-label="Refeição" style="margin:0;flex:1;min-width:140px">${meals.map((m, i) => `<option value="${i}" ${i === (S.calcMeal ?? defaultMealIndex(meals)) ? 'selected' : ''}>${esc(m.n)}</option>`).join('')}</select>
+      <button class="btn btn-primary" data-act="calcrun">Calcular</button></div>
+    <div class="muted small" style="margin-top:6px">Busca na tabela TACO (Unicamp), com ${TACO.length} alimentos, e em pratos prontos comuns. Separe os itens com vírgula ou “e”.${ai.key ? ' A IA (Claude) fica disponível no resultado.' : ''}</div></div>`;
+}
+
+function openCalc() {
+  const c = S.calc;
+  const rows = c.rows.map((r, ri) => {
+    if (r.ai) {
+      const a = r.ai;
+      return `<div class="calc-row ${r.on ? '' : 'off'}"><div class="row between"><b class="small">${esc(a.n)}</b><button class="tick ${r.on ? 'on' : ''}" data-act="calcon" data-r="${ri}" aria-label="Incluir">✓</button></div>
+        <div class="muted small">${esc(a.u)} · IA${a.fonte ? ' · ' + esc(a.fonte) : ''}</div>
+        <div class="calc-val">${fmt(a.k)} kcal · ${fmt(a.p, 1)} g P · ${fmt(a.c)} g C · ${fmt(a.f)} g G</div></div>`;
+    }
+    if (!r.sel) return `<div class="calc-row off"><b class="small">“${esc(r.text)}”</b><div class="muted small">Não encontrei na tabela.</div>
+      <div class="row" style="margin-top:6px"><button class="btn btn-sm" data-act="calcweb" data-r="${ri}">Buscar produto na internet</button><button class="btn btn-sm btn-ghost" data-act="newfood">Criar alimento</button></div></div>`;
+    const f = food(r.sel), per = isPer100(f);
+    return `<div class="calc-row ${r.on ? '' : 'off'}"><div class="row between"><span class="muted small">“${esc(r.text)}”</span><button class="tick ${r.on ? 'on' : ''}" data-act="calcon" data-r="${ri}" aria-label="Incluir">✓</button></div>
+      <select data-ch="calcsel" data-r="${ri}" aria-label="Alimento">${r.cands.map(o => `<option value="${o.id}" ${o.id === r.sel ? 'selected' : ''}>${esc(food(o.id).n)} · ${o.src}</option>`).join('')}</select>
+      <div class="row" style="margin-top:6px"><label class="inline">${per ? 'Gramas' : 'Porções de ' + esc(f.u)}<input type="number" inputmode="decimal" min="0" step="${per ? 5 : 0.5}" value="${per ? Math.round(r.q * 100) : r.q}" data-ch="calcq" data-r="${ri}"></label>
+        <div class="calc-val grow">${fmt(f.k * r.q)} kcal · ${fmt(f.p * r.q, 1)} g P<br><span class="muted">${fmt((f.c || 0) * r.q)} g C · ${fmt((f.f || 0) * r.q)} g G</span></div></div></div>`;
+  }).join('');
+  const on = c.rows.filter(r => r.on && (r.sel || r.ai));
+  const tot = on.reduce((t, r) => { const f = r.ai || food(r.sel), q = r.ai ? 1 : r.q; t.k += f.k * q; t.p += f.p * q; return t; }, { k: 0, p: 0 });
+  const meals = mealsOf(S.dayKey), ai = aiCfg();
+  openSheet(`<h3>Resultado</h3><div class="muted small">Confira o alimento e a quantidade de cada item. Valores por 100 g da TACO (Unicamp); pratos prontos são estimativas.</div>
+    ${c.note ? `<div class="banner info" style="margin:10px 0 0">${esc(c.note)}</div>` : ''}
+    <div class="calc-list">${rows}</div>
+    <div class="calc-total"><span>Total marcado</span><b>${fmt(tot.k)} kcal · ${fmt(tot.p, 1)} g de proteína</b></div>
+    <div class="actions two"><button class="btn btn-primary" data-act="calcadd" ${on.length ? '' : 'disabled'}>Adicionar a ${esc(meals[c.mi]?.n || 'refeição')} (comido)</button>
+      ${ai.key ? `<button class="btn" data-act="calcai">Calcular com IA (Claude)</button>` : `<button class="btn btn-ghost" data-act="go" data-v="ajustes">Configurar IA (opcional)</button>`}</div>`);
+}
+
+/* IA opcional: a chave da API da Anthropic fica só neste aparelho */
+const aiCfg = () => { try { return JSON.parse(localStorage.getItem('pv-ai')) || {}; } catch { return {}; } };
+const AI_MODELS = [['claude-opus-5-5', 'Claude Opus 5.5 — mais preciso (padrão)'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5 — mais barato'], ['claude-haiku-5-5', 'Claude Haiku 5.5 — o mais barato e rápido']];
+const COM_FALLBACK = /^claude-(opus-5-5|sonnet-5-5)$/;
+const AI_SYS = `Você calcula a composição nutricional do que a pessoa comeu, a partir de uma descrição em português do Brasil.
+Para alimentos genéricos, use a Tabela Brasileira de Composição de Alimentos (TACO/Unicamp) ou a TBCA-USP como referência. Para produtos de marca, redes de restaurante ou pratos específicos, use a busca na web para achar a tabela nutricional oficial.
+Quando a quantidade não for dita, use a porção típica no Brasil e escreva qual foi em "porcao". Os valores de cada item são para a quantidade comida, não por 100 g.
+Responda chamando a ferramenta registrar_alimentos uma única vez, com todos os itens. Em "fonte", diga de onde veio o valor (por exemplo, "TACO" ou o site do fabricante). Use "observacao" para avisar sobre suposições importantes, em uma frase.`;
+const AI_TOOL = {
+  name: 'registrar_alimentos', strict: true,
+  description: 'Registra os alimentos identificados na descrição, com calorias e macronutrientes da quantidade comida.',
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['itens', 'observacao'],
+    properties: {
+      itens: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['nome', 'porcao', 'gramas', 'kcal', 'proteina', 'carboidrato', 'gordura', 'fonte'],
+        properties: { nome: { type: 'string' }, porcao: { type: 'string' }, gramas: { type: 'number' }, kcal: { type: 'number' }, proteina: { type: 'number' }, carboidrato: { type: 'number' }, gordura: { type: 'number' }, fonte: { type: 'string' } } } },
+      observacao: { type: 'string' }
+    }
+  }
+};
+let sdkP;
+async function aiClient(key) {
+  sdkP ||= import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm');
+  const { default: Anthropic } = await sdkP;
+  return { Anthropic, client: new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true }) };
+}
+function aiError(Anthropic, e) {
+  if (!Anthropic) return e.message || 'Não foi possível carregar o SDK do Claude.';
+  if (e instanceof Anthropic.AuthenticationError) return 'Chave inválida ou revogada. Confira em Ajustes.';
+  if (e instanceof Anthropic.PermissionDeniedError) return 'A chave não tem permissão para esse modelo.';
+  if (e instanceof Anthropic.NotFoundError) return 'Modelo não encontrado para essa chave. Escolha outro em Ajustes.';
+  if (e instanceof Anthropic.RateLimitError) return 'Limite de uso da chave atingido. Tente daqui a pouco.';
+  if (e instanceof Anthropic.BadRequestError) return /credit balance/i.test(e.message) ? 'A conta da API está sem créditos.' : e.message;
+  if (e instanceof Anthropic.APIConnectionError) return 'Sem conexão com a Anthropic.';
+  return e.message || 'Erro ao falar com a IA.';
+}
+async function aiCalc(text) {
+  const cfg = aiCfg(), model = cfg.model || 'claude-opus-5-5';
+  let Anthropic;
+  try {
+    const k = await aiClient(cfg.key); Anthropic = k.Anthropic;
+    const search = model.startsWith('claude-haiku') ? { type: 'web_search_20250305', name: 'web_search', max_uses: 3 } : { type: 'web_search_20260209', name: 'web_search', max_uses: 3 };
+    const messages = [{ role: 'user', content: text }];
+    for (let i = 0; i < 4; i++) {
+      const req = { model, max_tokens: 16000, system: AI_SYS, tools: [search, AI_TOOL], messages, output_config: { effort: 'medium' } };
+      // se o modelo recusar por política de segurança, o próprio servidor tenta de novo em outro modelo
+      if (COM_FALLBACK.test(model)) Object.assign(req, { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
+      const msg = await k.client.beta.messages.create(req);
+      if (msg.stop_reason === 'refusal') throw new Error('A IA não pôde calcular essa descrição.');
+      const call = msg.content.find(b => b.type === 'tool_use' && b.name === 'registrar_alimentos');
+      if (call && msg.stop_reason !== 'max_tokens') return call.input;
+      if (msg.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: msg.content }); continue; }
+      throw new Error('A IA não devolveu os alimentos. Tente descrever de outro jeito.');
+    }
+    throw new Error('A busca da IA demorou demais. Tente de novo.');
+  } catch (e) { throw new Error(aiError(Anthropic, e)); }
+}
+
+function pickGrams(id) {
+  const f = food(id), med = f.med ? Object.entries(f.med) : [];
+  openSheet(`<h3>${esc(f.n)}</h3><div class="muted small">Por 100 g: ${fmt(f.k)} kcal · ${fmt(f.p, 1)} g P · ${fmt(f.c || 0)} g C · ${fmt(f.f || 0)} g G</div>
+    ${med.length ? `<div class="pill-list" style="margin-top:10px">${med.map(([m, g]) => `<button class="chip" style="border:0;cursor:pointer" data-act="gramset" data-g="${g}">1 ${m} ≈ ${g} g</button>`).join('')}</div>` : ''}
+    <label style="margin-top:12px">Quantidade (g)<input type="number" id="pg-g" inputmode="decimal" value="${med[0]?.[1] || 100}" min="1"></label>
+    <button class="btn btn-primary btn-block" data-act="pgadd" data-f="${id}">Adicionar</button>`);
 }
 
 /* ----- Medidas ----- */
@@ -934,6 +1146,13 @@ function viewAjustes() {
     <div class="card"><h3>Instalar o app</h3>
       ${standalone ? '<p class="muted">Você já está usando o app instalado.</p>' : S.installEvt ? '<p class="muted small">Instala como aplicativo no celular ou no computador, com ícone próprio e funcionamento offline.</p><button class="btn btn-primary btn-block" data-act="install">Instalar Protocolo V</button>' :
       `<ul class="small" style="padding-left:18px;color:var(--text-2);margin-bottom:0"><li><b>Android (Chrome):</b> menu ⋮ → Instalar app.</li><li><b>iPhone (Safari):</b> Compartilhar → Adicionar à Tela de Início.</li><li><b>Computador (Chrome ou Edge):</b> ícone de instalar no fim da barra de endereço.</li></ul>`}</div>
+    ${(() => { const ai = aiCfg(); return `<div class="card"><h3>IA para calcular refeições (opcional)</h3>
+      <p class="muted small" style="margin-top:4px">Sem isso, a calculadora da Dieta usa a tabela TACO, que funciona para todo mundo. Com uma chave da API da Anthropic, aparece também “Calcular com IA”, que entende pratos e marcas e busca a tabela na internet. A chave fica só neste aparelho; a descrição da refeição vai para a Anthropic, com cobrança por uso na sua conta.</p>
+      <label>Chave da API<input type="password" id="ai-key" autocomplete="off" placeholder="sk-ant-…" value="${esc(ai.key || '')}"></label>
+      <label>Modelo<select id="ai-model">${AI_MODELS.map(([v, n]) => `<option value="${v}" ${v === (ai.model || 'claude-opus-5-5') ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <p class="form-msg" id="ai-msg"></p>
+      <div class="actions two"><button class="btn btn-primary" data-act="aisave">Salvar</button><button class="btn" data-act="aitest">Testar chave</button>
+      ${ai.key ? '<button class="btn btn-ghost btn-danger" data-act="airemove">Remover chave</button>' : ''}</div></div>`; })()}
   </div>`;
 }
 function viewConta() {
@@ -1067,12 +1286,66 @@ const ACT = {
   resetplan: () => { if (!confirm('Restaurar o calendário original (início, 15 dias, sábado de descanso)? Os registros são mantidos.')) return; const st = ST(); const end = addDays(st.start, 14); store.setFields({ schedule: rotation({}, st.start, end, st.rest, 0), 'settings.end': end }); toast('Calendário restaurado.'); },
   eat: el => mutateMeals(m => { const it = m[+el.dataset.m].items[+el.dataset.i]; it.ok = !it.ok; }),
   eatall: el => mutateMeals(m => { const items = m[+el.dataset.m].items; const v = !items.every(i => i.ok); items.forEach(i => i.ok = v); }),
-  qty: el => mutateMeals(m => { const it = m[+el.dataset.m].items[+el.dataset.i]; it.q = Math.max(0.5, Math.round((it.q + +el.dataset.d) * 2) / 2); }),
+  qty: el => mutateMeals(m => {
+    const it = m[+el.dataset.m].items[+el.dataset.i], step = isPer100(food(it.f)) ? 0.25 : 0.5;
+    it.q = Math.max(step, Math.round((it.q + Math.sign(+el.dataset.d) * step) / step) * step);
+  }),
   swap: el => openSwap(+el.dataset.m, +el.dataset.i),
   doswap: el => { mutateMeals(m => { const it = m[+el.dataset.m].items[+el.dataset.i]; m[+el.dataset.m].items[+el.dataset.i] = { f: el.dataset.f, q: +el.dataset.q, ok: it.ok }; }); closeSheet(); toast('Substituído.'); },
   rmitem: el => { mutateMeals(m => m[+el.dataset.m].items.splice(+el.dataset.i, 1)); closeSheet(); },
   additem: el => openAdd(+el.dataset.m, el.dataset.replace),
-  pickfood: el => addItem(el.dataset.f, 1),
+  pickfood: el => isPer100(food(el.dataset.f)) ? pickGrams(el.dataset.f) : addItem(el.dataset.f, 1),
+  gramset: el => { $('#pg-g').value = el.dataset.g; },
+  pgadd: el => { const g = +$('#pg-g').value; if (!(g > 0)) return toast('Digite os gramas.'); addItem(el.dataset.f, Math.round(g) / 100); },
+  calcrun: () => {
+    const text = ($('#calc-text')?.value || S.calcDraft || '').trim();
+    if (!text) return toast('Descreva o que você comeu.');
+    const meals = mealsOf(S.dayKey);
+    S.calc = { text, mi: +($('#calc-meal')?.value ?? defaultMealIndex(meals)), rows: parseMeal(text), note: '' };
+    if (!S.calc.rows.some(r => r.sel)) S.calc.note = 'Não achei esses itens na tabela. Tente outro nome (ex.: “refrigerante” em vez da marca), busque o produto na internet ou crie o alimento.';
+    openCalc();
+  },
+  calcon: el => { const r = S.calc.rows[+el.dataset.r]; r.on = !r.on; openCalc(); },
+  calcweb: el => { const r = S.calc.rows[+el.dataset.r]; openAdd(S.calc.mi); setTimeout(() => { const q = $('#add-q'); if (q) { q.value = r.query; offSearch(); } }, 80); },
+  calcadd: () => {
+    const c = S.calc, rows = c.rows.filter(r => r.on && (r.sel || r.ai));
+    const newFoods = {};
+    mutateMeals(meals => {
+      const m = meals[c.mi] || meals[meals.length - 1];
+      rows.forEach((r, i) => {
+        if (r.ai) { const id = 'ai_' + Date.now() + '_' + i; newFoods[id] = r.ai; m.items.push({ f: id, q: 1, ok: true }); }
+        else m.items.push({ f: r.sel, q: r.q, ok: true });
+      });
+    });
+    for (const [id, f] of Object.entries(newFoods)) store.setFields({ ['customFoods.' + id]: f });
+    P().customFoods = { ...(P().customFoods || {}), ...newFoods };
+    S.calcDraft = ''; const t = $('#calc-text'); if (t) t.value = '';
+    closeSheet(); toast(`${rows.length} ${rows.length === 1 ? 'item adicionado' : 'itens adicionados'} como comidos.`);
+  },
+  calcai: async el => {
+    el.disabled = true; el.textContent = 'Calculando com IA…';
+    try {
+      const out = await aiCalc(S.calc.text);
+      S.calc.rows = out.itens.map(x => ({ text: x.nome, on: true, ai: { n: x.nome, u: x.porcao + (x.gramas ? ` (${Math.round(x.gramas)} g)` : ''), k: +x.kcal || 0, p: +x.proteina || 0, c: +x.carboidrato || 0, f: +x.gordura || 0, g: 'ext', fonte: x.fonte } }));
+      S.calc.note = out.observacao || '';
+      openCalc();
+    } catch (e) { el.disabled = false; el.textContent = 'Calcular com IA (Claude)'; toast(e.message); }
+  },
+  aisave: () => {
+    const key = $('#ai-key').value.trim(), model = $('#ai-model').value;
+    try { localStorage.setItem('pv-ai', JSON.stringify({ key, model })); } catch { }
+    toast(key ? 'IA configurada neste aparelho.' : 'Chave removida.'); render();
+  },
+  aitest: async el => {
+    const key = $('#ai-key').value.trim(), model = $('#ai-model').value, msg = $('#ai-msg');
+    if (!key) { msg.textContent = 'Cole a chave primeiro.'; return; }
+    el.disabled = true; msg.className = 'form-msg ok'; msg.textContent = 'Testando…';
+    let Anthropic;
+    try { const k = await aiClient(key); Anthropic = k.Anthropic; await k.client.messages.countTokens({ model, messages: [{ role: 'user', content: 'teste' }] }); msg.textContent = 'Chave funcionando.'; }
+    catch (e) { msg.className = 'form-msg'; msg.textContent = aiError(Anthropic, e); }
+    el.disabled = false;
+  },
+  airemove: () => { try { localStorage.removeItem('pv-ai'); } catch { } toast('Chave removida deste aparelho.'); render(); },
   offsearch: () => offSearch(),
   pickoff: el => pickOff(S.offResults[+el.dataset.i]),
   barcode: () => askBarcode(pickOff),
@@ -1153,7 +1426,12 @@ document.addEventListener('change', e => {
     store.saveDay(k, { ['sets.' + id]: arr });
   } else if (ch === 'note') store.saveDay(k, { note: el.value });
   else if (ch === 'setting') { const v = +el.value; if (v > 0) store.setFields({ ['settings.' + el.dataset.f]: v }); }
+  else if (ch === 'calcsel') { const r = S.calc.rows[+el.dataset.r]; r.sel = el.value; r.q = amountFor(r, r.sel); openCalc(); }
+  else if (ch === 'calcq') { const r = S.calc.rows[+el.dataset.r], v = +el.value; if (v > 0) { r.q = isPer100(food(r.sel)) ? v / 100 : v; openCalc(); } }
 });
+// Rascunho da calculadora sobrevive aos redesenhos da tela
+document.addEventListener('input', e => { if (e.target.id === 'calc-text') S.calcDraft = e.target.value; if (e.target.id === 'calc-meal') S.calcMeal = +e.target.value; });
+document.addEventListener('change', e => { if (e.target.id === 'calc-meal') S.calcMeal = +e.target.value; });
 
 /* Arrastar e soltar na agenda (computador) */
 let dragK = null;
