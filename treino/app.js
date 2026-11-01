@@ -1,5 +1,5 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=5';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=6';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -253,8 +253,11 @@ function lastSets(id, k) {
 
 /* ---------- dieta ---------- */
 function food(f) {
-  if (f === 'whey') { const st = ST(); return { ...FOODS.whey, u: `1 dose (${st.wheyG} g)`, k: +st.wheyK, p: +st.wheyP }; }
-  return FOODS[f] || P().customFoods?.[f] || { n: 'Alimento removido', u: '', k: 0, p: 0, g: 'ext' };
+  if (f === 'whey') {
+    const st = ST(), r = (+st.wheyK || FOODS.whey.k) / FOODS.whey.k;
+    return { ...FOODS.whey, u: `1 dose (${st.wheyG} g)`, k: +st.wheyK, p: +st.wheyP, c: FOODS.whey.c * r, f: FOODS.whey.f * r };
+  }
+  return FOODS[f] || P().customFoods?.[f] || { n: 'Alimento removido', u: '', k: 0, p: 0, c: 0, f: 0, g: 'ext' };
 }
 function templateMeals() {
   const t = P().mealTemplate;
@@ -263,9 +266,13 @@ function templateMeals() {
 }
 const mealsOf = k => dayOf(k).meals ? clone(dayOf(k).meals) : templateMeals();
 function totals(meals, onlyEaten) {
-  let k = 0, p = 0;
-  for (const m of meals) for (const it of m.items) { if (onlyEaten && !it.ok) continue; const f = food(it.f); k += f.k * it.q; p += f.p * it.q; }
-  return { k, p };
+  const t = { k: 0, p: 0, c: 0, f: 0 };
+  for (const m of meals) for (const it of m.items) {
+    if (onlyEaten && !it.ok) continue;
+    const x = food(it.f);
+    for (const n of ['k', 'p', 'c', 'f']) t[n] += (+x[n] || 0) * it.q;
+  }
+  return t;
 }
 const roundHalf = x => Math.max(0.5, Math.round(x * 2) / 2);
 
@@ -559,24 +566,36 @@ function setStatus(k, s) {
 function viewDieta() {
   const k = S.dayKey, st = ST(), meals = mealsOf(k), te = totals(meals, true), tp = totals(meals);
   const custom = !!dayOf(k).meals;
+  const prev = Object.keys(S.days).filter(d => d < k && S.days[d].meals?.length).sort().pop();
   const body = meals.map((m, mi) => {
-    const mt = totals([m]);
-    return `<div class="meal"><div class="meal-head"><b>${esc(m.n)}</b><span class="muted small">${esc(m.h || '')}</span><span class="tot">${fmt(mt.k)} kcal · ${fmt(mt.p)} g</span></div>
+    const mt = totals([m]), all = m.items.length && m.items.every(i => i.ok);
+    return `<div class="meal"><div class="meal-head"><b>${esc(m.n)}</b><span class="muted small">${esc(m.h || '')}</span>
+        <span class="tot">${fmt(mt.k)} kcal · ${fmt(mt.p)} g P</span><button class="mini" data-act="mealmenu" data-m="${mi}" aria-label="Editar refeição">⋯</button></div>
       ${m.items.map((it, ii) => { const f = food(it.f); return `<div class="item ${it.ok ? 'eaten' : ''}">
         <button class="tick ${it.ok ? 'on' : ''}" data-act="eat" data-m="${mi}" data-i="${ii}" aria-label="Comi">✓</button>
-        <div class="nm">${esc(f.n)}<small>${fmt(it.q, 1)} × ${esc(f.u)} · ${fmt(f.k * it.q)} kcal · ${fmt(f.p * it.q, 1)} g prot.</small></div>
+        <div class="nm">${esc(f.n)}<small>${fmt(it.q, 1)} × ${esc(f.u)} · ${fmt(f.k * it.q)} kcal · ${fmt(f.p * it.q, 1)} g P</small></div>
         <div class="acts"><span class="qty"><button data-act="qty" data-m="${mi}" data-i="${ii}" data-d="-0.5" aria-label="Menos">−</button><span>${fmt(it.q, 1)}</span><button data-act="qty" data-m="${mi}" data-i="${ii}" data-d="0.5" aria-label="Mais">+</button></span>
-        <button class="mini" data-act="swap" data-m="${mi}" data-i="${ii}" title="Substituir" aria-label="Substituir">⇄</button></div></div>`; }).join('')}
-      <div class="row"><button class="link small" data-act="additem" data-m="${mi}">+ alimento</button><span class="grow"></span><button class="link small" data-act="eatall" data-m="${mi}">Marcar refeição</button></div></div>`;
+        <button class="mini" data-act="swap" data-m="${mi}" data-i="${ii}" title="Substituir" aria-label="Substituir">⇄</button></div></div>`; }).join('') || '<div class="muted small" style="padding:6px 0">Sem alimentos.</div>'}
+      <div class="row"><button class="link small" data-act="additem" data-m="${mi}">+ alimento</button><span class="grow"></span>${m.items.length ? `<button class="link small" data-act="eatall" data-m="${mi}">${all ? 'Desmarcar' : 'Comi tudo'}</button>` : ''}</div></div>`;
   }).join('');
+  const pctK = st.kcal ? Math.min(100, te.k / st.kcal * 100) : 0, pctP = st.prot ? Math.min(100, te.p / st.prot * 100) : 0;
   return `<div class="view-head"><div class="grow"><h2>Dieta</h2><div class="muted small">Ovolactovegetariana · sem carne</div></div>${dayNav(k)}</div>
     <div class="grid two">
-      <div class="card">${body}</div>
+      <div class="card">
+        <div class="diet-top">
+          <div><span class="muted small">Comido</span><b>${fmt(te.k)}<small> / ${fmt(st.kcal)} kcal</small></b><div class="bar"><i style="width:${pctK}%"></i></div></div>
+          <div><span class="muted small">Proteína</span><b>${fmt(te.p)}<small> / ${fmt(st.prot)} g</small></b><div class="bar"><i style="width:${pctP}%"></i></div></div>
+        </div>
+        ${body}
+        <button class="btn btn-ghost btn-block" data-act="addmeal" style="margin-top:6px">+ Refeição</button>
+      </div>
       <div class="grid">
-        <div class="card"><h3>Consumido</h3><div style="margin-top:8px">${meter('Calorias', te.k, st.kcal, 'kcal')}${meter('Proteína', te.p, st.prot, 'g')}</div>
-          <div class="kv small" style="margin-top:8px"><span>Planejado no dia</span><b>${fmt(tp.k)} kcal · ${fmt(tp.p)} g</b><span>Meta</span><b>${fmt(st.kcal)} kcal · ${fmt(st.prot)} g</b></div></div>
-        <div class="card"><h3>Cardápio</h3><p class="muted small">Toque em ⇄ para trocar um alimento: a quantidade é recalculada para manter a proteína (ou as calorias, no caso de carboidrato, gordura e fruta).</p>
+        ${goalCard(tp, meals)}
+        <div class="card"><h3>Macros</h3>${macroTable(te, tp)}</div>
+        ${historyCard(k)}
+        <div class="card"><h3>Cardápio</h3><p class="muted small">⇄ troca um alimento e recalcula a quantidade para manter a proteína (ou as calorias, em carboidrato, gordura e fruta). ⋯ renomeia, move ou remove a refeição.</p>
           <div class="actions">
+            ${prev ? `<button class="btn" data-act="copyday" data-k="${prev}">Copiar o cardápio de ${esc(fmtShort(prev))}</button>` : ''}
             <button class="btn" data-act="savetemplate">Usar este dia como meu cardápio padrão</button>
             ${custom ? '<button class="btn btn-ghost" data-act="resetday">Voltar este dia ao cardápio padrão</button>' : ''}
             ${P().mealTemplate ? '<button class="btn btn-ghost btn-danger" data-act="resettemplate">Restaurar o cardápio-modelo do plano</button>' : ''}
@@ -585,8 +604,78 @@ function viewDieta() {
           <li><b>Metade do prato:</b> arroz, macarrão ou batata.</li><li><b>2 conchas:</b> feijão, lentilha ou grão-de-bico.</li>
           <li><b>Proteína:</b> ovo, omelete, queijo, tofu ou PTS; repita se puder.</li><li><b>Salada:</b> um punhado; à noite, sem exagero.</li>
           <li><b>Sem proteína no cardápio:</b> uma dose de whey ou ovos e queijo do kit.</li></ul>
-          <p class="muted small" style="margin:0">Kit do quarto: whey, creatina, leite em pó, aveia, pasta de amendoim, banana, castanhas e PTS seca. Valores aproximados da TACO/Unicamp; produtos de marca vêm da Open Food Facts.</p></div>
+          <p class="muted small" style="margin:0">Kit do quarto: whey, creatina, leite em pó, aveia, pasta de amendoim, banana, castanhas e PTS seca. Valores aproximados da TACO/Unicamp e USDA; produtos de marca vêm da Open Food Facts.</p></div>
       </div></div>`;
+}
+
+// Tabela de macros: gramas e % das calorias, comido e planejado
+function macroTable(te, tp) {
+  const pct = (g, kc, t) => t.k ? Math.round(g * kc / t.k * 100) : 0;
+  const row = (n, key, kc) => `<tr><td>${n}</td><td>${fmt(te[key])} g</td><td>${fmt(tp[key])} g</td><td class="muted">${pct(tp[key], kc, tp)}%</td></tr>`;
+  const sp = pct(tp.p, 4, tp), sc = pct(tp.c, 4, tp), sf = Math.max(0, 100 - sp - sc);
+  return `<div class="macro-bar" title="Distribuição das calorias planejadas"><i style="width:${sp}%;background:var(--wa)"></i><i style="width:${sc}%;background:var(--wlivre)"></i><i style="width:${sf}%;background:var(--wb)"></i></div>
+    <table class="mtable small"><tr><th></th><th>Comido</th><th>Planejado</th><th>% kcal</th></tr>
+    ${row('<span class="dotc" style="background:var(--wa)"></span>Proteína', 'p', 4)}${row('<span class="dotc" style="background:var(--wlivre)"></span>Carboidrato', 'c', 4)}${row('<span class="dotc" style="background:var(--wb)"></span>Gordura', 'f', 9)}
+    <tr><td><b>Calorias</b></td><td><b>${fmt(te.k)}</b></td><td><b>${fmt(tp.k)}</b></td><td></td></tr></table>`;
+}
+
+// Quanto falta no planejado para bater a meta, com opções do kit para fechar
+const KIT_PROT = ['whey', 'ovo', 'pts', 'iogurte', 'leitepo', 'tofu'];
+const KIT_KCAL = ['pasta', 'amendoim', 'aveia', 'banana', 'granola'];
+function goalCard(tp, meals) {
+  const st = ST(), gp = st.prot - tp.p, gk = st.kcal - tp.k;
+  const ceia = meals.findIndex(m => m.id === 'ceia'), target = ceia >= 0 ? ceia : meals.length - 1;
+  let msg, ids = [], byP = true;
+  if (gp > 4) { msg = `Faltam <b>${fmt(gp)} g de proteína</b>${gk > 0 ? ` e ${fmt(gk)} kcal` : ''} no planejado. Para fechar, adicione um destes:`; ids = KIT_PROT; }
+  else if (gk > 150) { msg = `A proteína está ok; faltam <b>${fmt(gk)} kcal</b> no planejado. Para fechar, adicione um destes:`; ids = KIT_KCAL; byP = false; }
+  else if (gk < -300) msg = `O planejado passou <b>${fmt(-gk)} kcal</b> da meta. Se a cintura estiver subindo, reduza carboidrato ou gordura à noite.`;
+  else msg = '✓ O planejado do dia bate a meta de calorias e proteína.';
+  const opts = ids.map(id => {
+    const f = food(id), need = byP ? gp / f.p : gk / f.k;
+    let q = id === 'ovo' ? Math.max(1, Math.ceil(need)) : roundHalf(need);
+    q = Math.min(q, id === 'ovo' ? 4 : id === 'whey' ? 2 : 3);
+    return `<button class="opt" data-act="addsug" data-f="${id}" data-q="${q}" data-m="${target}"><div class="nm">${fmt(q, 1)} × ${esc(f.n)}<small>${esc(f.u)} · vai para ${esc(meals[target]?.n || 'a última refeição')}</small></div><div class="val">+${fmt(f.k * q)} kcal<br>+${fmt(f.p * q, 1)} g</div></button>`;
+  }).slice(0, 4).join('');
+  return `<div class="card"><h3>Fechar a meta</h3><p class="small" style="color:var(--text-2);margin:6px 0 0">${msg}</p>${opts ? `<div class="opt-list" style="max-height:none">${opts}</div>` : ''}</div>`;
+}
+
+// Últimos 7 dias: proteína e calorias marcadas como comidas
+function historyCard(k) {
+  const st = ST(), t = todayKey(), end = k < t ? k : t;
+  const days = range(addDays(end, -6), end).map(d => ({ d, ...(S.days[d]?.meals ? totals(S.days[d].meals, true) : { k: 0, p: 0 }) }));
+  const logged = days.filter(x => x.k > 0);
+  const maxP = Math.max(st.prot * 1.15, ...days.map(x => x.p));
+  const avg = n => logged.length ? logged.reduce((s, x) => s + x[n], 0) / logged.length : 0;
+  return `<div class="card"><h3>Últimos 7 dias</h3>
+    <div class="hist">${days.map(x => `<div class="hcol" title="${esc(fmtShort(x.d))}: ${fmt(x.k)} kcal, ${fmt(x.p)} g de proteína">
+      <div class="hbar"><i class="${x.p >= st.prot ? 'ok' : ''}" style="height:${x.p / maxP * 100}%"></i><span class="hgoal" style="bottom:${st.prot / maxP * 100}%"></span></div>
+      <b>${x.k ? fmt(x.k / 1000, 1) + 'k' : '–'}</b><span>${WD[parseKey(x.d).getDay()]}</span></div>`).join('')}</div>
+    <p class="muted small" style="margin:8px 0 0">Barras: proteína comida (linha = meta de ${fmt(st.prot)} g). Números: mil kcal. ${logged.length ? `Média dos dias registrados: ${fmt(avg('k'))} kcal · ${fmt(avg('p'))} g.` : 'Marque o que comeu com ✓ para o histórico aparecer.'}</p></div>`;
+}
+
+function openMealMenu(mi) {
+  const meals = mealsOf(S.dayKey), m = meals[mi];
+  openSheet(`<h3>Refeição</h3>
+    <div class="fields"><label>Nome<input type="text" id="meal-n" value="${esc(m.n)}"></label><label>Onde / quando<input type="text" id="meal-h" value="${esc(m.h || '')}" placeholder="Ex.: refeitório, 10h"></label></div>
+    <div class="actions two"><button class="btn btn-primary" data-act="mealsave" data-m="${mi}">Salvar</button>
+      <button class="btn" data-act="mealmove" data-m="${mi}" data-d="-1" ${mi === 0 ? 'disabled' : ''}>↑ Subir</button>
+      <button class="btn" data-act="mealmove" data-m="${mi}" data-d="1" ${mi === meals.length - 1 ? 'disabled' : ''}>↓ Descer</button>
+      <button class="btn btn-ghost btn-danger" data-act="mealdel" data-m="${mi}">Remover refeição</button></div>
+    <p class="muted small" style="margin-bottom:0">Vale para este dia. Para levar aos próximos dias, use “Usar este dia como meu cardápio padrão”.</p>`);
+}
+
+function openNewFood() {
+  openSheet(`<h3>Criar alimento</h3><div class="muted small">Use o rótulo ou a tabela da embalagem. Valores por porção.</div>
+    <label style="margin-top:10px">Nome<input type="text" id="nf-n" placeholder="Ex.: Iogurte proteico da marca X"></label>
+    <div class="fields">
+      <label>Porção<input type="text" id="nf-u" value="1 porção" placeholder="Ex.: 1 pote (160 g)"></label>
+      <label>Grupo<select id="nf-g">${Object.entries(GROUPS).filter(([g]) => g !== 'ext').map(([g, n]) => `<option value="${g}">${n}</option>`).join('')}</select></label>
+      <label>Calorias (kcal)<input type="number" inputmode="decimal" id="nf-k"></label>
+      <label>Proteína (g)<input type="number" inputmode="decimal" id="nf-p"></label>
+      <label>Carboidrato (g)<input type="number" inputmode="decimal" id="nf-c"></label>
+      <label>Gordura (g)<input type="number" inputmode="decimal" id="nf-f"></label></div>
+    <p class="form-msg" id="nf-msg"></p>
+    <button class="btn btn-primary btn-block" data-act="nfsave">Salvar e adicionar</button>`, () => setTimeout(() => $('#nf-n').focus(), 50));
 }
 
 function saveMeals(k, meals) { store.saveDay(k, { meals }); }
@@ -614,7 +703,8 @@ function openAdd(mi, replace) {
   openSheet(`<h3>Adicionar alimento</h3><div class="muted small">Busque na base sem carne ou na internet: Open Food Facts (produtos de marca) e USDA.</div>
     <input type="search" id="add-q" placeholder="Ex.: tofu, iogurte, granola…" autocomplete="off" style="margin-top:10px">
     <div class="row" style="margin-top:8px"><button class="btn btn-sm" data-act="offsearch">Buscar na internet</button>
-      <button class="btn btn-sm btn-ghost" data-act="barcode">Código de barras</button></div>
+      <button class="btn btn-sm btn-ghost" data-act="barcode">Código de barras</button>
+      <button class="btn btn-sm btn-ghost" data-act="newfood">Criar alimento</button></div>
     <div class="opt-list" id="add-list"></div>`, () => {
     const q = $('#add-q'), list = $('#add-list');
     const draw = () => {
@@ -658,7 +748,7 @@ async function offSearch() {
         src = 'USDA FoodData Central (nomes em inglês)';
         prods = ((await r.json()).foods || []).map(f => {
           const nv = id => f.foodNutrients?.find(x => x.nutrientId === id || x.nutrientNumber === String(id))?.value;
-          return { code: 'usda' + f.fdcId, product_name: f.description, brands: 'USDA', nutriments: { 'energy-kcal_100g': nv(1008) ?? nv(208), proteins_100g: nv(1003) ?? nv(203) ?? 0 } };
+          return { code: 'usda' + f.fdcId, product_name: f.description, brands: 'USDA', nutriments: { 'energy-kcal_100g': nv(1008) ?? nv(208), proteins_100g: nv(1003) ?? nv(203) ?? 0, carbohydrates_100g: nv(1005) ?? nv(205) ?? 0, fat_100g: nv(1004) ?? nv(204) ?? 0 } };
         }).filter(p => p.nutriments['energy-kcal_100g'] != null);
       }
     } catch { }
@@ -673,7 +763,7 @@ async function offSearch() {
 function offToFood(p) {
   const n = p.nutriments, id = 'off_' + (p.code || Date.now());
   const brand = Array.isArray(p.brands) ? p.brands[0] : (p.brands || '').split(',')[0];
-  return { id, f: { n: (p.product_name_pt || p.product_name) + (brand ? ` (${brand.trim()})` : ''), u: '100 g', k: +n['energy-kcal_100g'] || 0, p: +n.proteins_100g || 0, g: 'ext', code: p.code || '' }, serving: +p.serving_quantity || 0 };
+  return { id, f: { n: (p.product_name_pt || p.product_name) + (brand ? ` (${brand.trim()})` : ''), u: '100 g', k: +n['energy-kcal_100g'] || 0, p: +n.proteins_100g || 0, c: +n.carbohydrates_100g || 0, f: +n.fat_100g || 0, g: 'ext', code: p.code || '' }, serving: +p.serving_quantity || 0 };
 }
 function pickOff(p) {
   const { id, f, serving } = offToFood(p);
@@ -986,6 +1076,35 @@ const ACT = {
   offsearch: () => offSearch(),
   pickoff: el => pickOff(S.offResults[+el.dataset.i]),
   barcode: () => askBarcode(pickOff),
+  mealmenu: el => openMealMenu(+el.dataset.m),
+  mealsave: el => {
+    const n = $('#meal-n').value.trim(), h = $('#meal-h').value.trim();
+    if (!n) return toast('Dê um nome à refeição.');
+    mutateMeals(m => { m[+el.dataset.m].n = n; m[+el.dataset.m].h = h; }); closeSheet();
+  },
+  mealmove: el => { const i = +el.dataset.m, j = i + +el.dataset.d; mutateMeals(m => { if (m[j]) [m[i], m[j]] = [m[j], m[i]]; }); closeSheet(); },
+  mealdel: el => { const m = mealsOf(S.dayKey)[+el.dataset.m]; if (!confirm(`Remover “${m.n}” deste dia?`)) return; mutateMeals(ms => ms.splice(+el.dataset.m, 1)); closeSheet(); },
+  addmeal: () => { mutateMeals(m => m.push({ id: 'r' + Date.now(), n: 'Nova refeição', h: '', items: [] })); setTimeout(() => openMealMenu(mealsOf(S.dayKey).length - 1), 50); },
+  copyday: el => {
+    const src = clone(S.days[el.dataset.k]?.meals || []).map(m => ({ ...m, items: m.items.map(({ f, q }) => ({ f, q })) }));
+    if (!src.length) return;
+    if (dayOf(S.dayKey).meals && !confirm(`Substituir o cardápio deste dia pelo de ${fmtShort(el.dataset.k)}?`)) return;
+    saveMeals(S.dayKey, src); toast(`Cardápio de ${fmtShort(el.dataset.k)} copiado.`);
+  },
+  addsug: el => {
+    const mi = +el.dataset.m, f = el.dataset.f, q = +el.dataset.q;
+    mutateMeals(m => { if (!m[mi]) m.push({ id: 'ceia', n: 'Ceia', h: 'quarto', items: [] }); m[Math.max(0, mi)].items.push({ f, q }); });
+    toast(`${food(f).n} adicionado.`);
+  },
+  newfood: () => openNewFood(),
+  nfsave: () => {
+    const v = id => $('#nf-' + id).value.trim(), n = v('n'), k = +v('k');
+    if (!n || !(k >= 0) || v('k') === '') { $('#nf-msg').textContent = 'Preencha pelo menos o nome e as calorias.'; return; }
+    const id = 'my_' + Date.now(), f = { n, u: v('u') || '1 porção', k, p: +v('p') || 0, c: +v('c') || 0, f: +v('f') || 0, g: v('g') };
+    store.setFields({ ['customFoods.' + id]: f });
+    P().customFoods = { ...(P().customFoods || {}), [id]: f };
+    addItem(id, 1);
+  },
   savetemplate: () => { const meals = mealsOf(S.dayKey).map(m => ({ ...m, items: m.items.map(({ f, q }) => ({ f, q })) })); store.setFields({ mealTemplate: meals }); toast('Cardápio padrão salvo. Vale para os dias sem ajuste próprio.'); },
   resetday: () => { store.saveDay(S.dayKey, { meals: templateMeals() }); toast('Dia voltou ao cardápio padrão.'); },
   resettemplate: () => { if (confirm('Voltar ao cardápio-modelo do plano?')) store.setFields({ mealTemplate: null }); },
