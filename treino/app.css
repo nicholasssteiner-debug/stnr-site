@@ -301,6 +301,11 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 @media (min-width: 900px) { .toast { bottom: 30px; } }
 
+.acct { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; text-align: left; font-size: .8rem; font-weight: 600; min-width: 0; }
+.acct svg { width: 20px; height: 20px; color: var(--accent); flex: none; }
+.acct span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct small { display: block; font-size: .66rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+#top-account .icon-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .85rem; }
 .empty-state { text-align: center; padding: 30px 10px; color: var(--muted); }
 .pill-list { display: flex; gap: 6px; flex-wrap: wrap; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: .88rem; }

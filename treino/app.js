@@ -1,5 +1,5 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS } from './data.js?v=3';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS } from './data.js?v=4';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -97,7 +97,8 @@ async function firebaseStart() {
   const [appM, authM, fsM] = await Promise.all([
     import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')
   ]);
-  const app = appM.initializeApp(FB_CFG);
+  // App com nome próprio: sessão separada das outras páginas do stnr.com.br que entram anônimas no mesmo projeto
+  const app = appM.initializeApp(FB_CFG, 'protocolo-v');
   // Persistência com reservas: navegadores internos (WhatsApp, Instagram) e modo privado às vezes bloqueiam o IndexedDB
   let auth;
   try { auth = authM.initializeAuth(app, { persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.inMemoryPersistence] }); }
@@ -114,12 +115,14 @@ async function firebaseStart() {
   authM.onAuthStateChanged(auth, user => {
     unsub.forEach(f => f()); unsub = [];
     S.user = user;
-    if (!user) { S.profile = null; showLogin(); return; }
+    if (!user || user.isAnonymous) { S.profile = null; S.days = {}; store = null; showLogin(); return; }
     const profRef = fsM.doc(db, COL, user.uid);
     const daysCol = fsM.collection(db, COL, user.uid, 'dias');
     const onErr = e => { console.error(e); if (e.code === 'permission-denied') S.permErr = true; setSync('err'); render(); if (!S.profile) { S.profile = defaultProfile(); showApp(); } };
     store = {
       email: user.email,
+      account: { uid: user.uid, verified: user.emailVerified, created: user.metadata?.creationTime, last: user.metadata?.lastSignInTime },
+      resetPassword() { return authM.sendPasswordResetEmail(auth, user.email); },
       setFields(fields) { setSync('saving'); fsM.updateDoc(profRef, fields).catch(onErr); },
       saveDay(k, fields) { setSync('saving'); fsM.setDoc(fsM.doc(daysCol, k), nest(fields), { merge: true }).catch(onErr); },
       signOut() { authM.signOut(auth); }
@@ -263,8 +266,9 @@ const ICONS = {
   ajustes: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   mais: '<circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/>'
 };
-const TITLES = { hoje: 'Hoje', agenda: 'Agenda', dieta: 'Dieta', medidas: 'Medidas', fichas: 'Fichas', guia: 'Guia', ajustes: 'Ajustes', mais: 'Mais' };
-const SIDE = ['hoje', 'agenda', 'dieta', 'medidas', 'fichas', 'guia', 'ajustes'];
+ICONS.conta = '<circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+const TITLES = { hoje: 'Hoje', agenda: 'Agenda', dieta: 'Dieta', medidas: 'Medidas', fichas: 'Fichas', guia: 'Guia', ajustes: 'Ajustes', conta: 'Conta', mais: 'Mais' };
+const SIDE = ['hoje', 'agenda', 'dieta', 'medidas', 'fichas', 'guia', 'ajustes', 'conta'];
 const TABS = ['hoje', 'agenda', 'dieta', 'medidas', 'mais'];
 const svg = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -288,13 +292,16 @@ function renderNow() {
   const fk = focusKey(document.activeElement);
   const v = S.view;
   $('#side-nav').innerHTML = SIDE.map(n => `<button class="${v === n ? 'on' : ''}" data-act="go" data-v="${n}">${svg(n)}${TITLES[n]}</button>`).join('');
-  const inMais = ['fichas', 'guia', 'ajustes', 'mais'].includes(v);
+  const inMais = ['fichas', 'guia', 'ajustes', 'conta', 'mais'].includes(v);
+  const who = store?.email || 'Modo de teste';
+  $('#side-account').innerHTML = `<button class="acct" data-act="go" data-v="conta" title="Conta conectada">${svg('conta')}<span><small>Conectado como</small>${esc(who)}</span></button>`;
+  $('#top-account').innerHTML = `<button class="icon-btn" data-act="go" data-v="conta" aria-label="Conta: ${esc(who)}" title="${esc(who)}">${esc(who[0].toUpperCase())}</button>`;
   $('#tabbar').innerHTML = TABS.map(n => `<button class="${v === n || (n === 'mais' && inMais) ? 'on' : ''}" data-act="go" data-v="${n}">${svg(n)}${TITLES[n]}</button>`).join('');
   $('#view-title').textContent = TITLES[v];
   const done = Object.values(P().status || {}).filter(s => s === 'done').length;
   const trainDays = Object.values(P().schedule).filter(c => c !== 'R').length;
   $('#side-progress').innerHTML = `<div class="meter"><div class="row between small"><span class="muted">Treinos feitos</span><b>${done}/${trainDays}</b></div><div class="bar"><i style="width:${Math.min(100, done / Math.max(1, trainDays) * 100)}%"></i></div></div>`;
-  const views = { hoje: viewHoje, agenda: viewAgenda, dieta: viewDieta, medidas: viewMedidas, fichas: viewFichas, guia: viewGuia, ajustes: viewAjustes, mais: viewMais };
+  const views = { hoje: viewHoje, agenda: viewAgenda, dieta: viewDieta, medidas: viewMedidas, fichas: viewFichas, guia: viewGuia, ajustes: viewAjustes, conta: viewConta, mais: viewMais };
   $('#view').innerHTML = (S.permErr ? permBanner() : '') + views[v]();
   if (fk) [...document.querySelectorAll('#view [data-act], #view [data-ch]')].find(el => focusKey(el) === fk)?.focus({ preventScroll: true });
   setSync(S.sync);
@@ -783,7 +790,7 @@ function viewGuia() {
 }
 function viewMais() {
   const item = (v, d) => `<button class="card" data-act="go" data-v="${v}" style="text-align:left;cursor:pointer;display:flex;gap:14px;align-items:center"><span style="color:var(--accent)">${svg(v)}</span><span class="grow"><b>${TITLES[v]}</b><br><span class="muted small">${d}</span></span>›</button>`;
-  return `<div class="grid">${item('fichas', 'Treinos A, B, C e Armstrong')}${item('guia', 'Postura, GTG, creatina, dieta, fontes')}${item('ajustes', 'Plano, metas, whey, tema, instalar o app')}</div>`;
+  return `<div class="grid">${item('fichas', 'Treinos A, B, C e Armstrong')}${item('guia', 'Postura, GTG, creatina, dieta, fontes')}${item('ajustes', 'Plano, metas, whey, tema, instalar o app')}${item('conta', esc(store?.email || 'Conta conectada'))}</div>`;
 }
 function viewAjustes() {
   const st = ST(), theme = localStorage.getItem('pv-theme') || 'auto';
@@ -805,7 +812,27 @@ function viewAjustes() {
     <div class="card"><h3>Instalar o app</h3>
       ${standalone ? '<p class="muted">Você já está usando o app instalado.</p>' : S.installEvt ? '<p class="muted small">Instala como aplicativo no celular ou no computador, com ícone próprio e funcionamento offline.</p><button class="btn btn-primary btn-block" data-act="install">Instalar Protocolo V</button>' :
       `<ul class="small" style="padding-left:18px;color:var(--text-2);margin-bottom:0"><li><b>Android (Chrome):</b> menu ⋮ → Instalar app.</li><li><b>iPhone (Safari):</b> Compartilhar → Adicionar à Tela de Início.</li><li><b>Computador (Chrome ou Edge):</b> ícone de instalar no fim da barra de endereço.</li></ul>`}</div>
-    <div class="card"><h3>Conta</h3><p class="muted small">${esc(store?.email || '')}</p><button class="btn btn-block btn-danger" data-act="logout">Sair</button></div>
+  </div>`;
+}
+function viewConta() {
+  const a = store?.account || {};
+  const when = s => s ? new Date(s).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  return `<div class="view-head"><div class="grow"><h2>Conta</h2></div></div>
+  <div class="grid cols2">
+    <div class="card"><div class="row" style="gap:14px;align-items:center">
+        <div class="logo-mark" style="width:52px;height:52px;font-size:1.6rem">${esc((store?.email || 'T')[0].toUpperCase())}</div>
+        <div class="grow" style="min-width:0"><div class="kicker" style="color:var(--ok)">● Conectado</div><b style="word-break:break-all">${esc(store?.email || 'Modo de teste (sem conta)')}</b></div></div>
+      <div class="kv small" style="margin-top:16px">
+        <span>E-mail verificado</span><b>${a.verified ? 'sim' : 'não'}</b>
+        <span>Conta criada</span><b>${when(a.created)}</b>
+        <span>Último login</span><b>${when(a.last)}</b>
+        <span>Sincronização</span><b>${{ ok: 'em dia', saving: 'salvando', offline: 'offline', err: 'erro' }[S.sync]}</b></div>
+      <p class="muted small">Seus treinos, dieta e medidas ficam salvos nesta conta e aparecem em qualquer aparelho em que você entrar com ela.</p></div>
+    <div class="card"><h3>Segurança</h3>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn" data-act="resetpass">Enviar e-mail para trocar a senha</button>
+        <button class="btn btn-danger" data-act="logout">Sair desta conta</button></div>
+      <p class="muted small" style="margin-bottom:0">Sair só desconecta este aparelho. Para entrar com outra conta, saia e faça login de novo.</p></div>
   </div>`;
 }
 
@@ -942,7 +969,11 @@ const ACT = {
   }),
   theme: el => { const t = el.dataset.t; try { localStorage.setItem('pv-theme', t); } catch { } applyTheme(); render(); },
   install: async () => { const e = S.installEvt; if (!e) return; e.prompt(); await e.userChoice; S.installEvt = null; render(); },
-  logout: () => { if (confirm('Sair desta conta neste aparelho?')) store.signOut(); }
+  logout: () => { if (confirm('Sair desta conta neste aparelho?')) { S.view = 'hoje'; history.replaceState(null, '', '#hoje'); store.signOut(); } },
+  resetpass: async () => {
+    if (!store?.resetPassword) return toast('Indisponível no modo de teste.');
+    try { await store.resetPassword(); toast('Enviamos o link para ' + store.email + '.'); } catch (e) { toast('Não foi possível enviar: ' + (e.code || e.message)); }
+  }
 };
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
