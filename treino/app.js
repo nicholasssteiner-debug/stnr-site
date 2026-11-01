@@ -98,7 +98,12 @@ async function firebaseStart() {
     import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')
   ]);
   const app = appM.initializeApp(FB_CFG);
-  const auth = authM.getAuth(app);
+  // Persistência com reservas: navegadores internos (WhatsApp, Instagram) e modo privado às vezes bloqueiam o IndexedDB
+  let auth;
+  try { auth = authM.initializeAuth(app, { persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.inMemoryPersistence] }); }
+  catch { auth = authM.getAuth(app); }
+  // Se o Firebase demorar para dizer se há sessão, mostra o login mesmo assim
+  setTimeout(() => { if (!$('#boot').hidden && $('#app').hidden) showLogin(); }, 6000);
   auth.languageCode = 'pt';
   let db;
   try { db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) }); }
@@ -970,6 +975,22 @@ function applyTheme() {
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
 }
 applyTheme();
+
+// Falha no carregamento: em vez de ficar preso no logo, mostra o motivo e como sair dali
+function bootFail(e) {
+  console.error(e);
+  if ($('#boot').hidden) return;
+  window.__pvFailed = true;
+  const msg = e?.message || e?.reason?.message || String(e || 'erro desconhecido');
+  $('#boot').innerHTML = `<div class="login-card" style="text-align:center"><div class="logo-mark" style="margin:0 auto 14px">V</div>
+    <h3 style="font-size:1.3rem;text-transform:uppercase">Não foi possível carregar</h3>
+    <p class="muted small">Verifique a internet. Se abriu pelo WhatsApp ou Instagram, abra o link no Chrome ou no Safari.</p>
+    <p class="small mono" style="word-break:break-word;color:var(--danger)">${esc(msg)}</p>
+    <button class="btn btn-primary btn-block" onclick="location.reload()">Tentar de novo</button></div>`;
+}
+addEventListener('error', e => { if (!$('#boot').hidden) bootFail(e.error || e.message); });
+addEventListener('unhandledrejection', e => { if (!$('#boot').hidden) bootFail(e.reason); });
+window.__pvLoaded = true;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.installEvt = e; if (S.view === 'ajustes') render(); });
 if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('sw.js').catch(() => { });
 
@@ -978,4 +999,4 @@ setInterval(() => { const t = todayKey(); if (S.lastToday && S.lastToday !== t &
 S.lastToday = todayKey();
 
 if (DEMO) { store = demoStore(); showApp(); }
-else firebaseStart().catch(e => { console.error(e); $('#boot').innerHTML = '<div class="empty-state">Não foi possível carregar. Verifique a conexão e recarregue.</div>'; });
+else firebaseStart().catch(e => bootFail(e));

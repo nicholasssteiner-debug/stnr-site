@@ -1,5 +1,5 @@
 /* Protocolo V — service worker: app abre offline; arquivos próprios em rede-primeiro, SDK e fontes em cache-primeiro. */
-const VERSION = 'pv-1';
+const VERSION = 'pv-2';
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'data.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {
