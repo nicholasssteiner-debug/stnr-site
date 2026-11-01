@@ -48,6 +48,37 @@ export const WORKOUTS = {
   R: { code: 'R', name: 'Descanso', title: 'Descanso', sub: 'Caminhada leve; postura e vacuum continuam', color: 'r' }
 };
 
+/* Trocas de exercício: mesmo músculo e mesma função no treino. k = chave estável (o histórico de cargas fica separado por exercício). */
+const LATERAL_ALTS = [
+  { k: 'maq', n: 'Elevação lateral na máquina' },
+  { k: 'polia', n: 'Elevação lateral unilateral na polia' },
+  { k: 'incl', n: 'Elevação lateral deitado de lado no banco inclinado' },
+  { k: 'elast', n: 'Elevação lateral com elástico' }
+];
+export const ALTS = {
+  a1: [{ k: 'puxada', n: 'Puxada frente pegada aberta' }, { k: 'neutra', n: 'Puxada com pegada neutra (triângulo)' }, { k: 'assist', n: 'Barra fixa assistida (máquina ou elástico)' }, { k: 'unil', n: 'Puxada unilateral na polia' }],
+  a2: [{ k: 'halter', n: 'Pullover com halter no banco' }, { k: 'corda', n: 'Pulldown braço estendido com corda' }, { k: 'maq', n: 'Pullover na máquina' }],
+  a3: [{ k: 'sentada', n: 'Remada sentada na polia, pegada neutra' }, { k: 'curvada', n: 'Remada curvada com barra' }, { k: 'cavalinho', n: 'Remada no cavalinho (T-bar)' }, { k: 'maq', n: 'Remada na máquina articulada' }],
+  a4: LATERAL_ALTS,
+  a5: [{ k: 'halter', n: 'Elevação lateral com halter, apoiado no banco' }, { k: 'maq', n: 'Elevação lateral na máquina' }, { k: 'yraise', n: 'Y-raise no banco inclinado' }],
+  a6: [{ k: 'peck', n: 'Crucifixo inverso na máquina (peck deck)' }, { k: 'halter', n: 'Crucifixo inverso com halteres, inclinado' }, { k: 'elast', n: 'Face pull com elástico' }],
+  b1: [{ k: 'barra', n: 'Supino inclinado com barra' }, { k: 'maq', n: 'Supino inclinado na máquina' }, { k: 'smith', n: 'Supino inclinado no Smith' }],
+  b2: [{ k: 'maq', n: 'Desenvolvimento na máquina' }, { k: 'arnold', n: 'Desenvolvimento Arnold' }, { k: 'militar', n: 'Desenvolvimento com barra em pé' }],
+  b3: [{ k: 'crucifixo', n: 'Crucifixo inclinado com halteres' }, { k: 'peck', n: 'Peck deck (voador)' }, { k: 'cabo', n: 'Crucifixo no cabo, banco inclinado' }],
+  b4: [{ k: 'maq', n: 'Elevação lateral na máquina, em myo-reps' }, { k: 'polia', n: 'Elevação lateral na polia, em myo-reps' }],
+  b5: [{ k: 'corda', n: 'Tríceps na polia com corda' }, { k: 'frances', n: 'Tríceps francês com halter' }, { k: 'testa', n: 'Tríceps testa com barra W' }, { k: 'paralelas', n: 'Mergulho nas paralelas' }],
+  b6: [{ k: 'alternada', n: 'Rosca alternada com halteres' }, { k: 'martelo', n: 'Rosca martelo' }, { k: 'polia', n: 'Rosca na polia' }, { k: 'scott', n: 'Rosca Scott' }],
+  c1: [{ k: 'hack', n: 'Agachamento no hack' }, { k: 'smith', n: 'Agachamento no Smith' }, { k: 'goblet', n: 'Agachamento goblet' }, { k: 'leg45', n: 'Leg press 45°' }],
+  c2: [{ k: 'barra', n: 'Stiff com barra' }, { k: 'mesa', n: 'Mesa flexora' }, { k: 'cadeira', n: 'Cadeira flexora' }, { k: 'rdl', n: 'Levantamento terra romeno' }],
+  c3: [{ k: 'extensora', n: 'Cadeira extensora' }, { k: 'bulgaro', n: 'Agachamento búlgaro' }, { k: 'passada', n: 'Passada com halteres' }, { k: 'stepup', n: 'Subida no banco (step-up)' }],
+  c4: [{ k: 'sentado', n: 'Panturrilha sentado' }, { k: 'legpress', n: 'Panturrilha no leg press' }, { k: 'smith', n: 'Panturrilha no Smith' }],
+  c5: LATERAL_ALTS,
+  c6: [{ k: 'neutra', n: 'Puxada com pegada neutra, leve' }, { k: 'braco', n: 'Pulldown braço estendido' }, { k: 'baixa', n: 'Remada baixa leve' }]
+};
+
+// Link de exemplo: busca no YouTube pelo nome do exercício
+export const videoUrl = name => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name.replace(/\s*\(.*?\)\s*/g, ' ').trim() + ' execução correta');
+
 export const CODES = ['A', 'B', 'C', 'AL', 'ARM', 'LIVRE', 'R'];
 
 export const ARMSTRONG = [

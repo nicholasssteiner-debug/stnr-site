@@ -245,6 +245,13 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .opt .nm { font-weight: 600; font-size: .9rem; }
 .opt .nm small { display: block; color: var(--muted); font-weight: 400; font-size: .76rem; }
 .opt .val { font: 600 .78rem var(--f-mono); text-align: right; color: var(--text-2); }
+.opt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.opt-row .mini { width: 40px; height: 40px; text-decoration: none; color: var(--text); }
+.opt.cur { border-color: var(--accent); }
+a.btn { text-decoration: none; color: inherit; }
+.ex-actions { gap: 4px; }
+.mtable td a { color: var(--text); text-decoration: none; }
+.mtable td a:hover { color: var(--accent); }
 .group-title { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; margin: 10px 0 2px; }
 
 /* Medidas */

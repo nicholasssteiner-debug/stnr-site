@@ -1,5 +1,5 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS } from './data.js?v=4';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=5';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -214,6 +214,20 @@ function exercisesOf(code, k) {
   }
   return [];
 }
+// Exercícios do dia com as trocas aplicadas (só hoje > sempre > original). A troca muda o id, então cada exercício guarda seu próprio histórico de cargas.
+function exercisesFor(k) {
+  const code = codeOf(k);
+  if (!code) return [];
+  const day = dayOf(k), perm = P().exSwap || {};
+  return exercisesOf(code, k).map(e => {
+    const alts = ALTS[e.id];
+    if (!alts) return { ...e, slot: e.id };
+    const today = day.swap?.[e.id], key = today ?? perm[e.id];
+    const alt = key && key !== 'orig' ? alts.find(a => a.k === key) : null;
+    if (!alt) return { ...e, slot: e.id };
+    return { ...e, id: e.id + '__' + alt.k, slot: e.id, n: alt.n, orig: e.n, swapped: today ? 'só hoje' : 'sempre' };
+  });
+}
 function armNum(k) { return Object.entries(P().schedule).filter(([d, c]) => c === 'ARM' && d < k).length % 5; }
 function creatinaDoses(k) { const i = dayIdx(k); return i >= 1 && i <= 7 ? 4 : 1; }
 function gtgSize() { const m = P().measures?.[ST().start]?.barras; return m ? Math.max(1, Math.floor(m / 2)) : null; }
@@ -333,7 +347,7 @@ function viewHoje() {
   const k = S.dayKey, st = ST(), day = dayOf(k), code = codeOf(k), W = code ? WORKOUTS[code] : null;
   const i = dayIdx(k), N = planLen(), status = P().status?.[k];
   const mode = day.mode || st.mode;
-  const exs = code ? exercisesOf(code, k) : [];
+  const exs = exercisesFor(k);
   let setsDone = 0, setsTotal = 0;
   for (const e of exs) { const arr = day.sets?.[e.id] || []; const n = Math.max(e.s, arr.length); setsTotal += n; setsDone += arr.filter(x => x?.ok).length; }
 
@@ -407,11 +421,14 @@ function exRow(e, n, k, mode) {
       <div class="ex-name">${esc(name)}</div>
       <div class="ex-meta">${e.s} × ${esc(e.r)}${e.obs ? ' · ' + esc(e.obs) : ''}</div>
       <div class="ex-alt">${esc(alt)}</div>
+      ${e.swapped ? `<div class="ex-alt" style="color:var(--wlivre)">Troca (${e.swapped}) · original: ${esc(e.orig)}</div>` : ''}
       ${lastTxt ? `<div class="last">Última vez (${esc(fmtShort(last.date))}): ${esc(lastTxt)}</div>` : ''}
     </div>${e.tip ? `<button class="mini" data-act="tip" data-id="${e.id}" aria-label="Como executar">?</button>` : ''}</div>
     ${e.tip ? `<div class="ex-tip" id="tip-${e.id}" hidden>${esc(TIPS[e.tip])}${e.tip === 'lateral' ? '<br><br>' + esc(TIPS.dor) : ''}</div>` : ''}
     <div class="sets"><div class="set-head"><span>#</span><span>kg</span><span>reps</span><span></span></div>${sets}</div>
-    <div class="row" style="margin-top:6px"><button class="link small" data-act="addset" data-id="${e.id}">+ série</button><span class="grow"></span>
+    <div class="row ex-actions" style="margin-top:6px"><button class="link small" data-act="addset" data-id="${e.id}">+ série</button><span class="grow"></span>
+      <a class="btn btn-sm btn-ghost" href="${videoUrl(name)}" target="_blank" rel="noopener" title="Vídeos de execução no YouTube">▶ Exemplo</a>
+      ${ALTS[e.slot] ? `<button class="btn btn-sm btn-ghost" data-act="exswap" data-slot="${e.slot}">⇄ Trocar</button>` : ''}
       <button class="btn btn-sm btn-ghost" data-act="timer" data-rest="${e.rest}" data-name="${esc(name)}">Descanso ${e.rest}s</button></div>
   </div>`;
 }
@@ -774,10 +791,25 @@ function openMeasure(k) {
 }
 
 /* ----- Fichas, guia, mais, ajustes ----- */
+function openExSwap(slot) {
+  const k = S.dayKey, base = exercisesOf(codeOf(k), k).find(e => e.id === slot);
+  if (!base) return;
+  const cur = dayOf(k).swap?.[slot] ?? P().exSwap?.[slot] ?? 'orig';
+  const opts = [{ k: 'orig', n: base.n, tag: 'Original do plano' }, ...ALTS[slot]];
+  const scope = S.swapScope === 'hoje' ? 'hoje' : 'sempre';
+  S.swapScope = scope;
+  openSheet(`<h3>Trocar exercício</h3><div class="muted small">Mesma função no treino: continua ${base.s} × ${esc(base.r)}. Toque em ▶ para ver a execução.</div>
+    <div class="seg" style="margin:12px 0 2px"><button class="${scope === 'sempre' ? 'on' : ''}" data-act="swapscope" data-s="sempre">Em todos os treinos</button><button class="${scope === 'hoje' ? 'on' : ''}" data-act="swapscope" data-s="hoje">Só neste dia</button></div>
+    <div class="opt-list">${opts.map(o => `<div class="opt-row">
+      <button class="opt ${o.k === cur ? 'cur' : ''}" data-act="pickex" data-slot="${slot}" data-k="${o.k}"><div class="nm">${esc(o.n)}<small>${o.k === cur ? 'Em uso' : o.tag || ''}</small></div><div class="val">${o.k === cur ? '✓' : ''}</div></button>
+      <a class="mini" href="${videoUrl(o.n)}" target="_blank" rel="noopener" aria-label="Ver execução de ${esc(o.n)}">▶</a></div>`).join('')}</div>`);
+}
+
 function viewFichas() {
+  const perm = P().exSwap || {};
   const card = c => { const W = WORKOUTS[c]; return `<div class="card"><div class="row between"><h3>${W.name} — ${esc(W.title)}</h3><span class="chip w-${W.color}">${c}</span></div><div class="muted small">${esc(W.sub)}</div>
     <div class="scroll-x"><table class="mtable" style="margin-top:8px"><tr><th>Exercício</th><th>Séries × reps</th><th>Sem academia</th></tr>
-    ${W.ex.map(e => `<tr><td>${esc(e.n)}</td><td style="font-family:var(--f-body)">${e.s} × ${esc(e.r)}${e.obs ? `<br><span class="muted small">${esc(e.obs)}</span>` : ''}</td><td style="font-family:var(--f-body)">${esc(e.home)}</td></tr>`).join('')}</table></div>
+    ${W.ex.map(e => { const alt = perm[e.id] && perm[e.id] !== 'orig' ? ALTS[e.id]?.find(a => a.k === perm[e.id]) : null; const nm = alt ? alt.n : e.n; return `<tr><td><a href="${videoUrl(nm)}" target="_blank" rel="noopener">${esc(nm)} ▶</a>${alt ? `<br><span class="muted small">no lugar de ${esc(e.n)}</span>` : ''}${ALTS[e.id] ? `<br><span class="muted small">Trocas: ${ALTS[e.id].filter(a => a !== alt).map(a => esc(a.n)).join(' · ')}</span>` : ''}</td><td style="font-family:var(--f-body)">${e.s} × ${esc(e.r)}${e.obs ? `<br><span class="muted small">${esc(e.obs)}</span>` : ''}</td><td style="font-family:var(--f-body)"><a href="${videoUrl(e.home)}" target="_blank" rel="noopener">${esc(e.home)} ▶</a></td></tr>`; }).join('')}</table></div>
     ${W.finisher ? `<div class="ex-tip">${esc(W.finisher)}</div>` : ''}</div>`; };
   return `<div class="view-head"><div class="grow"><h2>Fichas</h2><div class="muted small">Descanse 2 min nos exercícios grandes e 45–60 s nas elevações laterais. A cada treino, +1 repetição ou um pouco mais de peso.</div></div></div>
     <div class="grid">${card('A')}${card('B')}${card('C')}
@@ -883,10 +915,21 @@ const ACT = {
   day: el => { const d = +el.dataset.d; S.dayKey = d === 0 ? todayKey() : addDays(S.dayKey, d); render(); },
   status: el => { setStatus(S.dayKey, el.dataset.s); if (el.dataset.s === 'done') toast('Dia concluído. Bom trabalho!'); },
   mode: el => store.saveDay(S.dayKey, { mode: el.dataset.m }),
-  tip: el => { const t = $('#tip-' + el.dataset.id); if (t) t.hidden = !t.hidden; },
+  tip: el => { const t = document.getElementById('tip-' + el.dataset.id); if (t) t.hidden = !t.hidden; },
+  exswap: el => openExSwap(el.dataset.slot),
+  swapscope: el => { S.swapScope = el.dataset.s; el.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el)); },
+  pickex: el => {
+    const k = S.dayKey, slot = el.dataset.slot, key = el.dataset.k;
+    if (S.swapScope === 'hoje') store.saveDay(k, { ['swap.' + slot]: key });
+    else {
+      store.setFields({ ['exSwap.' + slot]: key });
+      if (dayOf(k).swap?.[slot] != null) store.saveDay(k, { ['swap.' + slot]: null });
+    }
+    closeSheet(); toast(S.swapScope === 'hoje' ? 'Trocado só para este dia.' : 'Trocado em todos os treinos.');
+  },
   timer: el => startTimer(+el.dataset.rest, el.dataset.name),
   addset: el => {
-    const k = S.dayKey, id = el.dataset.id, ex = exercisesOf(codeOf(k), k).find(e => e.id === id);
+    const k = S.dayKey, id = el.dataset.id, ex = exercisesFor(k).find(e => e.id === id);
     const arr = clone(dayOf(k).sets?.[id] || []);
     while (arr.length < (ex?.s || 0)) arr.push({});
     arr.push({}); store.saveDay(k, { ['sets.' + id]: arr });
@@ -908,7 +951,7 @@ const ACT = {
     store.saveDay(k, { ['sets.' + id]: arr });
     // Treino completo → marca o dia como feito
     const day = clone(dayOf(k)); day.sets = { ...(day.sets || {}), [id]: arr };
-    const exs = exercisesOf(codeOf(k), k);
+    const exs = exercisesFor(k);
     const all = exs.length && exs.every(e => { const a = day.sets[e.id] || []; return a.filter(x => x?.ok).length >= Math.max(e.s, a.length); });
     if (all && P().status?.[k] !== 'done') { setStatus(k, 'done'); toast('Treino completo! Dia marcado como feito.'); }
   },
