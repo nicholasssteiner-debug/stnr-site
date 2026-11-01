@@ -1,5 +1,5 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS } from './data.js';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS } from './data.js?v=3';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
