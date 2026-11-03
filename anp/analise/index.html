@@ -31,6 +31,11 @@
             padding: 6px 13px; border-radius: 3px; white-space: nowrap; }
   .voltar:hover { background: rgba(255,255,255,.14); }
 
+  .periodo { display: flex; align-items: center; gap: 8px; padding: 12px 22px 0; flex-wrap: wrap; }
+  .periodo label { font-size: 13px; color: #567; font-weight: 600; }
+  .periodo select { padding: 6px 10px; border: 1px solid #c9d6e2; border-radius: 3px;
+    font-family: inherit; font-size: 13px; color: #345; background: #fff; }
+  .periodo-dica { font-size: 12px; color: #8a9aa8; }
   .navegacao { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 22px 0; }
   .nav-btn { padding: 7px 14px; border: 1px solid #c9d6e2; border-radius: 3px; background: #fff;
              font-family: inherit; font-size: 13px; color: #567; cursor: pointer; }
@@ -125,6 +130,13 @@
   <h1>Análise Financeira — Educação ANP</h1>
   <div class="info">Contabilidade CTec<br><span id="carimbo">—</span></div>
 </header>
+
+<div class="periodo" id="periodo">
+  <label for="sel-ano">Posição em</label>
+  <select id="sel-mes"></select>
+  <select id="sel-ano"></select>
+  <span class="periodo-dica" id="periodo-dica"></span>
+</div>
 
 <div class="navegacao" id="navegacao"></div>
 
@@ -280,6 +292,12 @@ let pessoal = [];      // movimentação de funcionários e rescisões (já agre
 let anos = [];
 let ehAnalitica = () => true;
 let mesFimAno = {};    // ano -> último mês com movimento
+let anoRef = 0;        // ano de referência da apresentação
+let mesRef = 12;       // posição: o mês em que o balanço é tirado
+/* Mês de corte de cada ano: o ano de referência vai até o mês escolhido,
+   os anteriores vão fechados em dezembro. */
+const mesDoAno = a => a === anoRef ? mesRef : 12;
+const anosAteRef = () => anos.filter(a => a <= anoRef);
 
 /* ---------- leitura ---------- */
 const limpa = v => String(v ?? "").trim().replace(/\.0$/, "");
@@ -374,6 +392,11 @@ function preparar() {
     if (!base) continue;
     if ((d.Conta[0] === "3" || d.Conta[0] === "4") && d.Mes > mesFimAno[d.Ano]) mesFimAno[d.Ano] = d.Mes;
   }
+
+  // Posição inicial: o último mês que parece FECHADO. O mês corrente costuma
+  // ter despesa lançada e receita ainda não — abri-lo por padrão mostraria um
+  // resultado pior do que a realidade.
+  anoRef = anos[anos.length - 1] || new Date().getFullYear();
 
   // linhas da DRE com o sinal aplicado (mesma regra do painel)
   const porConta = {};
@@ -505,10 +528,11 @@ function mesComparavel(ano) {
    assim a comparação ano a ano é honesta enquanto o ano corrente não fecha:
    comparar 12 meses de 2025 com 10 meses de 2026 inventa uma queda. */
 function serieBloco(bloco, mesLimite) {
-  const s = anos.map(() => 0);
+  const lista = anosAteRef();
+  const s = lista.map(() => 0);
   for (const l of linhasDRE) {
     if (l.Mes > mesLimite || l.dre3 !== bloco) continue;
-    const i = anos.indexOf(l.Ano);
+    const i = lista.indexOf(l.Ano);
     if (i >= 0) s[i] += l.saldo;
   }
   return s;
@@ -523,7 +547,7 @@ function linhasCrescimento(rotulo, serieComp, mesLimite, inverter) {
   h += `<tr><td>Crescimento sobre o ano anterior (${jan})</td>` + v.map((x, i) =>
     `<td class="num ${i === 0 ? "" : sinal(x - v[i - 1])}">${i === 0 ? "—" : pct(v[i - 1] ? x / v[i - 1] - 1 : null)}</td>`).join("") + `</tr>`;
   const prim = v[0], ult = v[v.length - 1];
-  h += `<tr class="total"><td>Crescimento de ${anos[0]} a ${anos[anos.length - 1]} (${jan})</td>` +
+  h += `<tr class="total"><td>Crescimento de ${anosAteRef()[0]} a ${anoRef} (${jan})</td>` +
     v.map((_, i) => i === v.length - 1
       ? `<td class="num ${sinal(ult - prim)}">${pct(prim ? ult / prim - 1 : null)}</td>` : `<td></td>`).join("") + `</tr>`;
   return h;
@@ -604,7 +628,7 @@ function cabecalho(colunas) {
 
 /* Colunas das unidades: uma por escola, mais o consolidado. */
 function colunasUnidades() {
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const ano = anoRef, mes = mesRef;
   // ordem do plano de contas (Sede, CAL, CAM, ...), como no modelo; o que não
   // está no mapa de escolas vai para o fim
   const ordem = Object.entries(ESCOLAS).sort((a, b) => a[0].localeCompare(b[0])).map(x => x[1]);
@@ -632,8 +656,9 @@ function semColunasVazias(colunas, porCol, temDado) {
 }
 
 function colunasAnos() {
-  return anos.map(a => {
-    const mes = a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12;
+  // só até o ano de referência: numa posição de 2025 não existe coluna de 2026
+  return anos.filter(a => a <= anoRef).map(a => {
+    const mes = mesDoAno(a);
     return { rotulo: String(a), sub: mes < 12 ? "até " + NOMES_MESES[mes - 1] : "", ano: a, mes, escola: null };
   });
 }
@@ -808,7 +833,7 @@ registra("dre-unidade", "DRE Unidades", () => {
 /* 5. CAPITAL OPERATIVO --------------------------------------------- */
 const PERC_MINIMO = 0.26;   // % das despesas essenciais recomendado
 registra("capital", "Capital Operativo", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const colunas = anosAteRef().map(a => ({ ano: a, mes: mesDoAno(a) }));
   const linhas = colunas.map(c => {
     // despesas essenciais sempre em 12 meses, como manda o modelo
     const d = dreJanela12(c.ano, c.mes);
@@ -880,7 +905,7 @@ registra("capital", "Capital Operativo", () => {
 
 /* 6. DISPONÍVEL E APLICAÇÕES --------------------------------------- */
 registra("disponivel", "Disponível e Aplicações", () => {
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const ano = anoRef, mes = mesRef;
   const bal = balanco(ano, mes);
   const disp = bal.contas.filter(c => c.sub === "Disponível").sort((a, b) => b.total - a.total);
   const total = disp.reduce((s, c) => s + c.total, 0);
@@ -894,11 +919,11 @@ registra("disponivel", "Disponível e Aplicações", () => {
     <td class="num">${n(total)}</td><td class="num">100,00%</td></tr></tbody></table></div>`;
 
   // rendimento das aplicações (receita financeira)
-  const rend = anos.map(a => somaContas(a, a === ano ? mes : 12,
+  const rend = anosAteRef().map(a => somaContas(a, a === ano ? mes : 12,
     (conta, nome) => /rendiment|aplica/i.test(nome || "") && conta[0] === "3", false));
   let htmlR = `<div class="rolagem"><table><thead><tr><th>Ano</th>
     <th class="num">Rendimento de Aplicações</th></tr></thead><tbody>`;
-  anos.forEach((a, i) => { htmlR += `<tr><td>${a}</td><td class="num">${n(-rend[i])}</td></tr>`; });
+  anosAteRef().forEach((a, i) => { htmlR += `<tr><td>${a}</td><td class="num">${n(-rend[i])}</td></tr>`; });
   htmlR += `</tbody></table></div>`;
 
   return painel(`Disponível — ${NOMES_MESES[mes - 1]}/${ano}`,
@@ -908,7 +933,7 @@ registra("disponivel", "Disponível e Aplicações", () => {
 
 /* 7. IMOBILIZADO E BENS EM FORMAÇÃO -------------------------------- */
 registra("imobilizado", "Imobilizado", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const colunas = anosAteRef().map(a => ({ ano: a, mes: mesDoAno(a) }));
   const imob = colunas.map(c => somaContas(c.ano, c.mes, co => co.startsWith("123") || co.startsWith("124"), true));
   const bens = colunas.map(c => somaContas(c.ano, c.mes, co => co.startsWith("1231"), true));
   const deprec = colunas.map(c => -somaContas(c.ano, c.mes,
@@ -923,7 +948,7 @@ registra("imobilizado", "Imobilizado", () => {
   html += `</tbody></table></div>`;
 
   // bens em formação, conta a conta
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const ano = anoRef, mes = mesRef;
   const detalhe = new Map();
   for (const d of dados) {
     if (d.Subconta || d.Ano !== ano || d.Mes > mes) continue;
@@ -947,32 +972,32 @@ registra("imobilizado", "Imobilizado", () => {
 
 /* 8. PRESTAÇÃO DE SERVIÇO ------------------------------------------ */
 registra("prestacao", "Prestação de Serviço", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const colunas = anosAteRef().map(a => ({ ano: a, mes: mesDoAno(a) }));
   const serie = colunas.map(c => dreAno(c.ano, c.mes).porBloco.get("Prestação de Serviços") || 0);
 
   let html = cabecalhoAnos("Prestação de Serviços", colunas);
   html += `<tr class="total"><td>Receita de Prestação de Serviços</td>` +
     serie.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
-  const mesLim = mesComparavel(anos[anos.length - 1]);
+  const mesLim = mesRef;
   html += linhasCrescimento("Prestação de Serviços", serieBloco("Prestação de Serviços", mesLim), mesLim, false);
   html += `</tbody></table></div>`;
 
   // por escola
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const ano = anoRef, mes = mesRef;
   const porEscola = new Map();
   for (const l of linhasDRE) {
     if (l.dre3 !== "Prestação de Serviços" || !l.dep) continue;
     const { escola } = partesDepto(l.dep, l.depNome);
-    const reg = porEscola.get(escola) || anos.map(() => 0);
-    const i = anos.indexOf(l.Ano);
+    const reg = porEscola.get(escola) || anosAteRef().map(() => 0);
+    const i = anosAteRef().indexOf(l.Ano);
     if (i >= 0 && l.Mes <= (l.Ano === ano ? mes : 12)) reg[i] += l.saldo;
     porEscola.set(escola, reg);
   }
   let htmlE = cabecalhoAnos("Unidade", colunas);
-  const ordE = [...porEscola.entries()].sort((a, b) => b[1][anos.length - 1] - a[1][anos.length - 1]);
+  const ordE = [...porEscola.entries()].sort((a, b) => b[1][anosAteRef().length - 1] - a[1][anosAteRef().length - 1]);
   for (const [escola, v] of ordE)
     htmlE += `<tr><td><b>${escola}</b></td>` + v.map(x => `<td class="num">${n(x)}</td>`).join("") + `</tr>`;
-  htmlE += `<tr class="total"><td>TOTAL</td>` + anos.map((_, i) =>
+  htmlE += `<tr class="total"><td>TOTAL</td>` + anosAteRef().map((_, i) =>
     `<td class="num">${n(ordE.reduce((s, [, v]) => s + v[i], 0))}</td>`).join("") + `</tr></tbody></table></div>`;
 
   return painel("Prestação de Serviço", "Faturamento do campo e crescimento ano a ano.", html) +
@@ -981,7 +1006,7 @@ registra("prestacao", "Prestação de Serviço", () => {
 
 /* 9. PESSOAL -------------------------------------------------------- */
 registra("pessoal", "Despesas com Pessoal", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const colunas = anosAteRef().map(a => ({ ano: a, mes: mesDoAno(a) }));
   const porAno = colunas.map(c => dreAno(c.ano, c.mes));
   const pessoal = porAno.map(d => -(d.porBloco.get("Despesas Com Pessoal") || 0));
   const prest = porAno.map(d => d.porBloco.get("Prestação de Serviços") || 0);
@@ -990,12 +1015,12 @@ registra("pessoal", "Despesas com Pessoal", () => {
   html += `<tr class="total"><td>Despesas com Pessoal</td>` + pessoal.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
   html += `<tr><td>% sobre a Prestação de Serviços</td>` + pessoal.map((v, i) =>
     `<td class="num">${pct(prest[i] ? v / prest[i] : null)}</td>`).join("") + `</tr>`;
-  const mesLimP = mesComparavel(anos[anos.length - 1]);
+  const mesLimP = mesRef;
   html += linhasCrescimento("Despesas com Pessoal", serieBloco("Despesas Com Pessoal", mesLimP), mesLimP, true);
   html += `</tbody></table></div>`;
 
   // abertura por conta no ano corrente
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const ano = anoRef, mes = mesRef;
   const porConta = new Map();
   for (const l of linhasDRE) {
     if (l.Ano !== ano || l.Mes > mes || l.dre3 !== "Despesas Com Pessoal") continue;
@@ -1026,16 +1051,16 @@ registra("funcionarios", "Movimentação de Funcionários", () => {
   const ativos = soma("Ativos");
 
   // por ano
-  let html = cabecalhoAnos("Movimento", anos.map(a => ({ ano: a, mes: 12 })));
+  let html = cabecalhoAnos("Movimento", anosAteRef().map(a => ({ ano: a, mes: 12 })));
   html += `<tr class="sub"><td>Admitidos no ano</td>` +
-    anos.map(a => `<td class="num">${n(soma("Admitidos", a))}</td>`).join("") + `</tr>`;
+    anosAteRef().map(a => `<td class="num">${n(soma("Admitidos", a))}</td>`).join("") + `</tr>`;
   html += `<tr class="sub"><td>Desligados no ano</td>` +
-    anos.map(a => `<td class="num">${n(soma("Desligados", a))}</td>`).join("") + `</tr>`;
+    anosAteRef().map(a => `<td class="num">${n(soma("Desligados", a))}</td>`).join("") + `</tr>`;
   html += `<tr class="total"><td>Saldo do ano (admitidos − desligados)</td>` +
-    anos.map(a => { const v = soma("Admitidos", a) - soma("Desligados", a);
+    anosAteRef().map(a => { const v = soma("Admitidos", a) - soma("Desligados", a);
       return `<td class="num ${sinal(v)}">${n(v)}</td>`; }).join("") + `</tr>`;
   html += `<tr><td>Rotatividade sobre o quadro atual</td>` +
-    anos.map(a => `<td class="num">${pct(ativos ? soma("Desligados", a) / ativos : null)}</td>`).join("") + `</tr>`;
+    anosAteRef().map(a => `<td class="num">${pct(ativos ? soma("Desligados", a) / ativos : null)}</td>`).join("") + `</tr>`;
   html += `</tbody></table></div>`;
 
   // quadro atual por escola
@@ -1044,7 +1069,7 @@ registra("funcionarios", "Movimentação de Funcionários", () => {
     if (!p.dep) continue;
     const { escola } = partesDepto(p.dep, p.depNome);
     const reg = porEscola.get(escola) || { ativos: 0, adm: 0, des: 0 };
-    const anoAtual = anos[anos.length - 1];
+    const anoAtual = anoRef;
     if (p.tipo === "Ativos") reg.ativos += p.qtd;
     if (p.tipo === "Admitidos" && p.ano === anoAtual) reg.adm += p.qtd;
     if (p.tipo === "Desligados" && p.ano === anoAtual) reg.des += p.qtd;
@@ -1053,8 +1078,8 @@ registra("funcionarios", "Movimentação de Funcionários", () => {
   const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }))
     .filter(r => r.ativos || r.adm || r.des).sort((a, b) => b.ativos - a.ativos);
   let htmlE = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
-    <th class="num">Ativos hoje</th><th class="num">Admitidos ${anos[anos.length - 1]}</th>
-    <th class="num">Desligados ${anos[anos.length - 1]}</th>
+    <th class="num">Ativos hoje</th><th class="num">Admitidos ${anoRef}</th>
+    <th class="num">Desligados ${anoRef}</th>
     <th class="num">Saldo</th><th class="num">(AV) % do quadro</th></tr></thead><tbody>`;
   const totA = itens.reduce((s, r) => s + r.ativos, 0);
   for (const r of itens) {
@@ -1073,10 +1098,10 @@ registra("funcionarios", "Movimentação de Funcionários", () => {
   const cartoes = `<div class="cartoes" style="grid-template-columns:repeat(3,1fr)">
     <div class="cartao"><div class="titulo">Funcionários Ativos</div>
       <div class="valor">${n(ativos)}</div><div class="faixa">quadro de hoje</div></div>
-    <div class="cartao"><div class="titulo">Admitidos em ${anos[anos.length - 1]}</div>
-      <div class="valor">${n(soma("Admitidos", anos[anos.length - 1]))}</div></div>
-    <div class="cartao"><div class="titulo">Desligados em ${anos[anos.length - 1]}</div>
-      <div class="valor">${n(soma("Desligados", anos[anos.length - 1]))}</div></div></div>`;
+    <div class="cartao"><div class="titulo">Admitidos em ${anoRef}</div>
+      <div class="valor">${n(soma("Admitidos", anoRef))}</div></div>
+    <div class="cartao"><div class="titulo">Desligados em ${anoRef}</div>
+      <div class="valor">${n(soma("Desligados", anoRef))}</div></div></div>`;
 
   return cartoes + painel("Movimentação de Funcionários",
       "Admissões e desligamentos por ano. O quadro de ativos é a foto de hoje, não do fim de cada ano.", html) +
@@ -1089,11 +1114,11 @@ registra("rescisoes", "Rescisões", () => {
   if (!resc.length) return painel("Rescisões",
     "A planilha ainda não traz a aba de pessoal. Rode o Atualizar Dados uma vez.", "");
 
-  const porAno = anos.map(a => {
+  const porAno = anosAteRef().map(a => {
     const f = resc.filter(p => p.ano === a);
     return { pessoas: f.reduce((s, p) => s + p.qtd, 0), valor: f.reduce((s, p) => s + p.valor, 0) };
   });
-  let html = cabecalhoAnos("Rescisões", anos.map(a => ({ ano: a, mes: 12 })));
+  let html = cabecalhoAnos("Rescisões", anosAteRef().map(a => ({ ano: a, mes: 12 })));
   html += `<tr class="sub"><td>Rescisões pagas</td>` +
     porAno.map(r => `<td class="num">${n(r.pessoas)}</td>`).join("") + `</tr>`;
   html += `<tr class="total"><td>Valor líquido pago</td>` +
@@ -1103,7 +1128,7 @@ registra("rescisoes", "Rescisões", () => {
   html += `</tbody></table></div>`;
 
   // mês a mês do ano corrente
-  const ano = anos[anos.length - 1];
+  const ano = anoRef;
   let htmlM = `<div class="rolagem"><table><thead><tr><th>Mês</th>
     <th class="num">Rescisões</th><th class="num">Valor líquido</th>
     <th class="num">Custo médio</th></tr></thead><tbody>`;
@@ -1143,7 +1168,7 @@ registra("rescisoes", "Rescisões", () => {
 
 /* 10. ADMINISTRATIVAS E GERAIS -------------------------------------- */
 registra("adm", "Administrativas e Gerais", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+  const colunas = anosAteRef().map(a => ({ ano: a, mes: mesDoAno(a) }));
   const porAno = colunas.map(c => dreAno(c.ano, c.mes));
   const adm = porAno.map(d => -(d.porBloco.get("Administrativas e Gerais") || 0));
   const prest = porAno.map(d => d.porBloco.get("Prestação de Serviços") || 0);
@@ -1152,7 +1177,7 @@ registra("adm", "Administrativas e Gerais", () => {
   html += `<tr class="total"><td>Despesas Administrativas e Gerais</td>` + adm.map(v => `<td class="num">${n(v)}</td>`).join("") + `</tr>`;
   html += `<tr><td>% sobre a Prestação de Serviços</td>` + adm.map((v, i) =>
     `<td class="num">${pct(prest[i] ? v / prest[i] : null)}</td>`).join("") + `</tr>`;
-  const mesLimA = mesComparavel(anos[anos.length - 1]);
+  const mesLimA = mesRef;
   html += linhasCrescimento("Administrativas e Gerais", serieBloco("Administrativas e Gerais", mesLimA), mesLimA, true);
   html += `</tbody></table></div>`;
   return painel("Despesas Administrativas e Gerais", "Evolução e peso sobre a receita.", html);
@@ -1160,7 +1185,7 @@ registra("adm", "Administrativas e Gerais", () => {
 
 /* 11. MAIORES DESPESAS ---------------------------------------------- */
 registra("ranking", "20 Maiores Despesas", () => {
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  const ano = anoRef, mes = mesRef;
   // contas ANALÍTICAS de despesa (não as sintéticas do De/Para da DRE),
   // que é o nível em que o modelo lista as maiores despesas
   const analiticas = despesasAnaliticas12(ano, mes);
@@ -1225,6 +1250,31 @@ function cabecalhoAnos(rotulo, colunas) {
 }
 function painel(titulo, desc, html) {
   return `<div class="painel"><h2>${titulo}</h2><p class="desc">${desc}</p>${html}</div>`;
+}
+
+/* ---------- seletor de posição (ano e mês) ---------- */
+function montarPeriodo() {
+  const selA = document.getElementById("sel-ano"), selM = document.getElementById("sel-mes");
+  selA.innerHTML = anos.map(a => `<option value="${a}"${a === anoRef ? " selected" : ""}>${a}</option>`).join("");
+  const ultimo = mesFimAno[anoRef] || 12;
+  selM.innerHTML = NOMES_MESES.map((nm, i) =>
+    `<option value="${i + 1}"${i + 1 === mesRef ? " selected" : ""}${i + 1 > ultimo ? " disabled" : ""}>${nm}</option>`).join("");
+
+  const fechado = mesComparavel(anoRef);
+  const dica = document.getElementById("periodo-dica");
+  if (mesRef > fechado)
+    dica.innerHTML = `⚠️ <b>${NOMES_MESES[mesRef - 1]}</b> ainda não parece fechado — a receita do mês ` +
+      `não foi toda lançada, então o resultado sai pior do que é. O último mês completo é ` +
+      `<b>${NOMES_MESES[fechado - 1]}</b>.`;
+  else
+    dica.textContent = `Anos anteriores entram fechados em dezembro; ${anoRef} vai até ${NOMES_MESES[mesRef - 1]}.`;
+
+  selA.onchange = () => {
+    anoRef = +selA.value;
+    mesRef = mesComparavel(anoRef);      // ao trocar de ano, volta para o último mês fechado
+    montarPeriodo(); desenhar();
+  };
+  selM.onchange = () => { mesRef = +selM.value; montarPeriodo(); desenhar(); };
 }
 
 /* ---------- navegação ---------- */
@@ -1307,7 +1357,10 @@ function desenhar() {
   window.scrollTo(0, 0);
 }
 
-carregar().then(() => { montarNavegacao(); desenhar(); })
+carregar().then(() => {
+    mesRef = mesComparavel(anoRef);   // começa no último mês fechado
+    montarPeriodo(); montarNavegacao(); desenhar();
+  })
   .catch(e => {
     document.getElementById("conteudo").innerHTML =
       `<div class="painel"><div class="aviso"><b>Não consegui carregar os dados:</b> ${e.message}<br>
