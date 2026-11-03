@@ -84,6 +84,38 @@
   .aviso { background: #fff8e6; border: 1px solid #f0dca8; border-radius: 4px; padding: 10px 14px;
            font-size: 12.5px; color: #765; }
   .carregando { padding: 40px; text-align: center; color: #8198ab; }
+
+  /* ---------- relatório impresso ---------- */
+  #impressao { display: none; }
+  .imp-cabecalho { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--azul-tabela);
+    padding-bottom: 6px; margin-bottom: 10px; }
+  .imp-cabecalho h2 { margin: 0; font-size: 15px; color: var(--azul-escuro); flex: 1; }
+  .imp-cabecalho .ent { font-size: 11px; color: #778; }
+  .imp-rodape { margin-top: 8px; font-size: 10px; color: #99a; }
+
+  @media print {
+    @page { size: A4 landscape; margin: 9mm 8mm; }
+    body { background: #fff; font-size: 10px; }
+    header, .navegacao, #conteudo, #painel-impressao { display: none !important; }
+    #impressao { display: block !important; }
+    .bloco-imp { break-inside: avoid-page; break-after: page; }
+    .bloco-imp:last-child { break-after: auto; }
+    .painel { border: none; border-radius: 0; padding: 0; margin: 0; }
+    .painel h2 { font-size: 13px; }
+    .desc { font-size: 9.5px; }
+    table { font-size: 9px; }
+    thead th { position: static; padding: 4px 6px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tbody td, table.bp tbody td { padding: 2px 6px; }
+    table.bp td:nth-child(2) { min-width: 0; }
+    table.bp th.num, table.bp td.num { min-width: 0; }
+    .rolagem { overflow: visible; }
+    .cartoes { display: grid !important; }
+    .cartao { border: 1px solid #ccd; }
+    .cartao .valor { font-size: 15px; }
+    tr.bp-total td, tr.grupo td, tr.total td, .selo, .positivo, .negativo,
+    table.bp th.col-destaque, table.bp td:last-child {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
 </style>
 </head>
 <body>
@@ -95,7 +127,24 @@
 </header>
 
 <div class="navegacao" id="navegacao"></div>
+
+<div class="painel" id="painel-impressao" style="display:none; margin:14px 22px 0">
+  <h2>🖨️ Montar relatório</h2>
+  <p class="desc">Marque o que entra no relatório. Sai em A4 paisagem, um bloco por página —
+    dá para imprimir ou salvar em PDF pela própria janela de impressão.</p>
+  <div id="impressao-itens" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px 14px; margin-bottom:12px"></div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+    <button type="button" class="nav-btn" id="imp-todos">Marcar todos</button>
+    <button type="button" class="nav-btn" id="imp-nenhum">Desmarcar todos</button>
+    <button type="button" class="nav-btn" id="imp-demonstracoes">Só as demonstrações</button>
+    <span style="flex:1"></span>
+    <button type="button" class="nav-btn ativa" id="imp-gerar">🖨️ Gerar relatório</button>
+    <button type="button" class="nav-btn" id="imp-fechar">Fechar</button>
+  </div>
+</div>
+
 <main id="conteudo"><div class="carregando">Carregando os dados…</div></main>
+<div id="impressao"></div>
 
 <script>
 /* =====================================================================
@@ -1182,11 +1231,71 @@ function painel(titulo, desc, html) {
 let blocoAtivo = BLOCOS[0].id;
 function montarNavegacao() {
   document.getElementById("navegacao").innerHTML = BLOCOS.map(b =>
-    `<button type="button" class="nav-btn${b.id === blocoAtivo ? " ativa" : ""}" data-bloco="${b.id}">${b.titulo}</button>`).join("");
-  document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => {
+    `<button type="button" class="nav-btn${b.id === blocoAtivo ? " ativa" : ""}" data-bloco="${b.id}">${b.titulo}</button>`).join("") +
+    `<span style="flex:1"></span><button type="button" class="nav-btn" id="abrir-impressao">🖨️ Relatórios</button>`;
+  document.querySelectorAll("#navegacao .nav-btn[data-bloco]").forEach(b => b.addEventListener("click", () => {
     blocoAtivo = b.dataset.bloco; montarNavegacao(); desenhar();
   }));
+  document.getElementById("abrir-impressao").addEventListener("click", abrirImpressao);
 }
+
+/* ---------- relatório: escolher os blocos e imprimir ---------- */
+const DEMONSTRACOES = ["balanco", "balanco-unidade", "dre", "dre-unidade"];
+let impSelecionado = new Set(DEMONSTRACOES);
+
+function montarItensImpressao() {
+  document.getElementById("impressao-itens").innerHTML = BLOCOS.map(b =>
+    `<label style="display:flex; align-items:center; gap:7px; font-size:13px; cursor:pointer">
+       <input type="checkbox" value="${b.id}" ${impSelecionado.has(b.id) ? "checked" : ""}> ${b.titulo}
+     </label>`).join("");
+  document.querySelectorAll("#impressao-itens input").forEach(cb =>
+    cb.addEventListener("change", () => {
+      if (cb.checked) impSelecionado.add(cb.value); else impSelecionado.delete(cb.value);
+    }));
+}
+
+function abrirImpressao() {
+  const p = document.getElementById("painel-impressao");
+  const abrindo = p.style.display === "none";
+  p.style.display = abrindo ? "" : "none";
+  if (abrindo) { montarItensImpressao(); p.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+}
+
+/* Monta os blocos escolhidos num container próprio e chama a impressão.
+   Cada bloco ganha cabeçalho com a entidade e o carimbo dos dados, porque a
+   folha impressa sai do contexto da tela. */
+function gerarRelatorio() {
+  const escolhidos = BLOCOS.filter(b => impSelecionado.has(b.id));
+  if (!escolhidos.length) { alert("Marque pelo menos um bloco para o relatório."); return; }
+  const carimbo = document.getElementById("carimbo").textContent.trim();
+  const hoje = new Date().toLocaleDateString("pt-BR");
+  const alvo = document.getElementById("impressao");
+  alvo.innerHTML = escolhidos.map(b => {
+    let corpo;
+    try { corpo = b.render(); }
+    catch (e) { corpo = `<div class="aviso">Não consegui montar "${b.titulo}": ${e.message}</div>`; }
+    return `<section class="bloco-imp">
+        <div class="imp-cabecalho">
+          <h2>${b.titulo}</h2>
+          <span class="ent">Análise Financeira — Educação ANP</span>
+        </div>${corpo}
+        <div class="imp-rodape">${carimbo} · relatório gerado em ${hoje}</div>
+      </section>`;
+  }).join("");
+  window.print();
+}
+
+document.getElementById("imp-gerar").addEventListener("click", gerarRelatorio);
+document.getElementById("imp-fechar").addEventListener("click", abrirImpressao);
+document.getElementById("imp-todos").addEventListener("click", () => {
+  impSelecionado = new Set(BLOCOS.map(b => b.id)); montarItensImpressao();
+});
+document.getElementById("imp-nenhum").addEventListener("click", () => {
+  impSelecionado = new Set(); montarItensImpressao();
+});
+document.getElementById("imp-demonstracoes").addEventListener("click", () => {
+  impSelecionado = new Set(DEMONSTRACOES); montarItensImpressao();
+});
 function desenhar() {
   const bloco = BLOCOS.find(b => b.id === blocoAtivo);
   try {
