@@ -71,6 +71,8 @@
     border-top: 2px solid var(--azul-tabela); border-bottom: 2px solid var(--azul-tabela); }
   table.bp tr.bp-conf td { padding-top: 10px; color: #778; font-size: 12.5px; }
   table.bp tr.bp-item:hover td { background: #f6f9fb; }
+  table.bp th.col-destaque { background: #24506a; }
+  table.bp td:last-child { background: #f4f7fa; }
   /* descrição numa linha só e colunas de ano com largura confortável */
   table.bp td:nth-child(2), table.bp tr.bp-grupo td:first-child,
   table.bp tr.bp-total td:first-child { white-space: nowrap; min-width: 300px; }
@@ -498,49 +500,103 @@ const BLOCOS = [];
 const registra = (id, titulo, render) => BLOCOS.push({ id, titulo, render });
 
 /* 1. BALANÇO ------------------------------------------------------- */
-registra("balanco", "Balanço", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
+/* ---------- cortes: um ano inteiro, ou uma escola dentro do ano ---------- */
+const cel = x => `<td class="num${x < 0 ? " negativo" : ""}">${x ? n(x) : "–"}</td>`;
 
-  // saldo de cada item do balanço em cada ano + a abertura e o movimento do PL
-  const porAno = colunas.map(c => {
-    const itens = new Map();              // "secao|grupo|cod|nome" -> valor
-    let plAbertura = 0, plMovimento = 0, verbas = 0;
-    for (const d of dados) {
-      if (d.Subconta) continue;
-      const g = d.Conta[0];
-      if (g !== "1" && g !== "2") continue;
-      if (d.Ano !== c.ano || d.Mes > c.mes) continue;
-      if (!ehAnalitica(d.Conta)) continue;
-      const base = d.Mes === 12 ? d.Ajust : d.Legal;
-      if (!base) continue;
-      if (ehPL(d.Conta)) {                // patrimônio: separa abertura de movimento
-        if (d.Conta.startsWith("232")) verbas += -base;
-        else if (d.Mes === 0) plAbertura += -base;
-        else plMovimento += -base;
-        continue;
-      }
-      const it = itemBP(d.Conta);
-      const valor = it.secao === "ATIVO" ? base : -base;
-      const k = [it.secao, it.grupo, it.cod, it.nome].join("|");
-      itens.set(k, (itens.get(k) || 0) + valor);
+/* Balanço de um corte. escola = null -> consolidado (a entidade inteira). */
+function balancoCorte(ano, mes, escola) {
+  const itens = new Map();
+  let plAbertura = 0, plMovimento = 0, verbas = 0;
+  for (const d of dados) {
+    if (d.Subconta) continue;
+    const g = d.Conta[0];
+    if (g !== "1" && g !== "2") continue;
+    if (d.Ano !== ano || d.Mes > mes) continue;
+    if (!ehAnalitica(d.Conta)) continue;
+    if (escola && (!d.Dep || partesDepto(d.Dep, d.DepNome).escola !== escola)) continue;
+    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (!base) continue;
+    if (ehPL(d.Conta)) {
+      if (d.Conta.startsWith("232")) verbas += -base;
+      else if (d.Mes === 0) plAbertura += -base;
+      else plMovimento += -base;
+      continue;
     }
-    const resultado = dreAno(c.ano, c.mes).total;
-    return { itens, plAbertura, verbas, variacao: plMovimento + resultado,
-             pl: plAbertura + plMovimento + resultado + verbas };
-  });
+    const it = itemBP(d.Conta);
+    const valor = it.secao === "ATIVO" ? base : -base;
+    const k = [it.secao, it.grupo, it.cod, it.nome].join("|");
+    itens.set(k, (itens.get(k) || 0) + valor);
+  }
+  const resultado = dreCorte(ano, mes, escola).total;
+  return { itens, plAbertura, verbas, variacao: plMovimento + resultado,
+           pl: plAbertura + plMovimento + resultado + verbas };
+}
 
-  const v = (k, i) => porAno[i].itens.get(k) || 0;
+/* DRE de um corte. */
+function dreCorte(ano, mes, escola) {
+  const porBloco = new Map();
+  let total = 0;
+  for (const l of linhasDRE) {
+    if (l.Ano !== ano || l.Mes > mes) continue;
+    if (escola && (!l.dep || partesDepto(l.dep, l.depNome).escola !== escola)) continue;
+    total += l.saldo;
+    const k = l.dre3 || l.dre2 || "Outros";
+    porBloco.set(k, (porBloco.get(k) || 0) + l.saldo);
+  }
+  return { total, porBloco };
+}
+
+function cabecalho(colunas) {
+  return `<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>` +
+    colunas.map(c => `<th class="num${c.destaque ? " col-destaque" : ""}">${c.rotulo}` +
+      (c.sub ? `<br><span style="font-weight:400;font-size:11px">${c.sub}</span>` : "") + `</th>`).join("") +
+    `</tr></thead><tbody>`;
+}
+
+/* Colunas das unidades: uma por escola, mais o consolidado. */
+function colunasUnidades() {
+  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
+  // ordem do plano de contas (Sede, CAL, CAM, ...), como no modelo; o que não
+  // está no mapa de escolas vai para o fim
+  const ordem = Object.entries(ESCOLAS).sort((a, b) => a[0].localeCompare(b[0])).map(x => x[1]);
+  const escolas = new Set();
+  for (const d of dados) if (d.Dep) escolas.add(partesDepto(d.Dep, d.DepNome).escola);
+  const cols = [...escolas]
+    .sort((a, b) => {
+      const ia = ordem.indexOf(a), ib = ordem.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "pt-BR");
+    })
+    .map(e => ({ rotulo: e, sub: "", ano, mes, escola: e }));
+  cols.push({ rotulo: "CONSOLIDADO", sub: NOMES_MESES[mes - 1] + "/" + ano,
+              ano, mes, escola: null, destaque: true });
+  return cols;
+}
+
+/* Tira as unidades sem nenhum número na tabela — ADRA, Escritório e afins
+   só poluiriam a largura. O consolidado nunca sai. */
+function semColunasVazias(colunas, porCol, temDado) {
+  const manter = colunas.map((c, i) => !c.escola || temDado(porCol[i]));
+  return {
+    colunas: colunas.filter((_, i) => manter[i]),
+    porCol: porCol.filter((_, i) => manter[i]),
+  };
+}
+
+function colunasAnos() {
+  return anos.map(a => {
+    const mes = a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12;
+    return { rotulo: String(a), sub: mes < 12 ? "até " + NOMES_MESES[mes - 1] : "", ano: a, mes, escola: null };
+  });
+}
+
+/* ---------- BALANÇO: a mesma tabela para os dois cortes ---------- */
+function tabelaBalanco(colunas, porCol) {
   const soma = (filtro, i) => {
     let s = 0;
-    for (const [k, val] of porAno[i].itens) if (filtro(k.split("|"))) s += val;
+    for (const [k, val] of porCol[i].itens) if (filtro(k.split("|"))) s += val;
     return s;
   };
-  const cel = x => `<td class="num">${x ? n(x) : "–"}</td>`;
-
-  let html = `<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>` +
-    colunas.map(c => `<th class="num">${c.ano}${c.mes < 12 ? "<br><span style=\"font-weight:400;font-size:11px\">até " + NOMES_MESES[c.mes - 1] + "</span>" : ""}</th>`).join("") +
-    `</tr></thead><tbody>`;
-
+  let html = cabecalho(colunas);
   for (const s of ESTRUTURA_BP) {
     html += `<tr class="bp-secao"><td colspan="${colunas.length + 2}">${s.secao}</td></tr>`;
     for (const g of s.grupos) {
@@ -548,11 +604,8 @@ registra("balanco", "Balanço", () => {
         colunas.map((_, i) => cel(soma(pt => pt[0] === s.secao && pt[1] === g.titulo, i))).join("") + `</tr>`;
       for (const [cod, nome] of g.itens) {
         const k = [s.secao, g.titulo, cod, nome].join("|");
-        const vals = colunas.map((_, i) => v(k, i));
-        // Demonstração tem FORMA FIXA: a linha oficial aparece sempre, com
-        // traço quando não há saldo. Só a linha de sobra (sem código, que
-        // existe para nada ficar de fora do total) some quando está zerada.
-        if (!cod && !vals.some(x => x)) continue;
+        const vals = colunas.map((_, i) => porCol[i].itens.get(k) || 0);
+        if (!cod && !vals.some(x => x)) continue;   // linha de sobra só aparece se tiver saldo
         html += `<tr class="bp-item"><td class="bp-cod">${cod}</td><td>${nome}</td>` +
           vals.map(cel).join("") + `</tr>`;
       }
@@ -561,33 +614,33 @@ registra("balanco", "Balanço", () => {
       html += `<tr class="bp-total"><td colspan="2">TOTAL DO ATIVO</td>` +
         colunas.map((_, i) => cel(soma(pt => pt[0] === "ATIVO", i))).join("") + `</tr>`;
   }
-
-  // Patrimônio Líquido na forma do modelo: Patrimônio Social aberto em saldo
-  // inicial, as linhas padrão de movimentação e a variação do período. A ANP
-  // concentra tudo em "Patrimônio Social", então as linhas de movimentação
-  // saem com traço — como no próprio modelo.
   html += `<tr class="bp-grupo"><td colspan="2">PATRIMÔNIO LÍQUIDO</td>` +
-    porAno.map(a => cel(a.pl)).join("") + `</tr>`;
+    porCol.map(a => cel(a.pl)).join("") + `</tr>`;
   html += `<tr class="bp-item"><td></td><td><b>PATRIMÔNIO SOCIAL</b></td>` +
     colunas.map(() => `<td></td>`).join("") + `</tr>`;
   html += `<tr class="bp-item"><td class="bp-cod">A231</td><td>Saldo Inicial 01/01</td>` +
-    porAno.map(a => cel(a.plAbertura)).join("") + `</tr>`;
-  for (const rot of ["Constit. e Reversão de Verbas Disponíveis",
-                     "Correção Monetária do Patrimônio",
-                     "Transf. Patrimonial — Entidades Internas",
-                     "Patrimônio de Cisão — Entidades Congêneres",
-                     "Doações e Subvenções para o Imobilizado",
-                     "Capital Integralizado / a Integralizar no Período",
-                     "Ajuste de Avaliação Patrimonial",
-                     "Ajuste de Exercícios Anteriores"])
+    porCol.map(a => cel(a.plAbertura)).join("") + `</tr>`;
+  for (const rot of ["Constit. e Reversão de Verbas Disponíveis", "Correção Monetária do Patrimônio",
+                     "Transf. Patrimonial — Entidades Internas", "Patrimônio de Cisão — Entidades Congêneres",
+                     "Doações e Subvenções para o Imobilizado", "Capital Integralizado / a Integralizar no Período",
+                     "Ajuste de Avaliação Patrimonial", "Ajuste de Exercícios Anteriores"])
     html += `<tr class="bp-item"><td></td><td>${rot}</td>` +
       colunas.map(() => `<td class="num">–</td>`).join("") + `</tr>`;
   html += `<tr class="bp-item"><td></td><td><b>Variação Patrimonial</b></td>` +
-    porAno.map(a => cel(a.variacao)).join("") + `</tr>`;
+    porCol.map(a => cel(a.variacao)).join("") + `</tr>`;
   html += `<tr class="bp-item"><td class="bp-cod">A232</td><td>Verbas Disponíveis</td>` +
-    porAno.map(a => cel(a.verbas)).join("") + `</tr>`;
-
-  const totPass = colunas.map((_, i) => soma(pt => pt[0] === "PASSIVO", i) + porAno[i].pl);
+    porCol.map(a => cel(a.verbas)).join("") + `</tr>`;
+  // Conta corrente interdepartamental: a partida dobrada cruza departamentos
+  // (o recebível fica numa escola e o caixa que o liquida fica na Sede), então
+  // a coluna de uma unidade sozinha não fecharia. O modelo resolve com as
+  // linhas "InterDepartamentos"; aqui aparece o saldo líquido. No consolidado
+  // ela é zero — os dois lados se encontram.
+  const inter = colunas.map((_, i) =>
+    soma(pt => pt[0] === "ATIVO", i) - soma(pt => pt[0] === "PASSIVO", i) - porCol[i].pl);
+  if (inter.some(x => Math.abs(x) >= 1))
+    html += `<tr class="bp-item"><td></td><td>Conta Corrente Interdepartamental</td>` +
+      inter.map(cel).join("") + `</tr>`;
+  const totPass = colunas.map((_, i) => soma(pt => pt[0] === "PASSIVO", i) + porCol[i].pl + inter[i]);
   html += `<tr class="bp-total"><td colspan="2">TOTAL DO PASSIVO E PATR. LÍQUIDO</td>` +
     totPass.map(cel).join("") + `</tr>`;
   html += `<tr class="bp-conf"><td colspan="2">Conferência (ativo − passivo)</td>` +
@@ -596,166 +649,111 @@ registra("balanco", "Balanço", () => {
       return `<td class="num"><span class="selo ${Math.abs(dif) < 1 ? "selo-ok" : "selo-alerta"}">${
         Math.abs(dif) < 1 ? "fecha" : n(dif)}</span></td>`;
     }).join("") + `</tr>`;
-  html += `</tbody></table></div>`;
+  return html + `</tbody></table></div>`;
+}
 
+registra("balanco", "Balanço", () => {
+  const colunas = colunasAnos();
   return painel("Balanço Patrimonial",
     "Estrutura do balanço denominacional. O <b>Patrimônio Líquido</b> aparece como no modelo: " +
     "saldo inicial de 01/01 mais a <b>variação patrimonial</b> do período — é aí que entra o resultado " +
-    "do exercício, e é o que faz os dois lados fecharem.", html);
+    "do exercício, e é o que faz os dois lados fecharem.",
+    tabelaBalanco(colunas, colunas.map(c => balancoCorte(c.ano, c.mes, null))));
 });
 
-/* 2. BALANÇO POR UNIDADE ------------------------------------------- */
 registra("balanco-unidade", "Balanço Unidades", () => {
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
-  // ativo/passivo por escola, a partir do departamento
-  const porEscola = new Map();
-  for (const d of dados) {
-    if (d.Subconta || d.Ano !== ano || d.Mes > mes) continue;
-    const g = d.Conta[0];
-    if (g !== "1" && g !== "2") continue;
-    if (!ehAnalitica(d.Conta) || !d.Dep) continue;
-    const base = d.Mes === 12 ? d.Ajust : d.Legal;
-    if (!base) continue;
-    const { escola } = partesDepto(d.Dep, d.DepNome);
-    const cls = classificaBP(d.Conta);
-    const ehAtivo = cls.grupo.startsWith("ATIVO");
-    const reg = porEscola.get(escola) || { ativo: 0, passPL: 0, circAtivo: 0, circPass: 0 };
-    const valor = ehAtivo ? base : -base;
-    if (ehAtivo) { reg.ativo += valor; if (cls.og === 1) reg.circAtivo += valor; }
-    else { reg.passPL += valor; if (cls.og === 3) reg.circPass += valor; }
-    porEscola.set(escola, reg);
-  }
-  const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }))
-    .sort((a, b) => b.ativo - a.ativo);
-  if (!itens.length) return painel("Balanço por Unidade",
+  const colunas = colunasUnidades();
+  if (colunas.length < 2) return painel("Balanço por Unidade",
     "A planilha não traz o departamento. Rode o Atualizar Dados uma vez.", "");
-
-  let html = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
-    <th class="num">Ativo</th><th class="num">Ativo Circulante</th>
-    <th class="num">Passivo + PL</th><th class="num">Passivo Circulante</th>
-    <th class="num">Capital de Giro</th></tr></thead><tbody>`;
-  for (const r of itens) {
-    const giro = r.circAtivo - r.circPass;
-    html += `<tr><td><b>${r.escola}</b></td>
-      <td class="num">${n(r.ativo)}</td><td class="num">${n(r.circAtivo)}</td>
-      <td class="num">${n(r.passPL)}</td><td class="num">${n(r.circPass)}</td>
-      <td class="num ${sinal(giro)}">${n(giro)}</td></tr>`;
-  }
-  const t = itens.reduce((s, r) => ({ ativo: s.ativo + r.ativo, circAtivo: s.circAtivo + r.circAtivo,
-    passPL: s.passPL + r.passPL, circPass: s.circPass + r.circPass }), { ativo:0, circAtivo:0, passPL:0, circPass:0 });
-  html += `<tr class="total"><td>TOTAL</td><td class="num">${n(t.ativo)}</td>
-    <td class="num">${n(t.circAtivo)}</td><td class="num">${n(t.passPL)}</td>
-    <td class="num">${n(t.circPass)}</td><td class="num">${n(t.circAtivo - t.circPass)}</td></tr>`;
-  html += `</tbody></table></div>`;
-  return painel(`Balanço por Unidade — ${NOMES_MESES[mes - 1]}/${ano}`,
-    "Ativo e passivo de cada escola, pelo departamento em que a conta foi lançada. " +
-    "Capital de giro = ativo circulante − passivo circulante.", html);
+  const r = semColunasVazias(colunas, colunas.map(c => balancoCorte(c.ano, c.mes, c.escola)),
+    d => [...d.itens.values()].some(v => Math.abs(v) >= 1) || Math.abs(d.pl) >= 1);
+  return painel(`Balanço por Unidade — ${colunas[colunas.length - 1].sub}`,
+    "O mesmo balanço, com uma coluna por escola. O <b>Consolidado</b> é a entidade inteira: " +
+    "inclui também o que foi lançado sem departamento, então não é a soma exata das colunas.",
+    tabelaBalanco(r.colunas, r.porCol));
 });
 
-/* 3. DRE ----------------------------------------------------------- */
-registra("dre", "DRE", () => {
-  const colunas = anos.map(a => ({ ano: a, mes: a === anos[anos.length - 1] ? (mesFimAno[a] || 12) : 12 }));
-  const porAno = colunas.map(c => dreAno(c.ano, c.mes));
-  const b = (i, bloco) => porAno[i].porBloco.get(bloco) || 0;
+/* ---------- DRE: a mesma tabela para os dois cortes ---------- */
+const DRE_RECEITAS = [
+  ["A311", "Dízimos Líquidos de Repasses", DRE3.dizimo],
+  ["A313", "Doações e Contribuições Recebidas", "Doações E Contribuições Recebidas"],
+  ["A314", "Prestação de Serviços", DRE3.prest],
+  ["A318B", "Outras Receitas Recorrentes", "Outras Receitas Recorrentes"],
+];
+const DRE_DESPESAS = [
+  ["A411", "Despesas com Pessoal", DRE3.pessoal],
+  ["A412", "Administrativas e Gerais", DRE3.adm],
+  ["A414", "Educação, Assistência e Orientação Social", DRE3.educ],
+  ["A419", "Subvenções, Contribuições e Doações Enviadas", "Outorgamentos"],
+];
 
-  // Estrutura do modelo: subvenção NÃO entra na receita — vem depois, como
-  // ponte entre o resultado operacional sem e com subvenção.
-  const RECEITAS = [
-    ["A311", "Dízimos Líquidos de Repasses", DRE3.dizimo, 1],
-    ["A313", "Doações e Contribuições Recebidas", "Doações E Contribuições Recebidas", 1],
-    ["A314", "Prestação de Serviços", DRE3.prest, 1],
-    ["A318B", "Outras Receitas Recorrentes", "Outras Receitas Recorrentes", 1],
-  ];
-  const DESPESAS = [
-    ["A411", "Despesas com Pessoal", DRE3.pessoal, -1],
-    ["A412", "Administrativas e Gerais", DRE3.adm, -1],
-    ["A414", "Educação, Assistência e Orientação Social", DRE3.educ, -1],
-    ["A419", "Subvenções, Contribuições e Doações Enviadas", "Outorgamentos", -1],
-  ];
-  const usados = new Set([...RECEITAS, ...DESPESAS].map(x => x[2]).concat([DRE3.subv]));
-  const outros = [...new Set(porAno.flatMap(d => [...d.porBloco.keys()]))].filter(k => !usados.has(k));
+function tabelaDRE(colunas, porCol, mostrarParticipacao) {
+  const b = (i, bloco) => porCol[i].porBloco.get(bloco) || 0;
+  const usados = new Set([...DRE_RECEITAS, ...DRE_DESPESAS].map(x => x[2]).concat([DRE3.subv]));
+  const extras = [...new Set(porCol.flatMap(d => [...d.porBloco.keys()]))].filter(k => !usados.has(k));
+  const extraRec = extras.filter(k => porCol.some(d => (d.porBloco.get(k) || 0) > 0));
+  const extraDesp = extras.filter(k => !extraRec.includes(k));
 
-  const totRec = colunas.map((_, i) => RECEITAS.reduce((s, [, , bl]) => s + b(i, bl), 0)
-    + outros.filter(k => porAno.some(d => (d.porBloco.get(k) || 0) > 0)).reduce((s, k) => s + b(i, k), 0));
-  const totDesp = colunas.map((_, i) => DESPESAS.reduce((s, [, , bl]) => s - b(i, bl), 0)
-    - outros.filter(k => !porAno.some(d => (d.porBloco.get(k) || 0) > 0)).reduce((s, k) => s + b(i, k), 0));
+  const totRec = colunas.map((_, i) => DRE_RECEITAS.reduce((s, [, , bl]) => s + b(i, bl), 0)
+    + extraRec.reduce((s, k) => s + b(i, k), 0));
+  const totDesp = colunas.map((_, i) => -(DRE_DESPESAS.reduce((s, [, , bl]) => s + b(i, bl), 0)
+    + extraDesp.reduce((s, k) => s + b(i, k), 0)));
   const subv = colunas.map((_, i) => b(i, DRE3.subv));
   const opSemSubv = colunas.map((_, i) => totRec[i] - totDesp[i]);
-  const resultado = porAno.map(d => d.total);
+  const resultado = porCol.map(d => d.total);
 
-  const cel = x => `<td class="num">${x ? n(x) : "–"}</td>`;
-  let html = `<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>` +
-    colunas.map(c => `<th class="num">${c.ano}${c.mes < 12 ? "<br><span style=\"font-weight:400;font-size:11px\">até " + NOMES_MESES[c.mes - 1] + "</span>" : ""}</th>`).join("") +
-    `</tr></thead><tbody>`;
-
-  const grupo = (titulo, vals) => `<tr class="bp-grupo"><td colspan="2">${titulo}</td>` +
-    vals.map(cel).join("") + `</tr>`;
   const item = (cod, nome, vals) => `<tr class="bp-item"><td class="bp-cod">${cod}</td><td>${nome}</td>` +
     vals.map(cel).join("") + `</tr>`;
 
-  html += grupo("RECEITAS", totRec);
-  for (const [cod, nome, bloco, sg] of RECEITAS)
-    html += item(cod, nome, colunas.map((_, i) => b(i, bloco) * sg));
-  for (const k of outros) if (porAno.some(d => (d.porBloco.get(k) || 0) > 0))
-    html += item("", k, colunas.map((_, i) => b(i, k)));
+  let html = cabecalho(colunas);
+  html += `<tr class="bp-grupo"><td colspan="2">RECEITAS</td>` + totRec.map(cel).join("") + `</tr>`;
+  for (const [cod, nome, bloco] of DRE_RECEITAS)
+    html += item(cod, nome, colunas.map((_, i) => b(i, bloco)));
+  for (const k of extraRec) html += item("", k, colunas.map((_, i) => b(i, k)));
 
-  html += grupo("DESPESAS", totDesp);
-  for (const [cod, nome, bloco, sg] of DESPESAS)
-    html += item(cod, nome, colunas.map((_, i) => b(i, bloco) * sg));
-  for (const k of outros) if (!porAno.some(d => (d.porBloco.get(k) || 0) > 0))
-    html += item("", k, colunas.map((_, i) => -b(i, k)));
+  html += `<tr class="bp-grupo"><td colspan="2">DESPESAS</td>` + totDesp.map(cel).join("") + `</tr>`;
+  for (const [cod, nome, bloco] of DRE_DESPESAS)
+    html += item(cod, nome, colunas.map((_, i) => -b(i, bloco)));
+  for (const k of extraDesp) html += item("", k, colunas.map((_, i) => -b(i, k)));
 
   html += `<tr class="bp-total"><td colspan="2">RESULTADO OPERACIONAL S/ SUBVENÇÕES</td>` +
     opSemSubv.map(cel).join("") + `</tr>`;
   html += item("A319", "Subvenções Recebidas Líquidas", subv);
   html += `<tr class="bp-total"><td colspan="2">RESULTADO DO EXERCÍCIO</td>` +
     resultado.map(cel).join("") + `</tr>`;
-  html += `<tr class="bp-item"><td></td><td>Margem sobre a receita</td>` +
-    colunas.map((_, i) => `<td class="num">${pct(totRec[i] ? resultado[i] / totRec[i] : null)}</td>`).join("") + `</tr>`;
-  html += `<tr class="bp-item"><td></td><td>Margem sem subvenção</td>` +
-    colunas.map((_, i) => `<td class="num">${pct(totRec[i] ? opSemSubv[i] / totRec[i] : null)}</td>`).join("") + `</tr>`;
-  html += `</tbody></table></div>`;
 
+  if (mostrarParticipacao) {
+    const cons = resultado[resultado.length - 1];
+    html += `<tr class="bp-item"><td></td><td><i>(% com relação ao resultado consolidado)</i></td>` +
+      resultado.map(v => `<td class="num${v < 0 ? " negativo" : ""}">${pct(cons ? v / cons : null)}</td>`).join("") + `</tr>`;
+  } else {
+    html += `<tr class="bp-item"><td></td><td>Margem sobre a receita</td>` +
+      colunas.map((_, i) => `<td class="num">${pct(totRec[i] ? resultado[i] / totRec[i] : null)}</td>`).join("") + `</tr>`;
+    html += `<tr class="bp-item"><td></td><td>Margem sem subvenção</td>` +
+      colunas.map((_, i) => `<td class="num">${pct(totRec[i] ? opSemSubv[i] / totRec[i] : null)}</td>`).join("") + `</tr>`;
+  }
+  return html + `</tbody></table></div>`;
+}
+
+registra("dre", "DRE", () => {
+  const colunas = colunasAnos();
   return painel("Demonstração do Resultado",
     "Estrutura do modelo denominacional. Repare que a <b>subvenção não entra na receita</b>: ela vem " +
     "depois, como ponte entre o resultado operacional <i>sem</i> subvenção e o resultado do exercício. " +
-    "É assim que se vê se a operação se paga sozinha.", html);
+    "É assim que se vê se a operação se paga sozinha.",
+    tabelaDRE(colunas, colunas.map(c => dreCorte(c.ano, c.mes, null)), false));
 });
 
-/* 4. DRE POR UNIDADE ----------------------------------------------- */
 registra("dre-unidade", "DRE Unidades", () => {
-  const ano = anos[anos.length - 1], mes = mesFimAno[ano] || 12;
-  const porEscola = new Map();
-  for (const l of linhasDRE) {
-    if (l.Ano !== ano || l.Mes > mes || !l.dep) continue;
-    const { escola } = partesDepto(l.dep, l.depNome);
-    const reg = porEscola.get(escola) || { rec: 0, desp: 0, res: 0 };
-    reg.res += l.saldo;
-    if (BLOCOS_RECEITA.has(l.dre3)) reg.rec += l.saldo; else reg.desp -= l.saldo;
-    porEscola.set(escola, reg);
-  }
-  const itens = [...porEscola.entries()].map(([escola, r]) => ({ escola, ...r }))
-    .sort((a, b) => b.rec - a.rec);
-  if (!itens.length) return painel("DRE por Unidade", "Sem departamento na planilha.", "");
-
-  const totRec = itens.reduce((s, r) => s + r.rec, 0);
-  let html = `<div class="rolagem"><table><thead><tr><th>Unidade</th>
-    <th class="num">(+) Receita</th><th class="num">(−) Despesa</th>
-    <th class="num">(=) Resultado</th><th class="num">(÷) Margem</th>
-    <th class="num">(AV) % da Receita</th></tr></thead><tbody>`;
-  for (const r of itens) {
-    const m = r.rec > 5000 ? r.res / r.rec : null;
-    html += `<tr><td><b>${r.escola}</b></td><td class="num">${n(r.rec)}</td>
-      <td class="num">${n(r.desp)}</td><td class="num ${sinal(r.res)}">${n(r.res)}</td>
-      <td class="num">${Math.abs(m) <= 3 ? pct(m) : "—"}</td>
-      <td class="num">${pct(totRec ? r.rec / totRec : null)}</td></tr>`;
-  }
-  const tRes = itens.reduce((s, r) => s + r.res, 0);
-  html += `<tr class="total"><td>TOTAL</td><td class="num">${n(totRec)}</td>
-    <td class="num">${n(itens.reduce((s, r) => s + r.desp, 0))}</td>
-    <td class="num ${sinal(tRes)}">${n(tRes)}</td><td></td><td></td></tr></tbody></table></div>`;
-  return painel(`DRE por Unidade — ${ano} até ${NOMES_MESES[mes - 1]}`,
-    "Receita e despesa lançadas no departamento de cada escola.", html);
+  const colunas = colunasUnidades();
+  if (colunas.length < 2) return painel("DRE por Unidade",
+    "A planilha não traz o departamento. Rode o Atualizar Dados uma vez.", "");
+  const r = semColunasVazias(colunas, colunas.map(c => dreCorte(c.ano, c.mes, c.escola)),
+    d => d.porBloco.size);
+  return painel(`DRE por Unidade — ${colunas[colunas.length - 1].sub}`,
+    "A mesma DRE, com uma coluna por escola. A última linha mostra quanto cada unidade representa " +
+    "do resultado consolidado — negativo quer dizer que ela puxa o resultado para baixo.",
+    tabelaDRE(r.colunas, r.porCol, true));
 });
 
 /* 5. CAPITAL OPERATIVO --------------------------------------------- */
