@@ -504,7 +504,7 @@ registra("balanco", "Balanço", () => {
   // saldo de cada item do balanço em cada ano + a abertura e o movimento do PL
   const porAno = colunas.map(c => {
     const itens = new Map();              // "secao|grupo|cod|nome" -> valor
-    let plAbertura = 0, plMovimento = 0;
+    let plAbertura = 0, plMovimento = 0, verbas = 0;
     for (const d of dados) {
       if (d.Subconta) continue;
       const g = d.Conta[0];
@@ -514,7 +514,9 @@ registra("balanco", "Balanço", () => {
       const base = d.Mes === 12 ? d.Ajust : d.Legal;
       if (!base) continue;
       if (ehPL(d.Conta)) {                // patrimônio: separa abertura de movimento
-        if (d.Mes === 0) plAbertura += -base; else plMovimento += -base;
+        if (d.Conta.startsWith("232")) verbas += -base;
+        else if (d.Mes === 0) plAbertura += -base;
+        else plMovimento += -base;
         continue;
       }
       const it = itemBP(d.Conta);
@@ -523,8 +525,8 @@ registra("balanco", "Balanço", () => {
       itens.set(k, (itens.get(k) || 0) + valor);
     }
     const resultado = dreAno(c.ano, c.mes).total;
-    return { itens, plAbertura, variacao: plMovimento + resultado,
-             pl: plAbertura + plMovimento + resultado };
+    return { itens, plAbertura, verbas, variacao: plMovimento + resultado,
+             pl: plAbertura + plMovimento + resultado + verbas };
   });
 
   const v = (k, i) => porAno[i].itens.get(k) || 0;
@@ -547,7 +549,10 @@ registra("balanco", "Balanço", () => {
       for (const [cod, nome] of g.itens) {
         const k = [s.secao, g.titulo, cod, nome].join("|");
         const vals = colunas.map((_, i) => v(k, i));
-        if (!vals.some(x => x)) continue;          // item zerado em todos os anos não aparece
+        // Demonstração tem FORMA FIXA: a linha oficial aparece sempre, com
+        // traço quando não há saldo. Só a linha de sobra (sem código, que
+        // existe para nada ficar de fora do total) some quando está zerada.
+        if (!cod && !vals.some(x => x)) continue;
         html += `<tr class="bp-item"><td class="bp-cod">${cod}</td><td>${nome}</td>` +
           vals.map(cel).join("") + `</tr>`;
       }
@@ -557,13 +562,30 @@ registra("balanco", "Balanço", () => {
         colunas.map((_, i) => cel(soma(pt => pt[0] === "ATIVO", i))).join("") + `</tr>`;
   }
 
-  // Patrimônio Líquido no formato do modelo: saldo inicial + variação
+  // Patrimônio Líquido na forma do modelo: Patrimônio Social aberto em saldo
+  // inicial, as linhas padrão de movimentação e a variação do período. A ANP
+  // concentra tudo em "Patrimônio Social", então as linhas de movimentação
+  // saem com traço — como no próprio modelo.
   html += `<tr class="bp-grupo"><td colspan="2">PATRIMÔNIO LÍQUIDO</td>` +
     porAno.map(a => cel(a.pl)).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td></td><td><b>PATRIMÔNIO SOCIAL</b></td>` +
+    colunas.map(() => `<td></td>`).join("") + `</tr>`;
   html += `<tr class="bp-item"><td class="bp-cod">A231</td><td>Saldo Inicial 01/01</td>` +
     porAno.map(a => cel(a.plAbertura)).join("") + `</tr>`;
-  html += `<tr class="bp-item"><td class="bp-cod"></td><td><b>Variação Patrimonial</b></td>` +
+  for (const rot of ["Constit. e Reversão de Verbas Disponíveis",
+                     "Correção Monetária do Patrimônio",
+                     "Transf. Patrimonial — Entidades Internas",
+                     "Patrimônio de Cisão — Entidades Congêneres",
+                     "Doações e Subvenções para o Imobilizado",
+                     "Capital Integralizado / a Integralizar no Período",
+                     "Ajuste de Avaliação Patrimonial",
+                     "Ajuste de Exercícios Anteriores"])
+    html += `<tr class="bp-item"><td></td><td>${rot}</td>` +
+      colunas.map(() => `<td class="num">–</td>`).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td></td><td><b>Variação Patrimonial</b></td>` +
     porAno.map(a => cel(a.variacao)).join("") + `</tr>`;
+  html += `<tr class="bp-item"><td class="bp-cod">A232</td><td>Verbas Disponíveis</td>` +
+    porAno.map(a => cel(a.verbas)).join("") + `</tr>`;
 
   const totPass = colunas.map((_, i) => soma(pt => pt[0] === "PASSIVO", i) + porAno[i].pl);
   html += `<tr class="bp-total"><td colspan="2">TOTAL DO PASSIVO E PATR. LÍQUIDO</td>` +
