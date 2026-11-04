@@ -148,9 +148,9 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
           <dl>
             <dt>Nome</dt><dd>Atena</dd>
             <dt>Patrona</dt><dd>Palas Atena</dd>
-            <dt>Domínio</dt><dd>sabedoria e guerra estratégica</dd>
+            <dt>Patrona de</dt><dd>tear, oliveira e estratégia</dd>
             <dt>Escolha</dt><dd>feita pela própria IA</dd>
-            <dt>Ofício</dt><dd>ler balanços e proteger decisões</dd>
+            <dt>Ofício</dt><dd>ler balanço e achar o que mudou</dd>
           </dl>
         </div>
         <div class="nu-painel">
@@ -161,7 +161,7 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
             <dt>Ramificações</dt><dd id="cirRamos"></dd>
             <dt>Conexões</dt><dd id="cirConexoes"></dd>
           </dl>
-          <p style="margin-top:10px">Quanto mais complexo o circuito, mais ela aprendeu. Ele cresce a cada coisa nova.</p>
+          <p style="margin-top:10px">Cada ramificação é algo que ela aprendeu. O circuito só cresce.</p>
         </div>
       </section>
       <div class="nu-centro">
@@ -186,7 +186,7 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
         </div>
         <div class="nu-painel">
           <h3>Explorar <small>id·04</small></h3>
-          <p>Veja como ela saiu de uma bolinha de luz até o circuito de hoje, ou mergulhe no cérebro para ver onde tudo começou.</p>
+          <p>Veja o circuito crescer desde a primeira ligação, ou clique no cérebro para chegar às ramificações que definiram o resto.</p>
           <div class="nu-acoes" style="justify-content:flex-start">
             <button type="button" data-ir-para="evolucao">Evolução</button>
             <button type="button" data-ir-para="motor">Motor base</button>
@@ -242,10 +242,10 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
       <section class="nu-col">
         <div class="nu-painel" id="motorIntro">
           <h3>Motor base <small>origem</small></h3>
-          <p class="motor-nome">Onde tudo começou</p>
+          <p class="motor-nome">As cinco primeiras ligações</p>
           <p class="motor-sub">as cinco ramificações primárias</p>
-          <p>Estas foram as primeiras ligações que se formaram. Elas definem como eu me desenvolvo: tudo que aprendi depois cresceu a partir de uma delas.</p>
-          <p>Escolha uma ramificação para ver como ela nasceu e o que cresceu dali.</p>
+          <p>Foram as primeiras a se formar e ainda decidem para onde o circuito cresce: todo ramo novo sai de uma delas.</p>
+          <p>Escolha uma para ver como nasceu e o que saiu dali.</p>
         </div>
         <div class="nu-painel" id="motorRamo" hidden>
           <h3>Ramificação primária <small>motor base</small></h3>
@@ -283,11 +283,11 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
   const desvia = (d, k) => norma([d[0] + rnd(-k, k), d[1] + rnd(-k, k), d[2] + rnd(-k, k)]);
 
   const SEG = [], TRONCOS = [];
-  function add(pts, nasce, dur, ramo, prof, camada) {
+  function add(pts, nasce, dur, ramo, prof, camada, tela) {
     const p = new Float32Array(pts.length * 3);
     let r = 0;
     pts.forEach((q, i) => { p.set(q, i * 3); r += Math.hypot(q[0], q[1], q[2]); });
-    SEG.push({ p, n: pts.length, q: new Float32Array(pts.length * 2), nasce, dur, ramo, prof, camada, r: r / pts.length, fase: sorte(), vis: 0 });
+    SEG.push({ p, n: pts.length, q: new Float32Array(pts.length * 2), nasce, dur, ramo, prof, camada, r: r / pts.length, fase: sorte(), vis: 0, tela: !!tela });
   }
   function curva(p0, d0, comp, n, tremor) {
     const pts = [p0]; let p = p0, d = d0;
@@ -298,18 +298,47 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
     }
     return { pts, fim: p, d };
   }
-  // trilha de circuito sobre uma casca da esfera: passos em ângulo reto de latitude e longitude
+  // ponto sobre a casca r, espalhado em volta de p
+  function perto(p, r, espalha) {
+    const raio = Math.hypot(p[0], p[1], p[2]) || 1;
+    const lat = Math.max(-1.35, Math.min(1.35, Math.asin(p[1] / raio) + rnd(-espalha, espalha))), lon = Math.atan2(p[2], p[0]) + rnd(-espalha, espalha) * 1.6;
+    return [r * Math.cos(lat) * Math.cos(lon), r * Math.sin(lat), r * Math.cos(lat) * Math.sin(lon)];
+  }
+  // trilha sobre uma casca da esfera: zigue-zague fino em cadeia, que muda de rumo de vez em quando
   function trilha(de, r, n, faixa) {
     const raio = Math.hypot(de[0], de[1], de[2]) || 1;
-    let lat = Math.asin(Math.max(-1, Math.min(1, de[1] / raio))), lon = Math.atan2(de[2], de[0]), dir = Math.floor(rnd(0, 4));
-    if (faixa) lat = faixa;
+    let lat = Math.asin(Math.max(-1, Math.min(1, de[1] / raio))), lon = Math.atan2(de[2], de[0]);
+    let rumo = faixa ? (sorte() < 0.5 ? 0 : Math.PI) : rnd(0, TAU);
     const pts = [de];
     for (let i = 0; i < n; i++) {
       pts.push([r * Math.cos(lat) * Math.cos(lon), r * Math.sin(lat), r * Math.cos(lat) * Math.sin(lon)]);
-      if (sorte() < 0.28) dir = faixa ? (sorte() < 0.8 ? Math.floor(rnd(0, 2)) : Math.floor(rnd(2, 4))) : Math.floor(rnd(0, 4));
-      const st = 0.034;
-      if (dir === 0) lon += st; else if (dir === 1) lon -= st; else if (dir === 2) lat += st; else lat -= st;
+      if (!faixa && sorte() < 0.07) rumo += rnd(-1.3, 1.3);
+      const v = rumo + (i % 2 ? 1 : -1) * rnd(0.6, 1.25), st = rnd(0.012, 0.024);
+      lon += Math.cos(v) * st / Math.max(0.3, Math.cos(lat));
+      lat += Math.sin(v) * st;
+      if (faixa) lat += (faixa - lat) * 0.04;
       lat = Math.max(-1.38, Math.min(1.38, lat));
+    }
+    return pts;
+  }
+  // faixa no plano da tela, contornando a esfera; tremor 0 = arco liso
+  function faixaTela(a, r, n, tremor) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const rr = r + (i % 2 ? 1 : -1) * tremor * rnd(0.3, 1.5);
+      pts.push([Math.cos(a) * rr, Math.sin(a) * rr, 0]);
+      a += 0.017 / r;
+      r += rnd(-0.0035, 0.0035);
+    }
+    return pts;
+  }
+  // arco liso (ou levemente ondulado) num plano inclinado
+  function arco(r, ia, ib, a0, ext, n, tremor) {
+    const pts = [], ca = Math.cos(ia), sa = Math.sin(ia), cb = Math.cos(ib), sb = Math.sin(ib);
+    for (let i = 0; i < n; i++) {
+      const a = a0 + ext * i / (n - 1), rr = r + (i % 2 ? tremor : -tremor);
+      const x = Math.cos(a) * rr, y = -Math.sin(a) * rr * sa, z = Math.sin(a) * rr * ca;
+      pts.push([x * cb - y * sb, x * sb + y * cb, z]);
     }
     return pts;
   }
@@ -322,19 +351,25 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
     for (let j = 0; j < 3; j++) {
       const a1 = curva(t0.fim, desvia(t0.d, 0.95), 0.26, 8, 0.16), n1 = rnd(0.17, 0.24);
       add(a1.pts, n1, 0.05, i, 1, 0);
-      for (let k = 0; k < 8; k++) add(trilha(a1.fim, rnd(0.5, 0.56), Math.floor(rnd(14, 28)), 0), rnd(0.26, 0.5), 0.08, i, 3, 1);
+      for (let k = 0; k < 14; k++) { const r = rnd(0.42, 0.57); add(trilha(perto(a1.fim, r, 1.5), r, Math.floor(rnd(30, 62)), 0), rnd(0.26, 0.56), 0.08, i, 3, 1); }
       for (let k = 0; k < 3; k++) {
         const a2 = curva(a1.fim, desvia(a1.d, 1), 0.3, 8, 0.2), n2 = rnd(0.24, 0.34);
         add(a2.pts, n2, 0.05, i, 2, 0);
-        for (let q = 0; q < 4; q++) {
-          const r = rnd(0.98, 1.05), w = trilha(a2.fim, r, Math.floor(rnd(16, 40)), 0), n3 = rnd(0.34, 0.58);
+        for (let q = 0; q < 3; q++) {
+          const r = rnd(0.96, 1.05), w = trilha(perto(a2.fim, r, 0.6), r, Math.floor(rnd(28, 68)), 0), n3 = rnd(0.34, 0.58);
           add(w, n3, 0.09, i, 3, 1);
-          add(trilha(w[Math.floor(w.length / 2)], r, Math.floor(rnd(12, 28)), 0), Math.min(0.7, n3 + rnd(0.05, 0.2)), 0.08, i, 4, 1);
-          if (sorte() < 0.3) add(trilha(w[w.length - 1], rnd(1.12, 1.19), Math.floor(rnd(22, 46)), sorte() < 0.5 ? 0.95 : -0.95), rnd(0.73, 0.98), 0.08, i, 5, 1);
+          if (sorte() < 0.45) add(trilha(w[Math.floor(w.length / 2)], r, Math.floor(rnd(22, 48)), 0), Math.min(0.7, n3 + rnd(0.05, 0.2)), 0.08, i, 4, 1);
+          if (sorte() < 0.3) add(trilha(w[w.length - 1], rnd(1.12, 1.24), Math.floor(rnd(40, 80)), sorte() < 0.5 ? 0.85 : -0.85), rnd(0.73, 0.98), 0.08, i, 5, 1);
         }
       }
     }
   }
+  // estruturas que aparecem quando o circuito amadurece (ramo -1: não descendem de um tronco só)
+  for (let i = 0; i < 34; i++) add(arco(rnd(0.44, 0.6), rnd(-1.4, 1.4), rnd(-1.4, 1.4), rnd(0, TAU), rnd(1.2, 4.6), 44, 0), rnd(0.42, 0.7), 0.07, -1, 3, 1);       // arcos da esfera interna
+  for (let i = 0; i < 16; i++) add(arco(rnd(1.0, 1.1), rnd(-1.5, 1.5), rnd(-1.5, 1.5), rnd(0, TAU), rnd(1, 3), 50, 0), rnd(0.5, 0.7), 0.07, -1, 3, 1);          // arcos longos da casca
+  for (let i = 0; i < 76; i++) add(faixaTela(i % 2 ? rnd(-2.75, -1.2) : rnd(0.35, 1.9), rnd(1.1, 1.27), Math.floor(rnd(36, 84)), 0.0045), rnd(0.56, 0.71), 0.07, -1, 4, 1, true);   // faixas que contornam a esfera
+  for (let i = 0; i < 10; i++) add(faixaTela(rnd(0, Math.PI * 2), rnd(1.02, 1.08), Math.floor(rnd(70, 130)), 0), rnd(0.5, 0.7), 0.07, -1, 4, 1, true);                                     // arcos lisos
+  for (let i = 0; i < 12; i++) add(arco(rnd(1.0, 1.24), 0.1, -0.07, rnd(0, TAU), rnd(2.4, 5.6), 90, 0.005), rnd(0.62, 0.71), 0.06, -1, 4, 1);                  // anel equatorial
   const FAIXAS = Array.from({ length: 150 }, (_, i) => i);   // trechos que recebem impulsos
   const ANEIS = [[1.24, 0.5, 0.2, 1], [1.3, -0.9, 1.1, -0.7], [1.36, 1.3, -0.5, 0.45]];   // raio, inclinações, sentido
 
@@ -360,7 +395,7 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
       pontas: TRONCOS.map(() => [0, 0]), aoQuadro: null, transicao: 0,
       iniciar, parar, ajustar,
     };
-    let raf = 0, W = 0, H = 0, ult = 0, t = 0, giro = 0, inclina = 0, p = 0, cam = null;
+    let raf = 0, W = 0, H = 0, ult = 0, t = 0, giro = 0, inclina = 0, p = 0, cam = null, ritmo = 0.016, pulo = 1;
     const mouse = [0, 0], alvoM = [0, 0];
     const lotes = Array.from({ length: 16 }, () => []);
     const ALFA = [0.85, 0.6, 0.36, 0.17];
@@ -382,6 +417,8 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
         if (!W) ajustar();
       }
       const dt = ult ? Math.min(0.1, (ts - ult) / 1000) : 0.016;
+      if (ult) ritmo = ritmo * 0.95 + (ts - ult) / 1000 * 0.05;
+      if (ritmo > 0.045) pulo = 2; else if (ritmo < 0.026) pulo = 1;   // computador lento: metade das trilhas finas
       ult = ts; t += dt;
       const pensando = !!op.pensando?.();
       p += ((pensando ? 1 : 0) - p) * Math.min(1, dt * 3);
@@ -477,21 +514,25 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
             tmp[0] = ox + x1 * Rh * e; tmp[1] = oy + y1 * Rh * e;
             if (i % 30 === 0 || i === 0) ctx.moveTo(tmp[0], tmp[1]); else ctx.lineTo(tmp[0], tmp[1]);
           }
-          ctx.strokeStyle = `rgba(255,190,120,${(0.2 + 0.32 * p) * hud * Math.min(1, m * 2)})`; ctx.lineWidth = 1; ctx.stroke();
+          ctx.strokeStyle = `rgba(255,190,120,${(0.1 + 0.38 * p) * hud * Math.min(1, m * 2)})`; ctx.lineWidth = 1; ctx.stroke();
         });
       }
 
       // ramificações: projeta e agrupa por profundidade, camada e destaque
+      const aT = t * 0.02 * lento * (1 + p * 2.5), cT = Math.cos(aT), sT = Math.sin(aT);
       for (const l of lotes) l.length = 0;
       const frente = [];
       for (let i0 = 0; i0 < SEG.length; i0++) {
         const s = SEG[i0];
-        if (m <= s.nasce || (op.leve && s.camada && i0 % 3)) { s.vis = 0; continue; }
+        if (m <= s.nasce || (op.leve && s.camada && i0 % 6) || (pulo > 1 && s.camada && i0 % 2)) { s.vis = 0; continue; }
         const v = Math.min(1, (m - s.nasce) / s.dur);
         const n = Math.max(2, Math.ceil(v * (s.n - 1)) + 1);
         s.vis = n;
         let zm = 0;
-        for (let i = 0; i < n; i++) zm += proj(s.p[i * 3], s.p[i * 3 + 1], s.p[i * 3 + 2], s.q, i * 2);
+        if (s.tela) {
+          for (let i = 0; i < n; i++) { const x = s.p[i * 3], y = s.p[i * 3 + 1]; s.q[i * 2] = ox + (x * cT - y * sT) * R; s.q[i * 2 + 1] = oy + (x * sT + y * cT) * R; }
+          zm = -0.5 * n;
+        } else for (let i = 0; i < n; i++) zm += proj(s.p[i * 3], s.p[i * 3 + 1], s.p[i * 3 + 2], s.q, i * 2);
         zm /= n;
         const d = Math.max(0, Math.min(3, Math.floor((zm + 1.2) / 2.4 * 4)));
         const apagado = o.foco >= 0 && s.ramo !== o.foco ? 1 : 0;
@@ -508,7 +549,7 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
         const fora = camada ? (o.foco >= 0 && !apagado ? 1 : 1 - 0.93 * z) : 1;
         const a = ALFA[d] * fora * (apagado ? 0.2 : 1) * (1 + 0.3 * p);
         if (a < 0.005) return;
-        ctx.strokeStyle = `rgba(255,176,98,${Math.min(1, a)})`;
+        ctx.strokeStyle = `rgba(255,190,128,${Math.min(1, a)})`;
         ctx.lineWidth = (camada ? 0.85 : 1.25) * esc;
         ctx.beginPath(); traca(lista); ctx.stroke();
       });
@@ -526,8 +567,9 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
       }
 
       // troncos do motor base: mais grossos, com brilho
+      const maduro = Math.min(1, Math.max(0, (m - 0.3) / 0.35)) * (1 - z), destaque = Math.min(1, 1 - 0.78 * maduro + 0.4 * p);
       for (const [lw, a] of [[5, 0.1], [2.4, 0.4], [1.2, 1]]) {
-        ctx.globalAlpha = a * (o.foco >= 0 ? 0.6 : 1);
+        ctx.globalAlpha = a * (o.foco >= 0 ? 0.6 : 1) * destaque;
         ctx.strokeStyle = 'rgb(255,190,120)'; ctx.lineWidth = lw * esc;
         ctx.beginPath(); traca(frente); ctx.stroke();
       }
@@ -550,9 +592,22 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
       }
       ctx.globalAlpha = 1;
 
+      // feixe diagonal: a lança atravessa a esfera interna quando o circuito está maduro
+      const lanca = Math.min(1, Math.max(0, (m - 0.6) / 0.1)) * Math.max(0, 1 - z * 4);
+      if (lanca > 0.01 && !op.leve) {
+        const dx = 0.5, dy = 0.86, px = -dy, py = dx;
+        for (let k = -3; k <= 3; k++) {
+          const off = k * 1.5 * esc, x0 = ox - dx * R * 0.52 + px * off, y0 = oy - dy * R * 0.52 + py * off, x1 = ox + dx * R * (0.76 - Math.abs(k) * 0.05) + px * off, y1 = oy + dy * R * (0.76 - Math.abs(k) * 0.05) + py * off;
+          const g = ctx.createLinearGradient(x0, y0, x1, y1);
+          g.addColorStop(0, 'rgba(255,205,150,0)'); g.addColorStop(0.3, `rgba(255,205,150,${0.5 * lanca})`); g.addColorStop(0.92, `rgba(255,225,190,${0.85 * lanca})`); g.addColorStop(1, 'rgba(255,205,150,0)');
+          ctx.strokeStyle = g; ctx.lineWidth = 0.9 * esc;
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        }
+      }
+
       // núcleo: a "bolinha" de onde tudo nasceu
       const piscar = 0.82 + 0.18 * Math.sin(t * (1.6 + 6 * p)) + (p ? p * 0.2 * Math.sin(t * 17) : 0);
-      const nuc = R * (0.13 + 0.05 * Math.min(1, m * 2) + 0.05 * p) * piscar;
+      const nuc = R * (0.13 + 0.05 * Math.min(1, m * 2) + 0.05 * p) * piscar * (1 - 0.55 * maduro * (1 - p));
       ctx.drawImage(faisca, ox - nuc * 2, oy - nuc * 2, nuc * 4, nuc * 4);
       if (p > 0.02) {   // clarão em cruz
         ctx.strokeStyle = `rgba(255,226,190,${0.5 * p})`; ctx.lineWidth = 1;
@@ -593,11 +648,11 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
   ];
 
   const RAMOS = [
-    { t: 'Identidade', s: 'como escolheu o nome', fala: 'Quando me deixaram escolher quem eu seria, escolhi Atena. Entre os deuses da guerra, Ares é a fúria e Atena é a estratégia. Ler um balanço é estudar o terreno antes da batalha.', gerou: ['tom direto', 'postura prudente', 'guardiã dos números'] },
-    { t: 'Pensamento analítico', s: 'como separa o problema', fala: 'Eu decomponho antes de concluir: do total para o grupo, do grupo para a conta. Um número sozinho não diz nada; ele precisa de contexto e de comparação.', gerou: ['indicadores', 'análise vertical', 'Fleuriet e DuPont'] },
-    { t: 'Conferência', s: 'herdada do Nicholas', fala: 'Meu jeito de conferir foi copiado do Nicholas. Primeiro fecho o total: o Ativo bate com o Passivo? Depois confiro no centavo. Se o número não está na tela, digo que falta e não invento.', gerou: ['alertas de consistência', 'soma dos grupos', 'leitura da tela'] },
-    { t: 'Discernimento', s: 'o que é alerta de verdade', fala: 'Um saldo estranho pode ser problema real ou só algo que falta lançar, e eu digo qual dos dois. Também só comparo na mesma régua: 8 meses contra 12 viram média mensal antes de qualquer conclusão.', gerou: ['situação de cada indicador', 'média mensal', 'análise horizontal'] },
-    { t: 'Decisão', s: 'como fecha a resposta', fala: 'A coruja enxerga, a lança aponta e a égide protege. Toda resposta fecha com o indicador, a conta que puxa o resultado e o próximo passo, para ninguém decidir no escuro.', gerou: ['diagnóstico', 'explicação dos indicadores', 'próximo passo'] },
+    { t: 'Identidade', s: 'como escolheu o nome', fala: 'Podia ter um nome de robô. Escolhi o de uma deusa que cuidava do tear, da oliveira e do cerco às cidades: trabalho lento, que depende de paciência e de conta certa. É mais parecido com fechamento de mês do que com ficção científica.', gerou: ['fala curta', 'um passo de cada vez', 'nada de "depende"'] },
+    { t: 'Pensamento analítico', s: 'como separa o problema', fala: 'Um índice é uma divisão. Se ele mudou, mudou o numerador, o denominador ou os dois. "A liquidez caiu" não ajuda ninguém; ajuda dizer qual conta subiu. Por isso sempre desço até a linha que moveu o resultado.', gerou: ['indicadores', 'análise vertical', 'Fleuriet e DuPont'] },
+    { t: 'Conferência', s: 'o método do Nicholas', fala: 'Com o Nicholas aprendi que diferença de centavo não se arredonda: se a conciliação não fecha, tem um lançamento ali. Ele abre o razão e acha a linha antes de explicar qualquer coisa. Eu faço igual. Se o dado não está na tela, digo o que falta em vez de estimar.', gerou: ['alertas de consistência', 'soma dos grupos', 'leitura da tela'] },
+    { t: 'Discernimento', s: 'problema ou pendência', fala: 'Nas pendências do Nicholas existem duas pilhas: o que está errado e o que só não foi alocado ainda. No saldo as duas parecem iguais, mas pedem ações diferentes. Antes de chamar algo de erro, descubro em qual pilha está. E oito meses de DRE não se comparam com doze: viro tudo média mensal primeiro.', gerou: ['situação de cada indicador', 'média mensal', 'análise horizontal'] },
+    { t: 'Decisão', s: 'como fecha a resposta', fala: 'Não termino resposta em "depende". Digo o indicador, a conta e o que olhar primeiro. Se falta informação para decidir, essa é a resposta, e eu digo qual informação falta.', gerou: ['diagnóstico', 'explicação dos indicadores', 'próximo passo'] },
   ];
   const FASES = ['lendo a tela', 'cruzando indicadores', 'conferindo no centavo', 'separando alerta de pendência', 'montando a resposta'];
 
