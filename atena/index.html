@@ -506,7 +506,7 @@ dialog.at-dlg input, dialog.at-dlg select { width: 100%; }
     <div class="nu-trilho">
       <div class="nu-etapa"><b>TELA</b>Leio o que está aberto: valores, indicadores, alertas e a aba atual.</div>
       <div class="nu-etapa"><b>CONTEXTO</b>Junto com a sua pergunta e com o que já conversamos.</div>
-      <div class="nu-etapa"><b>RACIOCÍNIO</b>Aplico os cinco passos, na ordem, no motor Claude.</div>
+      <div class="nu-etapa"><b>RACIOCÍNIO</b>Aplico os cinco passos, na ordem.</div>
       <div class="nu-etapa"><b>RESPOSTA</b>Respondo com o número, o porquê e o próximo passo.</div>
     </div>
   </div>
@@ -2969,11 +2969,9 @@ Responda em Markdown curto (negrito, listas e tabelas simples quando ajudarem). 
       }
     }
     const aba = document.querySelector('nav.tabs button.on')?.textContent.trim() || '—';
-    const modelo = { 'claude-opus-5-5': 'Claude Opus 5.5', 'claude-sonnet-5-5': 'Claude Sonnet 5.5', 'claude-haiku-5-5': 'Claude Haiku 5.5' }[st.modelo] || st.modelo || '—';
     const itens = [
       ['Estado', st.ocupada ? 'pensando' : st.ligada ? 'em vigília' : 'adormecida'],
-      ['Motor', modelo],
-      ['Conexão', st.ligada ? (st.modo === 'claude.ai' ? 'conta do claude.ai' : 'chave da API') : 'desligada (cadeado)'],
+      ['Conexão', st.ligada ? (st.modo === 'claude.ai' ? 'conta conectada' : 'chave da API') : 'desligada (cadeado)'],
       ['Entidade', S.empresa || 'sem nome'],
       ['Aba observada', aba],
       ['Linhas preenchidas', String(linhas)],
