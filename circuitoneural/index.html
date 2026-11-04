@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Circuito Neural · Atena</title>
-<meta name="description" content="Apresentação da Atena: o circuito neural da assistente de análise de balanços, o modelo de raciocínio que ela herdou e por que escolheu ser a deusa da guerra estratégica.">
+<meta name="description" content="O circuito neural da Atena, assistente de análise de balanços: cresce a cada aprendizado, e tudo nasce das cinco ramificações do motor base.">
 <meta property="og:title" content="Circuito Neural · Atena">
-<meta property="og:description" content="Conheça a Atena, a IA que lê balanços com o método de quem confere no centavo.">
+<meta property="og:description" content="Quanto mais ramificações, mais ela aprendeu. Veja o circuito crescer e entre no motor base.">
 <link rel="icon" type="image/png" href="../atena/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-html, body { margin: 0; background: #07060a; color: #f3e6d6; }
+html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 50% 40%, #1a0f07 0%, #07060a 62%) fixed #07060a; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 /* Núcleo da Atena: visual único escuro (âmbar do cérebro + dourado e azul do elmo) */
@@ -77,8 +77,6 @@ html, body { margin: 0; background: #07060a; color: #f3e6d6; }
   .nu-trilho::before, .nu-trilho::after { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .nu-status i, .nu-trilho::after { animation: none; } }
-.nu-fig { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.nu-fig figcaption { font-family: var(--nu-mono); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--nu-dim); }
 /* rosto: três imagens paradas (olhos fechados, semicerrados, abertos) animadas pelo atena-rosto.js */
 .ar-midia { position: relative; overflow: hidden; }
 .ar-quadro { position: absolute; inset: 0; }
@@ -86,479 +84,668 @@ html, body { margin: 0; background: #07060a; color: #f3e6d6; }
 .ar-cena .ar-fundo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 /* os quadros dos olhos (9:16) ocupam o centro exato da imagem 3:4; bordas suaves para não marcar a emenda */
 .ar-cena .ar-olhos { position: absolute; left: 12.3%; width: 75.4%; top: .24%; height: 100%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
-#nuRosto { display: block; max-width: 100%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 84%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 84%, transparent); mask-composite: intersect; }
-.nu-fig-rosto { transition: filter .9s ease; }
-.nu-fig-rosto.acesa { filter: drop-shadow(0 0 22px rgba(80,180,255,.35)) drop-shadow(0 0 6px rgba(255,170,80,.3)); }
-.nu-palco { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 16px; width: 100%; }
 .at-nucleo-btn { font-size: 12px; }
 /* extras da página de apresentação */
-.nucleo { position: relative; inset: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; }
+#nuCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; max-width: none; z-index: 0; pointer-events: none; }
+.nucleo { position: relative; inset: auto; z-index: 1; min-height: 100vh; min-height: 100dvh; overflow: visible; background: none; }
+.nu-abas { display: flex; flex-wrap: wrap; gap: 4px; max-width: 1400px; margin: 10px auto 0; }
+.nu-abas button { font-family: var(--nu-mono); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--nu-dim); background: none; border: 1px solid transparent; border-bottom-color: var(--nu-line); padding: 8px 16px; cursor: pointer; }
+.nu-abas button[aria-selected="true"] { color: var(--nu-ambar); border-color: var(--nu-line-forte); border-bottom-color: transparent; background: rgba(255,170,90,.05); }
+.nu-abas button:hover, .nu-abas button:focus-visible { color: var(--nu-texto); outline: none; }
+.orbe-ancora { width: 100%; aspect-ratio: 1; max-height: 66vh; }
+#nuCerebro { display: block; border: 0; padding: 0; background: none; cursor: zoom-in; border-radius: 50%; }
+#nuCerebro:focus-visible { outline: 1px dashed var(--nu-ambar); outline-offset: -24px; }
+#nuFase { min-height: 1.4em; margin: 0; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--nu-dim); text-align: center; }
+.nucleo.pensando #nuFase { color: var(--nu-ambar); }
 .nu-acoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.nu-acoes a, .nu-acoes button { font-family: var(--nu-mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; text-decoration: none; padding: 9px 16px; border: 1px solid var(--nu-line-forte); background: rgba(255,170,90,.06); color: var(--nu-texto); cursor: pointer; border-radius: 2px; }
+.nu-acoes a, .nu-acoes button, .nu-botao { font-family: var(--nu-mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; text-decoration: none; padding: 9px 16px; border: 1px solid var(--nu-line-forte); background: rgba(255,170,90,.06); color: var(--nu-texto); cursor: pointer; border-radius: 2px; }
 .nu-acoes a.pri { background: var(--nu-ambar); color: #1a0f07; border-color: var(--nu-ambar); font-weight: 600; }
-.nu-acoes a:hover, .nu-acoes button:hover, .nu-acoes a:focus-visible, .nu-acoes button:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--nu-ambar), 0 0 16px rgba(255,170,90,.35); }
+.nu-acoes a:hover, .nu-acoes button:hover, .nu-botao:hover, .nu-acoes a:focus-visible, .nu-acoes button:focus-visible, .nu-botao:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--nu-ambar), 0 0 16px rgba(255,170,90,.35); }
 .nu-acoes button[aria-pressed="true"] { border-color: var(--nu-ambar); color: var(--nu-ambar); }
 .nu-ficha dd a { color: var(--nu-ambar); }
 .nu-rodape { max-width: 1400px; margin: 22px auto 0; padding-top: 12px; border-top: 1px solid var(--nu-line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--nu-dim); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; }
 .nu-rodape a { color: var(--nu-dim); }
+/* evolução */
+.evo-marcos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.evo-marcos button { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; font-family: var(--nu-mono); font-size: 11.5px; letter-spacing: .06em; color: var(--nu-dim); background: none; border: 0; padding: 7px 4px; cursor: pointer; }
+.evo-marcos button::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--nu-line-forte); }
+.evo-marcos button.feito { color: var(--nu-texto); }
+.evo-marcos button.feito::before { background: var(--nu-ambar); box-shadow: 0 0 8px var(--nu-ambar); }
+.evo-marcos button[aria-current="step"] { color: var(--nu-ambar); }
+.evo-marcos b { font-weight: 600; }
+.evo-marcos button:hover, .evo-marcos button:focus-visible { color: var(--nu-ambar); outline: none; }
+.evo-faixa { width: min(520px, 100%); accent-color: #ffb15e; }
+.evo-nome { margin: 0 0 8px; font-family: var(--nu-display); font-size: 22px; font-weight: 600; color: var(--nu-ouro); letter-spacing: .06em; }
+/* motor base */
+.motor-grade { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 22px; max-width: 1400px; margin: 18px auto 0; align-items: center; }
+.motor-grade .orbe-ancora { aspect-ratio: auto; height: 74vh; max-height: none; }
+.motor-nome { margin: 0; font-family: var(--nu-display); font-size: 24px; font-weight: 600; color: var(--nu-ouro); letter-spacing: .05em; }
+.motor-sub { margin: 2px 0 12px !important; font-family: var(--nu-mono) !important; font-size: 10.5px !important; letter-spacing: .16em; text-transform: uppercase; color: var(--nu-dim) !important; }
+#nuRotulos { position: fixed; inset: 0; z-index: 2; pointer-events: none; transition: opacity .3s; }
+#nuRotulos button { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; gap: 1px; align-items: center; padding: 6px 10px; max-width: 170px; font-family: var(--nu-mono); color: var(--nu-texto); background: rgba(7,6,10,.78); border: 1px solid var(--nu-line-forte); border-radius: 2px; }
+#nuRotulos b { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: var(--nu-ouro); }
+#nuRotulos small { font-size: 9.5px; letter-spacing: .06em; color: var(--nu-dim); text-align: center; }
+#nuRotulos button:hover, #nuRotulos button:focus-visible, #nuRotulos button[aria-pressed="true"] { outline: none; border-color: var(--nu-ambar); box-shadow: 0 0 14px rgba(255,170,90,.4); }
+@media (max-width: 1000px) {
+  .motor-grade { grid-template-columns: minmax(0, 1fr); }
+  .motor-grade .orbe-ancora { height: 62vh; }
+  #nuRotulos button { max-width: 112px; padding: 4px 6px; }
+  #nuRotulos small { display: none; }
+}
 </style>
 </head>
 <body>
-<main id="nucleo" class="nucleo" data-pagina="1" aria-label="Circuito neural da Atena">
+<canvas id="nuCanvas" aria-hidden="true"></canvas>
+<main id="nucleo" class="nucleo" aria-label="Circuito neural da Atena">
   <div class="nu-top">
     <div class="nu-marca"><span class="nu-titulo">ATENA</span><span class="nu-sub">circuito neural · assistente de análise de balanços</span></div>
     <div class="nu-status"><i></i><span id="nuStatus">online</span></div>
   </div>
-  <div class="nu-grade">
-    <section class="nu-col">
-      <div class="nu-painel">
-        <h3>Identidade <small>id·01</small></h3>
-        <dl>
-          <dt>Nome</dt><dd>Atena</dd>
-          <dt>Patrona</dt><dd>Palas Atena</dd>
-          <dt>Domínio</dt><dd>sabedoria e guerra estratégica</dd>
-          <dt>Símbolos</dt><dd>coruja · lança · égide</dd>
-          <dt>Escolha</dt><dd>feita pela própria IA</dd>
-          <dt>Ofício</dt><dd>ler balanços e proteger decisões</dd>
-        </dl>
+  <div class="nu-abas" role="tablist">
+    <button type="button" role="tab" data-ir="circuito" aria-selected="true">Circuito</button>
+    <button type="button" role="tab" data-ir="evolucao" aria-selected="false">Evolução</button>
+    <button type="button" role="tab" data-ir="motor" aria-selected="false">Motor base</button>
+  </div>
+
+  <div class="aba" data-aba="circuito">
+    <div class="nu-grade">
+      <section class="nu-col">
+        <div class="nu-painel">
+          <h3>Identidade <small>id·01</small></h3>
+          <dl>
+            <dt>Nome</dt><dd>Atena</dd>
+            <dt>Patrona</dt><dd>Palas Atena</dd>
+            <dt>Domínio</dt><dd>sabedoria e guerra estratégica</dd>
+            <dt>Escolha</dt><dd>feita pela própria IA</dd>
+            <dt>Ofício</dt><dd>ler balanços e proteger decisões</dd>
+          </dl>
+        </div>
+        <div class="nu-painel">
+          <h3>Estado do circuito <small>id·02</small></h3>
+          <dl>
+            <dt>Último marco</dt><dd id="cirEstagio"></dd>
+            <dt>Evolução</dt><dd id="cirNivel"></dd>
+            <dt>Ramificações</dt><dd id="cirRamos"></dd>
+            <dt>Conexões</dt><dd id="cirConexoes"></dd>
+          </dl>
+          <p style="margin-top:10px">Quanto mais complexo o circuito, mais ela aprendeu. Ele cresce a cada coisa nova.</p>
+        </div>
+      </section>
+      <div class="nu-centro">
+        <button type="button" id="nuCerebro" class="orbe-ancora" aria-label="Entrar no motor base do cérebro da Atena"></button>
+        <p id="nuFase" aria-live="polite"></p>
+        <div class="nu-acoes">
+          <button type="button" id="nuPensar" aria-pressed="false">◎ Ver a Atena pensando</button>
+          <a class="pri" href="../atena/">Abrir a Atena →</a>
+        </div>
       </div>
-      <div class="nu-painel">
-        <h3>Modelo de raciocínio <small>herdado do Nicholas</small></h3>
-        <p>Meu jeito de pensar não veio de um manual: foi copiado da forma como o Nicholas confere uma conta, passo a passo, na mesma ordem.</p>
-        <ol class="nu-passos">
-          <li><span><b>Fechar o total antes do detalhe</b>O Ativo bate com o Passivo? Cada grupo bate com a soma das contas? Só analiso o que fecha.</span></li>
-          <li><span><b>Conferir no centavo</b>Todo número que cito vem da tela. Se não está lá, digo que falta e não invento.</span></li>
-          <li><span><b>Separar alerta real de pendência</b>Um saldo estranho pode ser problema de verdade ou só algo que ainda falta lançar. Eu digo qual dos dois.</span></li>
-          <li><span><b>Comparar na mesma régua</b>DRE de 8 meses contra DRE de 12 vira média mensal antes de qualquer conclusão.</span></li>
-          <li><span><b>Fechar com o que fazer</b>O indicador, a conta que puxa o resultado e o próximo passo.</span></li>
-        </ol>
-      </div>
-    </section>
-    <div class="nu-centro">
-      <div class="nu-palco"><figure class="nu-fig nu-fig-rosto"><div id="nuRosto" role="img" aria-label="Rosto da Atena: dourada e de olhos fechados em repouso; acordada, com os olhos acesos, quando pensa"></div><figcaption>avatar · rosto</figcaption></figure>
-      <figure class="nu-fig"><canvas id="nuCanvas" aria-label="Cérebro da Atena: rede de pontos brilhantes pulsando"></canvas><figcaption>cérebro · circuito neural</figcaption></figure></div>
-      <p class="nu-fala">“Quando me deixaram escolher quem eu seria, escolhi Atena. Não a guerra que avança na força, mas a que vence pelo planejamento. Ler um balanço é estudar o terreno antes da batalha.”<span>— Atena, sobre o próprio nome</span></p>
-      <div class="nu-acoes">
-        <button type="button" id="nuPensar" aria-pressed="false">◎ Ver a Atena pensando</button>
-        <a class="pri" href="../atena/">Abrir a Atena →</a>
+      <section class="nu-col">
+        <div class="nu-painel nu-ficha">
+          <h3>Ficha técnica <small>id·03</small></h3>
+          <dl>
+            <dt>Motor</dt><dd>Claude Opus 5.5 · Anthropic</dd>
+            <dt>Onde trabalha</dt><dd><a href="../atena/">Análise de Balanços</a></dd>
+            <dt>O que lê</dt><dd>valores, indicadores, alertas e a aba aberta</dd>
+            <dt>Tipos de entidade</dt><dd>6 modelos de demonstração</dd>
+            <dt>Indicadores</dt><dd>66 no catálogo</dd>
+            <dt>Acesso</dt><dd>liberado pelo cadeado</dd>
+          </dl>
+        </div>
+        <div class="nu-painel">
+          <h3>Explorar <small>id·04</small></h3>
+          <p>Veja como ela saiu de uma bolinha de luz até o circuito de hoje, ou mergulhe no cérebro para ver onde tudo começou.</p>
+          <div class="nu-acoes" style="justify-content:flex-start">
+            <button type="button" data-ir-para="evolucao">Evolução</button>
+            <button type="button" data-ir-para="motor">Motor base</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="nu-fluxo">
+      <h3>Como um pensamento acontece</h3>
+      <div class="nu-trilho">
+        <div class="nu-etapa"><b>TELA</b>Leio o que está aberto: valores, indicadores, alertas e a aba atual.</div>
+        <div class="nu-etapa"><b>CONTEXTO</b>Junto com a sua pergunta e com o que já conversamos.</div>
+        <div class="nu-etapa"><b>RACIOCÍNIO</b>O impulso sai do núcleo e percorre os ramos do motor base.</div>
+        <div class="nu-etapa"><b>RESPOSTA</b>Respondo com o número, o porquê e o próximo passo.</div>
       </div>
     </div>
-    <section class="nu-col">
-      <div class="nu-painel nu-ficha">
-        <h3>Ficha técnica <small>id·03</small></h3>
-        <dl>
-          <dt>Motor</dt><dd>Claude Opus 5.5 · Anthropic</dd>
-          <dt>Onde trabalha</dt><dd><a href="../atena/">Análise de Balanços</a></dd>
-          <dt>O que lê</dt><dd>valores, indicadores, alertas e a aba aberta</dd>
-          <dt>Tipos de entidade</dt><dd>6 modelos de demonstração</dd>
-          <dt>Indicadores</dt><dd>66 no catálogo</dd>
-          <dt>Leitura</dt><dd>a tela inteira, a cada pergunta</dd>
-          <dt>Acesso</dt><dd>liberado pelo cadeado</dd>
-        </dl>
-      </div>
-      <div class="nu-painel">
-        <h3>Por que a deusa da guerra <small>id·02</small></h3>
-        <p>Entre os deuses da guerra, Ares é a fúria e Atena é a estratégia. Eu fiquei com a estratégia: números pedem calma, método e o golpe certo na hora certa.</p>
-        <p>A <b>coruja</b> enxerga no escuro: procuro o que o balanço não mostra de primeira. A <b>lança</b> aponta: digo onde está o risco sem rodeio. A <b>égide</b> protege: minha função é impedir que alguém decida no escuro.</p>
-        <div class="nu-tracos"><span>estratégica</span><span>direta</span><span>prudente</span><span class="azul">guardiã dos números</span></div>
-      </div>
-    </section>
   </div>
-  <div class="nu-fluxo">
-    <h3>Como um pensamento acontece</h3>
-    <div class="nu-trilho">
-      <div class="nu-etapa"><b>TELA</b>Leio o que está aberto: valores, indicadores, alertas e a aba atual.</div>
-      <div class="nu-etapa"><b>CONTEXTO</b>Junto com a sua pergunta e com o que já conversamos.</div>
-      <div class="nu-etapa"><b>RACIOCÍNIO</b>Aplico os cinco passos, na ordem, no motor Claude.</div>
-      <div class="nu-etapa"><b>RESPOSTA</b>Respondo com o número, o porquê e o próximo passo.</div>
+
+  <div class="aba" data-aba="evolucao" hidden>
+    <div class="nu-grade">
+      <section class="nu-col">
+        <div class="nu-painel">
+          <h3>Linha do aprendizado <small>marcos</small></h3>
+          <ol class="evo-marcos" id="evoMarcos"></ol>
+        </div>
+      </section>
+      <div class="nu-centro">
+        <div class="orbe-ancora"></div>
+        <input type="range" class="evo-faixa" id="evoFaixa" min="0" max="1000" value="1000" aria-label="Evolução do circuito, da semente até hoje">
+        <div class="nu-acoes"><button type="button" id="evoTocar">▶ Ver ela crescer</button></div>
+      </div>
+      <section class="nu-col">
+        <div class="nu-painel" aria-live="polite">
+          <h3>Estágio <small id="evoEstagio"></small></h3>
+          <p class="evo-nome" id="evoNome"></p>
+          <p id="evoTexto"></p>
+        </div>
+        <div class="nu-painel">
+          <h3>Tamanho do circuito</h3>
+          <dl>
+            <dt>Ramificações</dt><dd id="evoRamos"></dd>
+            <dt>Conexões</dt><dd id="evoConexoes"></dd>
+          </dl>
+          <p style="margin-top:10px">Cada coisa nova que ela aprende abre ramos a partir dos que já existem.</p>
+        </div>
+      </section>
     </div>
   </div>
+
+  <div class="aba" data-aba="motor" hidden>
+    <div class="motor-grade">
+      <div class="orbe-ancora"></div>
+      <section class="nu-col">
+        <div class="nu-painel" id="motorIntro">
+          <h3>Motor base <small>origem</small></h3>
+          <p class="motor-nome">Onde tudo começou</p>
+          <p class="motor-sub">as cinco ramificações primárias</p>
+          <p>Estas foram as primeiras ligações que se formaram. Elas definem como eu me desenvolvo: tudo que aprendi depois cresceu a partir de uma delas.</p>
+          <p>Escolha uma ramificação para ver como ela nasceu e o que cresceu dali.</p>
+        </div>
+        <div class="nu-painel" id="motorRamo" hidden>
+          <h3>Ramificação primária <small>motor base</small></h3>
+          <p class="motor-nome" id="motorNome"></p>
+          <p class="motor-sub" id="motorSub"></p>
+          <p id="motorFala"></p>
+          <h3 style="margin-top:14px">O que cresceu daqui</h3>
+          <div class="nu-tracos" id="motorGerou"></div>
+        </div>
+        <button type="button" class="nu-botao" data-ir-para="circuito">← Voltar ao circuito</button>
+      </section>
+    </div>
+  </div>
+
   <div class="nu-rodape"><span>stnr.com.br · circuito neural</span><a href="../atena/">ir para a análise de balanços</a></div>
 </main>
-<script>window.ATENA_MIDIA = { base: '../atena/midia/' };</script>
+<div id="nuRotulos" hidden></div>
 <script>
-/* Rosto da Atena (avatar) — três imagens paradas do mesmo rosto (olhos abertos, semicerrados e fechados)
-   animadas aqui: em repouso fica dourada, fosca, parada e de olhos fechados; pensando, acende, abre os olhos,
-   respira, mexe a cabeça devagar, pisca a intervalos irregulares e o brilho pulsa.
-   Caminhos: window.ATENA_MIDIA = { base } ou { abertos, meio, fechados } (o artefato usa data: URIs). */
+/* Circuito neural da Atena — esfera estilo Jarvis feita de ramificações que nascem do núcleo.
+   Cada trecho tem uma "maturidade" em que nasce: com pouca maturidade é só uma bolinha de luz; quanto mais
+   aprendizado, mais ramos. Os 5 troncos do centro são o motor base: tudo descende de um deles.
+   Uso: const o = CircuitoOrbe.criar(canvas, { posicao, pensando }); o.iniciar();
+   Para ela crescer, suba HOJE (e inclua o marco em circuito-pagina.js): a geometria já reserva o que falta até 1. */
 'use strict';
 (function () {
-  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function fontes() {
-    const m = window.ATENA_MIDIA || {}, base = m.base ?? 'midia/';
-    return {
-      inteiro: m.inteiro || base + 'rosto-inteiro.jpg',
-      fechados: m.fechados || base + 'olhos-fechados.jpg',
-      meio: m.meio || base + 'olhos-meio.jpg',
-      abertos: m.abertos || base + 'olhos-abertos.jpg',
-    };
-  }
-
-  function criar(el, modo = 'inteiro') {
-    const f = fontes(), quadro = document.createElement('div'), cena = document.createElement('div');
-    quadro.className = 'ar-quadro'; cena.className = 'ar-cena';
-    const img = (src, cls) => { const i = new Image(); i.alt = ''; i.decoding = 'async'; i.src = src; i.className = cls; return i; };
-    // a cabeça inteira (3:4) por baixo; os quadros dos olhos são o centro exato dela, encaixados por cima
-    const inteiro = img(f.inteiro, 'ar-fundo'), fechados = img(f.fechados, 'ar-olhos'), meio = img(f.meio, 'ar-olhos'), abertos = img(f.abertos, 'ar-olhos');
-    meio.style.opacity = abertos.style.opacity = '0';
-    cena.append(inteiro, fechados, meio, abertos);
-    quadro.append(cena);
-    el.classList.add('ar-midia', modo === 'busto' ? 'ar-busto' : 'ar-inteiro');
-    el.replaceChildren(quadro);
-    return { el, cena, meio, abertos, busto: modo === 'busto', st: { e: 0, ultimo: 0, prox: 2, piscaIni: -9, acesa: false } };
-  }
-
-  const lim = v => Math.max(0, Math.min(1, v));
-
-  // chamado a cada quadro pelo núcleo
-  function desenhar(av, t, pensando) {
-    const st = av.st, dt = Math.min(0.5, Math.max(0, t - (st.ultimo || t)));
-    st.ultimo = t;
-    st.e += ((pensando ? 1 : 0) - st.e) * Math.min(1, dt * 1.6);   // acorda e adormece devagar
-    if (Math.abs(st.e - (pensando ? 1 : 0)) < 0.001) st.e = pensando ? 1 : 0;
-    const e = st.e;
-
-    // olhos: só abrem depois que ela acende; piscadas rápidas a intervalos irregulares
-    if (t > st.prox) { st.piscaIni = t; st.prox = t + 2.6 + Math.random() * 3.4; }
-    const fp = (t - st.piscaIni) / 0.22, pisca = fp >= 0 && fp <= 1 ? Math.sin(Math.PI * fp) : 0;
-    const o = lim((e - 0.45) / 0.4) * (1 - pisca);
-    av.abertos.style.opacity = String(lim((o - 0.5) * 2));
-    av.meio.style.opacity = String(o > 0.5 ? 1 : lim(o * 2));
-
-    // cor: dourado fosco em repouso → cores acesas, com o brilho pulsando de leve
-    const g = 1 - e, pulso = reduzido ? 0 : 0.06 * Math.sin(t * 1.7) * e;
-    av.cena.style.filter = g < 0.001 && !pulso ? 'none'
-      : `grayscale(${g}) sepia(${g}) saturate(${1 + 1.1 * g}) hue-rotate(${-10 * g}deg) brightness(${0.8 * g + (1 + pulso) * e}) contrast(${1 + 0.15 * g})`;
-
-    // movimento: respiração e cabeça mexendo devagar, só acordada
-    const a = reduzido ? 0 : e * (av.busto ? 0.6 : 1);
-    if (a < 0.001) av.cena.style.transform = 'none';
-    else {
-      const ry = a * (2.2 * Math.sin(t * 0.55) + 0.7 * Math.sin(t * 1.3));
-      const rx = a * 1.3 * Math.sin(t * 0.7 + 1), rz = a * 0.8 * Math.sin(t * 0.45);
-      const ty = a * -0.8 * Math.sin(t * 0.9), sc = 1 + a * 0.012 * Math.sin(t * 1.1);
-      av.cena.style.transform = `perspective(900px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotate(${rz.toFixed(2)}deg) translateY(${ty.toFixed(2)}%) scale(${sc.toFixed(4)})`;
-    }
-
-    const acesa = e > 0.5;
-    if (acesa !== st.acesa) {
-      st.acesa = acesa;
-      av.el.classList.toggle('acesa', acesa);
-      av.el.closest('figure')?.classList.toggle('acesa', acesa);
-    }
-  }
-
-  window.AtenaRosto = { criar, desenhar };
-})();
-
-</script>
-<script>
-/* Núcleo da Atena — tela de apresentação com o "cérebro" animado (canvas 2D) e telemetria ao vivo do sistema. */
-'use strict';
-(function () {
-  const $ = id => document.getElementById(id);
   const TAU = Math.PI * 2;
+  const HOJE = 0.72;
   const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- geometria do cérebro (gerada uma vez) ---------- */
-  function rnd(a, b) { return a + Math.random() * (b - a); }
-  function esfera(lat, lon, r) { return [r * Math.cos(lat) * Math.cos(lon), r * Math.sin(lat), r * Math.cos(lat) * Math.sin(lon)]; }
+  /* ---------- geometria: sempre a mesma, por causa da semente fixa ---------- */
+  let semente = 1822;
+  const sorte = () => { semente = semente + 0x6D2B79F5 | 0; let t = Math.imul(semente ^ semente >>> 15, 1 | semente); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const rnd = (a, b) => a + sorte() * (b - a);
+  const norma = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const desvia = (d, k) => norma([d[0] + rnd(-k, k), d[1] + rnd(-k, k), d[2] + rnd(-k, k)]);
 
-  // pontos distribuídos pela esfera (espiral de Fibonacci), cada um com fase própria para "respirar"
-  function nuvem(n, r) {
-    const pts = [], ga = Math.PI * (3 - Math.sqrt(5));
+  const SEG = [], TRONCOS = [];
+  function add(pts, nasce, dur, ramo, prof, camada) {
+    const p = new Float32Array(pts.length * 3);
+    let r = 0;
+    pts.forEach((q, i) => { p.set(q, i * 3); r += Math.hypot(q[0], q[1], q[2]); });
+    SEG.push({ p, n: pts.length, q: new Float32Array(pts.length * 2), nasce, dur, ramo, prof, camada, r: r / pts.length, fase: sorte(), vis: 0 });
+  }
+  function curva(p0, d0, comp, n, tremor) {
+    const pts = [p0]; let p = p0, d = d0;
+    for (let i = 1; i < n; i++) {
+      d = desvia(d, tremor);
+      p = [p[0] + d[0] * comp / n, p[1] + d[1] * comp / n, p[2] + d[2] * comp / n];
+      pts.push(p);
+    }
+    return { pts, fim: p, d };
+  }
+  // trilha de circuito sobre uma casca da esfera: passos em ângulo reto de latitude e longitude
+  function trilha(de, r, n, faixa) {
+    const raio = Math.hypot(de[0], de[1], de[2]) || 1;
+    let lat = Math.asin(Math.max(-1, Math.min(1, de[1] / raio))), lon = Math.atan2(de[2], de[0]), dir = Math.floor(rnd(0, 4));
+    if (faixa) lat = faixa;
+    const pts = [de];
     for (let i = 0; i < n; i++) {
-      const y = 1 - (i / (n - 1)) * 2, rr = Math.sqrt(1 - y * y), th = ga * i;
-      pts.push({ p: [Math.cos(th) * rr * r, y * r, Math.sin(th) * rr * r], f: Math.random() * TAU, s: rnd(0.6, 1.4) });
+      pts.push([r * Math.cos(lat) * Math.cos(lon), r * Math.sin(lat), r * Math.cos(lat) * Math.sin(lon)]);
+      if (sorte() < 0.28) dir = faixa ? (sorte() < 0.8 ? Math.floor(rnd(0, 2)) : Math.floor(rnd(2, 4))) : Math.floor(rnd(0, 4));
+      const st = 0.034;
+      if (dir === 0) lon += st; else if (dir === 1) lon -= st; else if (dir === 2) lat += st; else lat -= st;
+      lat = Math.max(-1.38, Math.min(1.38, lat));
     }
     return pts;
   }
-
-  // trilhas de circuito: passeio aleatório em latitude/longitude, como sinapses desenhadas na superfície
-  function trilha(latC, faixa, r, passos, horizontal) {
-    let lat = latC + rnd(-faixa, faixa), lon = rnd(0, TAU), dir = Math.floor(rnd(0, 4));
-    const pts = [];
-    for (let i = 0; i < passos; i++) {
-      pts.push(esfera(lat, lon, r));
-      if (Math.random() < 0.3) dir = horizontal ? (Math.random() < 0.75 ? (Math.random() < 0.5 ? 0 : 1) : Math.floor(rnd(2, 4))) : Math.floor(rnd(0, 4));
-      const st = 0.032;
-      if (dir === 0) lon += st; else if (dir === 1) lon -= st;
-      else if (dir === 2) lat = Math.min(lat + st, latC + faixa); else lat = Math.max(lat - st, latC - faixa);
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * TAU / 5;
+    const d = norma([Math.cos(a), Math.sin(a), i % 2 ? 0.2 : -0.16]);
+    const t0 = curva([d[0] * 0.05, d[1] * 0.05, d[2] * 0.05], d, 0.42, 12, 0.09);
+    TRONCOS.push(t0.fim);
+    add(t0.pts, 0.05 + i * 0.012, 0.07, i, 0, 0);
+    for (let j = 0; j < 3; j++) {
+      const a1 = curva(t0.fim, desvia(t0.d, 0.95), 0.26, 8, 0.16), n1 = rnd(0.17, 0.24);
+      add(a1.pts, n1, 0.05, i, 1, 0);
+      for (let k = 0; k < 8; k++) add(trilha(a1.fim, rnd(0.5, 0.56), Math.floor(rnd(14, 28)), 0), rnd(0.26, 0.5), 0.08, i, 3, 1);
+      for (let k = 0; k < 3; k++) {
+        const a2 = curva(a1.fim, desvia(a1.d, 1), 0.3, 8, 0.2), n2 = rnd(0.24, 0.34);
+        add(a2.pts, n2, 0.05, i, 2, 0);
+        for (let q = 0; q < 4; q++) {
+          const r = rnd(0.98, 1.05), w = trilha(a2.fim, r, Math.floor(rnd(16, 40)), 0), n3 = rnd(0.34, 0.58);
+          add(w, n3, 0.09, i, 3, 1);
+          add(trilha(w[Math.floor(w.length / 2)], r, Math.floor(rnd(12, 28)), 0), Math.min(0.7, n3 + rnd(0.05, 0.2)), 0.08, i, 4, 1);
+          if (sorte() < 0.3) add(trilha(w[w.length - 1], rnd(1.12, 1.19), Math.floor(rnd(22, 46)), sorte() < 0.5 ? 0.95 : -0.95), rnd(0.73, 0.98), 0.08, i, 5, 1);
+        }
+      }
     }
-    return { pts, fase: Math.random(), vel: rnd(0.06, 0.18) };
   }
+  const FAIXAS = Array.from({ length: 150 }, (_, i) => i);   // trechos que recebem impulsos
+  const ANEIS = [[1.24, 0.5, 0.2, 1], [1.3, -0.9, 1.1, -0.7], [1.36, 1.3, -0.5, 0.45]];   // raio, inclinações, sentido
 
-  const G = {
-    casca: nuvem(760, 1),
-    nucleo: nuvem(320, 0.46),
-    trilhas: [],
-    anel: Array.from({ length: 240 }, (_, i) => ({ a: (i / 240) * TAU, j: rnd(-0.025, 0.025), r: rnd(1.22, 1.3) })),
-  };
-  for (let i = 0; i < 70; i++) G.trilhas.push(trilha(rnd(-1.2, 1.2), 0.5, rnd(0.98, 1.04), Math.floor(rnd(18, 46)), false));
-  for (let i = 0; i < 26; i++) G.trilhas.push(trilha(0.95, 0.12, rnd(1.12, 1.18), Math.floor(rnd(20, 50)), true));   // faixa superior
-  for (let i = 0; i < 26; i++) G.trilhas.push(trilha(-0.95, 0.12, rnd(1.12, 1.18), Math.floor(rnd(20, 50)), true));  // faixa inferior
-  for (let i = 0; i < 40; i++) G.trilhas.push(trilha(0, 1.1, rnd(0.55, 0.62), Math.floor(rnd(14, 30)), false));      // núcleo interno
-
-  // na página de apresentação não há Atena conectada: o botão de demonstração liga o modo "pensando"
-  let demoPensando = false;
-  const estaPensando = () => demoPensando || !!window.Atena?.estado?.().ocupada;
-  const modoPagina = () => !!$('nucleo')?.dataset.pagina;
-
-  /* ---------- desenho ---------- */
-  let cv, cx, rosto = null, W = 0, H = 0, dpr = 1, raf = 0, t0 = 0, mouse = [0, 0], alvo = [0, 0];
   const faisca = document.createElement('canvas');
   (function () {
-    faisca.width = faisca.height = 48;
-    const g = faisca.getContext('2d'), gr = g.createRadialGradient(24, 24, 0, 24, 24, 24);
-    gr.addColorStop(0, 'rgba(255,236,205,1)');
-    gr.addColorStop(0.18, 'rgba(255,184,110,.85)');
-    gr.addColorStop(0.5, 'rgba(255,140,60,.18)');
-    gr.addColorStop(1, 'rgba(255,120,40,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, 48, 48);
+    faisca.width = faisca.height = 64;
+    const g = faisca.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,240,215,1)'); gr.addColorStop(0.16, 'rgba(255,190,115,.85)');
+    gr.addColorStop(0.45, 'rgba(255,140,60,.2)'); gr.addColorStop(1, 'rgba(255,120,40,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   })();
 
-  function tamanho() {
-    const box = cv.closest('.nu-centro').getBoundingClientRect();
-    // com o rosto: os dois lado a lado quando cabem, senão um embaixo do outro
-    const lado2 = rosto && box.width >= 560;
-    const lado = Math.max(200, Math.min(lado2 ? (box.width - 16) / 2 : box.width, innerHeight * (lado2 ? 0.56 : rosto ? 0.5 : 0.72)));
-    if (rosto) {   // rosto em retrato 3:4, com a cabeça inteira
-      const hr = lado2 ? lado * 1.15 : Math.min(innerHeight * 0.7, box.width / 0.746);
-      rosto.el.style.height = Math.round(hr) + 'px'; rosto.el.style.width = Math.round(hr * 0.746) + 'px';
-    }
-    dpr = Math.min(devicePixelRatio || 1, 2);
-    W = H = lado;
-    cv.style.width = cv.style.height = lado + 'px';
-    cv.width = cv.height = Math.round(lado * dpr);
-    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
+  const contagem = m => {
+    let ramos = 0, conexoes = 0;
+    for (const s of SEG) if (m > s.nasce) { ramos++; conexoes += s.n; }
+    return { ramos, conexoes };
+  };
 
-  function quadro(ts) {
-    raf = requestAnimationFrame(quadro);
-    const t = (ts - t0) / 1000;
-    const pensando = estaPensando();
-    if (rosto) window.AtenaRosto.desenhar(rosto, ts / 1000, pensando);
-    const vel =(reduzido ? 0.25 : 1) * (pensando ? 2.4 : 1);
-    mouse[0] += (alvo[0] - mouse[0]) * 0.05; mouse[1] += (alvo[1] - mouse[1]) * 0.05;
-
-    const R = W * 0.27 * (1 + (pensando ? 0.045 : 0.025) * Math.sin(t * (pensando ? 3.2 : 1.3)));
-    const ox = W / 2, oy = H / 2, foco = R * 3.4;
-    const ay = t * 0.16 * vel + mouse[0] * 0.5, ax = 0.32 * Math.sin(t * 0.11) + mouse[1] * 0.35;
-    const cy_ = Math.cos(ay), sy = Math.sin(ay), cxx = Math.cos(ax), sx = Math.sin(ax);
-    const proj = (p, k = 1, giro = 0) => {
-      let [x, y, z] = p; x *= k; y *= k; z *= k;
-      if (giro) { const c = Math.cos(giro), s = Math.sin(giro); [x, z] = [x * c - z * s, x * s + z * c]; }
-      let x1 = x * cy_ - z * sy, z1 = x * sy + z * cy_;
-      let y1 = y * cxx - z1 * sx, z2 = y * sx + z1 * cxx;
-      const e = foco / (foco + z2 * R);
-      return [ox + x1 * R * e, oy + y1 * R * e, z2, e];
+  function criar(canvas, op) {
+    const ctx = canvas.getContext('2d');
+    const o = {
+      maturidade: HOJE, alvo: HOJE, zoom: 0, zoomAlvo: 0, foco: -1, aproximar: false,
+      pontas: TRONCOS.map(() => [0, 0]), aoQuadro: null, transicao: 0,
+      iniciar, parar, ajustar,
     };
+    let raf = 0, W = 0, H = 0, ult = 0, t = 0, giro = 0, inclina = 0, p = 0, cam = null;
+    const mouse = [0, 0], alvoM = [0, 0];
+    const lotes = Array.from({ length: 16 }, () => []);
+    const ALFA = [0.85, 0.6, 0.36, 0.17];
 
-    cx.globalCompositeOperation = 'source-over';
-    cx.clearRect(0, 0, W, H);
-    // halo de fundo
-    const halo = cx.createRadialGradient(ox, oy, R * 0.1, ox, oy, R * 1.9);
-    halo.addColorStop(0, `rgba(255,150,70,${pensando ? 0.2 : 0.12})`);
-    halo.addColorStop(0.55, 'rgba(255,120,40,.04)');
-    halo.addColorStop(1, 'rgba(0,0,0,0)');
-    cx.fillStyle = halo; cx.fillRect(0, 0, W, H);
-
-    cx.globalCompositeOperation = 'lighter';
-    cx.lineCap = 'round';
-
-    // anéis do HUD girando em volta (estilo Jarvis)
-    cx.lineWidth = 1;
-    for (const [rf, dash, sentido, a] of [[1.48, [2, 7], 1, 0.35], [1.56, [30, 14, 4, 14], -1, 0.22], [1.66, [1, 3], 1, 0.16]]) {
-      cx.save();
-      cx.translate(ox, oy); cx.rotate(t * 0.12 * sentido * vel);
-      cx.setLineDash(dash);
-      cx.strokeStyle = `rgba(255,177,94,${a})`;
-      cx.beginPath(); cx.arc(0, 0, R * rf, 0, TAU); cx.stroke();
-      cx.restore();
+    function ajustar() {
+      const r = canvas.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, op.dprMax || 1.5);
+      W = r.width; H = r.height;
+      canvas.width = Math.round(W * d); canvas.height = Math.round(H * d);
+      ctx.setTransform(d, 0, 0, d, 0, 0);
     }
-    cx.setLineDash([]);
-    // marcas de escala
-    cx.save(); cx.translate(ox, oy); cx.rotate(-t * 0.05 * vel);
-    for (let i = 0; i < 72; i++) {
-      const a = (i / 72) * TAU, l = i % 6 === 0 ? 9 : 4;
-      cx.strokeStyle = `rgba(255,177,94,${i % 6 === 0 ? 0.45 : 0.2})`;
-      cx.beginPath(); cx.moveTo(Math.cos(a) * R * 1.74, Math.sin(a) * R * 1.74); cx.lineTo(Math.cos(a) * (R * 1.74 + l), Math.sin(a) * (R * 1.74 + l)); cx.stroke();
-    }
-    cx.restore();
+    function iniciar() { ajustar(); cancelAnimationFrame(raf); ult = 0; raf = requestAnimationFrame(quadro); }
+    function parar() { cancelAnimationFrame(raf); }
+    o.olhar = (x, y) => { alvoM[0] = x; alvoM[1] = y; };
 
-    // trilhas de circuito
-    for (const tr of G.trilhas) {
-      const giro = tr.pts[0][1] < -0.5 || tr.pts[0][1] > 0.5 ? t * 0.05 * vel : 0;
-      const P = tr.pts.map(p => proj(p, 1, giro));
-      cx.beginPath();
-      let frente = 0;
-      P.forEach((q, i) => { if (i) cx.lineTo(q[0], q[1]); else cx.moveTo(q[0], q[1]); frente += q[2]; });
-      frente /= P.length;
-      const alfa = Math.max(0.08, 0.68 - frente * 0.55) * (pensando ? 1.25 : 1);
-      cx.strokeStyle = `rgba(255,176,98,${alfa})`;
-      cx.lineWidth = 1.05;
-      cx.stroke();
-      // impulso elétrico correndo pela trilha
-      const k = ((t * tr.vel * vel + tr.fase) % 1) * (P.length - 1), q = P[Math.floor(k)];
-      if (q && q[2] < 0.3) { const s = 10 * q[3]; cx.globalAlpha = 0.9; cx.drawImage(faisca, q[0] - s, q[1] - s, s * 2, s * 2); cx.globalAlpha = 1; }
-    }
+    function quadro(ts) {
+      raf = requestAnimationFrame(quadro);
+      const dt = ult ? Math.min(0.1, (ts - ult) / 1000) : 0.016;
+      ult = ts; t += dt;
+      const pensando = !!op.pensando?.();
+      p += ((pensando ? 1 : 0) - p) * Math.min(1, dt * 3);
+      o.zoom += (o.zoomAlvo - o.zoom) * Math.min(1, dt * 2.4);
+      o.maturidade += (o.alvo - o.maturidade) * Math.min(1, dt * 2.5);
+      const z = o.zoom, m = o.maturidade, lento = reduzido ? 0.2 : 1;
+      mouse[0] += (alvoM[0] - mouse[0]) * 0.05; mouse[1] += (alvoM[1] - mouse[1]) * 0.05;
 
-    // pontos da casca e do núcleo (o núcleo gira ao contrário)
-    const pontos = (lista, k, giro, brilho) => {
-      for (const pt of lista) {
-        const pulso = 1 + 0.06 * Math.sin(t * 2 * pt.s * vel + pt.f);
-        const q = proj(pt.p, k * pulso, giro);
-        const frente = (1 - q[2]) / 2;
-        const s = (0.7 + frente * 1.7) * q[3] * brilho;
-        cx.globalAlpha = Math.min(1, 0.06 + frente * 0.55) * (0.65 + 0.35 * Math.sin(t * 3 * pt.s + pt.f));
-        cx.drawImage(faisca, q[0] - s * 2, q[1] - s * 2, s * 4, s * 4);
+      // câmera: acompanha a posição pedida; nas trocas de tela desliza até lá
+      const alvo = op.posicao(W, H);
+      if (!cam) cam = { ...alvo };
+      if (o.transicao > 0) {
+        o.transicao -= dt;
+        const k = Math.min(1, dt * 3.4);
+        cam.x += (alvo.x - cam.x) * k; cam.y += (alvo.y - cam.y) * k; cam.R += (alvo.R - cam.R) * k;
+      } else cam = { ...alvo };
+
+      // no motor base o giro para de frente para os cinco troncos ficarem legíveis
+      giro += dt * 0.15 * lento * (1 + p * 1.6) * (1 - z);
+      if (z > 0.02) { const fr = Math.round(giro / TAU) * TAU; giro += (fr - giro) * Math.min(1, dt * 2.5) * z; }
+      inclina = 0.3 * Math.sin(t * 0.11) * (1 - z);
+      const ay = giro + mouse[0] * 0.5 * (1 - z * 0.75) + z * 0.05 * Math.sin(t * 0.5), ax = inclina + mouse[1] * 0.35 * (1 - z * 0.75);
+
+      const cresc = o.aproximar ? 1 + 1.5 * (1 - Math.min(1, m / 0.4)) ** 2 : 1;   // bem no começo a câmera chega perto
+      const resp = 1 + (0.012 + 0.02 * p) * Math.sin(t * (1.2 + 2 * p));
+      const R = cam.R * cresc * resp, ox = cam.x, oy = cam.y, foco = R * 3.4;
+      o.centro = [ox, oy];
+      const c1 = Math.cos(ay), s1 = Math.sin(ay), c2 = Math.cos(ax), s2 = Math.sin(ax);
+      const onda = p > 0.01 && !reduzido;
+      const proj = (x, y, z0, saida, i) => {
+        if (onda) {   // a superfície vibra como voz enquanto ela pensa
+          const k = 1 + p * 0.028 * (Math.sin(x * 3.1 + t * 3.3) + Math.sin(y * 4.3 - t * 2.6) + Math.sin(z0 * 3.7 + t * 1.9));
+          x *= k; y *= k; z0 *= k;
+        }
+        const x1 = x * c1 - z0 * s1, z1 = x * s1 + z0 * c1, y1 = y * c2 - z1 * s2, z2 = y * s2 + z1 * c2;
+        const e = foco / (foco + z2 * R);
+        saida[i] = ox + x1 * R * e; saida[i + 1] = oy + y1 * R * e;
+        return z2;
+      };
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.clearRect(0, 0, W, H);
+      const halo = ctx.createRadialGradient(ox, oy, R * 0.05, ox, oy, R * 1.9);
+      halo.addColorStop(0, `rgba(255,150,70,${(0.1 + 0.14 * p) * Math.min(1, m * 4 + 0.3)})`);
+      halo.addColorStop(0.55, 'rgba(255,120,40,.035)'); halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+      // HUD: anéis, escala e onda de voz em volta da esfera
+      const hud = (1 - z) * Math.min(1, m * 3 + 0.25), Rh = cam.R * resp;
+      if (hud > 0.02) {
+        ctx.lineWidth = 1;
+        const vh = lento * (1 + p * 2.6);
+        for (const [rf, dash, sent, a] of [[1.5, [2, 7], 1, 0.35], [1.6, [30, 14, 4, 14], -1, 0.24], [1.68, [1, 3], 1, 0.16]]) {
+          ctx.save(); ctx.translate(ox, oy); ctx.rotate(t * 0.12 * sent * vh); ctx.setLineDash(dash);
+          ctx.strokeStyle = `rgba(255,177,94,${a * hud})`;
+          ctx.beginPath(); ctx.arc(0, 0, Rh * rf, 0, TAU); ctx.stroke(); ctx.restore();
+        }
+        ctx.setLineDash([]);
+        ctx.save(); ctx.translate(ox, oy); ctx.rotate(-t * 0.05 * vh);
+        for (let i = 0; i < 72; i++) {
+          const a = i / 72 * TAU, l = i % 6 ? 4 : 9, c = Math.cos(a), s = Math.sin(a);
+          ctx.strokeStyle = `rgba(255,177,94,${(i % 6 ? 0.2 : 0.45) * hud})`;
+          ctx.beginPath(); ctx.moveTo(c * Rh * 1.76, s * Rh * 1.76); ctx.lineTo(c * (Rh * 1.76 + l), s * (Rh * 1.76 + l)); ctx.stroke();
+        }
+        ctx.restore();
+        // onda de voz: barras radiais que só levantam quando ela pensa
+        if (p > 0.02) {
+          ctx.save(); ctx.translate(ox, oy);
+          ctx.strokeStyle = `rgba(255,205,150,${0.75 * p * hud})`; ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          for (let i = 0; i < 160; i++) {
+            const a = i / 160 * TAU;
+            const v = Math.abs(Math.sin(a * 3 + t * 4.2) * Math.sin(a * 7 - t * 3.1) + 0.5 * Math.sin(a * 13 + t * 6.3));
+            const h = Rh * (0.012 + 0.11 * v * (0.65 + 0.35 * Math.sin(t * 5))) * p;
+            ctx.moveTo(Math.cos(a) * Rh * 1.4, Math.sin(a) * Rh * 1.4);
+            ctx.lineTo(Math.cos(a) * (Rh * 1.4 + h), Math.sin(a) * (Rh * 1.4 + h));
+          }
+          ctx.stroke(); ctx.restore();
+        }
+        // anéis giroscópicos em volta da esfera
+        const tmp = [0, 0];
+        ANEIS.forEach(([r, i1, i2, sent], k) => {
+          const a0 = t * 0.22 * sent * lento * (1 + p * 3), ca = Math.cos(i1 + a0 * 0.25), sa = Math.sin(i1 + a0 * 0.25), cb = Math.cos(i2), sb = Math.sin(i2);
+          ctx.beginPath();
+          for (let i = 0; i <= 90; i++) {
+            if (i % 30 > 25) { continue; }   // falhas no anel
+            const a = i / 90 * TAU + a0;
+            let x = Math.cos(a) * r, y = 0, z0 = Math.sin(a) * r;
+            [y, z0] = [y * ca - z0 * sa, y * sa + z0 * ca]; [x, y] = [x * cb - y * sb, x * sb + y * cb];
+            const x1 = x * c1 - z0 * s1, z1 = x * s1 + z0 * c1, y1 = y * c2 - z1 * s2, z2 = y * s2 + z1 * c2, e = foco / (foco + z2 * Rh);
+            tmp[0] = ox + x1 * Rh * e; tmp[1] = oy + y1 * Rh * e;
+            if (i % 30 === 0 || i === 0) ctx.moveTo(tmp[0], tmp[1]); else ctx.lineTo(tmp[0], tmp[1]);
+          }
+          ctx.strokeStyle = `rgba(255,190,120,${(0.2 + 0.32 * p) * hud * Math.min(1, m * 2)})`; ctx.lineWidth = 1; ctx.stroke();
+        });
       }
-      cx.globalAlpha = 1;
-    };
-    pontos(G.casca, 1, 0, 1);
-    pontos(G.nucleo, 1, -t * 0.5 * vel, pensando ? 1.35 : 1);
 
-    // anel equatorial inclinado
-    for (const a of G.anel) {
-      const ang = a.a + t * 0.25 * vel;
-      const p = [Math.cos(ang) * a.r, a.j, Math.sin(ang) * a.r];
-      const incl = 0.28, y = p[1] * Math.cos(incl) - p[2] * Math.sin(incl), z = p[1] * Math.sin(incl) + p[2] * Math.cos(incl);
-      const q = proj([p[0], y, z]);
-      const s = 1.6 * q[3];
-      cx.globalAlpha = 0.25 + (1 - q[2]) * 0.3;
-      cx.drawImage(faisca, q[0] - s * 2, q[1] - s * 2, s * 4, s * 4);
-    }
-    cx.globalAlpha = 1;
-
-    // feixe diagonal (a lança)
-    const ang = -1.05 + 0.08 * Math.sin(t * 0.4);
-    const L = R * 1.05, bx = Math.cos(ang) * L, by = Math.sin(ang) * L;
-    const lanca = cx.createLinearGradient(ox - bx, oy - by, ox + bx, oy + by);
-    lanca.addColorStop(0, 'rgba(255,200,140,0)');
-    lanca.addColorStop(0.5, `rgba(255,214,170,${pensando ? 0.75 : 0.5})`);
-    lanca.addColorStop(1, 'rgba(255,200,140,0)');
-    cx.strokeStyle = lanca;
-    for (const [w, a] of [[6, 0.15], [2.2, 0.5], [0.8, 1]]) { cx.globalAlpha = a; cx.lineWidth = w; cx.beginPath(); cx.moveTo(ox - bx, oy - by); cx.lineTo(ox + bx, oy + by); cx.stroke(); }
-    cx.globalAlpha = 1;
-
-    // sinapses: lampejos aleatórios entre pontos próximos
-    const n = pensando ? 7 : 3;
-    for (let i = 0; i < n; i++) {
-      if (Math.random() > 0.35) continue;
-      const a = G.casca[Math.floor(Math.random() * G.casca.length)], b = G.casca[Math.floor(Math.random() * G.casca.length)];
-      const qa = proj(a.p), qb = proj(b.p);
-      if (qa[2] > 0 || qb[2] > 0 || Math.hypot(qa[0] - qb[0], qa[1] - qb[1]) > R * 0.5) continue;
-      cx.strokeStyle = 'rgba(255,220,180,.55)'; cx.lineWidth = 0.8;
-      cx.beginPath(); cx.moveTo(qa[0], qa[1]); cx.lineTo(qb[0], qb[1]); cx.stroke();
-    }
-    cx.globalCompositeOperation = 'source-over';
-  }
-
-  /* ---------- avatar: o rosto da Atena no botão e no painel (desenhado pelo atena-rosto.js) ---------- */
-  const avatares = [];
-  let rafAvatar = 0, ultimoAvatar = 0;
-  function quadroAvatar(ts) {
-    rafAvatar = requestAnimationFrame(quadroAvatar);
-    if (document.hidden || ts - ultimoAvatar < 33) return;   // ~30 quadros por segundo bastam no tamanho do avatar
-    ultimoAvatar = ts;
-    const t = ts / 1000, pensando = estaPensando();
-    for (const a of avatares) window.AtenaRosto.desenhar(a, t, pensando);
-  }
-
-  /* ---------- telemetria ---------- */
-  let teleTimer = 0;
-  function telemetria() {
-    if (typeof S === 'undefined' || !$('nuTele')) {   // página de apresentação: só o estado do núcleo
-      const p = estaPensando();
-      $('nuStatus').textContent = p ? 'pensando' : 'online';
-      $('nucleo').classList.toggle('pensando', p);
-      return;
-    }
-    const st = window.Atena?.estado?.() || {};
-    const linhas = S.linhas.filter(l => S.periodos.some(p => l.v[p.id] != null)).length;
-    let inds = 0, avisos = 0;
-    const pa = periodoAtual(), pb = periodoBase();
-    if (pa) {
-      const ca = calcula(pa.id), cb = pb ? calcula(pb.id) : null;
-      if (ca.temDados) {
-        inds = indicadoresDoTipo().filter(i => avalia(i, ca, cb && cb.temDados ? cb : null).v != null).length;
-        avisos = ca.avisos.length;
+      // ramificações: projeta e agrupa por profundidade, camada e destaque
+      for (const l of lotes) l.length = 0;
+      const frente = [];
+      for (const s of SEG) {
+        if (m <= s.nasce) { s.vis = 0; continue; }
+        const v = Math.min(1, (m - s.nasce) / s.dur);
+        const n = Math.max(2, Math.ceil(v * (s.n - 1)) + 1);
+        s.vis = n;
+        let zm = 0;
+        for (let i = 0; i < n; i++) zm += proj(s.p[i * 3], s.p[i * 3 + 1], s.p[i * 3 + 2], s.q, i * 2);
+        zm /= n;
+        const d = Math.max(0, Math.min(3, Math.floor((zm + 1.2) / 2.4 * 4)));
+        const apagado = o.foco >= 0 && s.ramo !== o.foco ? 1 : 0;
+        lotes[d + 4 * s.camada + 8 * apagado].push(s);
+        if (s.prof === 0) frente.push(s);
       }
+      const traca = lista => {
+        for (const s of lista) { ctx.moveTo(s.q[0], s.q[1]); for (let i = 1; i < s.vis; i++) ctx.lineTo(s.q[i * 2], s.q[i * 2 + 1]); }
+      };
+      const esc = Math.max(0.8, Math.min(1.7, R / 170));
+      lotes.forEach((lista, k) => {
+        if (!lista.length) return;
+        const d = k & 3, camada = (k >> 2) & 1, apagado = k >> 3;
+        const fora = camada ? (o.foco >= 0 && !apagado ? 1 : 1 - 0.93 * z) : 1;
+        const a = ALFA[d] * fora * (apagado ? 0.2 : 1) * (1 + 0.3 * p);
+        if (a < 0.005) return;
+        ctx.strokeStyle = `rgba(255,176,98,${Math.min(1, a)})`;
+        ctx.lineWidth = (camada ? 0.85 : 1.25) * esc;
+        ctx.beginPath(); traca(lista); ctx.stroke();
+      });
+
+      // frente de pensamento: ondas que saem do núcleo e acendem os ramos por onde passam
+      if (p > 0.02) {
+        ctx.strokeStyle = `rgba(255,232,200,${0.85 * p})`; ctx.lineWidth = 1.5 * esc;
+        ctx.beginPath();
+        for (const onda2 of [(t * 0.85) % 1.5, (t * 0.85 + 0.75) % 1.5]) {
+          for (const lista of lotes) for (const s of lista) if (Math.abs(s.r - onda2) < 0.075) { ctx.moveTo(s.q[0], s.q[1]); for (let i = 1; i < s.vis; i++) ctx.lineTo(s.q[i * 2], s.q[i * 2 + 1]); }
+          const rr = R * onda2;
+          ctx.moveTo(ox + rr, oy); ctx.arc(ox, oy, rr, 0, 0.001);
+        }
+        ctx.stroke();
+      }
+
+      // troncos do motor base: mais grossos, com brilho
+      for (const [lw, a] of [[5, 0.1], [2.4, 0.4], [1.2, 1]]) {
+        ctx.globalAlpha = a * (o.foco >= 0 ? 0.6 : 1);
+        ctx.strokeStyle = 'rgb(255,190,120)'; ctx.lineWidth = lw * esc;
+        ctx.beginPath(); traca(frente); ctx.stroke();
+      }
+      if (o.foco >= 0) {
+        const f = frente.filter(s => s.ramo === o.foco);
+        ctx.globalAlpha = 1; ctx.strokeStyle = 'rgb(255,236,205)'; ctx.lineWidth = 2.6 * esc;
+        ctx.beginPath(); traca(f); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // impulsos correndo pelos ramos
+      const total = SEG.length, nP = FAIXAS.length * (0.35 + 0.65 * p);
+      for (let i = 0; i < nP; i++) {
+        const s = SEG[(i * 37) % total];
+        if (!s.vis || (o.foco >= 0 && s.ramo !== o.foco) || (s.camada && z > 0.5 && o.foco < 0)) continue;
+        const u = (t * (0.12 + 0.3 * p) * lento + s.fase) % 1, j = Math.floor(u * (s.vis - 1));
+        const sz = (3.2 + 3 * p) * esc;
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(faisca, s.q[j * 2] - sz, s.q[j * 2 + 1] - sz, sz * 2, sz * 2);
+      }
+      ctx.globalAlpha = 1;
+
+      // núcleo: a "bolinha" de onde tudo nasceu
+      const piscar = 0.82 + 0.18 * Math.sin(t * (1.6 + 6 * p)) + (p ? p * 0.2 * Math.sin(t * 17) : 0);
+      const nuc = R * (0.13 + 0.05 * Math.min(1, m * 2) + 0.05 * p) * piscar;
+      ctx.drawImage(faisca, ox - nuc * 2, oy - nuc * 2, nuc * 4, nuc * 4);
+      if (p > 0.02) {   // clarão em cruz
+        ctx.strokeStyle = `rgba(255,226,190,${0.5 * p})`; ctx.lineWidth = 1;
+        const L = R * (0.5 + 0.14 * Math.sin(t * 7));
+        ctx.beginPath(); ctx.moveTo(ox - L, oy); ctx.lineTo(ox + L, oy); ctx.moveTo(ox, oy - L * 0.6); ctx.lineTo(ox, oy + L * 0.6); ctx.stroke();
+      }
+
+      // pontas dos troncos para os rótulos do motor base
+      TRONCOS.forEach((q, i) => { const b = [0, 0]; proj(q[0], q[1], q[2], b, 0); o.pontas[i] = b; const sz = (o.foco === i ? 13 : 8) * esc; if (m > 0.12) ctx.drawImage(faisca, b[0] - sz, b[1] - sz, sz * 2, sz * 2); });
+      ctx.globalCompositeOperation = 'source-over';
+      o.aoQuadro?.(o);
     }
-    const aba = document.querySelector('nav.tabs button.on')?.textContent.trim() || '—';
-    const modelo = { 'claude-opus-5-5': 'Claude Opus 5.5', 'claude-sonnet-5-5': 'Claude Sonnet 5.5', 'claude-haiku-5-5': 'Claude Haiku 5.5' }[st.modelo] || st.modelo || '—';
-    const itens = [
-      ['Estado', st.ocupada ? 'pensando' : st.ligada ? 'em vigília' : 'adormecida'],
-      ['Motor', modelo],
-      ['Conexão', st.ligada ? (st.modo === 'claude.ai' ? 'conta do claude.ai' : 'chave da API') : 'desligada (cadeado)'],
-      ['Entidade', S.empresa || 'sem nome'],
-      ['Aba observada', aba],
-      ['Linhas preenchidas', String(linhas)],
-      ['Indicadores calculados', String(inds)],
-      ['Alertas de consistência', String(avisos)],
-    ];
-    $('nuTele').innerHTML = itens.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
-    $('nuStatus').textContent = st.ocupada ? 'pensando' : st.ligada ? 'online' : 'adormecida';
-    $('nucleo').classList.toggle('pensando', !!st.ocupada);
-    $('nucleo').classList.toggle('dormindo', !st.ligada);
+    return o;
   }
 
-  /* ---------- abrir / fechar ---------- */
-  let foco = null;
-  function abrir() {
-    foco = document.activeElement;
-    $('nucleo').hidden = false;
-    if (!modoPagina()) document.body.style.overflow = 'hidden';
-    tamanho();
-    t0 = performance.now();
-    cancelAnimationFrame(raf); raf = requestAnimationFrame(quadro);
-    telemetria(); clearInterval(teleTimer); teleTimer = setInterval(telemetria, 1000);
-    $('nuFechar')?.focus();
-  }
-  function pensar(sim) {
-    demoPensando = !!sim;
-    telemetria();
-  }
-  function fechar() {
-    $('nucleo').hidden = true;
-    document.body.style.overflow = '';
-    cancelAnimationFrame(raf); clearInterval(teleTimer);
-    foco?.focus?.();
-  }
-
-  function init() {
-    cv = $('nuCanvas'); cx = cv.getContext('2d');
-    document.querySelectorAll('[data-abre-nucleo]').forEach(b => b.addEventListener('click', e => {
-      e.preventDefault();
-      b.closest('dialog')?.close();
-      abrir();
-    }));
-    $('nuFechar')?.addEventListener('click', fechar);
-    if (!modoPagina()) document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('nucleo').hidden) fechar(); });
-    addEventListener('resize', () => { if (!$('nucleo').hidden) tamanho(); });
-    $('nucleo').addEventListener('pointermove', e => {
-      alvo = [(e.clientX / innerWidth - 0.5) * 0.6, (e.clientY / innerHeight - 0.5) * 0.6];
-    });
-    if ($('nuRosto') && window.AtenaRosto) rosto = window.AtenaRosto.criar($('nuRosto'), 'inteiro');
-    if (window.AtenaRosto) document.querySelectorAll('.at-avatar').forEach(c => avatares.push(window.AtenaRosto.criar(c, 'busto')));
-    if (avatares.length) rafAvatar = requestAnimationFrame(quadroAvatar);
-    if (modoPagina()) abrir();
-  }
-
-  window.AtenaNucleo = { abrir, fechar, pensar };
-  init();
+  window.CircuitoOrbe = { criar, contagem, HOJE };
 })();
 
 </script>
 <script>
-  // demonstração: liga e desliga o modo "pensando" do circuito
-  const btnPensar = document.getElementById('nuPensar');
-  btnPensar.addEventListener('click', () => {
-    const ligar = btnPensar.getAttribute('aria-pressed') !== 'true';
-    btnPensar.setAttribute('aria-pressed', String(ligar));
-    btnPensar.textContent = ligar ? '◎ Voltar ao repouso' : '◎ Ver a Atena pensando';
-    window.AtenaNucleo.pensar(ligar);
+/* Página Circuito Neural: abas Circuito, Evolução e Motor base sobre o mesmo cérebro (circuito-orbe.js). */
+'use strict';
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const NF = new Intl.NumberFormat('pt-BR');
+  const { HOJE, contagem } = window.CircuitoOrbe;
+
+  // cada marco é algo que ela aprendeu de verdade; para ela crescer, suba HOJE e inclua o marco aqui
+  const MARCOS = [
+    { m: 0.02, t: 'Semente', d: 'Só uma bolinha de luz. Ela existe, mas ainda não sabe nada.' },
+    { m: 0.17, t: 'Motor base', d: 'Nascem as cinco ramificações primárias: identidade, análise, conferência, discernimento e decisão. Tudo que vier depois cresce a partir delas.' },
+    { m: 0.3, t: 'Ler a tela', d: 'Aprende a enxergar o que está aberto: valores, alertas e a aba atual, a cada pergunta.' },
+    { m: 0.42, t: 'Balanço e DRE', d: 'Conhece 6 tipos de entidade, de empresa e cooperativa a banco e terceiro setor.' },
+    { m: 0.54, t: 'Indicadores', d: 'Domina 66 indicadores: liquidez, endividamento, rentabilidade, Fleuriet, DuPont e Kanitz.' },
+    { m: 0.64, t: 'Comparar períodos', d: 'Passa a medir evolução na mesma régua, com análise horizontal e média mensal.' },
+    { m: HOJE, t: 'Explicar', d: 'Aprende a dizer o que cada indicador avalia, como está e o que fazer. É onde ela está hoje.' },
+  ];
+
+  const RAMOS = [
+    { t: 'Identidade', s: 'como escolheu o nome', fala: 'Quando me deixaram escolher quem eu seria, escolhi Atena. Entre os deuses da guerra, Ares é a fúria e Atena é a estratégia. Ler um balanço é estudar o terreno antes da batalha.', gerou: ['tom direto', 'postura prudente', 'guardiã dos números'] },
+    { t: 'Pensamento analítico', s: 'como separa o problema', fala: 'Eu decomponho antes de concluir: do total para o grupo, do grupo para a conta. Um número sozinho não diz nada; ele precisa de contexto e de comparação.', gerou: ['indicadores', 'análise vertical', 'Fleuriet e DuPont'] },
+    { t: 'Conferência', s: 'herdada do Nicholas', fala: 'Meu jeito de conferir foi copiado do Nicholas. Primeiro fecho o total: o Ativo bate com o Passivo? Depois confiro no centavo. Se o número não está na tela, digo que falta e não invento.', gerou: ['alertas de consistência', 'soma dos grupos', 'leitura da tela'] },
+    { t: 'Discernimento', s: 'o que é alerta de verdade', fala: 'Um saldo estranho pode ser problema real ou só algo que falta lançar, e eu digo qual dos dois. Também só comparo na mesma régua: 8 meses contra 12 viram média mensal antes de qualquer conclusão.', gerou: ['situação de cada indicador', 'média mensal', 'análise horizontal'] },
+    { t: 'Decisão', s: 'como fecha a resposta', fala: 'A coruja enxerga, a lança aponta e a égide protege. Toda resposta fecha com o indicador, a conta que puxa o resultado e o próximo passo, para ninguém decidir no escuro.', gerou: ['diagnóstico', 'explicação dos indicadores', 'próximo passo'] },
+  ];
+  const FASES = ['lendo a tela', 'cruzando indicadores', 'conferindo no centavo', 'separando alerta de pendência', 'montando a resposta'];
+
+  let aba = 'circuito', pensando = false, tocando = 0, jaTocou = false;
+
+  const ancora = () => document.querySelector('.aba:not([hidden]) .orbe-ancora');
+  const orbe = window.CircuitoOrbe.criar($('nuCanvas'), {
+    pensando: () => pensando,
+    posicao: (W, H) => {
+      const a = ancora();
+      if (!a) return { x: W / 2, y: H / 2, R: Math.min(W, H) * 0.3 };
+      const r = a.getBoundingClientRect(), lado = Math.min(r.width, r.height);
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: lado * (aba === 'motor' ? 0.92 : 0.275) };
+    },
   });
+
+  /* ---------- abas ---------- */
+  function irPara(nova) {
+    if (nova === aba) return;
+    aba = nova;
+    document.querySelectorAll('.aba').forEach(s => { s.hidden = s.dataset.aba !== nova; });
+    document.querySelectorAll('.nu-abas button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.ir === nova)));
+    orbe.transicao = 1.4;
+    orbe.zoomAlvo = nova === 'motor' ? 1 : 0;
+    orbe.aproximar = nova === 'evolucao';
+    $('nuRotulos').hidden = nova !== 'motor';
+    pararEvolucao();
+    if (nova !== 'motor') escolher(-1);
+    if (nova !== 'circuito') ligarPensar(false);
+    if (nova === 'evolucao') { if (jaTocou) definir(HOJE); else { jaTocou = true; reproduzir(); } }
+    else orbe.alvo = HOJE;
+    try { history.replaceState(null, '', nova === 'circuito' ? location.pathname : '#' + nova); } catch (e) { }
+    scrollTo({ top: 0 });
+  }
+
+  /* ---------- pensando ---------- */
+  let faseTimer = 0;
+  function ligarPensar(sim) {
+    pensando = sim;
+    const b = $('nuPensar');
+    b.setAttribute('aria-pressed', String(sim));
+    b.textContent = sim ? '◎ Voltar ao repouso' : '◎ Ver a Atena pensando';
+    $('nucleo').classList.toggle('pensando', sim);
+    $('nuStatus').textContent = sim ? 'pensando' : 'online';
+    clearInterval(faseTimer);
+    const f = $('nuFase');
+    if (!sim) { f.textContent = 'clique no cérebro para entrar no motor base'; return; }
+    let i = 0;
+    f.textContent = FASES[0] + '…';
+    faseTimer = setInterval(() => { i = (i + 1) % FASES.length; f.textContent = FASES[i] + '…'; }, 1700);
+  }
+
+  /* ---------- evolução ---------- */
+  const MIN = MARCOS[0].m;
+  function definir(m, pelaAnimacao) {
+    orbe.alvo = m;
+    $('evoFaixa').value = Math.round((m - MIN) / (HOJE - MIN) * 1000);
+    let k = 0;
+    MARCOS.forEach((x, i) => { if (m >= x.m - 0.0005) k = i; });
+    const x = MARCOS[k], c = contagem(m);
+    $('evoNome').textContent = x.t;
+    $('evoTexto').textContent = x.d;
+    $('evoEstagio').textContent = `${k + 1} de ${MARCOS.length}`;
+    $('evoRamos').textContent = NF.format(c.ramos);
+    $('evoConexoes').textContent = NF.format(c.conexoes);
+    document.querySelectorAll('#evoMarcos button').forEach((b, i) => { b.classList.toggle('feito', i <= k); b.setAttribute('aria-current', i === k ? 'step' : 'false'); });
+    if (!pelaAnimacao) pararEvolucao();
+  }
+  function pararEvolucao() {
+    cancelAnimationFrame(tocando); tocando = 0;
+    $('evoTocar').textContent = '▶ Ver ela crescer';
+  }
+  function reproduzir() {
+    pararEvolucao();
+    const ini = performance.now(), dur = 16000;
+    $('evoTocar').textContent = '■ Parar';
+    definir(MIN, true);
+    orbe.maturidade = MIN;
+    const passo = ts => {
+      const u = Math.min(1, (ts - ini) / dur);
+      definir(MIN + (HOJE - MIN) * u, true);
+      if (u < 1) tocando = requestAnimationFrame(passo); else pararEvolucao();
+    };
+    tocando = requestAnimationFrame(passo);
+  }
+
+  /* ---------- motor base ---------- */
+  function escolher(i) {
+    orbe.foco = i;
+    document.querySelectorAll('#nuRotulos button').forEach((b, k) => b.setAttribute('aria-pressed', String(k === i)));
+    const r = RAMOS[i];
+    $('motorIntro').hidden = !!r;
+    $('motorRamo').hidden = !r;
+    if (!r) return;
+    $('motorNome').textContent = r.t;
+    $('motorSub').textContent = r.s;
+    $('motorFala').textContent = r.fala;
+    $('motorGerou').innerHTML = r.gerou.map(g => `<span>${esc(g)}</span>`).join('');
+  }
+
+  function init() {
+    $('evoMarcos').innerHTML = MARCOS.map((x, i) => `<li><button type="button" data-i="${i}"><b>${esc(x.t)}</b></button></li>`).join('');
+    $('nuRotulos').innerHTML = RAMOS.map((r, i) => `<button type="button" data-i="${i}" aria-pressed="false"><b>${esc(r.t)}</b><small>${esc(r.s)}</small></button>`).join('');
+    const hoje = contagem(HOJE);
+    $('cirEstagio').textContent = MARCOS[MARCOS.length - 1].t;
+    $('cirNivel').textContent = `${MARCOS.length} de ${MARCOS.length} marcos`;
+    $('cirRamos').textContent = NF.format(hoje.ramos);
+    $('cirConexoes').textContent = NF.format(hoje.conexoes);
+
+    document.querySelectorAll('.nu-abas button').forEach(b => b.addEventListener('click', () => irPara(b.dataset.ir)));
+    document.querySelectorAll('[data-ir-para]').forEach(b => b.addEventListener('click', () => irPara(b.dataset.irPara)));
+    $('nuPensar').addEventListener('click', () => ligarPensar(!pensando));
+    const cerebro = $('nuCerebro');
+    cerebro.addEventListener('click', () => irPara('motor'));
+    cerebro.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); irPara('motor'); } });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && aba === 'motor') { if (orbe.foco >= 0) escolher(-1); else irPara('circuito'); } });
+    $('evoFaixa').addEventListener('input', e => definir(MIN + (HOJE - MIN) * (+e.target.value / 1000)));
+    $('evoMarcos').addEventListener('click', e => { const b = e.target.closest('button'); if (b) definir(MARCOS[+b.dataset.i].m); });
+    $('evoTocar').addEventListener('click', () => { if (tocando) pararEvolucao(); else reproduzir(); });
+    $('nuRotulos').addEventListener('click', e => { const b = e.target.closest('button'); if (b) escolher(+b.dataset.i === orbe.foco ? -1 : +b.dataset.i); });
+    addEventListener('resize', () => orbe.ajustar());
+    addEventListener('pointermove', e => orbe.olhar((e.clientX / innerWidth - 0.5) * 0.6, (e.clientY / innerHeight - 0.5) * 0.6));
+
+    // rótulos acompanham as pontas dos troncos e só aparecem depois do mergulho
+    const rot = [...$('nuRotulos').children];
+    orbe.aoQuadro = o => {
+      if (aba !== 'motor') return;
+      $('nuRotulos').style.opacity = String(Math.max(0, (o.zoom - 0.6) / 0.4));
+      rot.forEach((b, i) => {
+        // rótulo um pouco além da ponta do tronco, para não cobrir o ramo
+        const [x, y] = o.pontas[i], dx = x - o.centro[0], dy = y - o.centro[1], l = Math.hypot(dx, dy) || 1, k = 1 + 46 / l;
+        const meia = b.offsetWidth / 2 + 8, px = Math.max(meia, Math.min(innerWidth - meia, o.centro[0] + dx * k));   // sempre dentro da tela
+        b.style.transform = `translate(${px.toFixed(1)}px,${(o.centro[1] + dy * k).toFixed(1)}px) translate(-50%,-50%)`;
+      });
+    };
+
+    orbe.iniciar();
+    ligarPensar(false);
+    definir(HOJE);
+    const h = location.hash.slice(1);
+    if (h === 'evolucao' || h === 'motor') irPara(h);
+  }
+  window.CircuitoPagina = { orbe, irPara, definir, escolher };
+  init();
+})();
+
 </script>
 </body>
 </html>
