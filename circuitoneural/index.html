@@ -214,42 +214,74 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
     </div>
     <figure class="qd" style="margin-inline:auto">
       <div class="qd-moldura"><div class="qd-filete"><div class="qd-tela"><pre tabindex="0" aria-label="Código do primeiro neurônio, em Python"><code>import math
+import random
+
 
 class Neuronio:
-    def __init__(self, qtd_entradas, taxa_aprendizado=0.5):
-        self.pesos = [0.0] * qtd_entradas
-        self.vies = 0.0
-        self.taxa = taxa_aprendizado
+    def __init__(self):
+        self.conhecimento = None  <span class="qd-com"># nasce sem saber nada</span>
+        self.experiencias = 0
 
-    def calcular(self, entradas):
-        z = sum(x * p for x, p in zip(entradas, self.pesos)) + self.vies
-        return 1 / (1 + math.exp(-z))
+    def distancia(self, info):
+        return math.dist(self.conhecimento, info)
 
-    def treinar(self, exemplos, epocas=5000):
-        for _ in range(epocas):
-            for entradas, esperado in exemplos:
-                erro = self.calcular(entradas) - esperado
+    def aprender(self, info):
+        self.experiencias += 1
+        if self.conhecimento is None:
+            self.conhecimento = list(info)
+            return
 
-                <span class="qd-com"># corrige cada peso na direção que reduz o erro</span>
-                for i, x in enumerate(entradas):
-                    self.pesos[i] -= self.taxa * erro * x
-                self.vies -= self.taxa * erro
+        <span class="qd-com"># quanto mais experiência, menos uma única informação muda o que ele sabe</span>
+        taxa = 1 / self.experiencias
+        for i, valor in enumerate(info):
+            self.conhecimento[i] += taxa * (valor - self.conhecimento[i])
 
 
-<span class="qd-com"># Exemplos: o resultado só é 1 quando as duas entradas são 1</span>
-exemplos = [
-    ([0, 0], 0),
-    ([0, 1], 0),
-    ([1, 0], 0),
-    ([1, 1], 1),
-]
+class Mente:
+    def __init__(self, limite_novidade=0.3):
+        self.limite_novidade = limite_novidade
+        self.neuronios = [Neuronio()]  <span class="qd-com"># o primeiro neurônio</span>
 
-neuronio = Neuronio(qtd_entradas=2)
-neuronio.treinar(exemplos)
+    def observar(self, info):
+        if self.neuronios[0].conhecimento is None:
+            self.neuronios[0].aprender(info)
+            return
 
-for entradas, esperado in exemplos:
-    print(entradas, "esperado:", esperado, "previsto:", round(neuronio.calcular(entradas), 2))</code></pre></div></div></div>
-      <figcaption class="qd-placa"><b>O primeiro neurônio</b><span>Python · aprende sozinho a regra “E”</span></figcaption>
+        mais_proximo = min(self.neuronios, key=lambda n: n.distancia(info))
+
+        if mais_proximo.distancia(info) &lt;= self.limite_novidade:
+            mais_proximo.aprender(info)
+        else:
+            novo = Neuronio()  <span class="qd-com"># novidade: nasce um especialista</span>
+            novo.aprender(info)
+            self.neuronios.append(novo)
+
+    def mostrar(self):
+        for i, n in enumerate(self.neuronios, start=1):
+            valores = [round(v, 2) for v in n.conhecimento]
+            print(f"Neurônio {i}: reage a {valores} | experiências: {n.experiencias}")
+
+
+def ambiente(centros, quantidade):
+    for _ in range(quantidade):
+        centro = random.choice(centros)
+        yield [random.gauss(v, 0.05) for v in centro]
+
+
+mente = Mente()
+
+<span class="qd-com"># Fase 1: o ambiente tem dois tipos de informação, que a mente desconhece</span>
+for info in ambiente([(0.2, 0.2), (0.8, 0.2)], 300):
+    mente.observar(info)
+print("Depois da fase 1:")
+mente.mostrar()
+
+<span class="qd-com"># Fase 2: surge um terceiro tipo de informação</span>
+for info in ambiente([(0.2, 0.2), (0.8, 0.2), (0.5, 0.9)], 300):
+    mente.observar(info)
+print("Depois da fase 2:")
+mente.mostrar()</code></pre></div></div></div>
+      <figcaption class="qd-placa"><b>O primeiro neurônio</b><span>Python · nasce sem saber nada e cria novos neurônios ao encontrar novidade</span></figcaption>
     </figure>
   </div>
 
