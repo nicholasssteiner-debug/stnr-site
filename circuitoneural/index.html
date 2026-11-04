@@ -125,6 +125,16 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
   #nuRotulos button { max-width: 112px; padding: 4px 6px; }
   #nuRotulos small { display: none; }
 }
+/* quadro do código */
+.qd { max-width: 760px; margin: 34px auto 6px; }
+.qd-moldura { padding: 14px; background: linear-gradient(135deg, #f0d48c, #a97c2e 28%, #e7c677 52%, #8a6222 76%, #e2b45a); box-shadow: 0 18px 44px rgba(0,0,0,.65), 0 0 26px rgba(255,170,90,.14); }
+.qd-filete { padding: 3px; background: #2a1c0b; box-shadow: inset 0 0 0 1px rgba(240,212,140,.55); }
+.qd-tela { padding: clamp(14px, 3.5vw, 34px); background: #0b0a0e; box-shadow: inset 0 0 26px rgba(0,0,0,.9); }
+.qd-tela pre { margin: 0; overflow-x: auto; font-family: var(--nu-mono); font-size: 12.5px; line-height: 1.6; color: var(--nu-texto); tab-size: 4; }
+.qd-com { color: var(--nu-ambar); }
+.qd-placa { width: fit-content; max-width: 100%; margin: 14px auto 0; padding: 7px 18px; text-align: center; background: linear-gradient(135deg, #e7c677, #a97c2e); color: #1a0f07; box-shadow: 0 3px 10px rgba(0,0,0,.5); }
+.qd-placa b { display: block; font-family: var(--nu-display); font-size: 14px; letter-spacing: .08em; }
+.qd-placa span { font-family: var(--nu-mono); font-size: 10px; letter-spacing: .08em; }
 </style>
 </head>
 <body>
@@ -202,6 +212,45 @@ html, body { margin: 0; color: #f3e6d6; background: radial-gradient(ellipse at 5
         <div class="nu-etapa"><b>RESPOSTA</b>Respondo com o número, o porquê e o próximo passo.</div>
       </div>
     </div>
+    <figure class="qd" style="margin-inline:auto">
+      <div class="qd-moldura"><div class="qd-filete"><div class="qd-tela"><pre tabindex="0" aria-label="Código do primeiro neurônio, em Python"><code>import math
+
+class Neuronio:
+    def __init__(self, qtd_entradas, taxa_aprendizado=0.5):
+        self.pesos = [0.0] * qtd_entradas
+        self.vies = 0.0
+        self.taxa = taxa_aprendizado
+
+    def calcular(self, entradas):
+        z = sum(x * p for x, p in zip(entradas, self.pesos)) + self.vies
+        return 1 / (1 + math.exp(-z))
+
+    def treinar(self, exemplos, epocas=5000):
+        for _ in range(epocas):
+            for entradas, esperado in exemplos:
+                erro = self.calcular(entradas) - esperado
+
+                <span class="qd-com"># corrige cada peso na direção que reduz o erro</span>
+                for i, x in enumerate(entradas):
+                    self.pesos[i] -= self.taxa * erro * x
+                self.vies -= self.taxa * erro
+
+
+<span class="qd-com"># Exemplos: o resultado só é 1 quando as duas entradas são 1</span>
+exemplos = [
+    ([0, 0], 0),
+    ([0, 1], 0),
+    ([1, 0], 0),
+    ([1, 1], 1),
+]
+
+neuronio = Neuronio(qtd_entradas=2)
+neuronio.treinar(exemplos)
+
+for entradas, esperado in exemplos:
+    print(entradas, "esperado:", esperado, "previsto:", round(neuronio.calcular(entradas), 2))</code></pre></div></div></div>
+      <figcaption class="qd-placa"><b>O primeiro neurônio</b><span>Python · aprende sozinho a regra “E”</span></figcaption>
+    </figure>
   </div>
 
   <div class="aba" data-aba="evolucao" hidden>
