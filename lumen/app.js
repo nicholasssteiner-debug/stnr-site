@@ -316,13 +316,17 @@ function vBanco() {
       <button class="btn claro mini" data-acao="auditar">Auditar</button>
     </div></section>
   <section class="bloco"><h2>Economia</h2>
-    <div class="grade">
-      <div><span>Juros guardados</span><b>${lu(e.saldos.economia)}</b></div>
-      <div><span>Cofre do cartão</span><b>${lu(e.saldos.cofre)}</b></div>
-      <div><span>Poupança da galera</span><b>${lu(e.saldos.poup)}</b></div>
-      <div><span>Poupança e cashback</span><b class="${economiaAberta(e) ? 'baixa' : ''}">${economiaAberta(e) ? 'Liberados' : 'Travados'}</b></div>
-    </div>
-    <p class="nota" style="margin:10px 0 0">Os ${JUROS_PCT}% de juros das faturas caem aqui e pagam o rendimento e o cashback.</p></section>
+    <span class="nota">Saldo da Economia</span>
+    <div class="destaque">${lu(e.saldos.economia)}</div>
+    <p class="nota">Vale ${real(e.saldos.economia * valorMoeda(e))} hoje. Entra pelos ${JUROS_PCT}% de juros das faturas e pelas moedas que você gerar para cá. Sai pelo rendimento da poupança e pelo cashback.</p>
+    <div class="linha"><div class="meio"><b>Poupança e cashback</b><span>${economiaAberta(e) ? 'Ficam liberados enquanto a Economia tiver saldo' : 'Abrem quando a Economia tiver saldo'}</span></div><div class="fim ${economiaAberta(e) ? 'baixa' : ''}">${economiaAberta(e) ? 'Liberados' : 'Travados'}</div></div>
+  </section>
+  <section class="bloco"><h2>Fora da Economia</h2>
+    <p class="nota">Estes valores não pagam rendimento nem cashback.</p>
+    <div class="linha"><div class="meio"><b>Cofre do cartão</b><span>Disponível para os cartões usarem</span></div><div class="fim">${lu(e.saldos.cofre)}</div></div>
+    <div class="linha"><div class="meio"><b>Emprestado nos cartões</b><span>Volta para o cofre quando as faturas são pagas</span></div><div class="fim">${lu(Object.values(e.cartoes).reduce((a, c) => a + c.princ, 0))}</div></div>
+    <div class="linha"><div class="meio"><b>Poupança da galera</b><span>Moedas que as pessoas guardaram. Continuam sendo delas</span></div><div class="fim">${lu(e.saldos.poup)}</div></div>
+  </section>
   ${pend.length ? `<section class="bloco"><h2>Cheques a compensar</h2>${pend.map(c => `<div class="linha quebra"><div class="meio"><b>${esc(nome(c.slot))} · nº ${esc(c.numero)}</b><span>${luT(c.qtd)} · ${real(c.valor)}</span></div>
     <button class="btn mini" data-acao="compensar" data-id="${esc(c.id)}">Compensar</button><button class="btn claro mini" data-acao="devolver" data-id="${esc(c.id)}">Devolver</button></div>`).join('')}</section>` : ''}
   <section class="bloco"><h2>Contas</h2>

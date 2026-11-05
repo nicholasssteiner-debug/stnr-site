@@ -150,3 +150,6 @@ input, select { display: block; width: 100%; margin-top: 4px; padding: 11px 12px
 .dia { font-size: 14px; font-weight: 600; color: var(--suave); padding: 12px 0 2px; letter-spacing: 0; }
 .dia:first-child { padding-top: 0; }
 .dia + .linha { border-top: 0; }
+
+/* economia */
+.destaque { font-size: 34px; font-weight: 800; line-height: 1.2; margin: 2px 0 8px; letter-spacing: -.02em; }
