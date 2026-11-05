@@ -94,7 +94,7 @@ function capa(titulo, texto, botao) {
 function telaFora() {
   capa('Lúmen', params.has('convite')
     ? 'Você foi convidado para o banco da galera. Entre com sua conta Google.'
-    : 'O banco de mentirinha da galera. Nada aqui é dinheiro de verdade.',
+    : 'O banco da galera.',
     '<button class="btn branco" data-acao="entrar">Entrar com Google</button>');
 }
 
@@ -207,7 +207,7 @@ function descreverTx(t) {
     case 'resgatar': return { titulo: `${nome(t.de)} resgatou da poupança`, sub: '', fim: lu(t.qtd) };
     case 'rendimento': return { titulo: `Poupança de ${nome(t.de)} rendeu`, sub: '', fim: '' };
     case 'conta': return { titulo: `Conta nova: ${nome(t.slot)}`, sub: '', fim: '' };
-    case 'emissao': return { titulo: `Banco gerou moedas para ${nome(t.para)}`, sub: t.deposito ? `${real(t.deposito)} depositados na caixinha` : 'Sem depósito: inflação na veia', fim: '+' + lu(t.qtd) };
+    case 'emissao': return { titulo: `Banco gerou moedas para ${nome(t.para)}`, sub: t.deposito ? `${real(t.deposito)} depositados na caixinha` : 'Sem depósito na caixinha', fim: '+' + lu(t.qtd) };
     case 'caixinha': return { titulo: t.delta > 0 ? 'Depósito na caixinha' : 'Retirada da caixinha', sub: '', fim: real(Math.abs(t.delta)) };
     case 'saque': return { titulo: `Cheque de ${nome(t.de)} compensado`, sub: real(t.valor || 0), fim: '−' + lu(t.qtd) };
     default: return { titulo: t.tipo, sub: '', fim: '' };
@@ -289,7 +289,7 @@ function vExtratoGalera() {
   return `<section class="bloco">${D.txs.length ? D.txs.map(t => {
     const d = descreverTx(t);
     return `<div class="linha"><div class="meio"><b>${esc(d.titulo)}</b><span>${esc(d.sub ? d.sub + ' · ' + quando(t) : quando(t))}</span></div><div class="fim">${d.fim}</div></div>`;
-  }).join('') : '<p class="nota" style="margin:0">Nada ainda. Alguém tem que começar a zoeira.</p>'}</section>`;
+  }).join('') : '<p class="nota" style="margin:0">Nenhuma movimentação ainda.</p>'}</section>`;
 }
 
 function vExtrato() {
@@ -344,7 +344,7 @@ function desenhar() {
   if (!sessao) return;
   if (sessao.fase === 'fora') return telaFora();
   if (sessao.fase === 'sem-convite') return capa('Sem convite', `A conta ${esc(sessao.email)} ainda não está no banco. Peça um link de convite para alguém da galera.`, '<button class="btn claro" data-acao="sair">Usar outra conta</button>');
-  if (sessao.fase === 'erro') return capa('Deu ruim', esc(sessao.msg), '<button class="btn claro" data-acao="sair">Sair</button>');
+  if (sessao.fase === 'erro') return capa('Algo deu errado', esc(sessao.msg), '<button class="btn claro" data-acao="sair">Sair</button>');
   if (!D.e || !D.contas[sessao.slot]) return capa('Lúmen', 'Abrindo o cofre...');
   const abas = Object.entries(ABAS).filter(([k]) => k !== 'banco' || sessao.admin);
   raiz.innerHTML = `${ABAS[aba][1]()}<nav><div>${abas.map(([k, [r]]) => `<button class="${k === aba ? 'on' : ''}" data-aba="${k}">${r}</button>`).join('')}</div></nav>`;
@@ -481,7 +481,7 @@ function desenharCheque(c) {
   t(nome(c.slot), 758, 346, 'italic 600 32px Georgia, serif', '#173f8a', 'center');
   t('Assinatura do emitente', 758, 386, '400 20px Inter, sans-serif', '#3b4454', 'center');
   t(new Date((c.em?.seconds || Date.now() / 1000) * 1000).toLocaleDateString('pt-BR'), 44, 346, '600 25px Inter, sans-serif');
-  t('Dinheiro de mentirinha entre amigos. Sem valor legal.', 44, 392, '400 19px Inter, sans-serif', '#6b7484');
+  t('Documento interno do Lúmen. Não é um cheque bancário.', 44, 392, '400 19px Inter, sans-serif', '#6b7484');
   return k;
 }
 
@@ -564,7 +564,7 @@ function folhaCaixinha() {
     if (!c) { p.textContent = ''; return; }
     previa(p, { tipo: 'caixinha', delta: sinal * c });
   };
-  const f = abrir(`<h2>Caixinha</h2><p class="nota">Saldo: ${real(D.e.lastro)}. Só registra aqui, nenhum banco de verdade é tocado.</p>
+  const f = abrir(`<h2>Caixinha</h2><p class="nota">Saldo: ${real(D.e.lastro)}. O valor é registrado só aqui no app.</p>
     <div class="opcoes"><button type="button" class="btn on" id="dep">Depositei</button><button type="button" class="btn" id="ret">Retirei</button></div>
     ${campoReal('v', 'Valor')}
     <div class="previa" id="previa"></div>${rodape('Registrar')}`,
@@ -585,7 +585,7 @@ function folhaPerfil() {
 
 function mostrarConvite(slot, token) {
   const link = `${location.origin}${location.pathname}?convite=${token}`;
-  const texto = `Entra aí no Lúmen, o banco de mentirinha da galera: ${link}`;
+  const texto = `Entra aí no Lúmen, o banco da galera: ${link}`;
   const f = abrir(`<h2>Convite de ${esc(nome(slot))}</h2>
     <label>Link único desta conta<input readonly value="${esc(link)}"></label>
     <div class="fim-folha" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
