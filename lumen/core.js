@@ -200,3 +200,11 @@ export function auditar(doc, txs) {
     && canon(e.saldos) === canon(doc.saldos) && canon(e.cartoes) === canon(doc.cartoes) && canon(e.aplic) === canon(doc.aplic);
   return iguais ? { ok: true, n: txs.length } : { ok: false, motivo: 'O estado publicado não bate com a história das transações.' };
 }
+
+/* Dados extras gravados em cada transação para o extrato pessoal. A auditoria não depende deles. */
+export function marcas(antes, depois, tx) {
+  const efeito = {};
+  for (const s of contas(depois)) { const d = depois.saldos[s] - (antes.saldos[s] ?? 0); if (d) efeito[s] = d; }
+  const quem = [...new Set([tx.de, tx.para, ...Object.keys(efeito)])].filter(s => s && ehConta(s));
+  return { efeito, quem, ...(tx.tipo === 'rendimento' ? { rendeu: depois.aplic[tx.de].n - antes.aplic[tx.de].n } : {}) };
+}

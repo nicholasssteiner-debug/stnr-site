@@ -2,7 +2,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, doc, collection, getDoc, getDocs, onSnapshot, query, orderBy, limit, where, runTransaction, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { genese, contas, proximaConta, aplicar, empacotar, desempacotar, auditar } from './core.js';
+import { genese, contas, proximaConta, aplicar, marcas, empacotar, desempacotar, auditar } from './core.js?v=3';
 
 const ADMIN = 'nicholas.s.steiner@gmail.com';
 const app = initializeApp({
@@ -20,7 +20,7 @@ const paraDoc = e => ({ seq: e.seq, lastro: e.lastro, saldos: e.saldos, cartoes:
 
 export function criar() {
   let cancelar = [], sessao = null;
-  const dados = { e: null, contas: {}, txs: [], cheques: [], cobrancas: [], convites: [] };
+  const dados = { e: null, contas: {}, txs: [], meuExtrato: [], temMais: false, cheques: [], cobrancas: [], convites: [] };
   const erroLeitura = err => console.error('[lumen]', err);
   const porData = (a, b) => (b.em?.seconds || 0) - (a.em?.seconds || 0);
 
@@ -52,7 +52,17 @@ export function criar() {
     return slot;
   }
 
+  let pararExtrato = () => {}, limiteExtrato = 100, avisarExtrato = () => {};
+  function ouvirExtrato() {
+    pararExtrato();
+    pararExtrato = onSnapshot(query(sub('transacoes'), where('quem', 'array-contains', sessao.slot), orderBy('seq', 'desc'), limit(limiteExtrato)), s => {
+      dados.meuExtrato = s.docs.map(d => d.data()); dados.temMais = s.size === limiteExtrato; avisarExtrato();
+    }, erroLeitura);
+  }
+
   function assinar(avisar, admin, uid) {
+    avisarExtrato = avisar; ouvirExtrato();
+    cancelar.push(() => pararExtrato());
     const ouvir = (alvo, fn) => cancelar.push(onSnapshot(alvo, s => { fn(s); avisar(); }, erroLeitura));
     ouvir(banco, s => { dados.e = desempacotar(s.data()); pendencias(); });
     ouvir(sub('contas'), s => s.forEach(d => { dados.contas[d.id] = d.data(); }));
@@ -66,10 +76,10 @@ export function criar() {
     let novo;
     const t0 = { ...tx, quando: Date.now() };
     await runTransaction(db, async t => {
-      const snap = await t.get(banco);
-      novo = aplicar(desempacotar(snap.data()), t0);
+      const snap = await t.get(banco), antes = desempacotar(snap.data());
+      novo = aplicar(antes, t0);
       t.update(banco, paraDoc(novo));
-      t.set(sub('transacoes', String(novo.seq)), { ...t0, seq: novo.seq, por: auth.currentUser.uid, em: serverTimestamp(), ...(novo.cashback ? { cashback: novo.cashback } : {}) });
+      t.set(sub('transacoes', String(novo.seq)), { ...t0, ...marcas(antes, novo, t0), seq: novo.seq, por: auth.currentUser.uid, em: serverTimestamp(), ...(novo.cashback ? { cashback: novo.cashback } : {}) });
       if (extra) extra(t, novo);
     });
     return novo;
@@ -126,6 +136,7 @@ export function criar() {
       }
     },
     sair: () => signOut(auth),
+    maisExtrato() { limiteExtrato += 100; ouvirExtrato(); },
     async criarConta(nome) {
       const slot = proximaConta(dados.e);
       await executar({ tipo: 'conta', slot }, t => t.set(sub('contas', slot), { nome, uid: null, criador: auth.currentUser.uid }));

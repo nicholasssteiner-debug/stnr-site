@@ -1,23 +1,23 @@
 /* Lúmen — modo demo (só em localhost, ?demo&como=s3): tudo em memória, sem Firebase. */
-import { genese, contas, proximaConta, aplicar, empacotar, auditar } from './core.js';
+import { genese, contas, proximaConta, aplicar, marcas, empacotar, auditar } from './core.js?v=3';
 
 export function criar() {
   const como = new URLSearchParams(location.search).get('como') || 's1';
-  const dados = { e: genese(), contas: {}, txs: [], cheques: [], cobrancas: [], convites: [] };
+  const dados = { e: genese(), contas: {}, txs: [], meuExtrato: [], temMais: false, cheques: [], cobrancas: [], convites: [] };
   contas(dados.e).forEach((s, i) => { dados.contas[s] = { nome: i ? `Amigo ${i + 1}` : 'Nicholas', uid: i ? null : 'u1' }; });
   let avisar = () => {}, n = 0;
   const em = () => ({ seconds: Date.now() / 1000 });
   const executar = async tx => {
-    const t0 = { ...tx, quando: Date.now() }, novo = aplicar(dados.e, t0);
+    const t0 = { ...tx, quando: Date.now() }, antes = dados.e, novo = aplicar(antes, t0);
     dados.e = novo;
-    dados.txs.unshift({ ...t0, seq: novo.seq, por: como, em: em(), ...(novo.cashback ? { cashback: novo.cashback } : {}) });
+    dados.txs.unshift({ ...t0, ...marcas(antes, novo, t0), seq: novo.seq, por: como, em: em(), ...(novo.cashback ? { cashback: novo.cashback } : {}) });
     avisar();
     return novo;
   };
   return {
     dados, executar,
     iniciar(sessao, aviso) { avisar = aviso; sessao({ fase: 'dentro', slot: como, admin: como === 's1', email: 'demo@local' }); },
-    entrar() {}, sair() {},
+    entrar() {}, sair() {}, maisExtrato() {},
     async criarConta(nome) {
       const slot = proximaConta(dados.e);
       await executar({ tipo: 'conta', slot });

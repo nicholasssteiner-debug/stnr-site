@@ -131,3 +131,22 @@ input, select { display: block; width: 100%; margin-top: 4px; padding: 11px 12px
 #aviso.on { opacity: 1; }
 :focus-visible { outline: 2px solid var(--azul2); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* campos de valor */
+.rot { display: block; margin-bottom: 4px; }
+.campo { display: flex; align-items: center; gap: 8px; background: var(--fundo); border: 1px solid var(--linha); border-radius: 14px; padding: 0 14px; color: var(--tinta); font-size: 24px; font-weight: 700; }
+.campo:focus-within { border-color: var(--azul); }
+.campo b { font-size: 18px; color: var(--suave); }
+.campo svg.lu { flex: none; margin: 0; color: var(--azul2); }
+.campo input { border: 0; background: none; margin: 0; padding: 12px 0; font-size: 24px; font-weight: 700; min-width: 0; font-variant-numeric: tabular-nums; }
+.campo input:focus { outline: none; }
+.campo input::placeholder { color: #4a5262; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: -4px 0 12px; }
+.chips button { flex: 1; min-height: 36px; padding: 4px 8px; border: 0; border-radius: 18px; background: var(--painel2); color: var(--tinta); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.chips.filtro { margin: 14px 0 0; }
+.chips button.on { background: var(--azul); color: #fff; }
+
+/* extrato */
+.dia { font-size: 14px; font-weight: 600; color: var(--suave); padding: 12px 0 2px; letter-spacing: 0; }
+.dia:first-child { padding-top: 0; }
+.dia + .linha { border-top: 0; }

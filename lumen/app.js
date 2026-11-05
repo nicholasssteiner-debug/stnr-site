@@ -2,16 +2,16 @@
 import {
   CARENCIA, TETO_CARTAO, JUROS_PCT, CASHBACK_PCT, RENDIMENTO_PCT, contas, emitidas, valorMoeda, inflacao,
   resumo, aplicar, economiaAberta, disponivelCartao,
-} from './core.js';
+} from './core.js?v=3';
 
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') && ['localhost', '127.0.0.1'].includes(location.hostname);
-const store = (await import(DEMO ? './demo.js' : './nuvem.js')).criar();
+const store = (await import(DEMO ? './demo.js?v=3' : './nuvem.js?v=3')).criar();
 const D = store.dados;
 if (DEMO) window.__demo = store;
 
 const raiz = document.getElementById('app'), folha = document.getElementById('folha'), avisoEl = document.getElementById('aviso');
-let sessao = null, aba = 'inicio', cartaoAba = 'saldo', moedasAba = 'minhas', oculto = false;
+let sessao = null, aba = 'inicio', cartaoAba = 'saldo', moedasAba = 'minhas', extratoAba = 'minha', extratoFiltro = 'tudo', oculto = false;
 try { oculto = localStorage.getItem('lumen-oculto') === '1'; } catch {}
 
 const SVG = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -42,7 +42,41 @@ const inicial = s => esc((nome(s).trim()[0] || '?').toUpperCase());
 const dia = ms => new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 const esconde = html => oculto ? '••••' : html;
 const opcoesContas = lista => lista.map(s => `<option value="${s}">${esc(nome(s))}</option>`).join('');
-const inteiro = v => parseInt(v, 10);
+const inteiro = v => parseInt(String(v).replace(/\D/g, ''), 10);
+const fmtReal = c => (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/* Campos de valor: lúmen é sempre inteiro; real preenche da direita para a esquerda, como em app de banco. */
+const CHIPS = [10, 100, 500, 1000];
+const campoLu = (nomeCampo, rotulo, { max, valor, tudo, chips = true } = {}) => `<label><span class="rot">${rotulo}</span>
+  <span class="campo">${LU}<input name="${nomeCampo}" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required data-lumen ${max === undefined ? '' : `data-max="${max}"`} value="${valor ? num(valor) : ''}"></span></label>
+  ${chips ? `<div class="chips">${CHIPS.map(n => `<button type="button" data-chip="${n}">+${num(n)}</button>`).join('')}${tudo ? '<button type="button" data-chip="tudo">Tudo</button>' : ''}</div>` : ''}`;
+const campoReal = (nomeCampo, rotulo, { id = '', required = true } = {}) => `<label ${id ? `id="${id}"` : ''}><span class="rot">${rotulo}</span>
+  <span class="campo"><b>R$</b><input name="${nomeCampo}" type="text" inputmode="numeric" autocomplete="off" placeholder="0,00" ${required ? 'required' : ''} data-real></span></label>`;
+
+function mascaraLu(el) {
+  const antes = el.value, depois = antes.slice(el.selectionStart ?? antes.length).replace(/\D/g, '').length;
+  let d = antes.replace(/\D/g, '').replace(/^0+/, '').slice(0, 7);
+  const max = el.dataset.max;
+  if (max !== undefined && Number(d) > Number(max)) { d = max === '0' ? '' : max; aviso(`O máximo aqui é ${num(Number(max))}.`); }
+  el.value = d ? num(Number(d)) : '';
+  let i = el.value.length;
+  for (let c = 0; i > 0 && c < depois; i--) if (/\d/.test(el.value[i - 1])) c++;
+  el.setSelectionRange(i, i);
+}
+function mascaraReal(el) {
+  const d = el.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 9);
+  el.value = d ? fmtReal(Number(d)) : '';
+}
+const definir = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+folha.addEventListener('input', ev => {
+  if (ev.target.matches('[data-lumen]')) mascaraLu(ev.target);
+  else if (ev.target.matches('[data-real]')) mascaraReal(ev.target);
+}, true);
+folha.addEventListener('click', ev => {
+  const b = ev.target.closest('[data-chip]'); if (!b) return;
+  const el = folha.querySelector('[data-lumen]');
+  definir(el, b.dataset.chip === 'tudo' ? el.dataset.max : String((inteiro(el.value) || 0) + Number(b.dataset.chip)));
+});
 
 function aviso(msg) {
   avisoEl.textContent = msg; avisoEl.classList.add('on');
@@ -182,15 +216,87 @@ function descreverTx(t) {
 const quando = t => t.em ? new Date(t.em.seconds * 1000).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'agora';
 const STATUS = { emitido: 'Aguardando compensação', compensado: 'Compensado', devolvido: 'Devolvido' };
 
-function vExtrato() {
-  const meus = D.cheques.filter(c => c.slot === sessao.slot);
-  return `<h1 class="titulo">Extrato</h1>
+/* Quanto a transação mudou o saldo desta conta. As antigas não guardam isso e são deduzidas pelo tipo. */
+function variacao(t, s) {
+  if (t.efeito) return t.efeito[s] || 0;
+  if (t.tipo === 'envio') return t.de === s ? -t.qtd : t.para === s ? t.qtd : 0;
+  if (t.tipo === 'compra') return t.para === s ? t.qtd : 0;
+  if (t.tipo === 'emissao') return t.para === s ? t.qtd : 0;
+  if (t.de !== s) return 0;
+  return { guardar: -t.qtd, fatura: -t.qtd, saque: -t.qtd, resgatar: t.qtd }[t.tipo] || 0;
+}
+const envolve = (t, s) => t.quem ? t.quem.includes(s) : t.de === s || t.para === s;
+
+/* Texto da linha do ponto de vista do dono da conta. */
+function linhaPessoal(t, s) {
+  const saiu = t.de === s;
+  switch (t.tipo) {
+    case 'envio': return { titulo: saiu ? `Enviado para ${nome(t.para)}` : `Recebido de ${nome(t.de)}`, sub: t.msg || '' };
+    case 'compra': return saiu
+      ? { titulo: `Pago no cartão para ${nome(t.para)}`, sub: [t.msg, t.cashback ? 'com cashback' : ''].filter(Boolean).join(' · '), lateral: `${num(t.qtd)} na fatura` }
+      : { titulo: `Recebido de ${nome(t.de)}`, sub: t.msg ? `${t.msg} · pago no cartão` : 'Pago no cartão' };
+    case 'fatura': return { titulo: 'Pagamento da fatura', sub: '' };
+    case 'debito': return { titulo: 'Débito automático da fatura', sub: `Com ${JUROS_PCT}% de juros` };
+    case 'guardar': return { titulo: 'Guardado na poupança', sub: '' };
+    case 'resgatar': return { titulo: 'Resgate da poupança', sub: '' };
+    case 'rendimento': return { titulo: 'Rendimento da poupança', sub: 'Fica guardado na poupança', lateral: t.rendeu ? `+${num(t.rendeu)} na poupança` : '' };
+    case 'emissao': return { titulo: 'Moedas recebidas do banco', sub: '' };
+    case 'saque': return { titulo: 'Cheque compensado', sub: real(t.valor || 0) };
+    default: return { titulo: t.tipo, sub: '' };
+  }
+}
+
+function extratoPessoal() {
+  const s = sessao.slot, porSeq = new Map();
+  [...D.meuExtrato, ...D.txs.filter(t => envolve(t, s))].forEach(t => porSeq.set(t.seq, t));
+  let saldo = D.e.saldos[s];   // volta no tempo a partir do saldo de agora
+  return [...porSeq.values()].sort((a, b) => b.seq - a.seq).map(t => {
+    const d = variacao(t, s), linha = { t, d, saldo, ...linhaPessoal(t, s) };
+    saldo -= d;
+    return linha;
+  });
+}
+
+function vMeuExtrato() {
+  const s = sessao.slot, todas = extratoPessoal();
+  const entrou = todas.reduce((a, l) => a + Math.max(l.d, 0), 0), saiu = todas.reduce((a, l) => a + Math.min(l.d, 0), 0);
+  const lista = todas.filter(l => extratoFiltro === 'tudo' || (extratoFiltro === 'entradas' ? l.d > 0 : l.d < 0));
+  const meus = D.cheques.filter(c => c.slot === s);
+  let diaAtual = '';
+  const linhas = lista.map(l => {
+    const data = l.t.em ? new Date(l.t.em.seconds * 1000) : new Date();
+    const rot = data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+    const cabeca = rot === diaAtual ? '' : `<h3 class="dia">${rot}</h3>`;
+    diaAtual = rot;
+    const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `${cabeca}<div class="linha"><div class="meio"><b>${esc(l.titulo)}</b><span>${esc(l.sub ? `${l.sub} · ${hora}` : hora)}</span></div>
+      <div class="fim"><span class="${l.d > 0 ? 'baixa' : ''}">${l.d ? `${l.d > 0 ? '+' : '−'}${lu(Math.abs(l.d))}` : esc(l.lateral || '')}</span><small>Saldo ${esconde(num(l.saldo))}</small></div></div>`;
+  }).join('');
+  return `<section class="bloco"><div class="grade">
+      <div><span>Saldo atual</span><b>${esconde(lu(D.e.saldos[s]))}</b></div>
+      <div><span>Valor hoje</span><b>${esconde(real(D.e.saldos[s] * valorMoeda(D.e)))}</b></div>
+      <div><span>Entradas</span><b class="baixa">${esconde(lu(entrou))}</b></div>
+      <div><span>Saídas</span><b>${esconde(lu(Math.abs(saiu)))}</b></div>
+    </div></section>
   ${meus.length ? `<section class="bloco"><h2>Seus cheques</h2>${meus.map(c => `<div class="linha"><div class="meio"><b>Cheque nº ${esc(c.numero)}</b><span>${STATUS[c.status]}</span></div>
     <button class="btn claro mini" data-acao="ver-cheque" data-id="${esc(c.id)}">Ver</button><div class="fim">${real(c.valor)}<small>${lu(c.qtd)}</small></div></div>`).join('')}</section>` : ''}
-  <section class="bloco">${D.txs.length ? D.txs.map(t => {
+  <div class="chips filtro">${[['tudo', 'Tudo'], ['entradas', 'Entradas'], ['saidas', 'Saídas']].map(([k, r]) => `<button class="${extratoFiltro === k ? 'on' : ''}" data-filtro="${k}">${r}</button>`).join('')}</div>
+  <section class="bloco" style="margin-top:10px">${linhas || '<p class="nota" style="margin:0">Nenhuma movimentação aqui.</p>'}
+    ${D.temMais ? '<button class="btn claro cheio" data-acao="mais-extrato" style="margin-top:10px">Ver mais</button>' : ''}</section>`;
+}
+
+function vExtratoGalera() {
+  return `<section class="bloco">${D.txs.length ? D.txs.map(t => {
     const d = descreverTx(t);
     return `<div class="linha"><div class="meio"><b>${esc(d.titulo)}</b><span>${esc(d.sub ? d.sub + ' · ' + quando(t) : quando(t))}</span></div><div class="fim">${d.fim}</div></div>`;
   }).join('') : '<p class="nota" style="margin:0">Nada ainda. Alguém tem que começar a zoeira.</p>'}</section>`;
+}
+
+function vExtrato() {
+  const minha = extratoAba === 'minha';
+  return `<h1 class="titulo">Extrato</h1>
+  <div class="opcoes"><button class="btn ${minha ? 'on' : ''}" data-extrato="minha">Minha conta</button><button class="btn ${minha ? '' : 'on'}" data-extrato="galera">Galera</button></div>
+  ${minha ? vMeuExtrato() : vExtratoGalera()}`;
 }
 
 /* ---------- banco (só o administrador) ---------- */
@@ -270,7 +376,7 @@ function folhaEnviar() {
   const f = abrir(`<h2>Enviar</h2>
     <div class="opcoes"><button type="button" class="btn on" id="f-saldo">Saldo</button><button type="button" class="btn" id="f-cartao">Cartão</button></div>
     <label>Para quem<select name="para">${opcoesContas(outros)}</select></label>
-    <div class="par"><label><span id="rot"></span><input name="qtd" type="number" inputmode="numeric" min="1" required></label><button type="button" class="btn claro" id="tudo">Tudo</button></div>
+    ${campoLu('qtd', 'Quantas', { max: e.saldos[s], tudo: true })}
     <label>Recado (opcional)<input name="msg" maxlength="80"></label>
     <p class="nota" id="dica"></p>${rodape('Enviar')}`, async d => {
     const qtd = inteiro(d.get('qtd')), msg = d.get('msg').trim(), tx = { tipo: fonte, de: s, para: d.get('para'), qtd };
@@ -281,12 +387,12 @@ function folhaEnviar() {
     fonte = v;
     const max = v === 'envio' ? e.saldos[s] : credito;
     f.querySelector('#f-saldo').classList.toggle('on', v === 'envio'); f.querySelector('#f-cartao').classList.toggle('on', v === 'compra');
-    f.qtd.max = max; f.querySelector('#rot').textContent = `Quantas (disponível: ${num(max)})`;
+    f.qtd.dataset.max = max; f.querySelector('.rot').textContent = `Quantas (disponível: ${num(max)})`;
+    if (f.qtd.value) definir(f.qtd, f.qtd.value);
     f.querySelector('#dica').textContent = v === 'envio' ? 'Cada moeda enviada ganha 1 movimentação. Saem primeiro as menos rodadas.' : `Entra na sua fatura.${economiaAberta(e) ? ` Volta ${CASHBACK_PCT}% de cashback.` : ''}`;
   };
   f.querySelector('#f-saldo').onclick = () => marcar('envio');
   f.querySelector('#f-cartao').onclick = () => marcar('compra');
-  f.querySelector('#tudo').onclick = () => { f.qtd.value = f.qtd.max; };
   marcar('envio');
 }
 
@@ -294,7 +400,7 @@ function folhaCobrar() {
   const outros = contas(D.e).filter(x => x !== sessao.slot);
   abrir(`<h2>Cobrar</h2>
     <label>Quem vai pagar<select name="para">${opcoesContas(outros)}</select></label>
-    <label>Quanto<input name="qtd" type="number" inputmode="numeric" min="1" required></label>
+    ${campoLu('qtd', 'Quanto')}
     <label>Motivo (opcional)<input name="msg" maxlength="80"></label>${rodape('Enviar cobrança')}`,
   async d => tentar(() => store.cobrar(d.get('para'), inteiro(d.get('qtd')), d.get('msg').trim()), `Cobrança enviada para ${nome(d.get('para'))}.`));
 }
@@ -323,7 +429,7 @@ function folhaCartao() {
     <p class="nota">Cada fatura paga em dia libera mais limite. Fatura atrasada baixa o limite e trava o cartão.</p>
     <div class="grade" style="margin-bottom:14px"><div><span>Fatura atual</span><b>${lu(fatura)}</b></div><div><span>Débito automático</span><b>${c.venc ? dia(c.venc) : 'Sem fatura'}</b></div></div>
     ${fatura ? `<p class="nota">Pagando antes do vencimento não tem juros. No débito automático entram ${JUROS_PCT}%.</p>
-      <label>Quanto pagar agora<input name="qtd" type="number" inputmode="numeric" min="1" max="${fatura}" value="${Math.min(fatura, e.saldos[s]) || ''}" required></label>${rodape('Pagar fatura')}` : fechar}`,
+      ${campoLu('qtd', 'Quanto pagar agora', { max: fatura, valor: Math.min(fatura, e.saldos[s]), chips: false })}${rodape('Pagar fatura')}` : fechar}`,
   async d => tentar(() => store.executar({ tipo: 'fatura', de: s, qtd: inteiro(d.get('qtd')) }), 'Fatura paga.'));
 }
 
@@ -334,10 +440,16 @@ function folhaPoupanca() {
   const f = abrir(`<h2>Poupança</h2>
     <div class="grade" style="margin-bottom:14px"><div><span>Guardado</span><b>${lu(a.n)}</b></div><div><span>Rendimento</span><b>${RENDIMENTO_PCT}% por semana</b></div></div>
     <div class="opcoes"><button type="button" class="btn" id="g" ${aberta ? '' : 'disabled'}>Guardar</button><button type="button" class="btn" id="r">Resgatar</button></div>
-    <label>Quanto<input name="qtd" type="number" inputmode="numeric" min="1" required></label>
+    ${campoLu('qtd', 'Quanto', { max: e.saldos[s], tudo: true })}
     <p class="nota">Moeda guardada não ganha movimentação. O rendimento sai da Economia e para se ela esvaziar.</p>${rodape('Confirmar')}`,
   async d => tentar(() => store.executar({ tipo, de: s, qtd: inteiro(d.get('qtd')) }), 'Poupança atualizada.'));
-  const marcar = t => { tipo = t; f.querySelector('#g').classList.toggle('on', t === 'guardar'); f.querySelector('#r').classList.toggle('on', t === 'resgatar'); };
+  const marcar = t => {
+    tipo = t;
+    f.querySelector('#g').classList.toggle('on', t === 'guardar'); f.querySelector('#r').classList.toggle('on', t === 'resgatar');
+    const max = t === 'guardar' ? e.saldos[s] : a.n;
+    f.qtd.dataset.max = max; f.querySelector('.rot').textContent = `Quanto (disponível: ${num(max)})`;
+    if (f.qtd.value) definir(f.qtd, f.qtd.value);
+  };
   f.querySelector('#g').onclick = () => marcar('guardar');
   f.querySelector('#r').onclick = () => marcar('resgatar');
   marcar(tipo);
@@ -390,7 +502,7 @@ function folhaSacar() {
   const e = D.e, r = resumo(e, sessao.slot), v = valorMoeda(e);
   if (!r.sacaveis) return info('Sacar', `<p>Nenhuma moeda sua chegou às ${num(CARENCIA)} movimentações ainda. A mais rodada está em ${num(r.maior)}.</p>`);
   abrir(`<h2>Emitir cheque</h2>
-    <label>Quantas moedas (liberadas: ${num(r.sacaveis)})<input name="qtd" type="number" inputmode="numeric" min="1" max="${r.sacaveis}" required></label>
+    ${campoLu('qtd', `Quantas moedas (liberadas: ${num(r.sacaveis)})`, { max: r.sacaveis, tudo: true })}
     <div class="previa" id="previa"></div>
     <p class="nota">O app gera o cheque, você manda para o Nicholas e ele compensa por fora.</p>${rodape('Emitir cheque')}`, async d => {
     const qtd = inteiro(d.get('qtd')); let c;
@@ -411,14 +523,14 @@ function previa(p, tx) {
 function formEmissao(destinos, botao, titulo, aoConfirmar) {
   let guardou = true;
   const f = abrir(`<h2>${esc(titulo)}</h2>
-    <label>Quantas moedas<input name="qtd" type="number" inputmode="numeric" min="1" value="2500" required></label>
+    ${campoLu('qtd', 'Quantas moedas', { valor: 2500 })}
     ${destinos ? `<label>Para quem<select name="para">${opcoesContas(destinos)}</select></label>` : ''}
     <div class="opcoes"><button type="button" class="btn on" id="sim">Com depósito</button><button type="button" class="btn" id="nao">Sem depósito</button></div>
-    <label id="campo">Quanto depositei (R$)<input name="dep" inputmode="decimal"></label>
+    ${campoReal('dep', 'Quanto depositei', { id: 'campo', required: false })}
     <div class="previa" id="previa"></div>${rodape(botao)}`,
   async d => aoConfirmar(d, guardou ? centavos(d.get('dep')) || 0 : 0));
   const atualizar = () => previa(f.querySelector('#previa'), { tipo: 'emissao', para: f.para?.value || 's1', qtd: inteiro(f.qtd.value) || 0, deposito: guardou ? centavos(f.dep.value) || 0 : 0 });
-  const sugerir = () => { f.dep.value = ((inteiro(f.qtd.value) || 0) * valorMoeda(D.e) / 100).toFixed(2).replace('.', ','); };
+  const sugerir = () => { f.dep.value = fmtReal(Math.round((inteiro(f.qtd.value) || 0) * valorMoeda(D.e))); };
   const marcar = v => { guardou = v; f.querySelector('#sim').classList.toggle('on', v); f.querySelector('#nao').classList.toggle('on', !v); f.querySelector('#campo').hidden = !v; atualizar(); };
   f.querySelector('#sim').onclick = () => marcar(true);
   f.querySelector('#nao').onclick = () => marcar(false);
@@ -454,7 +566,7 @@ function folhaCaixinha() {
   };
   const f = abrir(`<h2>Caixinha</h2><p class="nota">Saldo: ${real(D.e.lastro)}. Só registra aqui, nenhum banco de verdade é tocado.</p>
     <div class="opcoes"><button type="button" class="btn on" id="dep">Depositei</button><button type="button" class="btn" id="ret">Retirei</button></div>
-    <label>Valor (R$)<input name="v" inputmode="decimal" required></label>
+    ${campoReal('v', 'Valor')}
     <div class="previa" id="previa"></div>${rodape('Registrar')}`,
   async d => tentar(() => store.executar({ tipo: 'caixinha', delta: sinal * centavos(d.get('v')) }), 'Caixinha atualizada.'), atualizar);
   const marcar = s => { sinal = s; f.querySelector('#dep').classList.toggle('on', s > 0); f.querySelector('#ret').classList.toggle('on', s < 0); atualizar(f); };
@@ -505,12 +617,14 @@ function folhaConfirmar(titulo, texto, rotulo, fn) {
 
 /* ---------- cliques ---------- */
 document.addEventListener('click', ev => {
-  const alvo = ev.target.closest('[data-acao],[data-aba],[data-cartao],[data-moedas]');
+  const alvo = ev.target.closest('[data-acao],[data-aba],[data-cartao],[data-moedas],[data-extrato],[data-filtro]');
   if (!alvo) return;
   const ds = alvo.dataset;
   if (ds.aba) { aba = ds.aba; desenhar(); scrollTo(0, 0); return; }
   if (ds.cartao) { cartaoAba = ds.cartao; desenhar(); return; }
   if (ds.moedas) { moedasAba = ds.moedas; desenhar(); return; }
+  if (ds.extrato) { extratoAba = ds.extrato; desenhar(); return; }
+  if (ds.filtro) { extratoFiltro = ds.filtro; desenhar(); return; }
   const { acao, slot, id, tipo } = ds, ch = D.cheques.find(x => x.id === id), cb = D.cobrancas.find(x => x.id === id);
   ({
     entrar: () => tentar(() => store.entrar()),
@@ -520,7 +634,7 @@ document.addEventListener('click', ev => {
     cartao: folhaCartao, poupanca: folhaPoupanca, cashback: folhaCashback, emitir: folhaEmitir, caixinha: folhaCaixinha,
     'nova-conta': folhaNovaConta, 'nova-conta-amigo': folhaContaAmigo,
     'meu-nome': () => folhaNome(sessao.slot), renomear: () => folhaNome(slot), convidar: () => folhaConvite(slot),
-    'ver-cheque': () => folhaCheque(ch),
+    'ver-cheque': () => folhaCheque(ch), 'mais-extrato': () => store.maisExtrato(),
     'pagar-cobranca': async () => { if (await tentar(() => store.pagarCobranca(cb, tipo), 'Cobrança paga.')) folhaAvisos(); },
     'recusar-cobranca': async () => { await tentar(() => store.fecharCobranca(cb, 'recusada'), 'Cobrança recusada.'); folhaAvisos(); },
     'cancelar-cobranca': async () => { await tentar(() => store.fecharCobranca(cb, 'cancelada'), 'Cobrança cancelada.'); folhaAvisos(); },
