@@ -1,0 +1,174 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Tudo o que já existia continua como estava (Estoque, Extratos e o que mais houver).
+    match /{colecao}/{document=**} {
+      allow read, write: if colecao != 'caraminguas';
+    }
+
+    // ---------- Lúmen ----------
+    function logado() {
+      // O projeto tem login anônimo ativado: aqui só vale conta Google.
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function admin() {
+      return logado()
+        && request.auth.token.email == 'nicholas.s.steiner@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    function meuSlot() {
+      return get(/databases/$(database)/documents/caraminguas/lumen/membros/$(request.auth.uid)).data.slot;
+    }
+    function nomeValido(n) {
+      return n is string && n.size() > 0 && n.size() <= 24;
+    }
+    function txDe(d) {
+      return getAfter(/databases/$(database)/documents/caraminguas/lumen/transacoes/$(string(d.seq))).data;
+    }
+    function soma(s, de, para) {
+      return s[de] + s[para] + s.cofre + s.economia + s.poup;
+    }
+    // Operação de um amigo: só na própria conta, sem criar moeda, sem mexer na caixinha.
+    // Limites do cartão e juros são conferidos pelo botão Auditar.
+    function operacaoValida() {
+      let a = resource.data;
+      let d = request.resource.data;
+      let t = txDe(d);
+      let de = t.de;
+      let para = t.get('para', t.de);
+      return logado()
+        && d.seq == a.seq + 1
+        && t.por == request.auth.uid
+        && t.tipo in ['envio', 'compra', 'fatura', 'debito', 'guardar', 'resgatar', 'rendimento']
+        && de == meuSlot()
+        && para in a.saldos
+        && d.saldos[de] >= 0
+        && (para == de || d.saldos[para] >= a.saldos[para])
+        && soma(d.saldos, de, para) == soma(a.saldos, de, para)
+        && d.saldos.diff(a.saldos).affectedKeys().hasOnly([de, para, 'cofre', 'economia', 'poup'])
+        && d.cartoes.diff(a.cartoes).affectedKeys().hasOnly([de])
+        && d.aplic.diff(a.aplic).affectedKeys().hasOnly([de])
+        && d.diff(a).affectedKeys().hasOnly(['seq', 'saldos', 'cartoes', 'aplic', 'moedas', 'atualizado'])
+        && (t.tipo != 'envio' || (
+          t.qtd is int && t.qtd > 0 && para != de
+          && d.saldos[de] == a.saldos[de] - t.qtd
+          && d.saldos[para] == a.saldos[para] + t.qtd
+          && d.saldos.diff(a.saldos).affectedKeys().hasOnly([de, para])));
+    }
+    // Qualquer membro pode abrir uma conta nova, sempre zerada.
+    function contaValida() {
+      let a = resource.data;
+      let d = request.resource.data;
+      let t = txDe(d);
+      return logado()
+        && d.seq == a.seq + 1
+        && t.tipo == 'conta'
+        && t.por == request.auth.uid
+        && exists(/databases/$(database)/documents/caraminguas/lumen/membros/$(request.auth.uid))
+        && !(t.slot in a.saldos)
+        && a.saldos.size() < 63
+        && d.saldos[t.slot] == 0
+        && d.saldos.diff(a.saldos).affectedKeys().hasOnly([t.slot])
+        && d.cartoes.diff(a.cartoes).affectedKeys().hasOnly([t.slot])
+        && d.aplic.diff(a.aplic).affectedKeys().hasOnly([t.slot])
+        && d.diff(a).affectedKeys().hasOnly(['seq', 'saldos', 'cartoes', 'aplic', 'moedas', 'atualizado']);
+    }
+
+    match /caraminguas/banco/{document=**} {
+      allow read: if admin();
+    }
+
+    match /caraminguas/lumen {
+      allow read: if logado();
+      allow create: if admin();
+      allow update: if (admin() && request.resource.data.seq == resource.data.seq + 1) || operacaoValida() || contaValida();
+    }
+
+    match /caraminguas/lumen/transacoes/{id} {
+      allow read: if logado();
+      allow create: if logado()
+        && request.resource.data.por == request.auth.uid
+        && string(request.resource.data.seq) == id
+        && getAfter(/databases/$(database)/documents/caraminguas/lumen).data.seq == request.resource.data.seq
+        && request.resource.data.get('msg', '').size() <= 80
+        && (admin() || request.resource.data.tipo in ['envio', 'compra', 'fatura', 'debito', 'guardar', 'resgatar', 'rendimento', 'conta']);
+    }
+
+    match /caraminguas/lumen/contas/{slot} {
+      allow read: if logado();
+      allow delete: if admin();
+      allow create: if admin()
+        || (logado()
+            && request.resource.data.keys().hasOnly(['nome', 'uid', 'criador'])
+            && request.resource.data.uid == null
+            && request.resource.data.criador == request.auth.uid
+            && nomeValido(request.resource.data.nome)
+            && slot in getAfter(/databases/$(database)/documents/caraminguas/lumen).data.saldos);
+      allow update: if admin()
+        // renomear a própria conta
+        || (logado() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome'])
+            && nomeValido(request.resource.data.nome))
+        // aceitar convite
+        || (logado() && resource.data.uid == null
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'nome', 'convite'])
+            && nomeValido(request.resource.data.nome)
+            && get(/databases/$(database)/documents/caraminguas/lumen/convites/$(request.resource.data.convite)).data.slot == slot
+            && !exists(/databases/$(database)/documents/caraminguas/lumen/membros/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/caraminguas/lumen/membros/$(request.auth.uid)));
+    }
+
+    match /caraminguas/lumen/membros/{uid} {
+      allow get: if logado() && (uid == request.auth.uid || admin());
+      allow delete: if admin();
+      allow create: if admin()
+        || (logado() && uid == request.auth.uid
+            && request.resource.data.keys().hasOnly(['slot'])
+            && get(/databases/$(database)/documents/caraminguas/lumen/contas/$(request.resource.data.slot)).data.uid == null
+            && getAfter(/databases/$(database)/documents/caraminguas/lumen/contas/$(request.resource.data.slot)).data.uid == uid);
+    }
+
+    // O link do convite é a chave: quem tem o código lê. Cada um só lista os que criou.
+    match /caraminguas/lumen/convites/{token} {
+      allow get: if logado();
+      allow list: if admin() || (logado() && resource.data.por == request.auth.uid);
+      allow delete: if admin();
+      allow create: if admin()
+        || (logado()
+            && request.resource.data.keys().hasOnly(['slot', 'por'])
+            && request.resource.data.por == request.auth.uid
+            && get(/databases/$(database)/documents/caraminguas/lumen/contas/$(request.resource.data.slot)).data.criador == request.auth.uid
+            && get(/databases/$(database)/documents/caraminguas/lumen/contas/$(request.resource.data.slot)).data.uid == null);
+    }
+
+    match /caraminguas/lumen/cheques/{id} {
+      allow read: if logado();
+      allow update: if admin();
+      allow create: if logado()
+        && request.resource.data.keys().hasOnly(['numero', 'slot', 'qtd', 'valor', 'status', 'em'])
+        && request.resource.data.slot == meuSlot()
+        && request.resource.data.status == 'emitido'
+        && request.resource.data.qtd is int && request.resource.data.qtd > 0
+        && request.resource.data.valor is int && request.resource.data.valor >= 0;
+    }
+
+    match /caraminguas/lumen/cobrancas/{id} {
+      allow read: if logado();
+      allow create: if logado()
+        && request.resource.data.keys().hasOnly(['de', 'para', 'qtd', 'msg', 'status', 'em'])
+        && request.resource.data.de == meuSlot()
+        && request.resource.data.para != request.resource.data.de
+        && request.resource.data.status == 'aberta'
+        && request.resource.data.qtd is int && request.resource.data.qtd > 0
+        && request.resource.data.msg.size() <= 80;
+      allow update: if logado()
+        && resource.data.status == 'aberta'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && ((resource.data.para == meuSlot() && request.resource.data.status in ['paga', 'recusada'])
+            || (resource.data.de == meuSlot() && request.resource.data.status == 'cancelada'));
+    }
+  }
+}
