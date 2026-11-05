@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Tudo o que já existia continua como estava (Estoque, Extratos e o que mais houver).
+    match /{colecao}/{document=**} {
+      allow read, write: if colecao != 'caraminguas';
+    }
+
+    // ---------- Caraminguás ----------
+    function logado() {
+      // O projeto tem login anônimo ativado: aqui só vale conta Google.
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function admin() {
+      return logado()
+        && request.auth.token.email == 'nicholas.s.steiner@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+    function meuSlot() {
+      return get(/databases/$(database)/documents/caraminguas/banco/membros/$(request.auth.uid)).data.slot;
+    }
+    function nomeValido(n) {
+      return n is string && n.size() > 0 && n.size() <= 24;
+    }
+    // Envio entre amigos: só da própria conta, sem criar nem sumir moeda.
+    function envioValido() {
+      let a = resource.data;
+      let d = request.resource.data;
+      let t = getAfter(/databases/$(database)/documents/caraminguas/banco/transacoes/$(string(d.seq))).data;
+      return logado()
+        && d.seq == a.seq + 1
+        && t.tipo == 'envio'
+        && t.por == request.auth.uid
+        && t.qtd is int && t.qtd > 0
+        && t.de != t.para
+        && t.de == meuSlot()
+        && t.para in a.saldos
+        && d.saldos[t.de] == a.saldos[t.de] - t.qtd
+        && d.saldos[t.de] >= 0
+        && d.saldos[t.para] == a.saldos[t.para] + t.qtd
+        && d.saldos.diff(a.saldos).affectedKeys().hasOnly([t.de, t.para])
+        && d.diff(a).affectedKeys().hasOnly(['seq', 'saldos', 'moedas', 'atualizado']);
+    }
+
+    match /caraminguas/banco {
+      allow read: if logado();
+      allow create: if admin();
+      allow update: if (admin() && request.resource.data.seq == resource.data.seq + 1) || envioValido();
+    }
+
+    match /caraminguas/banco/transacoes/{id} {
+      allow read: if logado();
+      allow create: if logado()
+        && request.resource.data.por == request.auth.uid
+        && string(request.resource.data.seq) == id
+        && getAfter(/databases/$(database)/documents/caraminguas/banco).data.seq == request.resource.data.seq
+        && request.resource.data.get('msg', '').size() <= 80
+        && (request.resource.data.tipo == 'envio' || admin());
+    }
+
+    match /caraminguas/banco/contas/{slot} {
+      allow read: if logado();
+      allow create, delete: if admin();
+      allow update: if admin()
+        // renomear a própria conta
+        || (logado() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome'])
+            && nomeValido(request.resource.data.nome))
+        // aceitar convite
+        || (logado() && resource.data.uid == null
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'nome', 'convite'])
+            && nomeValido(request.resource.data.nome)
+            && get(/databases/$(database)/documents/caraminguas/banco/convites/$(request.resource.data.convite)).data.slot == slot
+            && !exists(/databases/$(database)/documents/caraminguas/banco/membros/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/caraminguas/banco/membros/$(request.auth.uid)));
+    }
+
+    match /caraminguas/banco/membros/{uid} {
+      allow get: if logado() && (uid == request.auth.uid || admin());
+      allow delete: if admin();
+      allow create: if admin()
+        || (logado() && uid == request.auth.uid
+            && request.resource.data.keys().hasOnly(['slot'])
+            && get(/databases/$(database)/documents/caraminguas/banco/contas/$(request.resource.data.slot)).data.uid == null
+            && getAfter(/databases/$(database)/documents/caraminguas/banco/contas/$(request.resource.data.slot)).data.uid == uid);
+    }
+
+    // O link do convite é a chave: quem tem o código lê, mas ninguém lista.
+    match /caraminguas/banco/convites/{token} {
+      allow get: if logado();
+      allow list, create, delete: if admin();
+    }
+
+    match /caraminguas/banco/saques/{id} {
+      allow read: if logado();
+      allow update: if admin();
+      allow create: if logado()
+        && request.resource.data.keys().hasOnly(['slot', 'qtd', 'status', 'em'])
+        && request.resource.data.slot == meuSlot()
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.qtd is int && request.resource.data.qtd > 0;
+    }
+  }
+}
