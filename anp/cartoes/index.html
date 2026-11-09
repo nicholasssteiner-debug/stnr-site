@@ -75,6 +75,17 @@
   .aba.on { color:var(--g1); border-bottom-color:var(--g1); }
   .painel-aba { display:none; } .painel-aba.on { display:block; }
 
+  /* ---- aba Fatura → CSV ---- */
+  .csv-drop { border:2px dashed var(--baseline); border-radius:10px; padding:26px; text-align:center;
+              cursor:pointer; color:var(--ink-2); font-size:13.5px; }
+  .csv-drop b { color:var(--g1); }
+  .csv-drop.over { border-color:var(--g1); background:var(--chip); }
+  .csv-msg { padding:9px 12px; border-radius:8px; margin-top:8px; font-size:13.5px; border:1px solid var(--borda); }
+  .csv-msg.ok { border-left:4px solid var(--bom); } .csv-msg.warn { border-left:4px solid var(--aviso); }
+  .csv-msg.err { border-left:4px solid var(--critico); color:var(--critico); }
+  tr.csv-c td { background:var(--chip); }
+  .csv-dc { cursor:pointer; font-weight:700; border:1px solid var(--borda); border-radius:5px; padding:1px 8px; }
+
   .barra-dados { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
                  background:var(--surface); border:1px solid var(--borda); border-radius:10px;
                  padding:10px 14px; margin-bottom:16px; font-size:13px; color:var(--ink-2); }
@@ -264,6 +275,7 @@
   <nav class="abas">
     <button class="aba on" data-aba="painel">Painel de consulta</button>
     <button class="aba" data-aba="relatorio" id="btn-aba-relatorio" style="display:none">Relatório</button>
+    <button class="aba" data-aba="csv" id="btn-aba-csv" style="display:none">Fatura → CSV</button>
     <button class="aba" data-aba="emails" id="btn-aba-emails" style="display:none">E-mails</button>
     <button class="aba" data-aba="usuarios" id="aba-usuarios" style="display:none">Usuários</button>
   </nav>
@@ -435,6 +447,39 @@
         <h2 class="doc-sec">Observações Adicionais</h2>
         <div id="input-obs" class="obs-edit" contenteditable="true"
              data-placeholder="Digite suas observações aqui (opcional). Em branco, esta página não é impressa."></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- ABA: FATURA → CSV ---------- -->
+  <section class="painel-aba" id="aba-csv">
+    <div class="card" style="margin-bottom:16px">
+      <h2>Gerar o arquivo de importação a partir da fatura</h2>
+      <p class="nota">Solte a fatura em PDF (Bradesco), informe o valor da fatura anterior e baixe o CSV no formato
+        <code>Data;;Histórico;Valor;D/C</code> (crédito com valor negativo). O PDF é lido aqui no navegador — nada sai da sua máquina.</p>
+      <div id="csv-drop" class="csv-drop"><b>Clique ou arraste a fatura PDF aqui</b><br><span id="csv-fname">nenhum arquivo</span></div>
+      <input id="csv-file" type="file" accept=".pdf,application/pdf" style="display:none">
+    </div>
+
+    <div id="csv-painel" style="display:none">
+      <div class="tiles" id="csv-info"></div>
+
+      <div class="filtros" style="border-bottom:none; margin-bottom:6px">
+        <div class="campo"><label for="csv-vant">Valor da fatura anterior (R$)</label>
+          <input id="csv-vant" type="text" placeholder="ex.: 1.210,67" inputmode="decimal"></div>
+        <div class="campo"><label for="csv-dant">Data do pagamento</label>
+          <input id="csv-dant" type="date"></div>
+        <div class="campo"><label for="csv-hant">Histórico do pagamento</label>
+          <input id="csv-hant" type="text" value="Pgto Fat Bradesco"></div>
+        <button class="btn btn-forte" id="csv-baixar">⬇️ Baixar CSV</button>
+      </div>
+      <div id="csv-msgs" style="margin-bottom:14px"></div>
+
+      <div class="card">
+        <div class="rolagem"><table>
+          <thead><tr><th>Data</th><th>Histórico</th><th class="num">Valor</th><th>D/C</th></tr></thead>
+          <tbody id="csv-tb"></tbody>
+        </table></div>
       </div>
     </div>
   </section>
@@ -1544,6 +1589,7 @@ function entrar(u) {
   const ehAdmin = u.tipo === "admin";
   el("btn-aba-relatorio").style.display = ehAdmin ? "" : "none";
   el("btn-aba-emails").style.display = ehAdmin ? "" : "none";
+  el("btn-aba-csv").style.display = ehAdmin ? "" : "none";
   el("aba-usuarios").style.display = ehAdmin ? "" : "none";
   if (!ehAdmin) mostrarAba("painel");
   el("doc-assin-nome").textContent = u.nome || u.login;
@@ -1657,6 +1703,183 @@ el("bd-gerado").textContent = PACOTE.gerado;
      Firebase: usuários e adiamentos compartilhados. Módulo isolado — se a
      nuvem falhar, a página continua de pé com o cache local.
      ===================================================================== -->
+<script>
+/* ============================ ABA FATURA → CSV ============================
+   Lê a fatura PDF do Bradesco no próprio navegador (pdf.js) e monta o arquivo de
+   importação da reconciliação, no mesmo layout da aba "Reconciliação" da planilha
+   Cartão Corporativo.xlsx (colunas E:I): Data ; (vazio) ; Histórico ; Valor ; D/C.
+   Crédito sai com valor negativo. O PDF não é enviado para lugar nenhum. */
+(() => {
+  const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  let fat = null;
+  const $c = id => document.getElementById(id);
+  const num = s => { s = String(s).trim().replace(/\s/g,""); const neg = /^-|-$/.test(s);
+    s = s.replace(/-/g,"").replace(/\./g,"").replace(",","."); const v = parseFloat(s); return isNaN(v) ? NaN : (neg ? -v : v); };
+  const dmy = d => String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+  const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  // igual ao PRÓPRIO() do Excel: maiúscula depois de qualquer caractere que não seja letra
+  const proper = s => s.toLowerCase().replace(/(^|[^a-zà-ÿ])([a-zà-ÿ])/g, (m,a,b) => a + b.toUpperCase());
+  const RX_CRED = /ESTORNO|DEVOLU|REEMBOLS|CANCELAM|CR[EÉ]DITO|CREDIT/i;   // devolução → crédito
+
+  function carregarPdfjs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    return new Promise((ok, falha) => {
+      const s = document.createElement("script");
+      s.src = PDFJS + "pdf.min.js";
+      s.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; ok(pdfjsLib); };
+      s.onerror = () => falha(new Error("não consegui carregar o leitor de PDF (sem internet?)"));
+      document.head.appendChild(s);
+    });
+  }
+
+  // reconstrói as linhas do PDF agrupando os textos pela altura na página
+  async function lerPdf(buf) {
+    const lib = await carregarPdfjs();
+    const pdf = await lib.getDocument({ data: buf }).promise;
+    const linhas = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const tc = await (await pdf.getPage(p)).getTextContent();
+      const grupos = [];
+      for (const it of tc.items) {
+        if (!it.str || !it.str.trim()) continue;
+        const y = it.transform[5], x = it.transform[4];
+        let g = grupos.find(g => Math.abs(g.y - y) < 2.5);
+        if (!g) { g = { y, itens: [] }; grupos.push(g); }
+        g.itens.push({ x, s: it.str });
+      }
+      grupos.sort((a,b) => b.y - a.y);
+      for (const g of grupos) { g.itens.sort((a,b) => a.x - b.x);
+        linhas.push(g.itens.map(i => i.s.trim()).join(" ").replace(/\s+/g," ")); }
+    }
+    return linhas;
+  }
+
+  function interpretar(linhas) {
+    const txt = linhas.join("\n");
+    const f = { itens: [] };
+    let m = txt.match(/Data de vencimento:?\s*(\d{2})\/(\d{2})\/(\d{4})|(\d{2})\/(\d{2})\/(\d{4})\s*Data de vencimento/i);
+    if (m) { const a = m[1] ? [m[1],m[2],m[3]] : [m[4],m[5],m[6]]; f.venc = new Date(+a[2], +a[1]-1, +a[0]); }
+    m = txt.match(/X{4}\.X{4}\.X{4}\.(\d{4})/); if (m) f.cartao = m[1];
+    m = txt.match(/M[eê]s:?\s*([A-Za-zçÇ]+\/\d{4})|([A-Za-zçÇ]+\/\d{4})\s*M[eê]s/); if (m) f.mes = m[1] || m[2];
+    m = txt.match(/Nome:[ \t]*(\S.*)$/m); if (m) f.nome = m[1].trim();
+    m = txt.match(/Total:?\s*(-?[\d.]+,\d{2})\s+(-?[\d.]+,\d{2})/); if (m) f.total = num(m[2]);
+    if (!f.venc) { f.venc = new Date(); f.semVenc = true; }
+    // dd/mm HISTÓRICO US$ R$
+    const rx = /^(\d{2})\/(\d{2})\s+(.+?)\s+(-?\s?[\d.]+,\d{2}\s?-?)\s+(-?\s?[\d.]+,\d{2}\s?-?)$/;
+    for (const l of linhas) {
+      const r = l.match(rx); if (!r) continue;
+      const mes = +r[2]; let ano = f.venc.getFullYear();
+      if (mes > f.venc.getMonth() + 1) ano--;          // compra de dezembro numa fatura de janeiro
+      const valor = num(r[5]); if (isNaN(valor)) continue;
+      const hist = r[3].trim(), porTexto = RX_CRED.test(hist);
+      f.itens.push({ data: new Date(ano, mes-1, +r[1]), hist: proper(hist), valor: Math.abs(valor),
+                     dc: (valor < 0 || porTexto) ? "C" : "D", auto: porTexto && valor >= 0 });
+    }
+    return f;
+  }
+
+  function linhasFinais() {
+    const out = fat.itens.map(i => ({ ...i }));
+    const v = num($c("csv-vant").value);
+    if (!isNaN(v) && v !== 0) {
+      const d = $c("csv-dant").value ? new Date($c("csv-dant").value + "T00:00") : null;
+      out.push({ data: d, hist: $c("csv-hant").value.trim() || "Pgto Fat Bradesco", valor: Math.abs(v), dc: "C", pgto: true });
+    }
+    return out;
+  }
+
+  function portadorDoCartao(final) {
+    const c = (typeof DADOS !== "undefined" && DADOS && DADOS.cartoes || []).find(c => String(c.final) === String(final));
+    return c ? c.portador : null;
+  }
+
+  function render() {
+    $c("csv-painel").style.display = "";
+    const port = fat.cartao && portadorDoCartao(fat.cartao);
+    const tile = (r, v, pe) => `<div class="tile"><div class="rot">${r}</div><div class="val" style="font-size:20px">${esc(String(v))}</div>${pe ? `<div class="pe">${esc(pe)}</div>` : ""}</div>`;
+    $c("csv-info").innerHTML =
+      tile("Cartão", fat.cartao ? "final " + fat.cartao : "—", port || fat.nome || "") +
+      tile("Mês da fatura", fat.mes || "—", fat.semVenc ? "vencimento não encontrado" : "vence " + dmy(fat.venc)) +
+      tile("Total da fatura (PDF)", fat.total != null ? "R$ " + brl(fat.total) : "—", fat.itens.length + " lançamento(s)");
+    desenhar();
+  }
+
+  function desenhar() {
+    const rows = linhasFinais();
+    $c("csv-tb").innerHTML = rows.map((r, i) => `<tr class="${r.dc === "C" ? "csv-c" : ""}">
+      <td style="white-space:nowrap">${r.data ? dmy(r.data) : '<span style="color:var(--critico)">sem data</span>'}</td>
+      <td>${esc(r.hist)}${r.pgto ? ' <span class="badge">fatura anterior</span>' : ""}${r.auto ? ' <span class="badge">crédito pelo histórico</span>' : ""}</td>
+      <td class="num">${r.dc === "C" ? "-" : ""}${brl(r.valor)}</td>
+      <td>${r.pgto ? "<b>C</b>" : `<span class="csv-dc" data-i="${i}" title="Clique para trocar D/C">${r.dc}</span>`}</td></tr>`).join("");
+
+    const deb = rows.filter(r => r.dc === "D").reduce((s, r) => s + r.valor, 0);
+    const cre = rows.filter(r => r.dc === "C" && !r.pgto).reduce((s, r) => s + r.valor, 0);
+    const msgs = [];
+    if (fat.total != null) {
+      const dif = Math.round((deb - cre - fat.total) * 100) / 100;
+      msgs.push(dif === 0
+        ? ["ok", `Lançamentos conferem com o total do PDF: débitos R$ ${brl(deb)}${cre ? ` − créditos R$ ${brl(cre)}` : ""} = R$ ${brl(fat.total)}.`]
+        : ["err", `Diferença de R$ ${brl(dif)} entre os lançamentos lidos e o total do PDF (R$ ${brl(fat.total)}). Confira antes de importar.`]);
+    }
+    if (!fat.itens.length) msgs.push(["err", "Nenhum lançamento encontrado no PDF."]);
+    const vt = $c("csv-vant").value.trim();
+    if (!vt || isNaN(num(vt))) msgs.push(["warn", "Informe o valor da fatura do período anterior (se não houver, digite 0)."]);
+    else if (num(vt) !== 0 && !$c("csv-dant").value) msgs.push(["err", "Informe a data do pagamento da fatura anterior."]);
+    $c("csv-msgs").innerHTML = msgs.map(([t, s]) => `<div class="csv-msg ${t}">${s}</div>`).join("");
+    $c("csv-baixar").disabled = !fat.itens.length || rows.some(r => !r.data);
+  }
+
+  // Windows-1252, como o Excel grava "CSV (separado por vírgulas)"
+  function cp1252(str) {
+    const ext = {"€":0x80,"‚":0x82,"ƒ":0x83,"„":0x84,"…":0x85,"†":0x86,"‡":0x87,"ˆ":0x88,"‰":0x89,"Š":0x8A,"‹":0x8B,"Œ":0x8C,"Ž":0x8E,
+                 "‘":0x91,"’":0x92,"“":0x93,"”":0x94,"•":0x95,"–":0x96,"—":0x97,"˜":0x98,"™":0x99,"š":0x9A,"›":0x9B,"œ":0x9C,"ž":0x9E,"Ÿ":0x9F};
+    const b = [];
+    for (const ch of str) { const c = ch.charCodeAt(0);
+      if (c < 0x80 || (c >= 0xA0 && c <= 0xFF)) b.push(c); else if (ext[ch]) b.push(ext[ch]);
+      else { const s = ch.normalize("NFD").replace(/[̀-ͯ]/g, ""); b.push(s.charCodeAt(0) < 0x80 ? s.charCodeAt(0) : 0x3F); } }
+    return new Uint8Array(b);
+  }
+
+  function baixar() {
+    const csv = linhasFinais().map(r => [dmy(r.data), "", r.hist.replace(/;/g, ","),
+      (r.dc === "C" ? "-" : "") + brl(r.valor).replace(/\./g, ""), r.dc].join(";")).join("\r\n") + "\r\n";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([cp1252(csv)], { type: "text/csv" }));
+    a.download = `Cartao_${fat.cartao || "corp"}_${fat.semVenc ? "" : iso(fat.venc).slice(0, 7)}.csv`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  async function processar(buf, nome) {
+    $c("csv-fname").textContent = nome + " — lendo…";
+    try {
+      fat = interpretar(await lerPdf(buf));
+      $c("csv-fname").textContent = nome;
+      $c("csv-vant").value = "";
+      if (!fat.semVenc) { const d = new Date(fat.venc); d.setMonth(d.getMonth() - 1); $c("csv-dant").value = iso(d); }
+      render();
+    } catch (e) {
+      $c("csv-painel").style.display = "none";
+      $c("csv-fname").innerHTML = `<span style="color:var(--critico)">Erro ao ler o PDF: ${esc(e.message)}</span>`;
+    }
+  }
+
+  const drop = $c("csv-drop");
+  drop.addEventListener("click", () => $c("csv-file").click());
+  $c("csv-file").addEventListener("change", async e => { const f = e.target.files[0]; if (f) processar(await f.arrayBuffer(), f.name); e.target.value = ""; });
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", async e => { e.preventDefault(); drop.classList.remove("over");
+    const f = e.dataTransfer.files[0]; if (f) processar(await f.arrayBuffer(), f.name); });
+  $c("csv-tb").addEventListener("click", e => {
+    const t = e.target.closest(".csv-dc"); if (!t) return;
+    const it = fat.itens[+t.dataset.i]; it.dc = it.dc === "D" ? "C" : "D"; it.auto = false; desenhar();
+  });
+  ["csv-vant", "csv-dant", "csv-hant"].forEach(id => $c(id).addEventListener("input", () => fat && desenhar()));
+  $c("csv-baixar").addEventListener("click", baixar);
+  window.__csvFatura = { processar, baixar };   // para testes
+})();
+</script>
+
 <script type="module">
   /* Import dinâmico de propósito: no modo demonstração nada é baixado da rede,
      então o arquivo funciona 100% offline. */
