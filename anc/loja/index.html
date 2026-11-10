@@ -238,7 +238,7 @@
     <div class="abas">
       <button class="aba-btn ativa" data-aba="visao">Visão Geral</button>
       <button class="aba-btn" data-aba="dre">DRE por Mês</button>
-      <button class="aba-btn" data-aba="comp">Comparativo Anual</button>
+      <button class="aba-btn" data-aba="dep">DRE por Departamento</button>
       <button class="aba-btn" data-aba="proj">Projeção</button>
       <button class="aba-btn" data-aba="subv">Subvenções</button>
       <button class="aba-btn" data-aba="bp">Balanço</button>
@@ -283,23 +283,17 @@
       </div>
     </div>
 
-    <div id="aba-comp" class="conteudo-aba" style="display:none">
-      <div class="painel grafico">
-        <h2 id="titulo-cascata">Cascata do Resultado</h2>
-        <div id="grafico-cascata"></div>
+    <div id="aba-dep" class="conteudo-aba" style="display:none">
+      <div class="cartoes" id="dep-cartoes"></div>
+      <div class="painel">
+        <h2 id="dep-titulo">DRE por Departamento</h2>
+        <p class="fer-desc">Receita, despesa e resultado de cada centro de custo no intervalo selecionado.
+          As duas lojas comerciais — <b>Denominacionais</b> e <b>Didáticos</b> — aparecem ao lado dos
+          departamentos administrativos (Operacional Loja e Veículo), que são <b>despesa de estrutura</b>
+          e não têm venda própria. A soma das colunas fecha exatamente com o Resultado da DRE.</p>
+        <div style="overflow-x:auto"><table class="tabela-dre" id="dep-tabela"></table></div>
       </div>
-      <div class="graficos">
-        <div class="painel grafico">
-          <h2 id="titulo-comp-meses">Resultado Mês a Mês</h2>
-          <div id="legenda-meses" class="legenda"></div>
-          <div id="grafico-comp-meses" class="barras-duplas"></div>
-        </div>
-        <div class="painel grafico">
-          <h2 id="titulo-acumulado">Resultado Acumulado</h2>
-          <div id="legenda-acumulado" class="legenda"></div>
-          <div id="grafico-acumulado"></div>
-        </div>
-      </div>
+      <div class="painel explica" id="dep-explica"></div>
     </div>
 
     <div id="aba-proj" class="conteudo-aba" style="display:none">
@@ -615,8 +609,10 @@ const NOMES_MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out"
    usa TODAS as contas analíticas de ativo/passivo para fechar exato.
    [conta, grupo, ordemGrupo, subgrupo, ordemSub] */
 const MAPA_BP = [
-  ["1112001","ATIVO CIRCULANTE",1,"Disponível",1],
-  ["1113001","ATIVO CIRCULANTE",1,"Disponível",1],
+  // Disponível na ordem do plano: Caixa (1111) > Bancos (1112) > Aplicações (1113)
+  ["1111000","ATIVO CIRCULANTE",1,"Caixa e Equivalentes",1],
+  ["1112001","ATIVO CIRCULANTE",1,"Caixa e Equivalentes",1],
+  ["1113001","ATIVO CIRCULANTE",1,"Caixa e Equivalentes",1],
   ["1131000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
   ["1132000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
   ["1135000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
@@ -624,29 +620,35 @@ const MAPA_BP = [
   ["1137000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
   ["1138500","ATIVO CIRCULANTE",1,"Contas a Receber",2],
   ["1139000","ATIVO CIRCULANTE",1,"Contas a Receber",2],
-  ["1160000","ATIVO CIRCULANTE",1,"Despesas Antecipadas",3],
-  ["1211000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
-  ["1215000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
-  ["1216000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
-  ["1219000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",4],
-  ["1230000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
-  ["1240000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",5],
-  ["2130100","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2130300","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2130500","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2130600","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2130800","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2131000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2135000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2136000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2137000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2139000","PASSIVO CIRCULANTE",3,"Contas a Pagar",6],
-  ["2141000","PASSIVO CIRCULANTE",3,"Provisões",7],
-  ["2142000","PASSIVO CIRCULANTE",3,"Provisões",7],
-  ["2143000","PASSIVO CIRCULANTE",3,"Provisões",7],
-  ["2150000","PASSIVO CIRCULANTE",3,"Fundos em Confiança",8],
-  ["2311000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
-  ["2320000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",9],
+  // Estoques logo depois de Contas a Receber, como no plano (114x)
+  ["1141000","ATIVO CIRCULANTE",1,"Estoques",3],
+  ["1148000","ATIVO CIRCULANTE",1,"Estoques",3],
+  ["1149000","ATIVO CIRCULANTE",1,"Estoques",3],
+  ["1160000","ATIVO CIRCULANTE",1,"Despesas Antecipadas",4],
+  ["1211000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",5],
+  ["1215000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",5],
+  ["1216000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",5],
+  ["1219000","ATIVO NÃO CIRCULANTE",2,"Realizável a Longo Prazo",5],
+  ["1230000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",6],
+  ["1240000","ATIVO NÃO CIRCULANTE",2,"Imobilizado",6],
+  ["2130100","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2130300","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2130500","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2130600","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2130800","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2131000","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2135000","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2136000","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2137000","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2139000","PASSIVO CIRCULANTE",3,"Contas a Pagar",7],
+  ["2141000","PASSIVO CIRCULANTE",3,"Provisões",8],
+  ["2142000","PASSIVO CIRCULANTE",3,"Provisões",8],
+  ["2143000","PASSIVO CIRCULANTE",3,"Provisões",8],
+  ["2150000","PASSIVO CIRCULANTE",3,"Fundos em Confiança",9],
+  // 216x: vendas antecipadas e depósitos de clientes — caíam em "Outras Contas"
+  ["2160000","PASSIVO CIRCULANTE",3,"Adiantamentos de Clientes",10],
+  ["2311000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",11],
+  ["2320000","PATRIMÔNIO LÍQUIDO",4,"Patrimônio Social",11],
 ];
 // grupo/subgrupo por prefixo de conta (para classificar QUALQUER conta 1/2)
 const GRUPOS_BP = (() => {
@@ -659,7 +661,7 @@ const GRUPOS_BP = (() => {
 function classificaBP(conta) {
   for (const g of GRUPOS_BP) if (conta.startsWith(g.prefixo)) return g;
   // fallback por grupo contábil
-  if (conta[0] === "1") return { grupo: "ATIVO", og: 1, sub: "Outras Contas do Ativo", os: 90 };
+  if (conta[0] === "1") return { grupo: "ATIVO CIRCULANTE", og: 1, sub: "Outras Contas do Ativo", os: 89 };
   if (conta[0] === "2") {
     if (conta.startsWith("23")) return { grupo: "PATRIMÔNIO LÍQUIDO", og: 4, sub: "Patrimônio Líquido", os: 91 };
     return { grupo: "PASSIVO CIRCULANTE", og: 3, sub: "Outras Contas do Passivo", os: 92 };
@@ -699,6 +701,7 @@ let mapaDRE = MAPA_DRE_PADRAO.map(([sinal, conta, dre2, ord2, dre3, ord3, dre4, 
 let infoContas = { ehAnalitica: () => true };
 let dadosBrutos = dadosExemplo();
 let movtoDados = [];   // lançamentos da aba Movto1135 (ferramenta Adto Salário)
+let depDados = [];     // aba "Departamentos": resultado por centro de custo-folha
 let linhasDRE = [];   // resultado do processamento (equivalente à tabela BD_AASI)
 
 // Replica a query BD_AASI: filtro de subconta, saldo por mês, join com o
@@ -863,7 +866,7 @@ function render() {
 
   // ----- Abas DRE, Comparativo, Projeção, Subvenções e Ferramentas -----
   renderDRE(linhas);
-  renderComparativo();
+  renderDepartamentos();
   renderProjecao();
   renderSubvencoes(linhas);
   renderBalanco();
@@ -1441,6 +1444,137 @@ function ligarDicas(container) {
    linhas de resultado acumulado. Compara o maior ano selecionado com
    o ano anterior, respeitando o intervalo de meses e o Campo.
    ===================================================================== */
+/* =====================================================================
+   DRE POR DEPARTAMENTO
+   Usa a aba "Departamentos" da planilha (departamentos-FOLHA apenas). Os
+   códigos que começam com '0' são visões espelho do consolidado e já ficam
+   de fora na extração — se entrassem, cada um repetiria o total inteiro.
+   A soma das colunas fecha exatamente com o Resultado da DRE.
+   ===================================================================== */
+function renderDepartamentos() {
+  const tab = document.getElementById("dep-tabela");
+  if (!tab) return;
+  const f = filtrosAtuais();
+  if (!depDados.length) {
+    document.getElementById("dep-cartoes").innerHTML = "";
+    tab.innerHTML = `<tbody><tr><td class="vazio">A planilha carregada não tem a aba
+      "Departamentos". Rode o Atualizar Dados para gerá-la.</td></tr></tbody>`;
+    document.getElementById("dep-explica").innerHTML = "";
+    return;
+  }
+  // bloco da DRE de cada conta, reaproveitando o De/Para já carregado
+  const blocoDe = new Map();
+  for (const m of mapaDRE) if (!blocoDe.has(m.conta)) blocoDe.set(m.conta, { d3: m.dre3, o3: m.ord3, d2: m.dre2 });
+
+  const deps = new Map();        // dep -> { nome, blocos:Map, rec, desp, res }
+  const blocos = new Map();      // dre3 -> ordem
+  for (const d of depDados) {
+    if (!f.anos.includes(d.Ano) || d.Mes < f.mesIni || d.Mes > f.mesFim) continue;
+    const base = d.Mes === 12 ? d.ajust : d.legal;
+    if (!base) continue;
+    const b = blocoDe.get(d.conta);
+    if (!b) continue;            // conta fora do De/Para não entra na DRE
+    const v = -base;             // mesma convenção da DRE (receita positiva)
+    const reg = deps.get(d.dep) || { nome: d.nomeDep, blocos: new Map(), rec: 0, desp: 0, res: 0 };
+    reg.blocos.set(b.d3, (reg.blocos.get(b.d3) || 0) + v);
+    reg.res += v;
+    if (d.conta[0] === "3") reg.rec += v; else reg.desp += v;
+    deps.set(d.dep, reg);
+    if (!blocos.has(b.d3)) blocos.set(b.d3, b.o3);
+  }
+  if (!deps.size) {
+    document.getElementById("dep-cartoes").innerHTML = "";
+    tab.innerHTML = `<tbody><tr><td class="vazio">Sem movimento por departamento neste recorte.</td></tr></tbody>`;
+    return;
+  }
+  // comerciais primeiro (têm venda), administrativos depois
+  const ordem = [...deps.entries()].sort((a, b) => {
+    const ca = a[1].rec > 0 && a[1].blocos.has(DRE3.prest), cb = b[1].rec > 0 && b[1].blocos.has(DRE3.prest);
+    if (ca !== cb) return ca ? -1 : 1;
+    return b[1].res - a[1].res;
+  });
+  const linhasB = [...blocos.entries()].sort((a, b) => a[1] - b[1]).map(x => x[0]);
+
+  // ----- cartões: um por departamento -----
+  document.getElementById("dep-cartoes").style.gridTemplateColumns = `repeat(${ordem.length + 1}, 1fr)`;
+  document.getElementById("dep-cartoes").innerHTML = ordem.map(([cod, r]) => {
+    const margem = r.rec ? r.res / r.rec : 0;
+    return `<div class="cartao"><div class="titulo">${r.nome || cod}</div>
+      <div class="valor" style="color:${r.res >= 0 ? "#2e7d5b" : "#a33"}">${n(r.res)}</div>
+      <div class="faixa">receita ${n(r.rec)} · ${r.rec ? pct(margem) + " de margem" : "sem venda própria"}</div></div>`;
+  }).join("") + (() => {
+    const t = ordem.reduce((s, [, r]) => s + r.res, 0), tr = ordem.reduce((s, [, r]) => s + r.rec, 0);
+    return `<div class="cartao" style="border-color:#2c5f7c"><div class="titulo">TOTAL DA LOJA</div>
+      <div class="valor" style="color:${t >= 0 ? "#2e7d5b" : "#a33"}">${n(t)}</div>
+      <div class="faixa">receita ${n(tr)} · ${tr ? pct(t / tr) : "—"}</div></div>`;
+  })();
+
+  // ----- tabela: blocos da DRE × departamentos -----
+  const col = r => ordem.map(([, d]) => `<td class="num">${d.blocos.get(r) ? n(d.blocos.get(r)) : "—"}</td>`).join("");
+  let html = `<thead><tr><th>Bloco da DRE</th>` +
+    ordem.map(([cod, r]) => `<th class="num">${r.nome || cod}</th>`).join("") +
+    `<th class="num">TOTAL</th></tr></thead><tbody>`;
+  for (const b of linhasB) {
+    const tot = ordem.reduce((s, [, d]) => s + (d.blocos.get(b) || 0), 0);
+    html += `<tr class="dre-n1-lite"><td>${b}</td>${col(b)}<td class="num total-col">${n(tot)}</td></tr>`;
+  }
+  const soma = sel => ordem.reduce((s, [, d]) => s + sel(d), 0);
+  html += `<tr class="dre-n1-lite" style="background:#f4f8fb"><td><b>Receitas</b></td>
+      ${ordem.map(([, d]) => `<td class="num">${n(d.rec)}</td>`).join("")}
+      <td class="num total-col">${n(soma(d => d.rec))}</td></tr>
+    <tr class="dre-n1-lite" style="background:#f4f8fb"><td><b>Despesas</b></td>
+      ${ordem.map(([, d]) => `<td class="num">${n(d.desp)}</td>`).join("")}
+      <td class="num total-col">${n(soma(d => d.desp))}</td></tr>
+    <tr class="dre-resultado"><td>RESULTADO</td>
+      ${ordem.map(([, d]) => `<td class="num" style="color:${d.res >= 0 ? "#2e7d5b" : "#a33"}">${n(d.res)}</td>`).join("")}
+      <td class="num total-col">${n(soma(d => d.res))}</td></tr>
+    <tr class="dre-n1-lite"><td>Margem sobre a receita</td>
+      ${ordem.map(([, d]) => `<td class="num">${d.rec ? pct(d.res / d.rec) : "—"}</td>`).join("")}
+      <td class="num">${soma(d => d.rec) ? pct(soma(d => d.res) / soma(d => d.rec)) : "—"}</td></tr>
+    </tbody>`;
+  tab.innerHTML = html;
+
+  // ----- leitura -----
+  const comVenda = ordem.filter(([, r]) => r.blocos.has(DRE3.prest));
+  const melhor = [...comVenda].sort((a, b) => (b[1].rec ? b[1].res / b[1].rec : -9) - (a[1].rec ? a[1].res / a[1].rec : -9))[0];
+  const pior = [...comVenda].sort((a, b) => (a[1].rec ? a[1].res / a[1].rec : 9) - (b[1].rec ? b[1].res / b[1].rec : 9))[0];
+  const adm = ordem.filter(([, r]) => !r.blocos.has(DRE3.prest));
+  const somaAdm = adm.reduce((s, [, r]) => s + r.res, 0);
+  let txt = "";
+  if (melhor && pior && melhor[0] !== pior[0]) {
+    txt = `<p><b>${melhor[1].nome}</b> fecha com ${n(melhor[1].res)}
+      (${pct(melhor[1].res / melhor[1].rec)} sobre a própria receita) e <b>${pior[1].nome}</b> com
+      ${n(pior[1].res)} (${pct(pior[1].res / pior[1].rec)}).
+      ${melhor[1].rec < pior[1].rec
+        ? `Repare que ${melhor[1].nome} fatura bem menos (${n(melhor[1].rec)} contra ${n(pior[1].rec)}) e mesmo assim rende mais por real vendido.`
+        : ""}</p>`;
+  }
+  // Alerta: subvenção/transferência enviada pode dominar o resultado de um
+  // departamento e fazê-lo parecer deficitário sem ser problema de operação.
+  for (const [, r] of comVenda) {
+    const env = r.blocos.get(DRE3.subvEnv) || 0;
+    const despOp = r.desp - env;                      // despesa sem a subvenção enviada
+    if (env < 0 && Math.abs(env) > Math.abs(despOp) * 0.5 && r.res < 0 && r.res - env > 0) {
+      txt += `<p style="border-left:3px solid #c9a227; padding-left:10px"><b>Atenção em ${r.nome}:</b>
+        o prejuízo de ${n(r.res)} vem de <b>${n(env)} em subvenções e transferências enviadas</b>
+        lançadas neste centro de custo. Tirando essa conta, a operação dele fecharia em
+        <b>${n(r.res - env)}</b>. Ou seja, o número negativo é <b>onde a subvenção foi contabilizada</b>,
+        não um problema de margem da loja.</p>`;
+    }
+  }
+  if (adm.length) {
+    txt += `<p><b>Departamentos sem venda própria</b> (${adm.map(([, r]) => r.nome).join(", ")}):
+      somam ${n(somaAdm)} e são <b>estrutura</b> — aparecem inteiros como despesa porque a contabilidade
+      não rateia esse custo entre as duas lojas. Para julgar cada loja isoladamente, compare-as entre si;
+      para julgar a Loja como negócio, olhe o TOTAL.</p>`;
+  }
+  txt += `<p><b>Por que a soma fecha:</b> esta aba usa apenas os departamentos-folha (os que não têm
+    outro abaixo). Os códigos que começam com "0" — CONSOLIDADO, ALOCADOS, PROGRAMAS — são visões
+    espelho que repetem o total inteiro e ficam de fora na extração; se entrassem, o resultado
+    apareceria multiplicado.</p>`;
+  document.getElementById("dep-explica").innerHTML = `<h3>Como ler</h3>${txt}`;
+}
+
 function renderComparativo() {
   const f = filtrosAtuais();
   const anosDisponiveis = [...new Set(linhasDRE.map(d => d.Ano))].sort((a, b) => a - b);
@@ -1694,7 +1828,7 @@ function carregarArquivo(arquivo) {
       //  - Ano + Conta            -> dados do banco
       //  - Sinal + Conta + DRE 3  -> De/Para DRE
       //  - Entidade + Tipo        -> De/Para de Campos
-      let abaDados = null, abaDRE = null, abaCampos = null, abaMovto = null, abaMeta = null;
+      let abaDados = null, abaDRE = null, abaCampos = null, abaMovto = null, abaMeta = null, abaDep = null;
       for (const nome of wb.SheetNames) {
         const json = XLSX.utils.sheet_to_json(wb.Sheets[nome], { defval: null });
         if (!json.length) continue;
@@ -1702,6 +1836,8 @@ function carregarArquivo(arquivo) {
         if (!abaMovto && cols.includes("mescomp") && cols.includes("historico")) abaMovto = json;
         else if (!abaMeta && cols.includes("chave") && cols.includes("valor")) abaMeta = json;
         else if (!abaDRE && cols.includes("sinal") && cols.includes("conta") && cols.some(c => c.startsWith("dre 3"))) abaDRE = json;
+        // antes de abaDados: a aba Departamentos também tem "ano" e "conta"
+        else if (!abaDep && cols.includes("departamento") && cols.includes("ano")) abaDep = json;
         else if (!abaDados && cols.includes("ano") && cols.includes("conta")) abaDados = json;
         else if (!abaCampos && cols.includes("entidade") && cols.includes("tipo")) abaCampos = json;
       }
@@ -1767,6 +1903,17 @@ function carregarArquivo(arquivo) {
       })).filter(d => d.Ano && d.Mes != null && isFinite(d.Mes));
 
       // Movimentação Adto Salário (aba local Movto1135)
+      depDados = abaDep ? abaDep.map(l => ({
+        Ano: +valorDe(l, "Ano"),
+        Mes: +(valorDe(l, "Mês") ?? valorDe(l, "Mes")),
+        dep: String(valorDe(l, "Departamento") ?? "").trim(),
+        nomeDep: String(valorDe(l, "Nome_Depto") ?? "").trim(),
+        conta: limpaConta(valorDe(l, "Conta")),
+        nomeConta: String(valorDe(l, "Nome_Conta") ?? "").trim(),
+        legal: +valorDe(l, "Saldo_Legal") || 0,
+        ajust: +valorDe(l, "Saldo_Ajustado") || 0,
+      })).filter(d => d.Ano && d.dep) : [];
+
       movtoDados = abaMovto ? abaMovto.map(l => ({
         conta: limpaConta(valorDe(l, "conta")),
         sub: String(valorDe(l, "subconta") ?? "").trim(),
