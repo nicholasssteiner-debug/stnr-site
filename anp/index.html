@@ -460,6 +460,14 @@
           cujo saldo está contrário à natureza da conta. Ex.: um fornecedor com saldo devedor em "Fornecedores a Pagar" (adiantamento).
           No site, mostra só o código; carregando a planilha completa localmente, mostra também o nome.</p>
         <div id="fer-natureza-sub"></div>
+
+        <h2 style="margin-top:22px">🏫 Fora de natureza por departamento</h2>
+        <p class="fer-desc">Mesmo critério da validação "Contas fora da natureza": conta + subconta + <b>departamento</b>, sem somar uma escola com outra.
+          Inclui contas sem subconta (ex.: ISS, Sindical) e contas de resultado (3 credora, 4 devedora; saldo do ano até o mês final). Patrimônio social (23xxxxx) fica de fora.
+          Balanço: saldo acumulado da abertura até o mês final. Sinais como no razão (devedor +, credor −).</p>
+        <input id="fer-natdep-busca" type="search" placeholder="Filtrar por conta, subconta ou departamento"
+          style="width:100%;max-width:420px;padding:6px 10px;margin:4px 0 10px;border:1px solid #ccd;border-radius:6px;font:inherit">
+        <div id="fer-natureza-dep"></div>
       </div>
 
       <div class="painel grafico">
@@ -2636,8 +2644,82 @@ function renderFerramentas() {
       : `<span class="selo-ok">✓ Nenhuma subconta fora de natureza no recorte atual</span>`;
   }
 
+  // ----- 1c) Fora de natureza por conta + subconta + departamento -----
+  // Igual à validação do sistema: não compensa um departamento com outro.
+  // A linha SEM subconta é o totalizador da conta naquele departamento; só
+  // vale como "Sem subconta" quando a conta não tem nenhuma linha com subconta.
+  renderNaturezaDep(ano, mFim, f, esperado);
+
   renderBusca();
 }
+
+let natDepLista = [];
+function renderNaturezaDep(ano, mFim, f, esperado) {
+  const alvo = document.getElementById("fer-natureza-dep");
+  if (!alvo) return;
+  const temDep = dadosBrutos.some(d => d.Dep);
+  if (!temDep) {
+    alvo.innerHTML = `<p class="fer-desc">Sem coluna de departamento no arquivo carregado.</p>`;
+    natDepLista = [];
+    return;
+  }
+  const contaComSub = new Set();
+  for (const d of dadosBrutos)
+    if (d.Subconta && d.Ano === ano) contaComSub.add(d.Conta);
+  const esp = { ...esperado, "3": -1, "4": 1 };   // receita credora, despesa devedora
+  const grupos = new Map();
+  for (const d of dadosBrutos) {
+    if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
+    const g = d.Conta[0];
+    if (!esp[g]) continue;
+    if (d.Conta.startsWith("23")) continue;   // patrimônio social: por depto é natural ficar devedor
+    if (g !== "1" && g !== "2" && d.Mes < 1) continue;   // resultado: sem abertura
+    if (d.Subconta ? false : contaComSub.has(d.Conta)) continue;   // totalizador
+    if (!infoContas.ehAnalitica(d.Conta)) continue;
+    const v = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (!v) continue;
+    const chave = d.Entidade + "|" + d.Conta + "|" + d.Subconta + "|" + d.Dep;
+    const reg = grupos.get(chave) || { ent: d.Entidade, conta: d.Conta, nomeConta: d.NomeConta || "", sub: d.Subconta,
+      nomeSub: d.NomeSubconta || "", dep: d.Dep, nomeDep: d.DepNome || "", saldo: 0 };
+    reg.saldo += v;
+    if (!reg.nomeConta && d.NomeConta) reg.nomeConta = d.NomeConta;
+    if (!reg.nomeSub && d.NomeSubconta) reg.nomeSub = d.NomeSubconta;
+    if (!reg.nomeDep && d.DepNome) reg.nomeDep = d.DepNome;
+    grupos.set(chave, reg);
+  }
+  natDepLista = [];
+  for (const r of grupos.values()) {
+    let e = esp[r.conta[0]];
+    if (Math.abs(r.saldo) <= 1) continue;
+    if (/\(-\)/.test(r.nomeConta)) e = -e;
+    if (Math.sign(r.saldo) !== e) natDepLista.push({ ...r, nat: e === 1 ? "devedora" : "credora" });
+  }
+  natDepLista.sort((a, b) => a.conta.localeCompare(b.conta) || a.sub.localeCompare(b.sub) || a.dep.localeCompare(b.dep));
+  desenhaNaturezaDep();
+}
+
+function desenhaNaturezaDep() {
+  const alvo = document.getElementById("fer-natureza-dep");
+  if (!alvo) return;
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const termo = (document.getElementById("fer-natdep-busca")?.value || "").trim().toLowerCase();
+  const lista = termo
+    ? natDepLista.filter(x => [x.conta, x.nomeConta, x.sub, x.nomeSub, x.dep, x.nomeDep].join(" ").toLowerCase().includes(termo))
+    : natDepLista;
+  if (!natDepLista.length) {
+    alvo.innerHTML = `<span class="selo-ok">✓ Nenhum item fora de natureza por departamento no recorte atual</span>`;
+    return;
+  }
+  alvo.innerHTML = `<table class="fer-tabela"><tr><th>Conta</th><th>Subconta</th><th>Departamento</th><th>Natureza</th><th style="text-align:right">Saldo</th></tr>` +
+    lista.slice(0, 300).map(x => `<tr>
+      <td>${esc(x.conta)}${x.nomeConta ? " - " + esc(x.nomeConta) : ""}</td>
+      <td>${x.sub ? esc(x.sub) + (x.nomeSub ? " - " + esc(x.nomeSub) : "") : "<i>Sem subconta</i>"}</td>
+      <td>${esc(x.dep)}${x.nomeDep ? " - " + esc(x.nomeDep) : ""}</td>
+      <td>${x.nat}</td>
+      <td class="num" style="color:#b3423a;font-weight:600">${n(x.saldo)}</td></tr>`).join("") +
+    `</table><p class="fer-desc" style="margin-top:8px">${lista.length} item(ns)${termo ? ` de ${natDepLista.length}` : ""} para conferir${lista.length > 300 ? " (mostrando os 300 primeiros)" : ""}.</p>`;
+}
+document.addEventListener("input", ev => { if (ev.target && ev.target.id === "fer-natdep-busca") desenhaNaturezaDep(); });
 
 // ----- 4) Busca rápida de conta -----
 function renderBusca() {
