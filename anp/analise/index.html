@@ -36,6 +36,14 @@
   .periodo select { padding: 6px 10px; border: 1px solid #c9d6e2; border-radius: 3px;
     font-family: inherit; font-size: 13px; color: #345; background: #fff; }
   .periodo-dica { font-size: 12px; color: #8a9aa8; }
+  .chip-esc { padding: 5px 12px; border: 1px solid #c9d6e2; border-radius: 14px; background: #fff;
+    font-family: inherit; font-size: 12.5px; color: #567; cursor: pointer; }
+  .chip-esc:hover { border-color: var(--azul-claro); color: var(--azul-escuro); }
+  .chip-esc.ativo { background: var(--azul-tabela); border-color: var(--azul-tabela);
+    color: #fff; font-weight: 600; }
+  .viz [data-filtra] { cursor: pointer; }
+  .foco-aviso { font-size: 12px; color: #2c5f7c; background: #eaf2f8; border: 1px solid #cfe0ec;
+    border-radius: 3px; padding: 4px 10px; }
   .navegacao { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 22px 0; }
   .nav-btn { padding: 7px 14px; border: 1px solid #c9d6e2; border-radius: 3px; background: #fff;
              font-family: inherit; font-size: 13px; color: #567; cursor: pointer; }
@@ -114,6 +122,34 @@
   details.porque[open] > summary::before { content: "▾"; }
   details.porque > summary:hover { color: var(--azul-escuro); }
   details.porque .desc { margin: 7px 0 0; }
+
+  /* ---------- simulação ---------- */
+  .sim-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 10px 26px; margin: 10px 0 14px; }
+  .sim-linha { display: grid; grid-template-columns: 190px 1fr 74px; align-items: center; gap: 10px; }
+  .sim-linha label { font-size: 13px; color: #4a5a68; }
+  .sim-linha input[type=range] { width: 100%; accent-color: #2a78d6; cursor: pointer; }
+  .sim-linha output { font-size: 13px; font-weight: 700; text-align: right;
+    font-variant-numeric: tabular-nums; color: #52514e; }
+
+/* ---------- modo apresentação ---------- */
+  body.apresentando header, body.apresentando .periodo,
+  body.apresentando .navegacao, body.apresentando #painel-impressao { display: none; }
+  body.apresentando main { padding: 64px 40px 40px; }
+  body.apresentando .painel { border: none; box-shadow: none; padding: 0 0 10px; }
+  body.apresentando .painel h2 { font-size: 26px; color: var(--azul-escuro); margin-bottom: 10px; }
+  body.apresentando details.porque { display: none; }
+  body.apresentando table { font-size: 15px; }
+  body.apresentando .cartao .valor { font-size: 34px; }
+  body.apresentando .viz svg { max-height: 54vh; }
+  .barra-apr { display: none; position: fixed; inset: 0 0 auto 0; z-index: 40; height: 48px;
+    background: var(--azul-header); color: #fff; align-items: center; gap: 14px; padding: 0 18px; }
+  body.apresentando .barra-apr { display: flex; }
+  .barra-apr .titulo { flex: 1; font-size: 15px; font-weight: 600; }
+  .barra-apr .passo { font-size: 12px; opacity: .75; font-variant-numeric: tabular-nums; }
+  .barra-apr button { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3);
+    color: #fff; border-radius: 3px; padding: 5px 13px; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .barra-apr button:hover { background: rgba(255,255,255,.26); }
   .carregando { padding: 40px; text-align: center; color: #8198ab; }
 
   /* ---------- relatório impresso ---------- */
@@ -166,6 +202,11 @@
   <span class="periodo-dica" id="periodo-dica"></span>
 </div>
 
+<div class="periodo" id="filtro-escola">
+  <label>Escola</label>
+  <div id="escolas-chips" style="display:flex; gap:5px; flex-wrap:wrap"></div>
+</div>
+
 <div class="navegacao" id="navegacao"></div>
 
 <div class="painel" id="painel-impressao" style="display:none; margin:14px 22px 0">
@@ -183,6 +224,13 @@
   </div>
 </div>
 
+<div class="barra-apr" id="barra-apr">
+  <span class="titulo" id="apr-titulo"></span>
+  <span class="passo" id="apr-passo"></span>
+  <button type="button" id="apr-ant">←</button>
+  <button type="button" id="apr-prox">→</button>
+  <button type="button" id="apr-sair">Sair (Esc)</button>
+</div>
 <main id="conteudo"><div class="carregando">Carregando os dados…</div></main>
 <div id="impressao"></div>
 
@@ -322,6 +370,12 @@ let ehAnalitica = () => true;
 let mesFimAno = {};    // ano -> último mês com movimento
 let anoRef = 0;        // ano de referência da apresentação
 let mesRef = 12;       // posição: o mês em que o balanço é tirado
+let escolaRef = null;  // escola em foco; null = o campo inteiro
+/* Vale para TODOS os blocos, menos os dois "por Unidade" — esses existem
+   justamente para comparar as escolas entre si, e filtrá-los deixaria uma
+   coluna só. Neles, clicar numa escola é o que LIGA este filtro. */
+const naEscola = (dep, depNome) =>
+  !escolaRef || (dep && partesDepto(dep, depNome).escola === escolaRef);
 /* Mês de corte de cada ano: o ano de referência vai até o mês escolhido,
    os anteriores vão fechados em dezembro. */
 const mesDoAno = a => a === anoRef ? mesRef : 12;
@@ -486,6 +540,7 @@ function dreAno(ano, mesFim = 12, filtro = null) {
   let total = 0, receita = 0, despesa = 0;
   for (const l of linhasDRE) {
     if (l.Ano !== ano || l.Mes > mesFim) continue;
+    if (!naEscola(l.dep, l.depNome)) continue;
     if (filtro && !filtro(l)) continue;
     total += l.saldo;
     const ehRec = BLOCOS_RECEITA.has(l.dre3);
@@ -505,7 +560,7 @@ function dreJanela12(anoFim, mesFim) {
   for (const l of linhasDRE) {
     const dentro = (l.Ano === anoFim && l.Mes <= mesFim) ||
                    (l.Ano === anoFim - 1 && l.Mes > mesFim);
-    if (!dentro) continue;
+    if (!dentro || !naEscola(l.dep, l.depNome)) continue;
     total += l.saldo;
     if (BLOCOS_RECEITA.has(l.dre3)) receita += l.saldo; else despesa -= l.saldo;
     const k = l.dre3 || l.dre2 || "Outros";
@@ -519,7 +574,7 @@ function despesasAnaliticas12(anoFim, mesFim) {
   const mapa = new Map();
   for (const d of dados) {
     if (d.Subconta || d.Conta[0] !== "4" || !ehAnalitica(d.Conta)) continue;
-    if (d.Mes < 1) continue;
+    if (d.Mes < 1 || !naEscola(d.Dep, d.DepNome)) continue;
     const dentro = (d.Ano === anoFim && d.Mes <= mesFim) ||
                    (d.Ano === anoFim - 1 && d.Mes > mesFim);
     if (!dentro) continue;
@@ -541,7 +596,8 @@ function mesComparavel(ano) {
   for (let m = 1; m <= 12; m++) {
     let s = 0;
     for (const l of linhasDRE)
-      if (l.Ano === ano && l.Mes === m && l.dre3 === "Prestação de Serviços") s += l.saldo;
+      if (l.Ano === ano && l.Mes === m && l.dre3 === "Prestação de Serviços"
+          && naEscola(l.dep, l.depNome)) s += l.saldo;
     if (s) porMes.push([m, s]);
   }
   if (!porMes.length) return 12;
@@ -560,6 +616,7 @@ function serieBloco(bloco, mesLimite) {
   const s = lista.map(() => 0);
   for (const l of linhasDRE) {
     if (l.Mes > mesLimite || l.dre3 !== bloco) continue;
+    if (!naEscola(l.dep, l.depNome)) continue;
     const i = lista.indexOf(l.Ano);
     if (i >= 0) s[i] += l.saldo;
   }
@@ -586,6 +643,7 @@ function somaContas(ano, mesFim, teste, acumulado) {
   let s = 0;
   for (const d of dados) {
     if (d.Subconta || d.Ano !== ano) continue;
+    if (!naEscola(d.Dep, d.DepNome)) continue;
     if (!ehAnalitica(d.Conta)) continue;
     if (!acumulado && d.Mes < 1) continue;
     if (d.Mes > mesFim) continue;
@@ -699,7 +757,7 @@ function grafBarras({ rotulos, series, altura = 200, fmt = n, porSinal = false,
 }
 
 /* Barras horizontais — bom para ranking por unidade, nome inteiro à esquerda. */
-function grafBarrasH({ rotulos, valores, fmt = n, porSinal = true, altura = null }) {
+function grafBarrasH({ rotulos, valores, fmt = n, porSinal = true, altura = null, filtravel = false }) {
   const L = 760, linhaH = 26, rotuloW = 96, dir = 86;
   const A = altura || (rotulos.length * linhaH + 14);
   const max = Math.max(0, ...valores), min = Math.min(0, ...valores);
@@ -723,7 +781,8 @@ function grafBarrasH({ rotulos, valores, fmt = n, porSinal = true, altura = null
     // negativa cai em cima do nome da unidade
     const xr = Math.max(zero, xa + larg) + 6;
     svg += `<text x="${xr}" y="${cy + h / 2 + 4}" text-anchor="start" font-size="11" font-weight="600" fill="${v < 0 ? VIZ.neg : "#2c5f7c"}">${fmt(v)}</text>`;
-    svg += `<rect x="0" y="${cy - 4}" width="${L}" height="${linhaH}" fill="#000" fill-opacity="0" data-dica="<b>${rot}</b><br>${fmt(v)}"/>`;
+    const clique = filtravel ? ` data-filtra="${rot}"` : "";
+    svg += `<rect x="0" y="${cy - 4}" width="${L}" height="${linhaH}" fill="#000" fill-opacity="0"${clique} data-dica="<b>${rot}</b><br>${fmt(v)}${filtravel ? "<br><i>clique para ver só esta escola</i>" : ""}"/>`;
   });
   return `<div class="viz"><svg viewBox="0 0 ${L} ${A}" xmlns="http://www.w3.org/2000/svg">${svg}</svg></div>`;
 }
@@ -892,7 +951,7 @@ registra("balanco", "Balanço", () => {
     "Estrutura do balanço denominacional. O <b>Patrimônio Líquido</b> aparece como no modelo: " +
     "saldo inicial de 01/01 mais a <b>variação patrimonial</b> do período — é aí que entra o resultado " +
     "do exercício, e é o que faz os dois lados fecharem.",
-    tabelaBalanco(colunas, colunas.map(c => balancoCorte(c.ano, c.mes, null))));
+    tabelaBalanco(colunas, colunas.map(c => balancoCorte(c.ano, c.mes, escolaRef))));
 });
 
 registra("balanco-unidade", "Balanço Unidades", () => {
@@ -971,7 +1030,7 @@ function tabelaDRE(colunas, porCol, mostrarParticipacao) {
 
 registra("dre", "DRE", () => {
   const colunas = colunasAnos();
-  const porCol = colunas.map(c => dreCorte(c.ano, c.mes, null));
+  const porCol = colunas.map(c => dreCorte(c.ano, c.mes, escolaRef));
   const grafDRE = grafBarras({
     rotulos: colunas.map(c => c.rotulo + (c.sub ? " " + c.sub : "")),
     series: [{ nome: "Resultado do exercício", valores: porCol.map(d => d.total) }],
@@ -995,6 +1054,7 @@ registra("dre-unidade", "DRE Unidades", () => {
   const grafUni = grafBarrasH({
     rotulos: semCons.map(c => c.rotulo),
     valores: semCons.map(c => r.porCol[r.colunas.indexOf(c)].total),
+    filtravel: true,
   });
   return painel(`Resultado por Unidade — ${colunas[colunas.length - 1].sub}`,
     "Quem soma e quem subtrai do resultado consolidado. Vermelho é unidade no prejuízo.", grafUni) +
@@ -1085,6 +1145,121 @@ registra("capital", "Capital Operativo", () => {
     "subdimensionado. O saldo do capital é a posição do último mês de cada coluna. " +
     "<b>Confira o sinal de \"Subvenções Líquidas\"</b>: está como outorgamentos enviados menos subvenções " +
     "recebidas, seguindo o modelo que você mandou.", html);
+});
+
+/* =====================================================================
+   SIMULAÇÃO DE RESULTADO
+   O chefe mexe nas premissas e vê o ano recalcular na hora. Parte do
+   realizado da janela de 12 meses (não de um ano parcial, senão a base já
+   nasceria torta) e aplica os ajustes em cada bloco da DRE.
+   ===================================================================== */
+let simPremissas = { mensalidade: 0, alunos: 0, pessoal: 0, adm: 0, subvencao: 0 };
+
+function simBase() {
+  const d = dreJanela12(anoRef, mesRef);
+  const b = k => d.porBloco.get(k) || 0;
+  return {
+    prest: b(DRE3.prest),
+    outras: b("Outras Receitas Recorrentes") + b("Doações E Contribuições Recebidas") + b(DRE3.dizimo),
+    subv: b(DRE3.subv),
+    pessoal: -b(DRE3.pessoal),
+    adm: -b(DRE3.adm),
+    outrasDesp: -(b(DRE3.educ) + b("Outorgamentos")),
+  };
+}
+
+/* receita de serviço move com preço E com volume: (1+reajuste)×(1+alunos) */
+function simAplicar(base, p) {
+  const prest = base.prest * (1 + p.mensalidade / 100) * (1 + p.alunos / 100);
+  const subv = base.subv * (1 + p.subvencao / 100);
+  const pessoal = base.pessoal * (1 + p.pessoal / 100);
+  const adm = base.adm * (1 + p.adm / 100);
+  const receita = prest + base.outras + subv;
+  const despesa = pessoal + adm + base.outrasDesp;
+  return { prest, subv, pessoal, adm, receita, despesa,
+           resultado: receita - despesa,
+           operacional: (receita - subv) - despesa };
+}
+
+registra("simulacao", "Simulação de Resultado", () => {
+  const base = simBase();
+  const atual = simAplicar(base, { mensalidade: 0, alunos: 0, pessoal: 0, adm: 0, subvencao: 0 });
+  const sim = simAplicar(base, simPremissas);
+  const alvo = escolaRef ? ` — ${escolaRef}` : "";
+
+  const controles = [
+    ["mensalidade", "Reajuste de mensalidade", -20, 30, 0.5],
+    ["alunos", "Variação de alunos", -30, 30, 0.5],
+    ["pessoal", "Despesa com pessoal", -20, 30, 0.5],
+    ["adm", "Administrativas e gerais", -30, 40, 0.5],
+    ["subvencao", "Subvenções recebidas", -100, 50, 1],
+  ].map(([k, rot, min, max, passo]) => `
+    <div class="sim-linha">
+      <label for="sim-${k}">${rot}</label>
+      <input type="range" id="sim-${k}" data-sim="${k}" min="${min}" max="${max}" step="${passo}" value="${simPremissas[k]}">
+      <output class="${simPremissas[k] < 0 ? "negativo" : simPremissas[k] > 0 ? "positivo" : ""}">${
+        simPremissas[k] > 0 ? "+" : ""}${fmtP.format(simPremissas[k])}%</output>
+    </div>`).join("");
+
+  const delta = sim.resultado - atual.resultado;
+  const cartoes = `<div class="cartoes" style="grid-template-columns:repeat(4,1fr)">
+    <div class="cartao"><div class="titulo">Resultado hoje</div>
+      <div class="valor ${sinal(atual.resultado)}">${n(atual.resultado)}</div>
+      <div class="faixa">12 meses até ${NOMES_MESES[mesRef - 1]}/${anoRef}</div></div>
+    <div class="cartao"><div class="titulo">Resultado simulado</div>
+      <div class="valor ${sinal(sim.resultado)}">${n(sim.resultado)}</div>
+      <div class="faixa">com as premissas ao lado</div></div>
+    <div class="cartao"><div class="titulo">Diferença</div>
+      <div class="valor ${sinal(delta)}">${delta > 0 ? "+" : ""}${n(delta)}</div>
+      <div class="faixa">${atual.resultado ? (delta / Math.abs(atual.resultado) * 100).toFixed(1).replace(".", ",") + "%" : "—"}</div></div>
+    <div class="cartao"><div class="titulo">Margem operacional</div>
+      <div class="valor ${sinal(sim.operacional)}">${
+        sim.receita - sim.subv ? pct(sim.operacional / (sim.receita - sim.subv)) : "—"}</div>
+      <div class="faixa">sem subvenção</div></div></div>`;
+
+  const linha = (rot, a, s) => {
+    const d = s - a;
+    return `<tr class="bp-item"><td></td><td>${rot}</td>
+      <td class="num">${n(a)}</td><td class="num">${n(s)}</td>
+      <td class="num ${d ? sinal(d) : ""}">${d ? (d > 0 ? "+" : "") + n(d) : "–"}</td></tr>`;
+  };
+  let tab = `<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>
+    <th class="num">Hoje</th><th class="num">Simulado</th><th class="num">Diferença</th>
+    </tr></thead><tbody>`;
+  tab += `<tr class="bp-grupo"><td colspan="2">RECEITAS</td><td class="num">${n(atual.receita)}</td>
+    <td class="num">${n(sim.receita)}</td><td class="num">${n(sim.receita - atual.receita)}</td></tr>`;
+  tab += linha("Prestação de Serviços", atual.prest, sim.prest);
+  tab += linha("Subvenções Recebidas", atual.subv, sim.subv);
+  tab += linha("Outras receitas", base.outras, base.outras);
+  tab += `<tr class="bp-grupo"><td colspan="2">DESPESAS</td><td class="num">${n(atual.despesa)}</td>
+    <td class="num">${n(sim.despesa)}</td><td class="num">${n(sim.despesa - atual.despesa)}</td></tr>`;
+  tab += linha("Despesas com Pessoal", atual.pessoal, sim.pessoal);
+  tab += linha("Administrativas e Gerais", atual.adm, sim.adm);
+  tab += linha("Demais despesas", base.outrasDesp, base.outrasDesp);
+  tab += `<tr class="bp-total"><td colspan="2">RESULTADO</td>
+    <td class="num">${n(atual.resultado)}</td><td class="num">${n(sim.resultado)}</td>
+    <td class="num ${sinal(delta)}">${delta > 0 ? "+" : ""}${n(delta)}</td></tr>`;
+  tab += `</tbody></table></div>`;
+
+  const graf = grafBarras({
+    rotulos: ["Hoje", "Simulado"],
+    series: [{ nome: "Resultado", valores: [atual.resultado, sim.resultado] }],
+    porSinal: true, altura: 170,
+  });
+
+  const painelSim = `<div class="painel">
+      <h2>🎚️ Premissas${alvo}</h2>
+      <details class="porque"><summary>como isto é calculado</summary>
+        <p class="desc">A base é o <b>realizado dos últimos 12 meses</b> até a posição escolhida —
+        não um ano parcial, senão a comparação já nasceria torta. A receita de serviço move por
+        preço <i>e</i> por volume ao mesmo tempo: (1 + reajuste) × (1 + alunos). As demais receitas
+        e despesas que você não mexe ficam paradas.</p></details>
+      <div class="sim-grade">${controles}</div>
+      <button type="button" class="nav-btn" id="sim-zerar">Zerar premissas</button>
+    </div>`;
+
+  return painelSim + cartoes +
+    painel("Resultado: hoje × simulado", "O quanto as premissas mudam o ano.", graf + tab);
 });
 
 /* 6. DISPONÍVEL E APLICAÇÕES --------------------------------------- */
@@ -1242,7 +1417,8 @@ registra("funcionarios", "Movimentação de Funcionários", () => {
   if (!pessoal.length) return painel("Movimentação de Funcionários",
     "A planilha ainda não traz a aba de pessoal. Rode o Atualizar Dados uma vez.", "");
 
-  const soma = (tipo, ano) => pessoal.filter(p => p.tipo === tipo && (!ano || p.ano === ano))
+  const soma = (tipo, ano) => pessoal
+    .filter(p => p.tipo === tipo && (!ano || p.ano === ano) && naEscola(p.dep, p.depNome))
     .reduce((s, p) => s + p.qtd, 0);
   const ativos = soma("Ativos");
 
@@ -1316,7 +1492,7 @@ registra("funcionarios", "Movimentação de Funcionários", () => {
 
 /* 9c. RESCISÕES ------------------------------------------------------ */
 registra("rescisoes", "Rescisões", () => {
-  const resc = pessoal.filter(p => p.tipo === "Rescisao");
+  const resc = pessoal.filter(p => p.tipo === "Rescisao" && naEscola(p.dep, p.depNome));
   if (!resc.length) return painel("Rescisões",
     "A planilha ainda não traz a aba de pessoal. Rode o Atualizar Dados uma vez.", "");
 
@@ -1497,15 +1673,128 @@ function montarPeriodo() {
   selM.onchange = () => { mesRef = +selM.value; montarPeriodo(); desenhar(); };
 }
 
+/* ---------- filtro de escola ---------- */
+function escolasDisponiveis() {
+  // só entram as que têm movimento de resultado — ADRA, CADEC e afins são
+  // departamentos residuais e só ocupariam espaço na barra
+  const s = new Set();
+  const peso = new Map();
+  for (const l of linhasDRE) {
+    if (!l.dep) continue;
+    const e = partesDepto(l.dep, l.depNome).escola;
+    peso.set(e, (peso.get(e) || 0) + Math.abs(l.saldo));
+  }
+  for (const [e, v] of peso) if (v >= 50000) s.add(e);
+  const ordem = Object.entries(ESCOLAS).sort((a, b) => a[0].localeCompare(b[0])).map(x => x[1]);
+  return [...s].sort((a, b) => {
+    const ia = ordem.indexOf(a), ib = ordem.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "pt-BR");
+  });
+}
+
+function montarFiltroEscola() {
+  const alvo = document.getElementById("escolas-chips");
+  const lista = escolasDisponiveis();
+  alvo.innerHTML = [["", "Todas"], ...lista.map(e => [e, e])].map(([v, r]) =>
+    `<button type="button" class="chip-esc${(escolaRef || "") === v ? " ativo" : ""}" data-esc="${v}">${r}</button>`).join("") +
+    (escolaRef ? `<span class="foco-aviso">mostrando só ${escolaRef} — os blocos "por Unidade" seguem comparando todas</span>` : "");
+  alvo.querySelectorAll(".chip-esc").forEach(b =>
+    b.addEventListener("click", () => definirEscola(b.dataset.esc || null)));
+}
+
+function definirEscola(esc) {
+  escolaRef = esc;
+  montarFiltroEscola();
+  desenhar();
+}
+
+/* Clique num gráfico filtra a escola — é o que faz a página virar exploração. */
+function ligarCliquesEscola(raiz) {
+  raiz.querySelectorAll("[data-filtra]").forEach(el =>
+    el.addEventListener("click", () => definirEscola(
+      el.getAttribute("data-filtra") === escolaRef ? null : el.getAttribute("data-filtra"))));
+}
+
+/* Os controles redesenham o bloco a cada movimento; o foco volta para o
+   mesmo slider, senão arrastar com o teclado se perderia. */
+function ligarSimulacao(raiz) {
+  raiz.querySelectorAll("[data-sim]").forEach(el => el.addEventListener("input", () => {
+    simPremissas[el.dataset.sim] = +el.value;
+    const id = el.id, pos = el.value;
+    desenhar();
+    const novo = document.getElementById(id);
+    if (novo) { novo.focus(); novo.value = pos; }
+  }));
+  const zerar = raiz.querySelector("#sim-zerar");
+  if (zerar) zerar.addEventListener("click", () => {
+    simPremissas = { mensalidade: 0, alunos: 0, pessoal: 0, adm: 0, subvencao: 0 };
+    desenhar();
+  });
+}
+
+/* ---------- modo apresentação ----------
+   Tela cheia, um bloco por vez, navegando por seta. A ordem é a da própria
+   barra de navegação, então o que o chefe vê é a mesma sequência. */
+let apresentando = false;
+/* Grupos da barra. A apresentação segue esta MESMA ordem — o que o chefe vê
+   na tela cheia é a sequência da navegação, não a ordem em que registrei. */
+const GRUPOS = [
+  ["Demonstrações", ["balanco", "balanco-unidade", "dre", "dre-unidade"]],
+  ["Posição", ["capital", "disponivel", "imobilizado"]],
+  ["Operação", ["simulacao", "prestacao", "pessoal", "adm", "ranking"]],
+  ["Pessoas", ["funcionarios", "rescisoes"]],
+];
+
+function ordemBlocos() {
+  const naBarra = GRUPOS.flatMap(g => g[1]).filter(id => BLOCOS.some(b => b.id === id));
+  const sobra = BLOCOS.map(b => b.id).filter(id => !naBarra.includes(id));
+  return [...naBarra, ...sobra];
+}
+
+function entrarApresentacao() {
+  apresentando = true;
+  document.body.classList.add("apresentando");
+  document.documentElement.requestFullscreen?.().catch(() => {});
+  atualizarBarraApr(); desenhar();
+}
+function sairApresentacao() {
+  apresentando = false;
+  document.body.classList.remove("apresentando");
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  desenhar();
+}
+function passoApresentacao(d) {
+  const ordem = ordemBlocos();
+  let i = ordem.indexOf(blocoAtivo) + d;
+  if (i < 0) i = 0;
+  if (i >= ordem.length) i = ordem.length - 1;
+  blocoAtivo = ordem[i];
+  montarNavegacao(); atualizarBarraApr(); desenhar();
+}
+function atualizarBarraApr() {
+  const ordem = ordemBlocos(), i = ordem.indexOf(blocoAtivo);
+  const b = BLOCOS.find(x => x.id === blocoAtivo);
+  document.getElementById("apr-titulo").textContent =
+    (b ? b.titulo : "") + (escolaRef ? " — " + escolaRef : "") +
+    `  ·  ${NOMES_MESES[mesRef - 1]}/${anoRef}`;
+  document.getElementById("apr-passo").textContent = `${i + 1} de ${ordem.length}`;
+}
+document.getElementById("apr-ant").addEventListener("click", () => passoApresentacao(-1));
+document.getElementById("apr-prox").addEventListener("click", () => passoApresentacao(1));
+document.getElementById("apr-sair").addEventListener("click", sairApresentacao);
+document.addEventListener("keydown", e => {
+  if (!apresentando) return;
+  if (e.key === "ArrowRight" || e.key === "PageDown") passoApresentacao(1);
+  else if (e.key === "ArrowLeft" || e.key === "PageUp") passoApresentacao(-1);
+  else if (e.key === "Escape") sairApresentacao();
+});
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && apresentando) sairApresentacao();
+});
+
 /* ---------- navegação ---------- */
 let blocoAtivo = BLOCOS[0].id;
 function montarNavegacao() {
-  const GRUPOS = [
-    ["Demonstrações", ["balanco", "balanco-unidade", "dre", "dre-unidade"]],
-    ["Posição", ["capital", "disponivel", "imobilizado"]],
-    ["Operação", ["prestacao", "pessoal", "adm", "ranking"]],
-    ["Pessoas", ["funcionarios", "rescisoes"]],
-  ];
   const btn = b => `<button type="button" class="nav-btn${b.id === blocoAtivo ? " ativa" : ""}" data-bloco="${b.id}">${b.titulo}</button>`;
   const usados = new Set(GRUPOS.flatMap(g => g[1]));
   const sobra = BLOCOS.filter(b => !usados.has(b.id));
@@ -1517,11 +1806,12 @@ function montarNavegacao() {
         `<span class="nav-grupo"><b>${rot}</b>${bs.map(btn).join("")}</span>`;
     }).join("") +
     (sobra.length ? `<span class="nav-sep"></span>` + sobra.map(btn).join("") : "") +
-    `<span style="flex:1"></span><button type="button" class="nav-btn" id="abrir-impressao">🖨️ Relatórios</button>`;
+    `<span style="flex:1"></span><button type="button" class="nav-btn" id="apresentar">▶️ Apresentar</button><button type="button" class="nav-btn" id="abrir-impressao">🖨️ Relatórios</button>`;
   document.querySelectorAll("#navegacao .nav-btn[data-bloco]").forEach(b => b.addEventListener("click", () => {
     blocoAtivo = b.dataset.bloco; montarNavegacao(); desenhar();
   }));
   document.getElementById("abrir-impressao").addEventListener("click", abrirImpressao);
+  document.getElementById("apresentar").addEventListener("click", entrarApresentacao);
 }
 
 /* ---------- relatório: escolher os blocos e imprimir ---------- */
@@ -1586,16 +1876,19 @@ function desenhar() {
   try {
     document.getElementById("conteudo").innerHTML = bloco.render();
     ligarDicas(document.getElementById("conteudo"));
+    ligarCliquesEscola(document.getElementById("conteudo"));
+    ligarSimulacao(document.getElementById("conteudo"));
   } catch (e) {
     document.getElementById("conteudo").innerHTML =
       `<div class="painel"><div class="aviso">Não consegui montar "${bloco.titulo}": ${e.message}</div></div>`;
   }
+  if (apresentando) atualizarBarraApr();
   window.scrollTo(0, 0);
 }
 
 carregar().then(() => {
     mesRef = mesComparavel(anoRef);   // começa no último mês fechado
-    montarPeriodo(); montarNavegacao(); desenhar();
+    montarPeriodo(); montarFiltroEscola(); montarNavegacao(); desenhar();
   })
   .catch(e => {
     document.getElementById("conteudo").innerHTML =
