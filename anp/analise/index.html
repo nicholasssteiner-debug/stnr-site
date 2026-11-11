@@ -130,7 +130,10 @@
   .sim-linha label { font-size: 13px; color: #4a5a68; }
   .sim-linha input[type=range] { width: 100%; accent-color: #2a78d6; cursor: pointer; }
   .sim-linha output { font-size: 13px; font-weight: 700; text-align: right;
-    font-variant-numeric: tabular-nums; color: #52514e; }  .carregando { padding: 40px; text-align: center; color: #8198ab; }
+    font-variant-numeric: tabular-nums; color: #52514e; }  .in-meta { width: 62px; padding: 3px 6px; border: 1px solid #c9d6e2; border-radius: 3px;
+    font-family: inherit; font-size: 12.5px; text-align: right; color: #345; }
+  .in-meta:focus { outline: 2px solid var(--azul-claro); outline-offset: 1px; }
+  .carregando { padding: 40px; text-align: center; color: #8198ab; }
 
   /* ---------- relatório impresso ---------- */
   #impressao { display: none; }
@@ -1707,11 +1710,221 @@ function ligarSimulacao(raiz) {
 
 /* ---------- navegação ---------- */
 let blocoAtivo = BLOCOS[0].id;
+/* =====================================================================
+   O QUE O USUÁRIO GUARDA
+   Metas, cenários e anotações ficam no navegador de quem usa. É de
+   propósito: são decisões dele, não dado contábil — não entram na
+   planilha nem sobem para o site.
+   ===================================================================== */
+const DB = {
+  ler(chave, padrao) {
+    try {
+      const v = localStorage.getItem("anp_analise_" + chave);
+      return v === null ? padrao : JSON.parse(v);
+    } catch (e) { return padrao; }
+  },
+  grava(chave, valor) {
+    try { localStorage.setItem("anp_analise_" + chave, JSON.stringify(valor)); }
+    catch (e) { /* navegador sem storage: vale só nesta sessão */ }
+  },
+};
+let metas = DB.ler("metas", {});
+
+/* Margem operacional de cada escola no recorte atual — é o número que a meta
+   cobra: sem subvenção, para medir a operação e não o repasse. */
+function desempenhoEscolas() {
+  return escolasDisponiveis().map(e => {
+    const d = dreCorte(anoRef, mesRef, e);
+    const b = k => d.porBloco.get(k) || 0;
+    const subv = b(DRE3.subv);
+    let rec = 0;
+    for (const [k, v] of d.porBloco) if (BLOCOS_RECEITA.has(k)) rec += v;
+    const recOp = rec - subv, resOp = d.total - subv;
+    return { escola: e, receita: rec, resultado: d.total, recOp, resOp,
+             // percentual sobre base irrisoria nao diz nada: a Sede vive de
+             // subvencao, entao sem ela a 'margem' daria -2.100%
+             margem: (recOp > 50000 && Math.abs(resOp / recOp) <= 3) ? resOp / recOp : null };
+  });
+}
+const metaDe = esc => (metas[esc] !== undefined ? metas[esc] : (metas.__geral !== undefined ? metas.__geral : 8));
+
+/* ---------- METAS ---------- */
+registra("metas", "Metas", () => {
+  const itens = desempenhoEscolas();
+  const metaGeral = metas.__geral !== undefined ? metas.__geral : 8;
+
+  let html = '<div class="rolagem"><table class="bp"><thead><tr>' +
+    '<th>Escola</th><th class="num">Meta de margem</th><th class="num">Margem real</th>' +
+    '<th class="num">Diferença</th><th class="num">Resultado hoje</th>' +
+    '<th class="num">Resultado na meta</th><th>Situação</th>' +
+    '</tr></thead><tbody>';
+  let nOk = 0, nFora = 0, faltaTotal = 0;
+  for (const r of itens) {
+    const meta = metaDe(r.escola) / 100;
+    const alvo = r.recOp * meta;
+    const falta = alvo - r.resOp;
+    const dentro = r.margem !== null && r.margem >= meta;
+    if (r.margem !== null) { if (dentro) nOk++; else { nFora++; faltaTotal += falta; } }
+    const pp = r.margem === null ? null : (r.margem - meta) * 100;
+    html += '<tr class="bp-item"><td><b>' + r.escola + '</b></td>' +
+      '<td class="num"><input type="number" class="in-meta" data-escola="' + r.escola +
+        '" value="' + metaDe(r.escola) + '" step="0.5" min="-50" max="60"> %</td>' +
+      '<td class="num">' + (r.margem === null ? "–" : pct(r.margem)) + '</td>' +
+      '<td class="num ' + (pp === null ? "" : sinal(pp)) + '">' +
+        (pp === null ? "–" : (pp > 0 ? "+" : "") + fmtP.format(pp) + " pp") + '</td>' +
+      '<td class="num ' + sinal(r.resOp) + '">' + n(r.resOp) + '</td>' +
+      '<td class="num">' + n(alvo) + '</td>' +
+      '<td>' + (r.margem === null ? '<span style="color:#99a">sem base operacional</span>'
+        : dentro ? '<span class="selo selo-ok">na meta</span>'
+                 : '<span class="selo selo-alerta">faltam ' + n(falta) + '</span>') + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+
+  const comMargem = itens.filter(r => r.margem !== null);
+  const graf = grafBarrasH({
+    rotulos: comMargem.map(r => r.escola),
+    valores: comMargem.map(r => (r.margem - metaDe(r.escola) / 100) * 100),
+    fmt: v => (v > 0 ? "+" : "") + fmtP.format(v) + " pp",
+    filtravel: true,
+  });
+
+  const cartoes = '<div class="cartoes" style="grid-template-columns:repeat(3,1fr)">' +
+    '<div class="cartao"><div class="titulo">Dentro da meta</div>' +
+      '<div class="valor positivo">' + nOk + '</div>' +
+      '<div class="faixa">de ' + (nOk + nFora) + ' escolas</div></div>' +
+    '<div class="cartao"><div class="titulo">Abaixo da meta</div>' +
+      '<div class="valor ' + (nFora ? "negativo" : "") + '">' + nFora + '</div>' +
+      '<div class="faixa">precisam de atenção</div></div>' +
+    '<div class="cartao"><div class="titulo">Falta para todas baterem</div>' +
+      '<div class="valor ' + (faltaTotal > 0 ? "negativo" : "positivo") + '">' + n(faltaTotal) + '</div>' +
+      '<div class="faixa">somando só quem está fora</div></div></div>';
+
+  const controle = '<div class="painel"><h2>🎯 Meta de margem operacional</h2>' +
+    '<details class="porque"><summary>como isto é calculado</summary>' +
+    '<p class="desc">A meta é cobrada sobre a <b>margem operacional</b> — resultado e receita ' +
+    '<i>sem</i> subvenção. É de propósito: com subvenção dentro, uma escola bate a meta por causa ' +
+    'do repasse e não da operação. "Resultado na meta" é quanto ela faria se cumprisse. ' +
+    'As metas ficam gravadas neste navegador.</p></details>' +
+    '<div class="sim-linha" style="max-width:480px">' +
+      '<label for="meta-geral">Meta padrão de todas</label>' +
+      '<input type="range" id="meta-geral" min="-10" max="30" step="0.5" value="' + metaGeral + '">' +
+      '<output>' + fmtP.format(metaGeral) + '%</output></div>' +
+    '<p class="desc" style="margin:8px 0 0">Pode ajustar escola por escola direto na tabela.' +
+      '<button type="button" class="nav-btn" id="meta-igualar" style="margin-left:8px">Igualar todas à padrão</button></p>' +
+    '</div>';
+
+  return controle + cartoes +
+    painel("Distância para a meta", "Quantos pontos percentuais cada escola está acima ou abaixo. Verde para cima, vermelho para baixo.", graf) +
+    painel("Metas por escola", "Edite a meta de cada uma na coluna da esquerda — ela grava sozinha.", html);
+});
+
+/* ---------- COMPARAR DUAS ESCOLAS ---------- */
+let compA = null, compB = null;
+registra("comparar", "Comparar", () => {
+  const lista = escolasDisponiveis();
+  if (lista.length < 2) return painel("Comparar", "Preciso de pelo menos duas escolas com movimento.", "");
+  if (!compA || lista.indexOf(compA) < 0) compA = lista[0];
+  if (!compB || lista.indexOf(compB) < 0 || compB === compA) compB = lista.find(e => e !== compA);
+
+  const sel = (id, val) => '<select id="' + id + '">' + lista.map(e =>
+    '<option value="' + e + '"' + (e === val ? " selected" : "") + '>' + e + '</option>').join("") + '</select>';
+  const barra = '<div class="periodo" style="padding:0 0 10px"><label>Comparar</label>' +
+    sel("comp-a", compA) + '<label>com</label>' + sel("comp-b", compB) +
+    '<button type="button" class="nav-btn" id="comp-troca">⇄ inverter</button></div>';
+
+  const dA = dreCorte(anoRef, mesRef, compA), dB = dreCorte(anoRef, mesRef, compB);
+  const v = (d, k) => d.porBloco.get(k) || 0;
+  const linhas = [
+    ["Prestação de Serviços", DRE3.prest, 1],
+    ["Subvenções Recebidas", DRE3.subv, 1],
+    ["Outras Receitas Recorrentes", "Outras Receitas Recorrentes", 1],
+    ["Despesas com Pessoal", DRE3.pessoal, -1],
+    ["Administrativas e Gerais", DRE3.adm, -1],
+    ["Educação, Assistência e Orientação Social", DRE3.educ, -1],
+    ["Outorgamentos", "Outorgamentos", -1],
+  ];
+  const chavesRec = [DRE3.prest, DRE3.subv, "Outras Receitas Recorrentes"];
+  const recA = chavesRec.reduce((s, k) => s + v(dA, k), 0);
+  const recB = chavesRec.reduce((s, k) => s + v(dB, k), 0);
+
+  let tab = '<div class="rolagem"><table class="bp"><thead><tr><th></th><th></th>' +
+    '<th class="num">' + compA + '</th><th class="num">' + compB + '</th>' +
+    '<th class="num">Diferença</th><th class="num">% rec. ' + compA + '</th>' +
+    '<th class="num">% rec. ' + compB + '</th></tr></thead><tbody>';
+  for (const [rot, bloco, sg] of linhas) {
+    const a = v(dA, bloco) * sg, b = v(dB, bloco) * sg, d = a - b;
+    tab += '<tr class="bp-item"><td></td><td>' + rot + '</td>' +
+      '<td class="num">' + n(a) + '</td><td class="num">' + n(b) + '</td>' +
+      '<td class="num ' + (d ? sinal(d * sg) : "") + '">' + (d ? (d > 0 ? "+" : "") + n(d) : "–") + '</td>' +
+      '<td class="num">' + (recA ? pct(Math.abs(a) / recA) : "–") + '</td>' +
+      '<td class="num">' + (recB ? pct(Math.abs(b) / recB) : "–") + '</td></tr>';
+  }
+  const dif = dA.total - dB.total;
+  tab += '<tr class="bp-total"><td></td><td>RESULTADO</td>' +
+    '<td class="num ' + sinal(dA.total) + '">' + n(dA.total) + '</td>' +
+    '<td class="num ' + sinal(dB.total) + '">' + n(dB.total) + '</td>' +
+    '<td class="num ' + sinal(dif) + '">' + (dif > 0 ? "+" : "") + n(dif) + '</td>' +
+    '<td></td><td></td></tr></tbody></table></div>';
+
+  const graf = grafBarras({
+    rotulos: ["Prestação", "Pessoal", "Adm e Gerais", "Resultado"],
+    series: [
+      { nome: compA, cor: VIZ.serie,
+        valores: [v(dA, DRE3.prest), -v(dA, DRE3.pessoal), -v(dA, DRE3.adm), dA.total] },
+      { nome: compB, cor: VIZ.serie2,
+        valores: [v(dB, DRE3.prest), -v(dB, DRE3.pessoal), -v(dB, DRE3.adm), dB.total] },
+    ],
+  });
+
+  // leitura automática: onde nasce a diferença de margem
+  let frase = "";
+  if (recA > 50000 && recB > 50000) {
+    const pA = -v(dA, DRE3.pessoal) / recA, pB = -v(dB, DRE3.pessoal) / recB;
+    const quem = pA > pB ? compA : compB;
+    frase = '<p class="desc">Pessoal consome <b>' + pct(Math.max(pA, pB)) + '</b> da receita em <b>' +
+      quem + '</b>, contra ' + pct(Math.min(pA, pB)) + ' na outra — é geralmente aí que a ' +
+      'diferença de margem nasce.</p>';
+  }
+
+  return painel(compA + " × " + compB + " — " + NOMES_MESES[mesRef - 1] + "/" + anoRef,
+    "As duas DREs lado a lado, com a diferença calculada linha a linha.",
+    barra + frase + graf + tab);
+});
+
+/* ---------- interações de metas e comparação ---------- */
+function ligarMetasComparar(raiz) {
+  raiz.querySelectorAll(".in-meta").forEach(el => el.addEventListener("change", () => {
+    metas[el.dataset.escola] = +el.value;
+    DB.grava("metas", metas); desenhar();
+  }));
+  const geral = raiz.querySelector("#meta-geral");
+  if (geral) geral.addEventListener("input", () => {
+    metas.__geral = +geral.value; DB.grava("metas", metas);
+    const id = geral.id, pos = geral.value;
+    desenhar();
+    const novo = document.getElementById(id);
+    if (novo) { novo.focus(); novo.value = pos; }
+  });
+  const igualar = raiz.querySelector("#meta-igualar");
+  if (igualar) igualar.addEventListener("click", () => {
+    const g = metas.__geral !== undefined ? metas.__geral : 8;
+    metas = { __geral: g }; DB.grava("metas", metas); desenhar();
+  });
+  const a = raiz.querySelector("#comp-a"), b = raiz.querySelector("#comp-b");
+  if (a) a.addEventListener("change", () => { compA = a.value; desenhar(); });
+  if (b) b.addEventListener("change", () => { compB = b.value; desenhar(); });
+  const troca = raiz.querySelector("#comp-troca");
+  if (troca) troca.addEventListener("click", () => {
+    const t = compA; compA = compB; compB = t; desenhar();
+  });
+}
+
 /* Grupos da barra de navegacao: agrupa os blocos por assunto. */
 const GRUPOS = [
   ["Demonstrações", ["balanco", "balanco-unidade", "dre", "dre-unidade"]],
   ["Posição", ["capital", "disponivel", "imobilizado"]],
-  ["Operação", ["simulacao", "prestacao", "pessoal", "adm", "ranking"]],
+  ["Gestão", ["metas", "comparar", "simulacao"]],
+  ["Operação", ["prestacao", "pessoal", "adm", "ranking"]],
   ["Pessoas", ["funcionarios", "rescisoes"]],
 ];
 
@@ -1798,6 +2011,7 @@ function desenhar() {
     ligarDicas(document.getElementById("conteudo"));
     ligarCliquesEscola(document.getElementById("conteudo"));
     ligarSimulacao(document.getElementById("conteudo"));
+    ligarMetasComparar(document.getElementById("conteudo"));
   } catch (e) {
     document.getElementById("conteudo").innerHTML =
       `<div class="painel"><div class="aviso">Não consegui montar "${bloco.titulo}": ${e.message}</div></div>`;
