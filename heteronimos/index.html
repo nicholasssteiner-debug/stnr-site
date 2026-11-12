@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heterônimos</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Homemade+Apple&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f2ee; --surface:#ffffff; --surface2:#faf9f6; --text:#1d1b18; --muted:#6f6a62;
+  --border:#e2ded6; --accent:#7a3e1d; --accent-soft:#f3e7df; --manual:#2f6f4f; --manual-soft:#e3f1e8;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151412; --surface:#1e1d1a; --surface2:#24221f; --text:#ece8e1; --muted:#a39d93;
+    --border:#34312c; --accent:#e0a37f; --accent-soft:#3a2a20; --manual:#7fcfa0; --manual-soft:#1f3328;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151412; --surface:#1e1d1a; --surface2:#24221f; --text:#ece8e1; --muted:#a39d93;
+  --border:#34312c; --accent:#e0a37f; --accent-soft:#3a2a20; --manual:#7fcfa0; --manual-soft:#1f3328;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 60px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:26px;margin:0;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:4px 0 0;max-width:640px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 14px;font-weight:500}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+button:disabled{opacity:.55;cursor:progress}
+.bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;box-shadow:var(--shadow);margin-bottom:16px}
+.hero{display:flex;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px;flex-wrap:wrap}
+.avatar{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:22px;flex:none}
+.hero .nm{font-size:20px;font-weight:600}
+.hero .meta{color:var(--muted)}
+.sig{font-family:'Homemade Apple',cursive;font-size:20px;color:var(--accent);margin-left:auto;min-height:30px;white-space:nowrap;overflow:hidden;max-width:100%}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 14px 16px;box-shadow:var(--shadow)}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:0 0 10px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f{min-width:0}
+.f.wide{grid-column:1/-1}
+label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;font-weight:500}
+.iw{position:relative}
+input,select{width:100%;font:inherit;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 30px 7px 9px;min-height:34px}
+select{padding-right:9px}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+input.manual,select.manual{border-color:var(--manual);background:var(--manual-soft)}
+input[readonly]{color:var(--muted)}
+.cp{position:absolute;right:3px;top:3px;bottom:3px;width:26px;padding:0;border:none;background:transparent;color:var(--muted);opacity:0;font-size:13px}
+.iw:hover .cp,.cp:focus{opacity:1}
+.cp:hover{color:var(--accent)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:-4px 0 14px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--border);background:var(--surface2)}
+.legend span.m::before{border-color:var(--manual);background:var(--manual-soft)}
+.toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px}
+.toggle input{width:auto;min-height:0}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none;font-weight:500;z-index:9}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.maplink{font-size:12px;color:var(--accent);margin-top:8px;display:inline-block}
+footer{color:var(--muted);font-size:12px;margin-top:22px}
+@media (max-width:520px){
+  .grid{grid-template-columns:1fr}
+  .fields{grid-template-columns:1fr}
+  .sig{margin-left:0}
+  .actions{width:100%}
+  .actions button{flex:1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Heterônimos</h1>
+      <p class="sub">Fichas de pessoas fictícias brasileiras, com documentos de dígito válido e endereço real. Preencha o que quiser fixar; o botão completa só o que estiver vazio.</p>
+    </div>
+    <div class="actions">
+      <button class="primary" id="btnFill" title="Ctrl+Enter">Preencher</button>
+      <button id="btnNew" title="Apaga o que foi gerado, mantém o que você digitou e gera de novo">Nova ficha</button>
+      <button id="btnClear">Limpar tudo</button>
+      <button id="btnCopy">Copiar ficha</button>
+      <button id="btnJson">JSON</button>
+    </div>
+  </header>
+
+  <div class="bar" id="bar"></div>
+  <div class="legend"><span>gerado</span><span class="m">digitado por você (mantido em “Nova ficha”)</span>
+    <label class="toggle"><input type="checkbox" id="semMascara"> copiar documentos sem pontuação</label></div>
+
+  <div class="hero" id="hero">
+    <div class="avatar" id="av">?</div>
+    <div><div class="nm" id="heroNome">Ficha vazia</div><div class="meta" id="heroMeta">Clique em Preencher.</div></div>
+    <div class="sig" id="heroSig"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <footer>Dados gerados aleatoriamente para testes de sistemas e criação de personagens. Os números de documento seguem as regras de cálculo, mas não pertencem a ninguém de propósito. Endereços: ViaCEP · Municípios: IBGE.</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- utilidades ----------
+const R = Math.random;
+const int = (a,b) => Math.floor(R()*(b-a+1))+a;
+const pick = a => a[Math.floor(R()*a.length)];
+const chance = p => R() < p;
+function wpick(list){ const t=list.reduce((s,x)=>s+x[1],0); let r=R()*t; for(const x of list){ if((r-=x[1])<0) return x[0]; } return list[list.length-1][0]; }
+function normal(m,s){ let u=0,v=0; while(!u)u=R(); while(!v)v=R(); return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+const pad = (n,l=2) => String(n).padStart(l,'0');
+const digits = n => Array.from({length:n},()=>int(0,9));
+const fmtD = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+function parseD(s){ const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s||'').trim()); if(!m) return null; const d=new Date(+m[3],+m[2]-1,+m[1]); return isNaN(d)?null:d; }
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+function addY(d,n){ const x=new Date(d); x.setFullYear(x.getFullYear()+n); return x; }
+function randDate(a,b){ return new Date(a.getTime()+R()*(b.getTime()-a.getTime())); }
+function ageOf(d){ let a=TODAY.getFullYear()-d.getFullYear(); const m=TODAY.getMonth()-d.getMonth(); if(m<0||(m===0&&TODAY.getDate()<d.getDate())) a--; return a; }
+const g = (sx,m,f) => sx==='Feminino'?f:m;
+const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+// ---------- tabelas ----------
+const UFS = [['AC','Acre','Rio Branco',68,0.83],['AL','Alagoas','Maceió',82,3.1],['AP','Amapá','Macapá',96,0.73],['AM','Amazonas','Manaus',92,3.9],['BA','Bahia','Salvador',71,14.1],['CE','Ceará','Fortaleza',85,8.8],['DF','Distrito Federal','Brasília',61,2.8],['ES','Espírito Santo','Vitória',27,3.8],['GO','Goiás','Goiânia',62,7.1],['MA','Maranhão','São Luís',98,6.8],['MT','Mato Grosso','Cuiabá',65,3.7],['MS','Mato Grosso do Sul','Campo Grande',67,2.8],['MG','Minas Gerais','Belo Horizonte',31,20.5],['PA','Pará','Belém',91,8.1],['PB','Paraíba','João Pessoa',83,4.0],['PR','Paraná','Curitiba',41,11.4],['PE','Pernambuco','Recife',81,9.1],['PI','Piauí','Teresina',86,3.3],['RJ','Rio de Janeiro','Rio de Janeiro',21,16.0],['RN','Rio Grande do Norte','Natal',84,3.3],['RS','Rio Grande do Sul','Porto Alegre',51,10.9],['RO','Rondônia','Porto Velho',69,1.6],['RR','Roraima','Boa Vista',95,0.64],['SC','Santa Catarina','Florianópolis',48,7.6],['SP','São Paulo','São Paulo',11,44.4],['SE','Sergipe','Aracaju',79,2.2],['TO','Tocantins','Palmas',63,1.5]];
+const UF = Object.fromEntries(UFS.map(u=>[u[0],{nome:u[1],capital:u[2],ddd:u[3],pop:u[4]}]));
+// 9º dígito do CPF = região fiscal
+const CPF_REG = {RS:0,DF:1,GO:1,MS:1,MT:1,TO:1,AC:2,AM:2,AP:2,PA:2,RO:2,RR:2,CE:3,MA:3,PI:3,AL:4,PB:4,PE:4,RN:4,BA:5,SE:5,MG:6,ES:7,RJ:7,SP:8,PR:9,SC:9};
+const TIT_UF = {SP:'01',MG:'02',RJ:'03',RS:'04',BA:'05',PR:'06',CE:'07',PE:'08',SC:'09',GO:'10',MA:'11',PB:'12',PA:'13',ES:'14',PI:'15',RN:'16',AL:'17',MT:'18',MS:'19',DF:'20',SE:'21',AM:'22',RO:'23',AC:'24',AP:'25',RR:'26',TO:'27'};
+const SUL = ['RS','SC','PR'];
+
+const NOMES_M = ['Miguel','Arthur','Gael','Heitor','Theo','Davi','Gabriel','Bernardo','Samuel','João','Pedro','Lucas','Rafael','Gustavo','Matheus','Felipe','Bruno','Leonardo','Thiago','Rodrigo','Eduardo','Daniel','Marcelo','André','Fernando','Ricardo','Carlos','José','Antônio','Francisco','Paulo','Luiz','Marcos','Sebastião','Raimundo','Manoel','Jorge','Roberto','Sérgio','Fábio','Diego','Vinícius','Caio','Henrique','Otávio','Murilo','Enzo','Lorenzo','Benjamin','Joaquim','Nicolas','Guilherme','Leandro','Alexandre','Renato','Cláudio','Márcio','Wagner','Edson','Valdir','Osvaldo','Gilberto','Anderson','Wellington','Jefferson','Cristiano','Emanuel','Isaac','Benício','Rogério','Jonas','Elias','Ademir','Nelson','Douglas','Igor','Hugo','Mauro','Silvio','Juliano'];
+const NOMES_F = ['Maria','Ana','Helena','Alice','Laura','Manuela','Valentina','Sophia','Isabella','Heloísa','Luiza','Júlia','Lorena','Lívia','Cecília','Beatriz','Mariana','Gabriela','Fernanda','Juliana','Camila','Amanda','Letícia','Larissa','Patrícia','Aline','Bruna','Carolina','Vanessa','Tatiane','Priscila','Daniela','Renata','Cristina','Sandra','Márcia','Luciana','Adriana','Simone','Raimunda','Francisca','Antônia','Terezinha','Rosângela','Rita','Sônia','Vera','Lúcia','Fátima','Aparecida','Josefa','Ivone','Eliane','Débora','Rebeca','Sara','Ester','Raquel','Natália','Bianca','Yasmin','Clara','Lara','Elisa','Marta','Glória','Neusa','Cláudia','Denise','Regina','Jéssica','Kátia','Viviane','Michele','Silvana','Rosana','Eduarda','Isadora'];
+const SOBR = ['Silva','Santos','Oliveira','Souza','Rodrigues','Ferreira','Alves','Pereira','Lima','Gomes','Costa','Ribeiro','Martins','Carvalho','Almeida','Lopes','Soares','Fernandes','Vieira','Barbosa','Rocha','Dias','Nascimento','Andrade','Moreira','Nunes','Marques','Machado','Mendes','Freitas','Cardoso','Ramos','Gonçalves','Santana','Teixeira','Araújo','Moura','Correia','Pinto','Cavalcanti','Monteiro','Batista','Campos','Rezende','Castro','Farias','Borges','Medeiros','Cunha','Pires','Melo','Azevedo','Brito','Moraes','Fonseca','Siqueira','Tavares','Prado','Queiroz','Sales','Bezerra','Duarte','Viana','Macedo','Peixoto','Lacerda','Xavier','Guimarães','Coelho','Assis','Nogueira','Leite','Brandão','Paiva','Pacheco','Aguiar','Bastos','Amaral','Conceição','Jesus','Paz','Figueiredo','Matos','Sampaio'];
+const SOBR_EURO = ['Becker','Schmidt','Müller','Weber','Schneider','Fischer','Wagner','Hoffmann','Rossi','Ferrari','Bianchi','Conti','Colombo','Bortolini','Zanella','Dalla Costa','Kowalski','Nowak','Yamamoto','Tanaka'];
+const PARTIC = {Silva:'da',Santos:'dos',Oliveira:'de',Souza:'de',Costa:'da',Conceição:'da',Jesus:'de',Nascimento:'do',Rocha:'da',Cunha:'da',Paz:'da',Assis:'de',Moraes:'de',Andrade:'de',Freitas:'de',Lima:'de',Melo:'de'};
+const PARTS = ['da','de','do','das','dos','e'];
+
+const TIMES_NAC = [['Flamengo',20],['Corinthians',14],['São Paulo',8],['Palmeiras',8],['Vasco',4],['Grêmio',4],['Cruzeiro',3],['Internacional',3],['Atlético-MG',3],['Santos',3],['Bahia',2],['Botafogo',2],['Fluminense',2],['Sport',1.5],['Fortaleza',1],['Ceará',1],['Vitória',1],['Athletico-PR',1],['Remo',1],['Paysandu',1],['Não torce para nenhum time',15]];
+const TIMES_UF = {RS:['Grêmio','Internacional','Juventude'],SP:['Corinthians','Palmeiras','São Paulo','Santos'],RJ:['Flamengo','Fluminense','Vasco','Botafogo'],MG:['Cruzeiro','Atlético-MG','América-MG'],PR:['Athletico-PR','Coritiba','Paraná Clube'],SC:['Avaí','Figueirense','Chapecoense','Criciúma'],BA:['Bahia','Vitória'],PE:['Sport','Náutico','Santa Cruz'],CE:['Fortaleza','Ceará'],PA:['Remo','Paysandu'],GO:['Goiás','Vila Nova','Atlético-GO'],AL:['CRB','CSA'],RN:['ABC','América-RN'],PB:['Botafogo-PB','Treze','Campinense'],MA:['Sampaio Corrêa','Moto Club'],SE:['Sergipe','Confiança'],AM:['Nacional-AM','Amazonas FC'],MT:['Cuiabá'],ES:['Rio Branco-ES','Desportiva Ferroviária'],PI:['River-PI']};
+
+const CURSOS = [ // curso, profissão M, profissão F, renda min, renda max
+ ['Administração','Administrador','Administradora',3500,12000],['Direito','Advogado','Advogada',4000,20000],['Pedagogia','Professor','Professora',2800,6500],['Ciências Contábeis','Contador','Contadora',3500,12000],['Enfermagem','Enfermeiro','Enfermeira',3800,8000],['Engenharia Civil','Engenheiro civil','Engenheira civil',6000,18000],['Psicologia','Psicólogo','Psicóloga',3000,10000],['Medicina','Médico','Médica',14000,40000],['Sistemas de Informação','Analista de sistemas','Analista de sistemas',4500,16000],['Educação Física','Personal trainer','Personal trainer',2500,7000],['Arquitetura e Urbanismo','Arquiteto','Arquiteta',4000,13000],['Nutrição','Nutricionista','Nutricionista',3000,8000],['Fisioterapia','Fisioterapeuta','Fisioterapeuta',3200,8500],['Odontologia','Dentista','Dentista',5000,18000],['Farmácia','Farmacêutico','Farmacêutica',4000,9000],['Jornalismo','Jornalista','Jornalista',3000,9000],['Teologia','Pastor','Capelã',3000,8000],['Letras','Professor de português','Professora de português',2800,6500],['História','Professor de história','Professora de história',2800,6500],['Engenharia de Produção','Engenheiro de produção','Engenheira de produção',6000,16000],['Ciência da Computação','Desenvolvedor de software','Desenvolvedora de software',5000,20000],['Marketing','Analista de marketing','Analista de marketing',3500,10000],['Recursos Humanos','Analista de RH','Analista de RH',3200,8000],['Medicina Veterinária','Veterinário','Veterinária',4500,12000]];
+const PROF_MEDIO = [['Auxiliar administrativo','Auxiliar administrativa'],['Vendedor','Vendedora'],['Recepcionista','Recepcionista'],['Técnico de enfermagem','Técnica de enfermagem'],['Motorista de aplicativo','Motorista de aplicativo'],['Operador de caixa','Operadora de caixa'],['Atendente','Atendente'],['Assistente financeiro','Assistente financeira'],['Eletricista','Eletricista'],['Mecânico','Mecânica'],['Cabeleireiro','Cabeleireira'],['Técnico em informática','Técnica em informática'],['Vigilante','Vigilante'],['Representante comercial','Representante comercial'],['Auxiliar de produção','Auxiliar de produção'],['Cozinheiro','Cozinheira'],['Corretor de imóveis','Corretora de imóveis'],['Microempreendedor','Microempreendedora'],['Policial militar','Policial militar'],['Técnico em segurança do trabalho','Técnica em segurança do trabalho'],['Agente comunitário de saúde','Agente comunitária de saúde']];
+const PROF_FUND = [['Pedreiro','Diarista'],['Servente de obras','Auxiliar de limpeza'],['Agricultor','Agricultora'],['Pintor','Costureira'],['Ajudante geral','Ajudante geral'],['Porteiro','Porteira'],['Gari','Merendeira'],['Cuidador de idosos','Cuidadora de idosos'],['Jardineiro','Manicure'],['Motoboy','Doméstica'],['Caminhoneiro','Cozinheira'],['Pescador','Feirante']];
+
+// ---------- campos ----------
+const SECTIONS = [
+ ['Identidade',[['nome','Nome completo',1],['nascimento','Data de nascimento'],['idade','Idade'],['signo','Signo'],['signoChines','Signo chinês'],['naturalidade','Naturalidade'],['nacionalidade','Nacionalidade'],['mae','Nome da mãe',1],['pai','Nome do pai',1]]],
+ ['Documentos',[['cpf','CPF'],['rg','RG'],['rgOrgao','Órgão emissor'],['rgEmissao','Emissão do RG'],['titulo','Título de eleitor'],['zona','Zona / Seção'],['pis','PIS / NIS'],['cns','Cartão SUS (CNS)'],['cnh','CNH (registro)'],['cnhCat','Categoria CNH'],['cnhPrimeira','1ª habilitação'],['cnhValidade','Validade CNH'],['reservista','Certificado de reservista',1]]],
+ ['Endereço',[['cep','CEP'],['numero','Número'],['logradouro','Logradouro',1],['complemento','Complemento'],['bairro','Bairro'],['cidadeUf','Cidade / UF',1,true],['moradia','Moradia'],['tempoEnd','Mora ali há']]],
+ ['Contato',[['celular','Celular'],['fixo','Telefone fixo'],['email','E-mail',1],['usuario','Usuário / @'],['contatoEmerg','Contato de emergência']]],
+ ['Corpo e saúde',[['sangue','Tipo sanguíneo'],['raca','Cor / raça (IBGE)'],['altura','Altura'],['peso','Peso'],['imc','IMC'],['mao','Mão dominante'],['olhos','Olhos'],['cabelo','Cabelo'],['oculos','Usa óculos'],['doador','Doador de órgãos'],['alergia','Alergias'],['condicao','Condição de saúde'],['plano','Plano de saúde',1],['camisa','Camisa'],['calca','Calça / manequim'],['calcado','Calçado']]],
+ ['Vida social e trabalho',[['estadoCivil','Estado civil'],['filhos','Filhos'],['conjuge','Cônjuge / companheiro(a)',1],['escolaridade','Escolaridade',1],['curso','Curso / formação',1],['profissao','Profissão'],['renda','Renda mensal'],['empresa','Onde trabalha',1],['religiao','Religião'],['time','Time do coração']]],
+ ['Gostos e hábitos',[['corFav','Cor favorita'],['comida','Comida favorita'],['bebida','Bebida'],['musica','Música'],['hobby','Hobby'],['pet','Animal de estimação'],['fumante','Fumante'],['personalidade','Personalidade (MBTI)']]],
+ ['Veículo',[['veiculo','Veículo',1],['veicAno','Ano'],['veicCor','Cor'],['placa','Placa (Mercosul)'],['renavam','Renavam']]]
+];
+const DOCS = new Set(['cpf','rg','titulo','pis','cns','cnh','cep','renavam','placa','celular','fixo']);
+const LABEL = {sexo:'Sexo',uf:'Estado',cidade:'Cidade'};
+
+const $ = id => document.getElementById(id);
+const manual = new Set();
+
+function buildUI(){
+  const bar = $('bar');
+  bar.innerHTML = `
+   <div><label for="sexo">Sexo</label><select id="sexo"><option value="">Aleatório</option><option>Masculino</option><option>Feminino</option></select></div>
+   <div><label for="idadeMin">Idade de</label><input id="idadeMin" type="number" min="0" max="110" placeholder="18"></div>
+   <div><label for="idadeMax">até</label><input id="idadeMax" type="number" min="0" max="110" placeholder="80"></div>
+   <div><label for="uf">Estado</label><select id="uf"><option value="">Aleatório</option>${UFS.map(u=>`<option value="${u[0]}">${u[0]} – ${u[1]}</option>`).join('')}</select></div>
+   <div style="grid-column:span 2;min-width:0"><label for="cidade">Cidade</label><select id="cidade"><option value="">Aleatória</option></select></div>`;
+  const grid = $('grid');
+  for(const [title,fields] of SECTIONS){
+    const c=document.createElement('section'); c.className='card';
+    c.innerHTML=`<h2>${title}</h2><div class="fields">${fields.map(([id,lab,wide,ro])=>{ LABEL[id]=lab; return `
+      <div class="f${wide?' wide':''}"><label for="${id}">${lab}</label><div class="iw"><input id="${id}" autocomplete="off"${ro?' readonly':''}><button class="cp" data-for="${id}" title="Copiar" aria-label="Copiar ${lab}">⧉</button></div></div>`;}).join('')}</div>${title==='Endereço'?'<a class="maplink" id="maplink" target="_blank" rel="noopener" hidden>Ver no mapa ↗</a>':''}`;
+    grid.appendChild(c);
+  }
+  document.querySelectorAll('input,select').forEach(el=>{
+    if(['semMascara','idadeMin','idadeMax'].includes(el.id)) return;
+    el.addEventListener('input',()=>{ if(el.value.trim()) {manual.add(el.id); el.classList.add('manual');} else {manual.delete(el.id); el.classList.remove('manual');} });
+  });
+  $('uf').addEventListener('change', async ()=>{ setCityOptions([]); W('cidade',''); unmark('cidade'); if($('uf').value) setCityOptions(await cities($('uf').value)); });
+  $('grid').addEventListener('click',e=>{ const b=e.target.closest('.cp'); if(b) copyField(b.dataset.for); });
+}
+function unmark(id){ manual.delete(id); $(id).classList.remove('manual'); }
+function setCityOptions(list){ const s=$('cidade'), cur=s.value; s.innerHTML='<option value="">Aleatória</option>'+list.map(c=>`<option>${c}</option>`).join(''); if(list.includes(cur)) s.value=cur; }
+
+// estado corrente
+let S = {};
+function W(id,v){ S[id]=v; const el=$(id); if(!el) return;
+  if(el.tagName==='SELECT' && v && ![...el.options].some(o=>o.value===v)){ const o=document.createElement('option'); o.textContent=v; el.appendChild(o); }
+  el.value=v; }
+function readAll(){ S={}; document.querySelectorAll('#bar select, #grid input').forEach(el=>S[el.id]=el.value.trim()); }
+const empty = id => !S[id];
+function set(id,fn){ if(empty(id)) W(id, fn()); return S[id]; }
+
+// ---------- APIs ----------
+const cityCache = {};
+async function cities(uf){
+  if(cityCache[uf]) return cityCache[uf];
+  const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
+  const j = await r.json(); return cityCache[uf] = j.map(m=>m.nome);
+}
+const TERMOS = ['Rua','Avenida','São','Santa','Brasil','José','Maria','Paulo','Pedro','Silva','Santos','Dom','Coronel','Professor','Doutor','João','Flores','Jardim','Rio','Bento','General','Marechal','Tiradentes','Sete','Quinze','Vinte','Getúlio','Duque','Padre','Antônio'];
+async function viaSearch(uf,city){
+  const terms=[...TERMOS].sort(()=>R()-.5).slice(0,4);
+  for(const t of terms){
+    try{
+      const r=await fetch(`https://viacep.com.br/ws/${uf}/${encodeURIComponent(city)}/${encodeURIComponent(t)}/json/`);
+      if(!r.ok) continue; const j=await r.json();
+      const ok=Array.isArray(j)?j.filter(x=>x.logradouro&&x.bairro&&x.localidade===city):[];
+      if(ok.length) return pick(ok);
+    }catch(e){}
+  }
+  return null;
+}
+async function viaCep(cep){
+  try{ const r=await fetch(`https://viacep.com.br/ws/${cep.replace(/\D/g,'')}/json/`); const j=await r.json(); return j.erro?null:j; }catch(e){ return null; }
+}
+
+// ---------- geradores de documentos ----------
+function cpfGen(uf){
+  let d; do{ d=digits(8); d.push(CPF_REG[uf]??int(0,9)); }while(new Set(d).size===1);
+  let s=0; for(let i=0;i<9;i++) s+=d[i]*(10-i); let r=(s*10)%11; d.push(r===10?0:r);
+  s=0; for(let i=0;i<10;i++) s+=d[i]*(11-i); r=(s*10)%11; d.push(r===10?0:r);
+  const x=d.join(''); return `${x.slice(0,3)}.${x.slice(3,6)}.${x.slice(6,9)}-${x.slice(9)}`;
+}
+function rgGen(){
+  const d=digits(8); let s=0; d.forEach((v,i)=>s+=v*(i+2)); const r=11-(s%11); const dv=r===10?'X':r===11?'0':String(r);
+  const x=d.join(''); return `${x.slice(0,2)}.${x.slice(2,5)}.${x.slice(5,8)}-${dv}`;
+}
+function tituloGen(uf){
+  const seq=digits(8), u=TIT_UF[uf].split('').map(Number), spmg=uf==='SP'||uf==='MG';
+  let s=0; seq.forEach((v,i)=>s+=v*(i+2)); let d1=s%11; if(d1===10)d1=0; if(d1===0&&spmg)d1=1;
+  let d2=(u[0]*7+u[1]*8+d1*9)%11; if(d2===10)d2=0; if(d2===0&&spmg)d2=1;
+  const x=seq.join('')+u.join('')+d1+d2; return `${x.slice(0,4)} ${x.slice(4,8)} ${x.slice(8)}`;
+}
+function pisGen(){
+  const d=[1,int(0,3),...digits(8)], w=[3,2,9,8,7,6,5,4,3,2]; let s=0; d.forEach((v,i)=>s+=v*w[i]);
+  let r=11-(s%11); if(r>=10) r=0; const x=d.join('')+r; return `${x.slice(0,3)}.${x.slice(3,8)}.${x.slice(8,10)}-${x.slice(10)}`;
+}
+function cnsGen(){
+  const b=[pick([1,2]),...digits(10)]; let s=0; b.forEach((v,i)=>s+=v*(15-i));
+  let r=11-(s%11), x; if(r===11) r=0;
+  if(r===10){ s+=2; r=11-(s%11); x=b.join('')+'001'+r; } else x=b.join('')+'000'+r;
+  return `${x.slice(0,3)} ${x.slice(3,7)} ${x.slice(7,11)} ${x.slice(11)}`;
+}
+function cnhGen(){
+  for(;;){
+    const d=digits(9); if(new Set(d).size===1) continue;
+    let s=0; for(let i=0;i<9;i++) s+=d[i]*(9-i); let d1=s%11, dsc=0; if(d1>=10){d1=0;dsc=2;}
+    s=0; for(let i=0;i<9;i++) s+=d[i]*(i+1); const x=s%11; const d2=x>=10?0:x-dsc; if(d2<0) continue;
+    return d.join('')+d1+d2;
+  }
+}
+function renavamGen(){
+  const b=digits(10), w=[3,2,9,8,7,6,5,4,3,2]; let s=0; b.forEach((v,i)=>s+=v*w[i]); let r=(s*10)%11; if(r===10) r=0; return b.join('')+r;
+}
+const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const placaGen = () => `${pick(LET)}${pick(LET)}${pick(LET)}${int(0,9)}${pick(LET)}${int(0,9)}${int(0,9)}`;
+
+// ---------- nomes ----------
+function firstName(sx){
+  const L = sx==='Feminino'?NOMES_F:NOMES_M; let n=pick(L);
+  if(chance(.2)){ let m; do m=pick(L); while(m===n); n = (sx==='Feminino'&&chance(.4))?`Maria ${m}`:`${n} ${m}`; if(n.startsWith('Maria Maria')) n=n.slice(6); }
+  return n;
+}
+function surname(uf){ const s = (SUL.includes(uf)&&chance(.25))?pick(SOBR_EURO):pick(SOBR); return (PARTIC[s]&&chance(.45))?`${PARTIC[s]} ${s}`:s; }
+function lastSurname(full){ // último sobrenome com partícula
+  const t=full.trim().split(/\s+/); if(t.length<2) return null; let s=t[t.length-1]; if(t.length>=3&&PARTS.includes(t[t.length-2].toLowerCase())) s=t[t.length-2]+' '+s; return s;
+}
+function nameTokens(full){ // [primeiro, ..., sobrenomes] sem partículas soltas
+  const t=full.trim().split(/\s+/); const out=[]; for(let i=0;i<t.length;i++){ if(PARTS.includes(t[i].toLowerCase())&&i+1<t.length){ out.push(t[i]+' '+t[i+1]); i++; } else out.push(t[i]); } return out;
+}
+
+// ---------- preenchimento ----------
+let busy=false;
+async function fill(){
+  if(busy) return; busy=true; $('btnFill').disabled=$('btnNew').disabled=true;
+  try{ await doFill(); renderHero(); }
+  catch(e){ console.error(e); toast('Falha ao consultar endereço. Verifique a conexão.'); }
+  finally{ busy=false; $('btnFill').disabled=$('btnNew').disabled=false; }
+}
+
+async function doFill(){
+  readAll();
+  // sexo
+  const sx = set('sexo',()=>chance(.5)?'Masculino':'Feminino');
+  // nascimento / idade
+  let mn=parseInt($('idadeMin').value), mx=parseInt($('idadeMax').value);
+  if(isNaN(mn)) mn = isNaN(mx)?18:Math.min(18,mx); if(isNaN(mx)) mx=Math.max(80,mn); if(mx<mn) [mn,mx]=[mx,mn];
+  let dob=parseD(S.nascimento);
+  if(!dob){
+    const ag = /^\d+/.test(S.idade) ? parseInt(S.idade) : int(mn,mx);
+    dob = randDate(addY(TODAY,-(ag+1)), addY(TODAY,-ag)); dob.setDate(dob.getDate()+1); if(dob>TODAY) dob=addY(TODAY,-ag);
+    W('nascimento',fmtD(dob));
+  }
+  const age=ageOf(dob), adult=age>=18;
+  set('idade',()=>`${age} anos`);
+
+  // ---- endereço ----
+  if(S.cep && (empty('logradouro')||empty('bairro')||empty('uf')||empty('cidade'))){
+    const v=await viaCep(S.cep); if(v){ set('uf',()=>v.uf); set('logradouro',()=>v.logradouro); set('bairro',()=>v.bairro); S._ddd=v.ddd; if(empty('cidade')){ W('cidade',v.localidade);} }
+  }
+  const uf = set('uf',()=>wpick(UFS.map(u=>[u[0],u[4]])));
+  const list = await cities(uf); setCityOptions(list); if(S.cidade) W('cidade',S.cidade);
+  const cityFixed = !!S.cidade;
+  if(empty('cidade')) W('cidade', chance(.4)?UF[uf].capital:pick(list));
+  let addr=null;
+  if(empty('cep')||empty('logradouro')||empty('bairro')){
+    addr = await viaSearch(uf,S.cidade);
+    for(let k=0; !addr && !cityFixed && k<4; k++){ W('cidade', k===3?UF[uf].capital:pick(list)); addr=await viaSearch(uf,S.cidade); }
+    if(addr){ set('cep',()=>addr.cep); set('logradouro',()=>addr.logradouro); set('bairro',()=>addr.bairro); S._ddd=addr.ddd; }
+    else { set('logradouro',()=>`Rua ${pick(['Sete de Setembro','Quinze de Novembro','Tiradentes','Duque de Caxias','Santos Dumont','Getúlio Vargas'])}`); set('bairro',()=>'Centro'); set('cep',()=>'CEP geral do município'); }
+  }
+  const ddd = S._ddd || UF[uf].ddd;
+  set('numero',()=>String(chance(.7)?int(10,999):int(1000,4500)));
+  set('complemento',()=>wpick([['',55],[`Apto ${int(1,18)}0${int(1,8)}`,25],[`Casa ${int(1,12)}`,10],[`Bloco ${pick('ABCDEF')}, Apto ${int(1,12)}0${int(1,4)}`,7],['Fundos',3]]));
+  W('cidadeUf',`${S.cidade} / ${uf}`);
+  const ml=$('maplink'); ml.hidden=false; ml.href=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${S.logradouro}, ${S.numero}, ${S.bairro}, ${S.cidade} - ${uf}`)}`;
+
+  // ---- nomes ----
+  let paiSob = S.pai?lastSurname(S.pai):null, maeSob = S.mae?lastSurname(S.mae):null;
+  if(S.nome){ const t=nameTokens(S.nome); if(!paiSob&&t.length>=2) paiSob=t[t.length-1]; if(!maeSob&&t.length>=3) maeSob=t[t.length-2]; }
+  paiSob ||= surname(uf); maeSob ||= surname(uf); if(maeSob===paiSob && !S.nome) maeSob=surname(uf);
+  set('nome',()=>`${firstName(sx)} ${chance(.85)?maeSob+' ':''}${paiSob}`);
+  set('mae',()=>`${firstName('Feminino')} ${chance(.6)?surname(uf)+' ':''}${maeSob}`);
+  set('pai',()=>`${firstName('Masculino')} ${chance(.6)?surname(uf)+' ':''}${paiSob}`);
+  const first = S.nome.split(/\s+/)[0], lastS = (lastSurname(S.nome)||S.nome).split(' ').pop();
+
+  // ---- identidade ----
+  set('signo',()=>{ const m=dob.getMonth()+1,d=dob.getDate(); const T=[[1,20,'Capricórnio'],[2,19,'Aquário'],[3,21,'Peixes'],[4,20,'Áries'],[5,21,'Touro'],[6,21,'Gêmeos'],[7,23,'Câncer'],[8,23,'Leão'],[9,23,'Virgem'],[10,23,'Libra'],[11,22,'Escorpião'],[12,22,'Sagitário']]; for(const [mm,dd,n] of T) if(m<mm||(m===mm&&d<dd)) return n; return 'Capricórnio'; });
+  set('signoChines',()=>['Rato','Boi','Tigre','Coelho','Dragão','Serpente','Cavalo','Cabra','Macaco','Galo','Cão','Porco'][(((dob.getFullYear()-4)%12)+12)%12]);
+  set('naturalidade',()=>{ if(chance(.72)) return `${chance(.5)?S.cidade:pick(list)}/${uf}`; const o=pick(UFS); return `${o[2]}/${o[0]}`; });
+  set('nacionalidade',()=>'Brasileira');
+
+  // ---- documentos ----
+  set('cpf',()=>cpfGen(uf));
+  set('rg',()=>age>=1?rgGen():'Não emitido');
+  set('rgOrgao',()=>S.rg==='Não emitido'?'—':`${uf==='RS'?'SSP':uf==='MG'?'PC':uf==='RJ'?'DETRAN':'SSP'}/${uf}`);
+  set('rgEmissao',()=>{ if(S.rg==='Não emitido') return '—'; const a=new Date(Math.max(addY(dob,Math.min(age,7)).getTime(),addY(TODAY,-12).getTime())); return fmtD(randDate(a,addY(TODAY,0))); });
+  const votante = age>=18 || (age>=16&&chance(.5));
+  set('titulo',()=>votante?tituloGen(uf):'Não possui');
+  set('zona',()=>votante?`Zona ${pad(int(1,180),3)} · Seção ${pad(int(1,450),4)}`:'—');
+  set('pis',()=>adult&&chance(.92)?pisGen():(age>=14?pisGen():'Não possui'));
+  set('cns',cnsGen);
+  const temCnh = adult && chance(age>75?.35:.68);
+  if(temCnh){
+    const prim = randDate(addY(dob,18), new Date(Math.min(addY(dob,Math.min(age,30)).getTime(),TODAY.getTime())));
+    set('cnh',cnhGen);
+    set('cnhCat',()=>wpick(sx==='Masculino'?[['B',45],['AB',38],['A',4],['D',6],['AE',4],['C',3]]:[['B',70],['AB',24],['A',4],['D',2]]));
+    set('cnhPrimeira',()=>fmtD(prim));
+    set('cnhValidade',()=>fmtD(randDate(addY(TODAY,0),addY(TODAY,age>=70?3:age>=50?5:10))));
+  } else ['cnh','cnhCat','cnhPrimeira','cnhValidade'].forEach(id=>set(id,()=>id==='cnh'?'Não habilitado'+(sx==='Feminino'?'a':''):'—'));
+  set('reservista',()=>sx==='Masculino'&&adult? `${chance(.8)?'CDI (dispensa de incorporação)':'Reservista de 2ª categoria'} nº ${digits(12).join('')} · RM ${int(1,12)}`:'Não se aplica');
+
+  // ---- contato ----
+  set('celular',()=>`(${ddd}) 9${int(6,9)}${digits(3).join('')}-${digits(4).join('')}`);
+  set('fixo',()=>chance(.4)?`(${ddd}) ${int(2,5)}${digits(3).join('')}-${digits(4).join('')}`:'Não possui');
+  const handle = slug(first.split(' ')[0])+pick(['.','_','',''])+slug(lastS)+(chance(.6)?String(chance(.5)?dob.getFullYear()%100:int(1,999)).padStart(2,'0'):'');
+  set('email',()=>`${handle}@${wpick([['gmail.com',60],['hotmail.com',15],['outlook.com',10],['yahoo.com.br',6],['icloud.com',5],['uol.com.br',2],['bol.com.br',2]])}`);
+  set('usuario',()=>'@'+handle);
+  set('contatoEmerg',()=>`${S.mae.split(' ')[0]} (mãe) · (${ddd}) 9${int(6,9)}${digits(3).join('')}-${digits(4).join('')}`);
+
+  // ---- corpo ----
+  set('sangue',()=>wpick([['O+',36],['A+',34],['B+',8],['AB+',2.5],['O-',9],['A-',8],['B-',2],['AB-',0.5]]));
+  const raca = set('raca',()=>wpick(SUL.includes(uf)?[['Branca',74],['Parda',19],['Preta',6],['Amarela',.6],['Indígena',.4]]:[['Parda',47],['Branca',40],['Preta',11],['Amarela',.5],['Indígena',.8]]));
+  let alt = sx==='Masculino'?normal(173,7):normal(160.5,6.5);
+  if(age<18) alt = 50 + (alt-50)*Math.pow(Math.min(1,(age+0.5)/17),0.75);
+  if(age>65) alt -= (age-65)*0.12;
+  set('altura',()=>`${(alt/100).toFixed(2).replace('.',',')} m`);
+  const altM = parseFloat(S.altura.replace(',','.'))||alt/100;
+  const bmi = age<18? normal(17.5,2) : Math.max(17, normal(age>35?27:24.5, 4));
+  set('peso',()=>`${Math.round(bmi*altM*altM)} kg`);
+  const pesoKg = parseFloat(S.peso)||bmi*altM*altM, imc = pesoKg/(altM*altM);
+  set('imc',()=>`${imc.toFixed(1).replace('.',',')} (${imc<18.5?'abaixo do peso':imc<25?'normal':imc<30?'sobrepeso':imc<35?'obesidade I':'obesidade II'})`);
+  set('mao',()=>wpick([['Destro',89],['Canhoto',10],['Ambidestro',1]]).replace(/o$/,sx==='Feminino'?'a':'o'));
+  set('olhos',()=>wpick(raca==='Branca'?[['Castanhos escuros',38],['Castanhos claros',22],['Verdes',12],['Azuis',13],['Mel',10],['Pretos',5]]:[['Castanhos escuros',58],['Pretos',22],['Castanhos claros',14],['Mel',5],['Verdes',1]]));
+  set('cabelo',()=>{
+    if(sx==='Masculino'&&age>40&&chance((age-35)/80)) return 'Calvo';
+    let cor = age>70&&chance(.7)?'Branco':age>50&&chance(.5)?'Grisalho':wpick(raca==='Branca'?[['Castanho escuro',35],['Castanho claro',25],['Loiro',18],['Preto',17],['Ruivo',5]]:[['Preto',55],['Castanho escuro',38],['Castanho claro',6],['Loiro',1]]);
+    const tipo = wpick(raca==='Preta'?[['crespo',55],['cacheado',35],['ondulado',10]]:raca==='Parda'?[['ondulado',35],['cacheado',30],['liso',25],['crespo',10]]:[['liso',50],['ondulado',35],['cacheado',15]]);
+    const comp = sx==='Feminino'?pick(['curto','na altura dos ombros','longo','longo']):pick(['curto','curto','raspado','médio']);
+    return `${cor}, ${tipo}, ${comp}`;
+  });
+  set('oculos',()=>chance(age>45?.7:age>12?.3:.08)?pick(age>45?['Sim (presbiopia)','Sim (miopia)','Sim (astigmatismo)']:['Sim (miopia)','Sim (astigmatismo)','Sim (hipermetropia)','Lentes de contato']):'Não');
+  set('doador',()=>adult?(chance(.6)?'Sim':'Não'):'—');
+  set('alergia',()=>wpick([['Nenhuma conhecida',62],['Dipirona',5],['Penicilina',5],['Ácaros e poeira',8],['Intolerância à lactose',7],['Frutos do mar',3],['Amendoim',2],['Picada de inseto',2],['AAS',2],['Pelo de gato',3],['Glúten (doença celíaca)',1]]));
+  set('condicao',()=>{ const o=[['Nenhuma',age<30?75:age<50?55:30],['Rinite alérgica',8],['Asma',5],['Enxaqueca',5],['Ansiedade',6],['Hipotireoidismo',sx==='Feminino'?5:1]];
+    if(age>=35) o.push(['Hipertensão',age>60?28:12],['Colesterol alto',age>50?12:5],['Diabetes tipo 2',age>60?12:4]); if(age>60) o.push(['Artrose',8]); return wpick(o); });
+  set('plano',()=>chance(.27)?pick(['Unimed','Bradesco Saúde','SulAmérica','Amil','Hapvida','NotreDame Intermédica','Porto Saúde','Cassi','GEAP']).concat(' — ',pick(['enfermaria','apartamento','coparticipação'])):'Não possui (usa o SUS)');
+  set('camisa',()=>age<12?`Infantil ${Math.max(2,Math.min(16,Math.round(age/2)*2))}`:imc<20?'P':imc<24?'M':imc<28?'G':imc<32?'GG':'XG');
+  set('calca',()=>age<12?'Infantil':String(Math.min(56,Math.max(34,Math.round((sx==='Masculino'?38:34)+(imc-20)*1.2+(altM-1.6)*8)/2)*2)));
+  set('calcado',()=>String(age<12?Math.max(18,Math.round(18+age*1.5)):Math.round(sx==='Masculino'?39+(altM-1.65)*30:35+(altM-1.55)*25+normal(0,.6))));
+
+  // ---- social ----
+  const ec = set('estadoCivil',()=>{ const b = age<18?'Solteiro':wpick(age<25?[['Solteiro',85],['União estável',10],['Casado',5]]:age<35?[['Solteiro',45],['Casado',30],['União estável',20],['Divorciado',5]]:age<60?[['Solteiro',18],['Casado',50],['União estável',15],['Divorciado',15],['Viúvo',2]]:[['Solteiro',8],['Casado',50],['União estável',7],['Divorciado',12],['Viúvo',23]]); return b.replace(/o$/,sx==='Feminino'?'a':'o'); });
+  set('conjuge',()=>{ if(!/Casad|União/.test(ec)) return '—'; const os = sx==='Masculino'?'Feminino':'Masculino'; return `${firstName(os)} ${surname(uf)}${sx==='Masculino'&&/Casad/.test(ec)&&chance(.6)?' '+paiSob:''}`; });
+  set('filhos',()=>{ if(age<17) return 'Nenhum'; const n = age<25?wpick([[0,75],[1,20],[2,5]]):wpick([[0,22],[1,30],[2,32],[3,11],[4,5]]); return n===0?'Nenhum':n===1?'1 filho':`${n} filhos`; });
+  const esc = set('escolaridade',()=>{
+    if(age<6) return 'Educação infantil'; if(age<15) return `Ensino fundamental em curso (${Math.min(9,age-5)}º ano)`; if(age<18) return `Ensino médio em curso (${age-14}º ano)`;
+    const w = age>60?[['Fundamental incompleto',35],['Fundamental completo',12],['Médio completo',25],['Superior completo',18],['Pós-graduação',5],['Mestrado',1]]:[['Fundamental incompleto',10],['Fundamental completo',7],['Médio incompleto',5],['Médio completo',35],['Superior incompleto',12],['Superior completo',21],['Pós-graduação',8],['Mestrado',1.5],['Doutorado',.5]];
+    return wpick(w); });
+  const superior = /Superior|Pós|Mestrado|Doutorado/.test(esc);
+  const cursoRow = superior?pick(CURSOS):null;
+  set('curso',()=>{ if(age<18) return `Estudante — ${pick(['Escola Estadual','Escola Municipal','Colégio Adventista','Colégio','Escola'])} ${pick(['Dom Pedro II','Tiradentes','Machado de Assis','Rui Barbosa','Santos Dumont','Castro Alves'])}`;
+    if(!cursoRow) return /Médio/.test(esc)&&chance(.3)?`Técnico em ${pick(['Administração','Enfermagem','Informática','Segurança do Trabalho','Edificações','Logística'])}`:'—';
+    const inst = pick(['Universidade Federal','Universidade Estadual','Centro Universitário','Faculdade','PUC','Universidade']);
+    return `${cursoRow[0]}${/Pós|Mestrado|Doutorado/.test(esc)?` + ${/Mestrado|Doutorado/.test(esc)?esc.toLowerCase():'especialização'}`:''} — ${inst}${inst.startsWith('Universidade ')?' de '+(inst.includes('Federal')||inst.includes('Estadual')?UF[uf].nome:S.cidade):''}`; });
+  let renda=0;
+  const prof = set('profissao',()=>{
+    if(age<14) return 'Estudante'; if(age<18) return chance(.2)?g(sx,'Jovem aprendiz','Jovem aprendiz'):'Estudante';
+    if(age>=65&&chance(.75)){ renda=int(1518,4500); return g(sx,'Aposentado','Aposentada'); }
+    if(chance(.07)) return g(sx,'Desempregado','Desempregada');
+    if(cursoRow&&!/incompleto/.test(esc)){ renda=int(cursoRow[3],cursoRow[4]); return g(sx,cursoRow[1],cursoRow[2]); }
+    if(/Fundamental/.test(esc)){ renda=int(1518,2800); return g(sx,...pick(PROF_FUND)); }
+    renda=int(1700,4500); return g(sx,...pick(PROF_MEDIO)); });
+  set('renda',()=>{ if(/Estudante|Desempregad/.test(prof)) return 'Sem renda própria'; if(/aprendiz/.test(prof)) return brl(int(900,1200)); return brl(Math.round((renda||int(1600,4000))/10)*10); });
+  set('empresa',()=>{
+    if(/Estudante|Desempregad|Aposentad/.test(prof)) return '—';
+    if(/Diarista|Doméstica|Motorista de aplicativo|Microempreendedor|Personal|Manicure|Feirante|Corretor/.test(prof)||chance(.15)) return g(sx,'Autônomo','Autônoma');
+    if(/Professor|Policial|Agente comunitári|Gari|Merendeira/.test(prof)&&chance(.75)) return `Servidor${sx==='Feminino'?'a':''} público${sx==='Feminino'?'a':''} — ${/Policial/.test(prof)?'Governo do Estado':'Prefeitura de '+S.cidade}`;
+    return `${pick(['Comercial','Distribuidora','Grupo','Clínica','Transportes','Construtora','Supermercado','Indústria','Escritório','Tecnologia','Laboratório','Auto Center'])} ${pick(SOBR)}${chance(.3)?' & '+pick(SOBR):''} ${pick(['Ltda','Ltda','S.A.','ME','& Filhos Ltda'])}`; });
+  set('religiao',()=>wpick([['Católica',54],['Evangélica — Assembleia de Deus',8],['Evangélica — Batista',4],['Adventista do Sétimo Dia',2],['Evangélica — Universal',2],['Evangélica — Congregação Cristã',2],['Evangélica — Presbiteriana',1],['Evangélica — Quadrangular',1.5],['Evangélica (sem denominação)',5.5],['Espírita',2.5],['Umbanda',.8],['Candomblé',.4],['Testemunha de Jeová',.7],['Sem religião',10],['Ateu',.8],['Budista',.2]]));
+  set('time',()=>TIMES_UF[uf]&&chance(.55)?pick(TIMES_UF[uf]):wpick(TIMES_NAC));
+
+  // ---- gostos ----
+  set('corFav',()=>pick(['Azul','Verde','Preto','Vermelho','Roxo','Branco','Amarelo','Rosa','Laranja','Azul-marinho','Verde-água','Vinho','Cinza']));
+  set('comida',()=>pick(['Churrasco','Lasanha','Feijoada','Pizza','Strogonoff','Arroz com feijão e bife','Moqueca','Baião de dois','Escondidinho','Sushi','Galinhada','Acarajé','Pão de queijo','Tapioca','Macarronada','Hambúrguer','Bobó de camarão','Arroz carreteiro']));
+  set('bebida',()=>pick(['Café preto','Chimarrão','Suco de laranja','Guaraná','Água de coco','Chá gelado','Refrigerante de cola','Suco de maracujá','Cerveja','Vinho','Tereré','Açaí','Café com leite']));
+  set('musica',()=>pick(['Sertanejo','MPB','Pagode','Gospel','Rock nacional','Funk','Forró','Samba','Pop internacional','Rap nacional','Música clássica','Axé','Bossa nova','Eletrônica','Piseiro','Brega','Nativista gaúcha','Jazz']));
+  set('hobby',()=>pick(['Futebol','Leitura','Séries','Cozinhar','Corrida','Pescaria','Jardinagem','Videogame','Viajar','Academia','Crochê','Ciclismo','Fotografia','Tocar violão','Trilhas','Artesanato','Dança','Xadrez','Assistir novela','Marcenaria']));
+  set('pet',()=>wpick([['Nenhum',40],[`Cachorro (${pick(['Thor','Mel','Bob','Luna','Pipoca','Max','Nina','Fred','Paçoca','Belinha'])})`,38],[`Gato (${pick(['Mingau','Frajola','Mia','Tom','Salém','Lua','Bolinha'])})`,17],['Calopsita',2],['Peixes',2],['Papagaio',1]]));
+  set('fumante',()=>adult?wpick([['Não',85],['Sim',9],['Ex-fumante',6]]):'Não');
+  set('personalidade',()=>pick(['ISTJ','ISFJ','INFJ','INTJ','ISTP','ISFP','INFP','INTP','ESTP','ESFP','ENFP','ENTP','ESTJ','ESFJ','ENFJ','ENTJ'])+' — '+pick(['tranquilo(a) e organizado(a)','comunicativo(a)','reservado(a)','prático(a) e direto(a)','criativo(a)','perfeccionista','bem-humorado(a)','caseiro(a)','agitado(a)','paciente']));
+
+  // ---- veículo ----
+  const temVeic = adult && chance(temCnh?.72:.12);
+  if(temVeic){
+    const v = wpick([['Fiat Strada',8],['Fiat Argo',6],['Fiat Mobi',5],['Fiat Uno',6],['Volkswagen Gol',8],['Volkswagen Polo',6],['Volkswagen T-Cross',4],['Chevrolet Onix',9],['Chevrolet Tracker',4],['Chevrolet Prisma',3],['Hyundai HB20',7],['Hyundai Creta',4],['Toyota Corolla',3],['Toyota Hilux',2],['Renault Kwid',4],['Renault Sandero',3],['Honda Civic',2],['Honda HR-V',3],['Jeep Renegade',3],['Jeep Compass',3],['Nissan Kicks',3],['Ford Ka',4],['Honda CG 160 (moto)',6],['Yamaha Fazer 250 (moto)',2],['Honda Biz 125 (moto)',2]]);
+    set('veiculo',()=>`${v} ${pick(['1.0','1.0','1.3','1.6','2.0'])}`.replace(/ \(moto\) .*$/,' (moto)').replace(/(moto\)) [\d.]+$/,'$1'));
+    const ano = Math.min(TODAY.getFullYear(), Math.max(2005, Math.round(normal(TODAY.getFullYear()-7,5))));
+    set('veicAno',()=>`${ano}/${chance(.5)?ano+1>TODAY.getFullYear()+1?ano:ano+1:ano}`);
+    set('veicCor',()=>wpick([['Branco',35],['Preto',20],['Prata',20],['Cinza',15],['Vermelho',6],['Azul',3],['Verde',1]]));
+    set('placa',placaGen); set('renavam',renavamGen);
+  } else ['veiculo','veicAno','veicCor','placa','renavam'].forEach(id=>set(id,()=>id==='veiculo'?'Não possui':'—'));
+
+  set('moradia',()=>age<25&&chance(.6)?'Mora com os pais':wpick([['Própria (quitada)',45],['Própria (financiada)',15],['Alugada',30],['Cedida',6],['Mora com familiares',4]]));
+  set('tempoEnd',()=>{ const n=int(0,Math.max(1,Math.min(age,25))); return n===0?`${int(2,11)} meses`:n===1?'1 ano':`${n} anos`; });
+}
+
+// ---------- hero / cópia ----------
+function renderHero(){
+  const n=$('nome').value; if(!n) return;
+  const t=n.split(/\s+/); $('av').textContent=(t[0][0]+(t.length>1?t[t.length-1][0]:'')).toUpperCase();
+  $('heroNome').textContent=n;
+  $('heroMeta').textContent=[$('idade').value,$('sexo').value,$('cidadeUf').value,$('sangue').value,$('profissao').value].filter(Boolean).join(' · ');
+  const tk=nameTokens(n); $('heroSig').textContent = tk.length>1? `${tk[0]} ${tk[tk.length-1].split(' ').pop()}` : n;
+}
+function val(id){ const v=$(id).value; return $('semMascara').checked&&DOCS.has(id)&&/\d/.test(v)?v.replace(/[^\dA-Za-z]/g,''):v; }
+function copyField(id){ const v=val(id); if(!v) return; navigator.clipboard.writeText(v).then(()=>toast(`${LABEL[id]} copiado`)); }
+function asObject(){ const o={sexo:$('sexo').value,estado:$('uf').value,cidade:$('cidade').value}; for(const [,fs] of SECTIONS) for(const [id] of fs) o[id]=val(id); return o; }
+function asText(){
+  let out=`Sexo: ${$('sexo').value}\n`;
+  for(const [t,fs] of SECTIONS){ out+=`\n${t.toUpperCase()}\n`; for(const [id,lab] of fs){ const v=val(id); if(v) out+=`${lab}: ${v}\n`; } }
+  return out;
+}
+let tt; function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),1600); }
+
+function clearFields(keepManual){
+  document.querySelectorAll('#bar select, #grid input').forEach(el=>{ if(keepManual&&manual.has(el.id)) return; el.value=''; manual.delete(el.id); el.classList.remove('manual'); });
+  $('maplink').hidden=true;
+  if(!keepManual||!manual.has('uf')) setCityOptions([]);
+  $('av').textContent='?'; $('heroNome').textContent='Ficha vazia'; $('heroMeta').textContent='Clique em Preencher.'; $('heroSig').textContent='';
+}
+
+buildUI();
+$('btnFill').onclick=fill;
+$('btnNew').onclick=()=>{ clearFields(true); fill(); };
+$('btnClear').onclick=()=>{ clearFields(false); };
+$('btnCopy').onclick=()=>navigator.clipboard.writeText(asText()).then(()=>toast('Ficha copiada'));
+$('btnJson').onclick=()=>{ const b=new Blob([JSON.stringify(asObject(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`heteronimo-${slug($('nome').value||'ficha')}.json`; a.click(); };
+document.addEventListener('keydown',e=>{ if(e.ctrlKey&&e.key==='Enter'){ e.preventDefault(); fill(); } });
+fill();
+</script>
+</body>
+</html>
