@@ -49,6 +49,7 @@ button:disabled{opacity:.55;cursor:progress}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .f{min-width:0}
 .f.wide{grid-column:1/-1}
+.f.hid{display:none}
 label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;font-weight:500}
 .iw{position:relative}
 input,select{width:100%;font:inherit;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 30px 7px 9px;min-height:34px}
@@ -146,6 +147,30 @@ const PARTS = ['da','de','do','das','dos','e'];
 const TIMES_NAC = [['Flamengo',20],['Corinthians',14],['São Paulo',8],['Palmeiras',8],['Vasco',4],['Grêmio',4],['Cruzeiro',3],['Internacional',3],['Atlético-MG',3],['Santos',3],['Bahia',2],['Botafogo',2],['Fluminense',2],['Sport',1.5],['Fortaleza',1],['Ceará',1],['Vitória',1],['Athletico-PR',1],['Remo',1],['Paysandu',1],['Não torce para nenhum time',15]];
 const TIMES_UF = {RS:['Grêmio','Internacional','Juventude'],SP:['Corinthians','Palmeiras','São Paulo','Santos'],RJ:['Flamengo','Fluminense','Vasco','Botafogo'],MG:['Cruzeiro','Atlético-MG','América-MG'],PR:['Athletico-PR','Coritiba','Paraná Clube'],SC:['Avaí','Figueirense','Chapecoense','Criciúma'],BA:['Bahia','Vitória'],PE:['Sport','Náutico','Santa Cruz'],CE:['Fortaleza','Ceará'],PA:['Remo','Paysandu'],GO:['Goiás','Vila Nova','Atlético-GO'],AL:['CRB','CSA'],RN:['ABC','América-RN'],PB:['Botafogo-PB','Treze','Campinense'],MA:['Sampaio Corrêa','Moto Club'],SE:['Sergipe','Confiança'],AM:['Nacional-AM','Amazonas FC'],MT:['Cuiabá'],ES:['Rio Branco-ES','Desportiva Ferroviária'],PI:['River-PI']};
 
+// países de origem dos naturalizados: nome, peso, adjetivo, idioma, ordem do nome (hisp = pai+mãe, luso = mãe+pai, simple = só família), perfil de cor/raça
+const P = (n,w,adj,l,o,r,c,m,f,s) => ({n,w,adj,l,o,r,c:c.split('|'),m:m.split('|'),f:f.split('|'),s:s.split('|')});
+const PAISES = [
+ P('Venezuela',20,'venezuelana','Espanhol','hisp','M','Caracas|Maracaibo|Valencia|Barquisimeto|Puerto Ordaz','José|Luis|Carlos|Jesús|Miguel|Alejandro|Andrés|Daniel','María|Andreína|Gabriela|Yuleisy|Carolina|Daniela|Valentina|Mariángel','González|Rodríguez|Pérez|Hernández|García|Martínez|Ramírez|Rojas|Sánchez|Díaz'),
+ P('Haiti',10,'haitiana','Crioulo haitiano e francês','simple','P','Porto Príncipe|Cap-Haïtien|Gonaïves|Les Cayes','Jean|Pierre|Wilner|Jean-Baptiste|Ricardo|Emmanuel|Fritz|Jacques','Marie|Nadège|Roseline|Fabienne|Guerline|Mirlande|Darline|Esther','Joseph|Jean-Louis|Pierre|Charles|Louis|Saint-Fleur|Baptiste|Dorval|Etienne|Michel'),
+ P('Bolívia',8,'boliviana','Espanhol','hisp','I','La Paz|Santa Cruz de la Sierra|Cochabamba|El Alto|Sucre','Juan|Carlos|Luis|Freddy|Edwin|Marco|Rodrigo|Wilmer','Rosa|Lucía|Marisol|Ximena|Carla|Wendy|Patricia|Fabiola','Mamani|Quispe|Flores|Choque|Condori|Vargas|Gutiérrez|Rojas|Aguilar|Torrez'),
+ P('Portugal',8,'portuguesa','Português','luso','B','Lisboa|Porto|Braga|Coimbra|Aveiro|Funchal','João|Tiago|Rui|Nuno|Duarte|Gonçalo|Francisco|Afonso','Inês|Beatriz|Joana|Mariana|Leonor|Catarina|Rita|Sofia','Silva|Santos|Ferreira|Pereira|Oliveira|Costa|Rodrigues|Martins|Sousa|Fernandes'),
+ P('Argentina',6,'argentina','Espanhol','hisp','B','Buenos Aires|Córdoba|Rosario|Mendoza|La Plata','Santiago|Matías|Facundo|Martín|Lucas|Joaquín|Nicolás|Agustín','Sofía|Camila|Florencia|Lucía|Agustina|Micaela|Valentina|Julieta','González|Rodríguez|Gómez|Fernández|López|Díaz|Martínez|Pérez|Romero|Sosa'),
+ P('Paraguai',6,'paraguaia','Espanhol e guarani','hisp','M','Assunção|Ciudad del Este|Encarnación|San Lorenzo|Pedro Juan Caballero','Juan|Pedro|Derlis|Osvaldo|Hugo|Ramón|Cristian|Rubén','Liz|Gladys|Mirna|Celeste|Noelia|Fátima|Ramona|Lorena','González|Benítez|Martínez|Giménez|Báez|Ortiz|Duarte|Vera|Acosta|Ayala'),
+ P('Colômbia',5,'colombiana','Espanhol','hisp','M','Bogotá|Medellín|Cali|Barranquilla|Cartagena','Andrés|Camilo|Felipe|Sebastián|Jhon|Óscar|Mauricio|Julián','Paola|Natalia|Diana|Laura|Catalina|Leidy|Viviana|Juliana','Rodríguez|Gómez|Restrepo|Martínez|Ospina|Castaño|Vargas|Cárdenas|Moreno|Zapata'),
+ P('Peru',4,'peruana','Espanhol','hisp','I','Lima|Arequipa|Cusco|Trujillo|Iquitos','Luis|Jorge|César|Víctor|Raúl|Percy|Alonso|Diego','Rosa|Milagros|Karina|Yesenia|Lucía|Gianella|Pilar|Rocío','Quispe|Flores|Huamán|Rojas|Mendoza|Chávez|Ramos|Vásquez|Torres|Castillo'),
+ P('Uruguai',3,'uruguaia','Espanhol','hisp','B','Montevidéu|Salto|Paysandú|Rivera|Maldonado','Diego|Gonzalo|Federico|Sebastián|Rodrigo|Pablo|Martín|Bruno','Lucía|Florencia|Natalia|Carolina|Victoria|Valeria|Sofía|Paula','Rodríguez|González|Fernández|Pereira|Silva|Sosa|Suárez|Olivera|Acosta|Núñez'),
+ P('Angola',3,'angolana','Português','luso','P','Luanda|Huambo|Lobito|Benguela|Lubango','António|Manuel|Domingos|Edvaldo|Adilson|Nelson|Mateus|Celestino','Esperança|Luzia|Domingas|Madalena|Nádia|Isabel|Teresa|Graça','Neto|Lourenço|Mateus|Kiala|Bento|Domingos|Manuel|Sebastião|Fernandes|Cassoma'),
+ P('Japão',3,'japonesa','Japonês','simple','A','Tóquio|Osaka|Nagoya|Fukuoka|Okinawa','Hiroshi|Takeshi|Kenji|Satoshi|Haruto|Yuki|Daisuke|Kazuo','Yuko|Akiko|Sakura|Keiko|Haruka|Naomi|Emi|Mayumi','Sato|Suzuki|Takahashi|Tanaka|Watanabe|Yamamoto|Nakamura|Kobayashi|Kato|Yoshida'),
+ P('China',3,'chinesa','Mandarim','simple','A','Xangai|Pequim|Cantão|Wenzhou|Shenzhen','Wei|Jun|Lei|Hao|Ming|Jian|Tao|Bo','Li|Mei|Xiu|Ying|Fang|Jing|Lan|Yan','Wang|Li|Zhang|Liu|Chen|Yang|Huang|Zhao|Wu|Zhou'),
+ P('Itália',3,'italiana','Italiano','simple','B','Roma|Milão|Nápoles|Turim|Gênova|Verona','Marco|Luca|Giuseppe|Alessandro|Francesco|Matteo|Giovanni|Paolo','Giulia|Francesca|Chiara|Sara|Alessia|Martina|Federica|Elena','Rossi|Russo|Ferrari|Esposito|Bianchi|Romano|Colombo|Ricci|Marino|Greco'),
+ P('Líbano',2,'libanesa','Árabe e francês','simple','B','Beirute|Trípoli|Sídon|Zahlé','Georges|Elie|Michel|Karim|Rami|Fadi|Antoine|Samir','Rita|Nadine|Maya|Rania|Layla|Nour|Carla|Joëlle','Haddad|Khoury|Nassar|Saad|Abboud|Karam|Hanna|Mansour|Farah|Aoun'),
+ P('Coreia do Sul',2,'sul-coreana','Coreano','simple','A','Seul|Busan|Incheon|Daegu','Min-jun|Ji-hoon|Seo-jun|Hyun-woo|Dong-hyun|Jae-won','Ji-yeon|Seo-yeon|Min-ji|Su-bin|Ha-eun|Eun-ji','Kim|Lee|Park|Choi|Jung|Kang|Cho|Yoon'),
+ P('Alemanha',2,'alemã','Alemão','simple','B','Berlim|Munique|Hamburgo|Colônia|Frankfurt','Lukas|Jonas|Felix|Maximilian|Thomas|Stefan|Andreas|Michael','Anna|Lena|Hannah|Julia|Katharina|Sabine|Laura|Lea','Müller|Schmidt|Schneider|Fischer|Weber|Meyer|Wagner|Becker|Hoffmann|Schulz'),
+ P('Cuba',2,'cubana','Espanhol','hisp','M','Havana|Santiago de Cuba|Camagüey|Holguín','Yoandri|Yunior|Alexei|Raúl|Ernesto|Osmany|Reinier|Dairon','Yanet|Yamilé|Dayana|Yudith|Liset|Yaima|Mailén|Arletys','Rodríguez|González|Hernández|Pérez|García|Díaz|Fernández|Álvarez|Martínez|Castillo')
+];
+const PAIS = Object.fromEntries(PAISES.map(p=>[p.n,p]));
+const RACA_PERFIL = {B:[['Branca',85],['Parda',12],['Preta',2],['Amarela',1]],P:[['Preta',80],['Parda',20]],A:[['Amarela',95],['Branca',5]],I:[['Indígena',35],['Parda',55],['Branca',10]],M:[['Parda',55],['Branca',35],['Preta',10]]};
+
 const CURSOS = [ // curso, profissão M, profissão F, renda min, renda max
  ['Administração','Administrador','Administradora',3500,12000],['Direito','Advogado','Advogada',4000,20000],['Pedagogia','Professor','Professora',2800,6500],['Ciências Contábeis','Contador','Contadora',3500,12000],['Enfermagem','Enfermeiro','Enfermeira',3800,8000],['Engenharia Civil','Engenheiro civil','Engenheira civil',6000,18000],['Psicologia','Psicólogo','Psicóloga',3000,10000],['Medicina','Médico','Médica',14000,40000],['Sistemas de Informação','Analista de sistemas','Analista de sistemas',4500,16000],['Educação Física','Personal trainer','Personal trainer',2500,7000],['Arquitetura e Urbanismo','Arquiteto','Arquiteta',4000,13000],['Nutrição','Nutricionista','Nutricionista',3000,8000],['Fisioterapia','Fisioterapeuta','Fisioterapeuta',3200,8500],['Odontologia','Dentista','Dentista',5000,18000],['Farmácia','Farmacêutico','Farmacêutica',4000,9000],['Jornalismo','Jornalista','Jornalista',3000,9000],['Teologia','Pastor','Capelã',3000,8000],['Letras','Professor de português','Professora de português',2800,6500],['História','Professor de história','Professora de história',2800,6500],['Engenharia de Produção','Engenheiro de produção','Engenheira de produção',6000,16000],['Ciência da Computação','Desenvolvedor de software','Desenvolvedora de software',5000,20000],['Marketing','Analista de marketing','Analista de marketing',3500,10000],['Recursos Humanos','Analista de RH','Analista de RH',3200,8000],['Medicina Veterinária','Veterinário','Veterinária',4500,12000]];
 const PROF_MEDIO = [['Auxiliar administrativo','Auxiliar administrativa'],['Vendedor','Vendedora'],['Recepcionista','Recepcionista'],['Técnico de enfermagem','Técnica de enfermagem'],['Motorista de aplicativo','Motorista de aplicativo'],['Operador de caixa','Operadora de caixa'],['Atendente','Atendente'],['Assistente financeiro','Assistente financeira'],['Eletricista','Eletricista'],['Mecânico','Mecânica'],['Cabeleireiro','Cabeleireira'],['Técnico em informática','Técnica em informática'],['Vigilante','Vigilante'],['Representante comercial','Representante comercial'],['Auxiliar de produção','Auxiliar de produção'],['Cozinheiro','Cozinheira'],['Corretor de imóveis','Corretora de imóveis'],['Microempreendedor','Microempreendedora'],['Policial militar','Policial militar'],['Técnico em segurança do trabalho','Técnica em segurança do trabalho'],['Agente comunitário de saúde','Agente comunitária de saúde']];
@@ -153,8 +178,8 @@ const PROF_FUND = [['Pedreiro','Diarista'],['Servente de obras','Auxiliar de lim
 
 // ---------- campos ----------
 const SECTIONS = [
- ['Identidade',[['nome','Nome completo',1],['nascimento','Data de nascimento'],['idade','Idade'],['signo','Signo'],['signoChines','Signo chinês'],['naturalidade','Naturalidade'],['nacionalidade','Nacionalidade'],['mae','Nome da mãe',1],['pai','Nome do pai',1]]],
- ['Documentos',[['cpf','CPF'],['rg','RG'],['rgOrgao','Órgão emissor'],['rgEmissao','Emissão do RG'],['titulo','Título de eleitor'],['zona','Zona / Seção'],['pis','PIS / NIS'],['cns','Cartão SUS (CNS)'],['cnh','CNH (registro)'],['cnhCat','Categoria CNH'],['cnhPrimeira','1ª habilitação'],['cnhValidade','Validade CNH'],['reservista','Certificado de reservista',1]]],
+ ['Identidade',[['nome','Nome completo',1],['nascimento','Data de nascimento'],['idade','Idade'],['signo','Signo'],['signoChines','Signo chinês'],['naturalidade','Naturalidade',0,true],['nacionalidade','Nacionalidade',1],['chegada','Chegada ao Brasil'],['naturalizacao','Naturalização'],['idiomas','Idiomas',1],['mae','Nome da mãe',1],['pai','Nome do pai',1]]],
+ ['Documentos',[['cpf','CPF'],['rnm','RNM (registro migratório)'],['rg','RG'],['rgOrgao','Órgão emissor'],['rgEmissao','Emissão do RG'],['titulo','Título de eleitor'],['zona','Zona / Seção'],['pis','PIS / NIS'],['cns','Cartão SUS (CNS)'],['cnh','CNH (registro)'],['cnhCat','Categoria CNH'],['cnhPrimeira','1ª habilitação'],['cnhValidade','Validade CNH'],['reservista','Certificado de reservista',1]]],
  ['Endereço',[['cep','CEP'],['numero','Número'],['logradouro','Logradouro',1],['complemento','Complemento'],['bairro','Bairro'],['cidadeUf','Cidade / UF',1,true],['moradia','Moradia'],['tempoEnd','Mora ali há']]],
  ['Contato',[['celular','Celular'],['fixo','Telefone fixo'],['email','E-mail',1],['usuario','Usuário / @'],['contatoEmerg','Contato de emergência']]],
  ['Corpo e saúde',[['sangue','Tipo sanguíneo'],['raca','Cor / raça (IBGE)'],['altura','Altura'],['peso','Peso'],['imc','IMC'],['mao','Mão dominante'],['olhos','Olhos'],['cabelo','Cabelo'],['oculos','Usa óculos'],['doador','Doador de órgãos'],['alergia','Alergias'],['condicao','Condição de saúde'],['plano','Plano de saúde',1],['camisa','Camisa'],['calca','Calça / manequim'],['calcado','Calçado']]],
@@ -163,7 +188,15 @@ const SECTIONS = [
  ['Veículo',[['veiculo','Veículo',1],['veicAno','Ano'],['veicCor','Cor'],['placa','Placa (Mercosul)'],['renavam','Renavam']]]
 ];
 const DOCS = new Set(['cpf','rg','titulo','pis','cns','cnh','cep','renavam','placa','celular','fixo']);
-const LABEL = {sexo:'Sexo',uf:'Estado',cidade:'Cidade'};
+const LABEL = {sexo:'Sexo',uf:'Estado',cidade:'Cidade',nacTipo:'Nacionalidade',pais:'País de origem'};
+const NAT_ONLY = ['chegada','naturalizacao','rnm'];
+function updateNatUI(){
+  const n=$('nacTipo').value==='naturalizado';
+  $('lblUf').textContent = n?'Estado onde mora':'Estado de nascimento';
+  $('lblCidade').textContent = n?'Cidade onde mora':'Cidade de nascimento';
+  $('wrapPais').hidden=!n;
+  NAT_ONLY.forEach(id=>$(id).closest('.f').classList.toggle('hid',!n));
+}
 
 const $ = id => document.getElementById(id);
 const manual = new Set();
@@ -174,8 +207,10 @@ function buildUI(){
    <div><label for="sexo">Sexo</label><select id="sexo"><option value="">Aleatório</option><option>Masculino</option><option>Feminino</option></select></div>
    <div><label for="idadeMin">Idade de</label><input id="idadeMin" type="number" min="0" max="110" placeholder="18"></div>
    <div><label for="idadeMax">até</label><input id="idadeMax" type="number" min="0" max="110" placeholder="80"></div>
-   <div><label for="uf">Estado</label><select id="uf"><option value="">Aleatório</option>${UFS.map(u=>`<option value="${u[0]}">${u[0]} – ${u[1]}</option>`).join('')}</select></div>
-   <div style="grid-column:span 2;min-width:0"><label for="cidade">Cidade</label><select id="cidade"><option value="">Aleatória</option></select></div>`;
+   <div><label for="nacTipo">Nacionalidade</label><select id="nacTipo"><option value="">Aleatória</option><option value="nato">Brasileiro(a) nato(a)</option><option value="naturalizado">Naturalizado(a)</option></select></div>
+   <div id="wrapPais" hidden><label for="pais">País de origem</label><select id="pais"><option value="">Aleatório</option>${PAISES.map(p=>`<option>${p.n}</option>`).join('')}</select></div>
+   <div><label for="uf" id="lblUf">Estado de nascimento</label><select id="uf"><option value="">Aleatório</option>${UFS.map(u=>`<option value="${u[0]}">${u[0]} – ${u[1]}</option>`).join('')}</select></div>
+   <div style="grid-column:span 2;min-width:0"><label for="cidade" id="lblCidade">Cidade de nascimento</label><select id="cidade"><option value="">Aleatória</option></select></div>`;
   const grid = $('grid');
   for(const [title,fields] of SECTIONS){
     const c=document.createElement('section'); c.className='card';
@@ -188,6 +223,7 @@ function buildUI(){
     el.addEventListener('input',()=>{ if(el.value.trim()) {manual.add(el.id); el.classList.add('manual');} else {manual.delete(el.id); el.classList.remove('manual');} });
   });
   $('uf').addEventListener('change', async ()=>{ setCityOptions([]); W('cidade',''); unmark('cidade'); if($('uf').value) setCityOptions(await cities($('uf').value)); });
+  $('nacTipo').addEventListener('change', updateNatUI); updateNatUI();
   $('grid').addEventListener('click',e=>{ const b=e.target.closest('.cp'); if(b) copyField(b.dataset.for); });
 }
 function unmark(id){ manual.delete(id); $(id).classList.remove('manual'); }
@@ -292,11 +328,16 @@ async function fill(){
 
 async function doFill(){
   readAll();
-  // sexo
+  // sexo / nacionalidade
   const sx = set('sexo',()=>chance(.5)?'Masculino':'Feminino');
+  const nat = set('nacTipo',()=> manual.has('pais')?'naturalizado' : (manual.has('uf')||manual.has('cidade')||!chance(.04)) ? 'nato':'naturalizado');
+  const C = nat==='naturalizado' ? PAIS[set('pais',()=>wpick(PAISES.map(p=>[p.n,p.w])))] : null;
+  if(!C && !manual.has('pais')) W('pais','');
+  updateNatUI();
   // nascimento / idade
   let mn=parseInt($('idadeMin').value), mx=parseInt($('idadeMax').value);
   if(isNaN(mn)) mn = isNaN(mx)?18:Math.min(18,mx); if(isNaN(mx)) mx=Math.max(80,mn); if(mx<mn) [mn,mx]=[mx,mn];
+  if(C){ mn=Math.max(mn,22); mx=Math.max(mx,mn); }
   let dob=parseD(S.nascimento);
   if(!dob){
     const ag = /^\d+/.test(S.idade) ? parseInt(S.idade) : int(mn,mx);
@@ -306,44 +347,82 @@ async function doFill(){
   const age=ageOf(dob), adult=age>=18;
   set('idade',()=>`${age} anos`);
 
-  // ---- endereço ----
-  if(S.cep && (empty('logradouro')||empty('bairro')||empty('uf')||empty('cidade'))){
-    const v=await viaCep(S.cep); if(v){ set('uf',()=>v.uf); set('logradouro',()=>v.logradouro); set('bairro',()=>v.bairro); S._ddd=v.ddd; if(empty('cidade')){ W('cidade',v.localidade);} }
+  // ---- filtro de cima: nascimento (nato) ou residência (naturalizado) ----
+  const fUF = set('uf',()=>wpick(UFS.map(u=>[u[0],u[4]])));
+  const fList = await cities(fUF); setCityOptions(fList); if(S.cidade) W('cidade',S.cidade);
+  set('cidade',()=>chance(.4)?UF[fUF].capital:pick(fList));
+  const natUF = C?null:fUF, natCity = C?null:S.cidade;
+
+  // ---- endereço (pode ser em outro lugar) ----
+  let uf=null, resCity=null, resFixed=false;
+  if(manual.has('cep')){ const v=await viaCep(S.cep); if(v){ uf=v.uf; resCity=v.localidade; set('logradouro',()=>v.logradouro); set('bairro',()=>v.bairro); S._ddd=v.ddd; resFixed=true; } }
+  if(!uf && S.cidadeUf){ const m=/^(.*) \/ ([A-Z]{2})$/.exec(S.cidadeUf); if(m){ resCity=m[1]; uf=m[2]; resFixed=true; } }
+  if(!uf){
+    if(C){ uf=fUF; resCity=S.cidade; resFixed=manual.has('cidade'); }
+    else { const r=R();
+      if(r<.6){ uf=fUF; resCity=S.cidade; } else if(r<.8){ uf=fUF; resCity=pick(fList); }
+      else { uf=wpick(UFS.filter(u=>u[0]!==fUF).map(u=>[u[0],u[4]])); resCity=chance(.5)?UF[uf].capital:pick(await cities(uf)); } }
   }
-  const uf = set('uf',()=>wpick(UFS.map(u=>[u[0],u[4]])));
-  const list = await cities(uf); setCityOptions(list); if(S.cidade) W('cidade',S.cidade);
-  const cityFixed = !!S.cidade;
-  if(empty('cidade')) W('cidade', chance(.4)?UF[uf].capital:pick(list));
-  let addr=null;
   if(empty('cep')||empty('logradouro')||empty('bairro')){
-    addr = await viaSearch(uf,S.cidade);
-    for(let k=0; !addr && !cityFixed && k<4; k++){ W('cidade', k===3?UF[uf].capital:pick(list)); addr=await viaSearch(uf,S.cidade); }
+    const resList = await cities(uf);
+    let addr = await viaSearch(uf,resCity);
+    for(let k=0; !addr && !resFixed && k<4; k++){ resCity = k===3?UF[uf].capital:pick(resList); addr=await viaSearch(uf,resCity); }
     if(addr){ set('cep',()=>addr.cep); set('logradouro',()=>addr.logradouro); set('bairro',()=>addr.bairro); S._ddd=addr.ddd; }
     else { set('logradouro',()=>`Rua ${pick(['Sete de Setembro','Quinze de Novembro','Tiradentes','Duque de Caxias','Santos Dumont','Getúlio Vargas'])}`); set('bairro',()=>'Centro'); set('cep',()=>'CEP geral do município'); }
   }
+  if(C && !manual.has('cidade')) W('cidade',resCity);
   const ddd = S._ddd || UF[uf].ddd;
   set('numero',()=>String(chance(.7)?int(10,999):int(1000,4500)));
   set('complemento',()=>wpick([['',55],[`Apto ${int(1,18)}0${int(1,8)}`,25],[`Casa ${int(1,12)}`,10],[`Bloco ${pick('ABCDEF')}, Apto ${int(1,12)}0${int(1,4)}`,7],['Fundos',3]]));
-  W('cidadeUf',`${S.cidade} / ${uf}`);
-  const ml=$('maplink'); ml.hidden=false; ml.href=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${S.logradouro}, ${S.numero}, ${S.bairro}, ${S.cidade} - ${uf}`)}`;
+  W('cidadeUf',`${resCity} / ${uf}`);
+  const ml=$('maplink'); ml.hidden=false; ml.href=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${S.logradouro}, ${S.numero}, ${S.bairro}, ${resCity} - ${uf}`)}`;
+  const origemUF = natUF || uf; // sobrenomes regionais, time
 
   // ---- nomes ----
   let paiSob = S.pai?lastSurname(S.pai):null, maeSob = S.mae?lastSurname(S.mae):null;
-  if(S.nome){ const t=nameTokens(S.nome); if(!paiSob&&t.length>=2) paiSob=t[t.length-1]; if(!maeSob&&t.length>=3) maeSob=t[t.length-2]; }
-  paiSob ||= surname(uf); maeSob ||= surname(uf); if(maeSob===paiSob && !S.nome) maeSob=surname(uf);
-  set('nome',()=>`${firstName(sx)} ${chance(.85)?maeSob+' ':''}${paiSob}`);
-  set('mae',()=>`${firstName('Feminino')} ${chance(.6)?surname(uf)+' ':''}${maeSob}`);
-  set('pai',()=>`${firstName('Masculino')} ${chance(.6)?surname(uf)+' ':''}${paiSob}`);
+  const tk = S.nome?nameTokens(S.nome):[];
+  if(C){
+    if(tk.length>=3&&C.o==='hisp'){ paiSob ||= tk.at(-2); maeSob ||= tk.at(-1); }
+    else if(tk.length>=3&&C.o==='luso'){ paiSob ||= tk.at(-1); maeSob ||= tk.at(-2); }
+    else if(tk.length>=2){ paiSob ||= tk.at(-1); }
+    paiSob ||= pick(C.s); maeSob ||= pick(C.s.filter(x=>x!==paiSob));
+    const fn = sx==='Feminino'?pick(C.f):pick(C.m);
+    set('nome',()=>C.o==='hisp'?`${fn} ${paiSob} ${maeSob}`:C.o==='luso'?`${fn} ${maeSob} ${paiSob}`:`${fn} ${paiSob}`);
+    set('mae',()=>C.o==='hisp'?`${pick(C.f)} ${maeSob} ${pick(C.s)}`:C.o==='luso'?`${pick(C.f)} ${pick(C.s)} ${maeSob}`:`${pick(C.f)} ${chance(.6)?paiSob:maeSob}`);
+    set('pai',()=>C.o==='hisp'?`${pick(C.m)} ${paiSob} ${pick(C.s)}`:C.o==='luso'?`${pick(C.m)} ${pick(C.s)} ${paiSob}`:`${pick(C.m)} ${paiSob}`);
+  } else {
+    if(tk.length){ if(!paiSob&&tk.length>=2) paiSob=tk.at(-1); if(!maeSob&&tk.length>=3) maeSob=tk.at(-2); }
+    paiSob ||= surname(natUF); maeSob ||= surname(natUF); if(maeSob===paiSob && !S.nome) maeSob=surname(natUF);
+    set('nome',()=>`${firstName(sx)} ${chance(.85)?maeSob+' ':''}${paiSob}`);
+    set('mae',()=>`${firstName('Feminino')} ${chance(.6)?surname(natUF)+' ':''}${maeSob}`);
+    set('pai',()=>`${firstName('Masculino')} ${chance(.6)?surname(natUF)+' ':''}${paiSob}`);
+  }
   const first = S.nome.split(/\s+/)[0], lastS = (lastSurname(S.nome)||S.nome).split(' ').pop();
+
+  // ---- naturalidade / nacionalidade ----
+  const D = (id,v) => { if(!manual.has(id)) W(id,v); };
+  if(C){
+    if(!S.naturalidade || !S.naturalidade.endsWith(', '+C.n)) W('naturalidade', `${pick(C.c)}, ${C.n}`);
+    D('nacionalidade', `Brasileira (${g(sx,'naturalizado','naturalizada')}) — origem ${C.adj}`);
+    const ageArr = int(Math.max(0,age-35), Math.max(0,age-5));
+    let arr = randDate(addY(dob,ageArr), addY(dob,ageArr+1)); if(arr>TODAY) arr=TODAY;
+    set('chegada',()=>`${fmtD(arr)} (aos ${ageArr} anos)`);
+    const minNat = new Date(Math.max(addY(arr,4).getTime(), addY(dob,18).getTime()));
+    set('naturalizacao',()=> minNat>TODAY ? 'Em andamento' : `${fmtD(randDate(minNat,TODAY))} — Portaria MJSP nº ${int(100,9999)}`);
+    set('rnm',()=>`${pick('VFGW')}${digits(6).join('')}-${int(0,9)}`);
+    set('idiomas',()=> C.l==='Português' ? `Português (nativo)${chance(.3)?', inglês ('+pick(['básico','intermediário'])+')':''}` : `${C.l} (nativo), português (${pick(['fluente','fluente','intermediário'])})`);
+  } else {
+    W('naturalidade', `${natCity}/${natUF}`);
+    D('nacionalidade', `Brasileira (${g(sx,'nato','nata')})`);
+    NAT_ONLY.forEach(id=>D(id,''));
+    set('idiomas',()=>`Português (nativo)${chance(.3)?', inglês ('+pick(['básico','intermediário','fluente'])+')':''}${chance(.15)?', espanhol ('+pick(['básico','intermediário'])+')':''}`);
+  }
 
   // ---- identidade ----
   set('signo',()=>{ const m=dob.getMonth()+1,d=dob.getDate(); const T=[[1,20,'Capricórnio'],[2,19,'Aquário'],[3,21,'Peixes'],[4,20,'Áries'],[5,21,'Touro'],[6,21,'Gêmeos'],[7,23,'Câncer'],[8,23,'Leão'],[9,23,'Virgem'],[10,23,'Libra'],[11,22,'Escorpião'],[12,22,'Sagitário']]; for(const [mm,dd,n] of T) if(m<mm||(m===mm&&d<dd)) return n; return 'Capricórnio'; });
   set('signoChines',()=>['Rato','Boi','Tigre','Coelho','Dragão','Serpente','Cavalo','Cabra','Macaco','Galo','Cão','Porco'][(((dob.getFullYear()-4)%12)+12)%12]);
-  set('naturalidade',()=>{ if(chance(.72)) return `${chance(.5)?S.cidade:pick(list)}/${uf}`; const o=pick(UFS); return `${o[2]}/${o[0]}`; });
-  set('nacionalidade',()=>'Brasileira');
-
   // ---- documentos ----
-  set('cpf',()=>cpfGen(uf));
+  set('cpf',()=>cpfGen(C?uf:natUF)); // nato: região de nascimento; naturalizado: onde se inscreveu (mora)
   set('rg',()=>age>=1?rgGen():'Não emitido');
   set('rgOrgao',()=>S.rg==='Não emitido'?'—':`${uf==='RS'?'SSP':uf==='MG'?'PC':uf==='RJ'?'DETRAN':'SSP'}/${uf}`);
   set('rgEmissao',()=>{ if(S.rg==='Não emitido') return '—'; const a=new Date(Math.max(addY(dob,Math.min(age,7)).getTime(),addY(TODAY,-12).getTime())); return fmtD(randDate(a,addY(TODAY,0))); });
@@ -372,7 +451,7 @@ async function doFill(){
 
   // ---- corpo ----
   set('sangue',()=>wpick([['O+',36],['A+',34],['B+',8],['AB+',2.5],['O-',9],['A-',8],['B-',2],['AB-',0.5]]));
-  const raca = set('raca',()=>wpick(SUL.includes(uf)?[['Branca',74],['Parda',19],['Preta',6],['Amarela',.6],['Indígena',.4]]:[['Parda',47],['Branca',40],['Preta',11],['Amarela',.5],['Indígena',.8]]));
+  const raca = set('raca',()=>wpick(C?RACA_PERFIL[C.r]:SUL.includes(origemUF)?[['Branca',74],['Parda',19],['Preta',6],['Amarela',.6],['Indígena',.4]]:[['Parda',47],['Branca',40],['Preta',11],['Amarela',.5],['Indígena',.8]]));
   let alt = sx==='Masculino'?normal(173,7):normal(160.5,6.5);
   if(age<18) alt = 50 + (alt-50)*Math.pow(Math.min(1,(age+0.5)/17),0.75);
   if(age>65) alt -= (age-65)*0.12;
@@ -414,7 +493,7 @@ async function doFill(){
   set('curso',()=>{ if(age<18) return `Estudante — ${pick(['Escola Estadual','Escola Municipal','Colégio Adventista','Colégio','Escola'])} ${pick(['Dom Pedro II','Tiradentes','Machado de Assis','Rui Barbosa','Santos Dumont','Castro Alves'])}`;
     if(!cursoRow) return /Médio/.test(esc)&&chance(.3)?`Técnico em ${pick(['Administração','Enfermagem','Informática','Segurança do Trabalho','Edificações','Logística'])}`:'—';
     const inst = pick(['Universidade Federal','Universidade Estadual','Centro Universitário','Faculdade','PUC','Universidade']);
-    return `${cursoRow[0]}${/Pós|Mestrado|Doutorado/.test(esc)?` + ${/Mestrado|Doutorado/.test(esc)?esc.toLowerCase():'especialização'}`:''} — ${inst}${inst.startsWith('Universidade ')?' de '+(inst.includes('Federal')||inst.includes('Estadual')?UF[uf].nome:S.cidade):''}`; });
+    return `${cursoRow[0]}${/Pós|Mestrado|Doutorado/.test(esc)?` + ${/Mestrado|Doutorado/.test(esc)?esc.toLowerCase():'especialização'}`:''} — ${inst}${inst.startsWith('Universidade ')?' de '+(inst.includes('Federal')||inst.includes('Estadual')?UF[uf].nome:resCity):''}`; });
   let renda=0;
   const prof = set('profissao',()=>{
     if(age<14) return 'Estudante'; if(age<18) return chance(.2)?g(sx,'Jovem aprendiz','Jovem aprendiz'):'Estudante';
@@ -427,10 +506,10 @@ async function doFill(){
   set('empresa',()=>{
     if(/Estudante|Desempregad|Aposentad/.test(prof)) return '—';
     if(/Diarista|Doméstica|Motorista de aplicativo|Microempreendedor|Personal|Manicure|Feirante|Corretor/.test(prof)||chance(.15)) return g(sx,'Autônomo','Autônoma');
-    if(/Professor|Policial|Agente comunitári|Gari|Merendeira/.test(prof)&&chance(.75)) return `Servidor${sx==='Feminino'?'a':''} público${sx==='Feminino'?'a':''} — ${/Policial/.test(prof)?'Governo do Estado':'Prefeitura de '+S.cidade}`;
+    if(/Professor|Policial|Agente comunitári|Gari|Merendeira/.test(prof)&&chance(.75)) return `Servidor${sx==='Feminino'?'a':''} público${sx==='Feminino'?'a':''} — ${/Policial/.test(prof)?'Governo do Estado':'Prefeitura de '+resCity}`;
     return `${pick(['Comercial','Distribuidora','Grupo','Clínica','Transportes','Construtora','Supermercado','Indústria','Escritório','Tecnologia','Laboratório','Auto Center'])} ${pick(SOBR)}${chance(.3)?' & '+pick(SOBR):''} ${pick(['Ltda','Ltda','S.A.','ME','& Filhos Ltda'])}`; });
   set('religiao',()=>wpick([['Católica',54],['Evangélica — Assembleia de Deus',8],['Evangélica — Batista',4],['Adventista do Sétimo Dia',2],['Evangélica — Universal',2],['Evangélica — Congregação Cristã',2],['Evangélica — Presbiteriana',1],['Evangélica — Quadrangular',1.5],['Evangélica (sem denominação)',5.5],['Espírita',2.5],['Umbanda',.8],['Candomblé',.4],['Testemunha de Jeová',.7],['Sem religião',10],['Ateu',.8],['Budista',.2]]));
-  set('time',()=>TIMES_UF[uf]&&chance(.55)?pick(TIMES_UF[uf]):wpick(TIMES_NAC));
+  set('time',()=>TIMES_UF[origemUF]&&chance(.55)?pick(TIMES_UF[origemUF]):wpick(TIMES_NAC));
 
   // ---- gostos ----
   set('corFav',()=>pick(['Azul','Verde','Preto','Vermelho','Roxo','Branco','Amarelo','Rosa','Laranja','Azul-marinho','Verde-água','Vinho','Cinza']));
@@ -467,7 +546,7 @@ function renderHero(){
 }
 function val(id){ const v=$(id).value; return $('semMascara').checked&&DOCS.has(id)&&/\d/.test(v)?v.replace(/[^\dA-Za-z]/g,''):v; }
 function copyField(id){ const v=val(id); if(!v) return; navigator.clipboard.writeText(v).then(()=>toast(`${LABEL[id]} copiado`)); }
-function asObject(){ const o={sexo:$('sexo').value,estado:$('uf').value,cidade:$('cidade').value}; for(const [,fs] of SECTIONS) for(const [id] of fs) o[id]=val(id); return o; }
+function asObject(){ const o={sexo:$('sexo').value,nacionalidadeTipo:$('nacTipo').value,paisOrigem:$('pais').value}; for(const [,fs] of SECTIONS) for(const [id] of fs) o[id]=val(id); return o; }
 function asText(){
   let out=`Sexo: ${$('sexo').value}\n`;
   for(const [t,fs] of SECTIONS){ out+=`\n${t.toUpperCase()}\n`; for(const [id,lab] of fs){ const v=val(id); if(v) out+=`${lab}: ${v}\n`; } }
@@ -477,7 +556,7 @@ let tt; function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add(
 
 function clearFields(keepManual){
   document.querySelectorAll('#bar select, #grid input').forEach(el=>{ if(keepManual&&manual.has(el.id)) return; el.value=''; manual.delete(el.id); el.classList.remove('manual'); });
-  $('maplink').hidden=true;
+  $('maplink').hidden=true; updateNatUI();
   if(!keepManual||!manual.has('uf')) setCityOptions([]);
   $('av').textContent='?'; $('heroNome').textContent='Ficha vazia'; $('heroMeta').textContent='Clique em Preencher.'; $('heroSig').textContent='';
 }
