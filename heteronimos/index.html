@@ -388,8 +388,9 @@ async function doFill(){
     paiSob ||= pick(C.s); maeSob ||= pick(C.s.filter(x=>x!==paiSob));
     const fn = sx==='Feminino'?pick(C.f):pick(C.m);
     set('nome',()=>C.o==='hisp'?`${fn} ${paiSob} ${maeSob}`:C.o==='luso'?`${fn} ${maeSob} ${paiSob}`:`${fn} ${paiSob}`);
-    set('mae',()=>C.o==='hisp'?`${pick(C.f)} ${maeSob} ${pick(C.s)}`:C.o==='luso'?`${pick(C.f)} ${pick(C.s)} ${maeSob}`:`${pick(C.f)} ${chance(.6)?paiSob:maeSob}`);
-    set('pai',()=>C.o==='hisp'?`${pick(C.m)} ${paiSob} ${pick(C.s)}`:C.o==='luso'?`${pick(C.m)} ${pick(C.s)} ${paiSob}`:`${pick(C.m)} ${paiSob}`);
+    const outro = x => pick(C.s.filter(y=>y!==x));
+    set('mae',()=>C.o==='hisp'?`${pick(C.f)} ${maeSob} ${outro(maeSob)}`:C.o==='luso'?`${pick(C.f)} ${outro(maeSob)} ${maeSob}`:`${pick(C.f)} ${chance(.6)?paiSob:maeSob}`);
+    set('pai',()=>C.o==='hisp'?`${pick(C.m)} ${paiSob} ${outro(paiSob)}`:C.o==='luso'?`${pick(C.m)} ${outro(paiSob)} ${paiSob}`:`${pick(C.m)} ${paiSob}`);
   } else {
     if(tk.length){ if(!paiSob&&tk.length>=2) paiSob=tk.at(-1); if(!maeSob&&tk.length>=3) maeSob=tk.at(-2); }
     paiSob ||= surname(natUF); maeSob ||= surname(natUF); if(maeSob===paiSob && !S.nome) maeSob=surname(natUF);
