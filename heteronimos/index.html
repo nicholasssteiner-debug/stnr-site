@@ -195,8 +195,7 @@ const LABEL = {sexo:'Sexo',uf:'Estado',cidade:'Cidade',nacTipo:'Nacionalidade',p
 const NAT_ONLY = ['chegada','naturalizacao','rnm'];
 function updateNatUI(){
   const n=$('nacTipo').value==='naturalizado';
-  $('lblUf').textContent = n?'Estado onde mora':'Estado de nascimento';
-  $('lblCidade').textContent = n?'Cidade onde mora':'Cidade de nascimento';
+  $('wrapUf').hidden=$('wrapCidade').hidden=n;
   $('wrapPais').hidden=!n;
   NAT_ONLY.forEach(id=>$(id).closest('.f').classList.toggle('hid',!n));
 }
@@ -212,8 +211,10 @@ function buildUI(){
    <div><label for="idadeMax">até</label><input id="idadeMax" type="number" min="0" max="110" placeholder="80"></div>
    <div><label for="nacTipo">Nacionalidade</label><select id="nacTipo"><option value="">Aleatória</option><option value="nato">Brasileiro(a) nato(a)</option><option value="naturalizado">Naturalizado(a)</option></select></div>
    <div id="wrapPais" hidden><label for="pais">País de origem</label><select id="pais"><option value="">Aleatório</option>${PAISES.map(p=>`<option>${p.n}</option>`).join('')}</select></div>
-   <div><label for="uf" id="lblUf">Estado de nascimento</label><select id="uf"><option value="">Aleatório</option>${UFS.map(u=>`<option value="${u[0]}">${u[0]} – ${u[1]}</option>`).join('')}</select></div>
-   <div style="grid-column:span 2;min-width:0"><label for="cidade" id="lblCidade">Cidade de nascimento</label><select id="cidade"><option value="">Aleatória</option></select></div>`;
+   <div id="wrapUf"><label for="uf">Estado de nascimento</label><select id="uf"><option value="">Aleatório</option>${UFS.map(u=>`<option value="${u[0]}">${u[0]} – ${u[1]}</option>`).join('')}</select></div>
+   <div id="wrapCidade" style="grid-column:span 2;min-width:0"><label for="cidade">Cidade de nascimento</label><select id="cidade"><option value="">Aleatória</option></select></div>
+   <div><label for="resUf">Estado onde mora</label><select id="resUf"><option value="">Aleatório</option>${UFS.map(u=>`<option value="${u[0]}">${u[0]} – ${u[1]}</option>`).join('')}</select></div>
+   <div style="grid-column:span 2;min-width:0"><label for="resCidade">Cidade onde mora</label><select id="resCidade"><option value="">Aleatória</option></select></div>`;
   const grid = $('grid');
   for(const [title,fields] of SECTIONS){
     const c=document.createElement('section'); c.className='card';
@@ -226,6 +227,7 @@ function buildUI(){
     el.addEventListener('input',()=>{ if(el.value.trim()) {manual.add(el.id); el.classList.add('manual');} else {manual.delete(el.id); el.classList.remove('manual');} });
   });
   $('uf').addEventListener('change', async ()=>{ setCityOptions([]); W('cidade',''); unmark('cidade'); if($('uf').value) setCityOptions(await cities($('uf').value)); });
+  $('resUf').addEventListener('change', async ()=>{ setCityOptions([],'resCidade'); W('resCidade',''); unmark('resCidade'); if($('resUf').value) setCityOptions(await cities($('resUf').value),'resCidade'); });
   $('nacTipo').addEventListener('change', updateNatUI); updateNatUI();
   $('grid').addEventListener('click',e=>{
     const b=e.target.closest('.cp'); if(b) return copyField(b.dataset.for);
@@ -235,7 +237,7 @@ function buildUI(){
   });
 }
 function unmark(id){ manual.delete(id); $(id).classList.remove('manual'); }
-function setCityOptions(list){ const s=$('cidade'), cur=s.value; s.innerHTML='<option value="">Aleatória</option>'+list.map(c=>`<option>${c}</option>`).join(''); if(list.includes(cur)) s.value=cur; }
+function setCityOptions(list,id='cidade'){ const s=$(id), cur=s.value; s.innerHTML='<option value="">Aleatória</option>'+list.map(c=>`<option>${c}</option>`).join(''); if(list.includes(cur)) s.value=cur; }
 
 // estado corrente
 let S = {};
@@ -398,27 +400,32 @@ async function doFill(){
   const cpfD = (S.cpf||'').replace(/\D/g,'');
   const regUFs = cpfD.length===11 ? Object.keys(CPF_REG).filter(k=>CPF_REG[k]===+cpfD[8]) : null;
 
-  // ---- filtro de cima: nascimento (nato) ou residência (naturalizado) ----
-  const fUF = set('uf',()=>{
-    if(!C && regUFs) return wpick(regUFs.map(u=>[u,UF[u].pop]));          // CPF digitado define a naturalidade
-    if(C && hintRes) return hintRes;
-    if(C && regUFs) return wpick(regUFs.map(u=>[u,UF[u].pop]));
-    if(!C && hintRes && chance(.7)) return hintRes;
-    return wpick(UFS.map(u=>[u[0],u[4]])); });
-  const fList = await cities(fUF); setCityOptions(fList); if(S.cidade) W('cidade',S.cidade);
-  set('cidade',()=>chance(.4)?UF[fUF].capital:pick(fList));
-  const natUF = C?null:fUF, natCity = C?null:S.cidade;
+  // ---- nascimento (só brasileiro nato) ----
+  const popPick = list => wpick(list.map(u=>[u,UF[u].pop]));
+  let natUF=null, natCity=null, fList=[];
+  if(!C){
+    natUF = set('uf',()=>{
+      if(regUFs) return popPick(regUFs);                       // CPF digitado define a naturalidade
+      if(S.resUf && chance(.7)) return S.resUf;                // costuma nascer onde mora
+      if(hintRes && chance(.7)) return hintRes;
+      return wpick(UFS.map(u=>[u[0],u[4]])); });
+    fList = await cities(natUF); setCityOptions(fList); if(S.cidade) W('cidade',S.cidade);
+    natCity = set('cidade',()=> S.resUf===natUF && S.resCidade && chance(.6) ? S.resCidade : chance(.4)?UF[natUF].capital:pick(fList));
+  } else { if(!manual.has('uf')) W('uf',''); if(!manual.has('cidade')) W('cidade',''); }
 
-  // ---- endereço (pode ser em outro lugar) ----
+  // ---- onde mora (escolhido na barra, pelo CEP, ou derivado) ----
   let uf=null, resCity=null, resFixed=false;
   if(manual.has('cep')){ const v=await viaCep(S.cep); if(v){ uf=v.uf; resCity=v.localidade; set('logradouro',()=>v.logradouro); set('bairro',()=>v.bairro); S._ddd=v.ddd; resFixed=true; } }
-  if(!uf && S.cidadeUf){ const m=/^(.*) \/ ([A-Z]{2})$/.exec(S.cidadeUf); if(m){ resCity=m[1]; uf=m[2]; resFixed=true; } }
+  if(!uf && S.resUf){ uf=S.resUf; if(S.resCidade){ resCity=S.resCidade; resFixed=true; } }
   if(!uf){
-    if(C){ uf=fUF; resCity=S.cidade; resFixed=manual.has('cidade'); }
-    else if(hintRes){ uf=hintRes; resCity = wantDDD&&DDD_UF[wantDDD]===uf ? pick(DDD_CID[wantDDD].split('|')) : uf===fUF&&chance(.75) ? S.cidade : (chance(.5)?UF[uf].capital:pick(await cities(uf))); }
-    else { const r=R();
-      if(r<.6){ uf=fUF; resCity=S.cidade; } else if(r<.8){ uf=fUF; resCity=pick(fList); }
-      else { uf=wpick(UFS.filter(u=>u[0]!==fUF).map(u=>[u[0],u[4]])); resCity=chance(.5)?UF[uf].capital:pick(await cities(uf)); } }
+    if(hintRes) uf=hintRes;
+    else if(C) uf = regUFs ? popPick(regUFs) : wpick(UFS.map(u=>[u[0],u[4]]));
+    else uf = chance(.8) ? natUF : wpick(UFS.filter(u=>u[0]!==natUF).map(u=>[u[0],u[4]]));
+  }
+  if(!resCity){
+    if(wantDDD && DDD_UF[wantDDD]===uf) resCity = pick(DDD_CID[wantDDD].split('|'));
+    else if(uf===natUF) resCity = chance(.75) ? natCity : pick(fList);
+    else resCity = chance(.5) ? UF[uf].capital : pick(await cities(uf));
   }
   if(empty('cep')||empty('logradouro')||empty('bairro')){
     const resList = await cities(uf);
@@ -432,7 +439,7 @@ async function doFill(){
     if(addr){ set('cep',()=>addr.cep); set('logradouro',()=>addr.logradouro); set('bairro',()=>addr.bairro); S._ddd=addr.ddd; }
     else { set('logradouro',()=>`Rua ${pick(['Sete de Setembro','Quinze de Novembro','Tiradentes','Duque de Caxias','Santos Dumont','Getúlio Vargas'])}`); set('bairro',()=>'Centro'); set('cep',()=>'CEP geral do município'); }
   }
-  if(C && !manual.has('cidade')) W('cidade',resCity);
+  setCityOptions(await cities(uf),'resCidade'); W('resUf',uf); W('resCidade',resCity);
   const ddd = wantDDD || S._ddd || UF[uf].ddd;
   set('numero',()=>String(chance(.7)?int(10,999):int(1000,4500)));
   set('complemento',()=>wpick([['',55],[`Apto ${int(1,18)}0${int(1,8)}`,25],[`Casa ${int(1,12)}`,10],[`Bloco ${pick('ABCDEF')}, Apto ${int(1,12)}0${int(1,4)}`,7],['Fundos',3]]));
@@ -628,6 +635,7 @@ function clearFields(keepManual){
   document.querySelectorAll('#bar select, #grid input').forEach(el=>{ if(keepManual&&manual.has(el.id)) return; el.value=''; manual.delete(el.id); el.classList.remove('manual'); });
   $('maplink').hidden=true; updateNatUI();
   if(!keepManual||!manual.has('uf')) setCityOptions([]);
+  if(!keepManual||!manual.has('resUf')) setCityOptions([],'resCidade');
   $('av').textContent='?'; $('heroNome').textContent='Ficha vazia'; $('heroMeta').textContent='Clique em Preencher.'; $('heroSig').textContent='';
 }
 
