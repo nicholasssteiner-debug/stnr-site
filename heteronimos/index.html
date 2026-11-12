@@ -58,7 +58,10 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 input.manual,select.manual{border-color:var(--manual);background:var(--manual-soft)}
 input[readonly]{color:var(--muted)}
 .cp{position:absolute;right:3px;top:3px;bottom:3px;width:26px;padding:0;border:none;background:transparent;color:var(--muted);opacity:0;font-size:13px}
-.iw:hover .cp,.cp:focus{opacity:1}
+.lk{position:absolute;right:29px;top:3px;bottom:3px;width:24px;padding:0;border:none;background:transparent;opacity:0;font-size:12px;filter:grayscale(1)}
+.iw:hover .cp,.cp:focus,.iw:hover .lk,.lk:focus{opacity:1}
+input.manual~.lk{opacity:1;filter:none}
+.iw input:not([readonly]){padding-right:56px}
 .cp:hover{color:var(--accent)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:-4px 0 14px}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--border);background:var(--surface2)}
@@ -87,7 +90,6 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     </div>
     <div class="actions">
       <button class="primary" id="btnFill" title="Ctrl+Enter">Preencher</button>
-      <button id="btnNew" title="Apaga o que foi gerado, mantém o que você digitou e gera de novo">Nova ficha</button>
       <button id="btnClear">Limpar tudo</button>
       <button id="btnCopy">Copiar ficha</button>
       <button id="btnJson">JSON</button>
@@ -95,7 +97,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
   </header>
 
   <div class="bar" id="bar"></div>
-  <div class="legend"><span>gerado</span><span class="m">digitado por você (mantido em “Nova ficha”)</span>
+  <div class="legend"><span>gerado (refeito a cada Preencher)</span><span class="m">digitado por você ou fixado no 🔒 — tudo o resto se ajusta a ele</span>
     <label class="toggle"><input type="checkbox" id="semMascara"> copiar documentos sem pontuação</label></div>
 
   <div class="hero" id="hero">
@@ -215,7 +217,7 @@ function buildUI(){
   for(const [title,fields] of SECTIONS){
     const c=document.createElement('section'); c.className='card';
     c.innerHTML=`<h2>${title}</h2><div class="fields">${fields.map(([id,lab,wide,ro])=>{ LABEL[id]=lab; return `
-      <div class="f${wide?' wide':''}"><label for="${id}">${lab}</label><div class="iw"><input id="${id}" autocomplete="off"${ro?' readonly':''}><button class="cp" data-for="${id}" title="Copiar" aria-label="Copiar ${lab}">⧉</button></div></div>`;}).join('')}</div>${title==='Endereço'?'<a class="maplink" id="maplink" target="_blank" rel="noopener" hidden>Ver no mapa ↗</a>':''}`;
+      <div class="f${wide?' wide':''}"><label for="${id}">${lab}</label><div class="iw"><input id="${id}" autocomplete="off"${ro?' readonly':''}>${ro?'':`<button class="lk" data-lock="${id}" title="Fixar / soltar este valor" aria-label="Fixar ${lab}">🔒</button>`}<button class="cp" data-for="${id}" title="Copiar" aria-label="Copiar ${lab}">⧉</button></div></div>`;}).join('')}</div>${title==='Endereço'?'<a class="maplink" id="maplink" target="_blank" rel="noopener" hidden>Ver no mapa ↗</a>':''}`;
     grid.appendChild(c);
   }
   document.querySelectorAll('input,select').forEach(el=>{
@@ -224,7 +226,12 @@ function buildUI(){
   });
   $('uf').addEventListener('change', async ()=>{ setCityOptions([]); W('cidade',''); unmark('cidade'); if($('uf').value) setCityOptions(await cities($('uf').value)); });
   $('nacTipo').addEventListener('change', updateNatUI); updateNatUI();
-  $('grid').addEventListener('click',e=>{ const b=e.target.closest('.cp'); if(b) copyField(b.dataset.for); });
+  $('grid').addEventListener('click',e=>{
+    const b=e.target.closest('.cp'); if(b) return copyField(b.dataset.for);
+    const l=e.target.closest('.lk'); if(!l) return; const id=l.dataset.lock, el=$(id);
+    if(manual.has(id)) { unmark(id); toast(`${LABEL[id]} solto — será refeito`); }
+    else if(el.value.trim()) { manual.add(id); el.classList.add('manual'); toast(`${LABEL[id]} fixado`); }
+  });
 }
 function unmark(id){ manual.delete(id); $(id).classList.remove('manual'); }
 function setCityOptions(list){ const s=$('cidade'), cur=s.value; s.innerHTML='<option value="">Aleatória</option>'+list.map(c=>`<option>${c}</option>`).join(''); if(list.includes(cur)) s.value=cur; }
@@ -320,17 +327,32 @@ function nameTokens(full){ // [primeiro, ..., sobrenomes] sem partículas soltas
 // ---------- preenchimento ----------
 let busy=false;
 async function fill(){
-  if(busy) return; busy=true; $('btnFill').disabled=$('btnNew').disabled=true;
-  try{ await doFill(); renderHero(); }
+  if(busy) return; busy=true; $('btnFill').disabled=true;
+  try{ clearFields(true); await doFill(); renderHero(); }
   catch(e){ console.error(e); toast('Falha ao consultar endereço. Verifique a conexão.'); }
-  finally{ busy=false; $('btnFill').disabled=$('btnNew').disabled=false; }
+  finally{ busy=false; $('btnFill').disabled=false; }
 }
+
+// ---------- leitura do que foi digitado ----------
+const DDD_UF = {};
+[['SP','11 12 13 14 15 16 17 18 19'],['RJ','21 22 24'],['ES','27 28'],['MG','31 32 33 34 35 37 38'],['PR','41 42 43 44 45 46'],['SC','47 48 49'],['RS','51 53 54 55'],['DF','61'],['GO','62 64'],['TO','63'],['MT','65 66'],['MS','67'],['AC','68'],['RO','69'],['BA','71 73 74 75 77'],['SE','79'],['PE','81 87'],['AL','82'],['PB','83'],['RN','84'],['CE','85 88'],['PI','86 89'],['PA','91 93 94'],['AM','92 97'],['RR','95'],['AP','96'],['MA','98 99']].forEach(([u,l])=>l.split(' ').forEach(d=>DDD_UF[d]=u));
+function signoOf(dob){ const m=dob.getMonth()+1,d=dob.getDate(); const T=[[1,20,'Capricórnio'],[2,19,'Aquário'],[3,21,'Peixes'],[4,20,'Áries'],[5,21,'Touro'],[6,21,'Gêmeos'],[7,23,'Câncer'],[8,23,'Leão'],[9,23,'Virgem'],[10,23,'Libra'],[11,22,'Escorpião'],[12,22,'Sagitário']]; for(const [mm,dd,n] of T) if(m<mm||(m===mm&&d<dd)) return n; return 'Capricórnio'; }
+const chinesOf = dob => ['Rato','Boi','Tigre','Coelho','Dragão','Serpente','Cavalo','Cabra','Macaco','Galo','Cão','Porco'][(((dob.getFullYear()-4)%12)+12)%12];
+function sexFromName(n){
+  const f=n.trim().split(/\s+/)[0]; if(!f) return null;
+  if(NOMES_F.includes(f)||PAISES.some(p=>p.f.includes(f))) return 'Feminino';
+  if(NOMES_M.includes(f)||PAISES.some(p=>p.m.includes(f))) return 'Masculino';
+  return /a$/i.test(f)?'Feminino':'Masculino';
+}
+const ufFromOrg = s => { const m=/\/\s*([A-Za-z]{2})\s*$/.exec(s||''); return m&&UF[m[1].toUpperCase()]?m[1].toUpperCase():null; };
+const ufFromTit = s => { const d=(s||'').replace(/\D/g,''); return d.length===12 ? (Object.keys(TIT_UF).find(k=>TIT_UF[k]===d.slice(8,10))||null) : null; };
+const dddOf = s => { const d=(s||'').replace(/\D/g,''); return d.length>=10 && DDD_UF[d.slice(0,2)] ? d.slice(0,2) : null; };
 
 async function doFill(){
   readAll();
   // sexo / nacionalidade
-  const sx = set('sexo',()=>chance(.5)?'Masculino':'Feminino');
-  const nat = set('nacTipo',()=> manual.has('pais')?'naturalizado' : (manual.has('uf')||manual.has('cidade')||!chance(.04)) ? 'nato':'naturalizado');
+  const sx = set('sexo',()=> S.nome ? sexFromName(S.nome) : chance(.5)?'Masculino':'Feminino');
+  const nat = set('nacTipo',()=> manual.has('pais')||S.rnm||S.chegada||S.naturalizacao?'naturalizado' : (manual.has('uf')||manual.has('cidade')||!chance(.04)) ? 'nato':'naturalizado');
   const C = nat==='naturalizado' ? PAIS[set('pais',()=>wpick(PAISES.map(p=>[p.n,p.w])))] : null;
   if(!C && !manual.has('pais')) W('pais','');
   updateNatUI();
@@ -340,15 +362,36 @@ async function doFill(){
   if(C){ mn=Math.max(mn,22); mx=Math.max(mx,mn); }
   let dob=parseD(S.nascimento);
   if(!dob){
-    const ag = /^\d+/.test(S.idade) ? parseInt(S.idade) : int(mn,mx);
-    dob = randDate(addY(TODAY,-(ag+1)), addY(TODAY,-ag)); dob.setDate(dob.getDate()+1); if(dob>TODAY) dob=addY(TODAY,-ag);
+    const fixedAge = /^\d+/.test(S.idade) ? parseInt(S.idade) : null;
+    const wantS = S.signo?slug(S.signo):null, wantC = S.signoChines?slug(S.signoChines):null;
+    const tryDob = strict => { for(let t=0;t<20000;t++){
+      const ag = fixedAge ?? int(mn,mx);
+      const d = randDate(addY(TODAY,-(ag+1)), addY(TODAY,-ag)); d.setHours(0,0,0,0);
+      if(ageOf(d)!==ag) continue;
+      if(strict && wantS && slug(signoOf(d))!==wantS) continue;
+      if(strict && wantC && slug(chinesOf(d))!==wantC) continue;
+      return d; } return null; };
+    dob = tryDob(true) || tryDob(false);
     W('nascimento',fmtD(dob));
   }
   const age=ageOf(dob), adult=age>=18;
   set('idade',()=>`${age} anos`);
+  set('signo',()=>signoOf(dob));
+  set('signoChines',()=>chinesOf(dob));
+
+  // ---- pistas de lugar nos campos digitados ----
+  const wantDDD = dddOf(S.celular) || dddOf(S.fixo);
+  const hintRes = ufFromTit(S.titulo) || ufFromOrg(S.rgOrgao) || (wantDDD?DDD_UF[wantDDD]:null);
+  const cpfD = (S.cpf||'').replace(/\D/g,'');
+  const regUFs = cpfD.length===11 ? Object.keys(CPF_REG).filter(k=>CPF_REG[k]===+cpfD[8]) : null;
 
   // ---- filtro de cima: nascimento (nato) ou residência (naturalizado) ----
-  const fUF = set('uf',()=>wpick(UFS.map(u=>[u[0],u[4]])));
+  const fUF = set('uf',()=>{
+    if(!C && regUFs) return wpick(regUFs.map(u=>[u,UF[u].pop]));          // CPF digitado define a naturalidade
+    if(C && hintRes) return hintRes;
+    if(C && regUFs) return wpick(regUFs.map(u=>[u,UF[u].pop]));
+    if(!C && hintRes && chance(.7)) return hintRes;
+    return wpick(UFS.map(u=>[u[0],u[4]])); });
   const fList = await cities(fUF); setCityOptions(fList); if(S.cidade) W('cidade',S.cidade);
   set('cidade',()=>chance(.4)?UF[fUF].capital:pick(fList));
   const natUF = C?null:fUF, natCity = C?null:S.cidade;
@@ -359,19 +402,24 @@ async function doFill(){
   if(!uf && S.cidadeUf){ const m=/^(.*) \/ ([A-Z]{2})$/.exec(S.cidadeUf); if(m){ resCity=m[1]; uf=m[2]; resFixed=true; } }
   if(!uf){
     if(C){ uf=fUF; resCity=S.cidade; resFixed=manual.has('cidade'); }
+    else if(hintRes){ uf=hintRes; resCity = uf===fUF&&chance(.75) ? S.cidade : (chance(.5)?UF[uf].capital:pick(await cities(uf))); }
     else { const r=R();
       if(r<.6){ uf=fUF; resCity=S.cidade; } else if(r<.8){ uf=fUF; resCity=pick(fList); }
       else { uf=wpick(UFS.filter(u=>u[0]!==fUF).map(u=>[u[0],u[4]])); resCity=chance(.5)?UF[uf].capital:pick(await cities(uf)); } }
   }
   if(empty('cep')||empty('logradouro')||empty('bairro')){
     const resList = await cities(uf);
-    let addr = await viaSearch(uf,resCity);
-    for(let k=0; !addr && !resFixed && k<4; k++){ resCity = k===3?UF[uf].capital:pick(resList); addr=await viaSearch(uf,resCity); }
+    const okDDD = a => a && (!wantDDD || resFixed || a.ddd===wantDDD) ? a : null; // telefone digitado manda no DDD da cidade
+    let addr = okDDD(await viaSearch(uf,resCity));
+    const tries = wantDDD?12:4;
+    for(let k=0; !addr && !resFixed && k<tries; k++){
+      resCity = (k===0 && wantDDD && String(UF[uf].ddd)===wantDDD) || k===tries-1 ? UF[uf].capital : pick(resList);
+      addr = okDDD(await viaSearch(uf,resCity)); }
     if(addr){ set('cep',()=>addr.cep); set('logradouro',()=>addr.logradouro); set('bairro',()=>addr.bairro); S._ddd=addr.ddd; }
     else { set('logradouro',()=>`Rua ${pick(['Sete de Setembro','Quinze de Novembro','Tiradentes','Duque de Caxias','Santos Dumont','Getúlio Vargas'])}`); set('bairro',()=>'Centro'); set('cep',()=>'CEP geral do município'); }
   }
   if(C && !manual.has('cidade')) W('cidade',resCity);
-  const ddd = S._ddd || UF[uf].ddd;
+  const ddd = wantDDD || S._ddd || UF[uf].ddd;
   set('numero',()=>String(chance(.7)?int(10,999):int(1000,4500)));
   set('complemento',()=>wpick([['',55],[`Apto ${int(1,18)}0${int(1,8)}`,25],[`Casa ${int(1,12)}`,10],[`Bloco ${pick('ABCDEF')}, Apto ${int(1,12)}0${int(1,4)}`,7],['Fundos',3]]));
   W('cidadeUf',`${resCity} / ${uf}`);
@@ -432,7 +480,8 @@ async function doFill(){
   set('zona',()=>votante?`Zona ${pad(int(1,180),3)} · Seção ${pad(int(1,450),4)}`:'—');
   set('pis',()=>adult&&chance(.92)?pisGen():(age>=14?pisGen():'Não possui'));
   set('cns',cnsGen);
-  const temCnh = adult && chance(age>75?.35:.68);
+  const cnhTyped = ['cnh','cnhCat','cnhPrimeira','cnhValidade'].some(id=>S[id]);
+  const temCnh = adult && (cnhTyped ? !/^n[ãa]o/i.test(S.cnh||'') : chance(age>75?.35:.68));
   if(temCnh){
     const prim = randDate(addY(dob,18), new Date(Math.min(addY(dob,Math.min(age,30)).getTime(),TODAY.getTime())));
     set('cnh',cnhGen);
@@ -447,7 +496,7 @@ async function doFill(){
   set('fixo',()=>chance(.4)?`(${ddd}) ${int(2,5)}${digits(3).join('')}-${digits(4).join('')}`:'Não possui');
   const handle = slug(first.split(' ')[0])+pick(['.','_','',''])+slug(lastS)+(chance(.6)?String(chance(.5)?dob.getFullYear()%100:int(1,999)).padStart(2,'0'):'');
   set('email',()=>`${handle}@${wpick([['gmail.com',60],['hotmail.com',15],['outlook.com',10],['yahoo.com.br',6],['icloud.com',5],['uol.com.br',2],['bol.com.br',2]])}`);
-  set('usuario',()=>'@'+handle);
+  set('usuario',()=>'@'+(S.email.includes('@')?S.email.split('@')[0]:handle));
   set('contatoEmerg',()=>`${S.mae.split(' ')[0]} (mãe) · (${ddd}) 9${int(6,9)}${digits(3).join('')}-${digits(4).join('')}`);
 
   // ---- corpo ----
@@ -482,15 +531,19 @@ async function doFill(){
   set('calcado',()=>String(age<12?Math.max(18,Math.round(18+age*1.5)):Math.round(sx==='Masculino'?39+(altM-1.65)*30:35+(altM-1.55)*25+normal(0,.6))));
 
   // ---- social ----
-  const ec = set('estadoCivil',()=>{ const b = age<18?'Solteiro':wpick(age<25?[['Solteiro',85],['União estável',10],['Casado',5]]:age<35?[['Solteiro',45],['Casado',30],['União estável',20],['Divorciado',5]]:age<60?[['Solteiro',18],['Casado',50],['União estável',15],['Divorciado',15],['Viúvo',2]]:[['Solteiro',8],['Casado',50],['União estável',7],['Divorciado',12],['Viúvo',23]]); return b.replace(/o$/,sx==='Feminino'?'a':'o'); });
+  const ec = set('estadoCivil',()=>{ if(S.conjuge&&S.conjuge!=='—'&&age>=16) return chance(.7)?g(sx,'Casado','Casada'):'União estável';
+const b = age<18?'Solteiro':wpick(age<25?[['Solteiro',85],['União estável',10],['Casado',5]]:age<35?[['Solteiro',45],['Casado',30],['União estável',20],['Divorciado',5]]:age<60?[['Solteiro',18],['Casado',50],['União estável',15],['Divorciado',15],['Viúvo',2]]:[['Solteiro',8],['Casado',50],['União estável',7],['Divorciado',12],['Viúvo',23]]); return b.replace(/o$/,sx==='Feminino'?'a':'o'); });
   set('conjuge',()=>{ if(!/Casad|União/.test(ec)) return '—'; const os = sx==='Masculino'?'Feminino':'Masculino'; return `${firstName(os)} ${surname(uf)}${sx==='Masculino'&&/Casad/.test(ec)&&chance(.6)?' '+paiSob:''}`; });
   set('filhos',()=>{ if(age<17) return 'Nenhum'; const n = age<25?wpick([[0,75],[1,20],[2,5]]):wpick([[0,22],[1,30],[2,32],[3,11],[4,5]]); return n===0?'Nenhum':n===1?'1 filho':`${n} filhos`; });
+  const cursoTyped = S.curso ? CURSOS.find(c=>slug(S.curso).includes(slug(c[0]))) : null;
+  const profTyped = S.profissao ? CURSOS.find(c=>[c[1],c[2]].some(p=>slug(p)===slug(S.profissao))) : null;
   const esc = set('escolaridade',()=>{
+    if((cursoTyped||profTyped) && age>=21) return chance(.8)?'Superior completo':'Pós-graduação';
     if(age<6) return 'Educação infantil'; if(age<15) return `Ensino fundamental em curso (${Math.min(9,age-5)}º ano)`; if(age<18) return `Ensino médio em curso (${age-14}º ano)`;
     const w = age>60?[['Fundamental incompleto',35],['Fundamental completo',12],['Médio completo',25],['Superior completo',18],['Pós-graduação',5],['Mestrado',1]]:[['Fundamental incompleto',10],['Fundamental completo',7],['Médio incompleto',5],['Médio completo',35],['Superior incompleto',12],['Superior completo',21],['Pós-graduação',8],['Mestrado',1.5],['Doutorado',.5]];
     return wpick(w); });
   const superior = /Superior|Pós|Mestrado|Doutorado/.test(esc);
-  const cursoRow = superior?pick(CURSOS):null;
+  const cursoRow = cursoTyped || profTyped || (superior?pick(CURSOS):null);
   set('curso',()=>{ if(age<18) return `Estudante — ${pick(['Escola Estadual','Escola Municipal','Colégio Adventista','Colégio','Escola'])} ${pick(['Dom Pedro II','Tiradentes','Machado de Assis','Rui Barbosa','Santos Dumont','Castro Alves'])}`;
     if(!cursoRow) return /Médio/.test(esc)&&chance(.3)?`Técnico em ${pick(['Administração','Enfermagem','Informática','Segurança do Trabalho','Edificações','Logística'])}`:'—';
     const inst = pick(['Universidade Federal','Universidade Estadual','Centro Universitário','Faculdade','PUC','Universidade']);
@@ -503,6 +556,7 @@ async function doFill(){
     if(cursoRow&&!/incompleto/.test(esc)){ renda=int(cursoRow[3],cursoRow[4]); return g(sx,cursoRow[1],cursoRow[2]); }
     if(/Fundamental/.test(esc)){ renda=int(1518,2800); return g(sx,...pick(PROF_FUND)); }
     renda=int(1700,4500); return g(sx,...pick(PROF_MEDIO)); });
+  if(!renda && profTyped) renda=int(profTyped[3],profTyped[4]);
   set('renda',()=>{ if(/Estudante|Desempregad/.test(prof)) return 'Sem renda própria'; if(/aprendiz/.test(prof)) return brl(int(900,1200)); return brl(Math.round((renda||int(1600,4000))/10)*10); });
   set('empresa',()=>{
     if(/Estudante|Desempregad|Aposentad/.test(prof)) return '—';
@@ -523,7 +577,8 @@ async function doFill(){
   set('personalidade',()=>pick(['ISTJ','ISFJ','INFJ','INTJ','ISTP','ISFP','INFP','INTP','ESTP','ESFP','ENFP','ENTP','ESTJ','ESFJ','ENFJ','ENTJ'])+' — '+pick(['tranquilo(a) e organizado(a)','comunicativo(a)','reservado(a)','prático(a) e direto(a)','criativo(a)','perfeccionista','bem-humorado(a)','caseiro(a)','agitado(a)','paciente']));
 
   // ---- veículo ----
-  const temVeic = adult && chance(temCnh?.72:.12);
+  const veicTyped = ['veiculo','veicAno','veicCor','placa','renavam'].some(id=>S[id]);
+  const temVeic = veicTyped ? !/^n[ãa]o/i.test(S.veiculo||'') : adult && chance(temCnh?.72:.12);
   if(temVeic){
     const v = wpick([['Fiat Strada',8],['Fiat Argo',6],['Fiat Mobi',5],['Fiat Uno',6],['Volkswagen Gol',8],['Volkswagen Polo',6],['Volkswagen T-Cross',4],['Chevrolet Onix',9],['Chevrolet Tracker',4],['Chevrolet Prisma',3],['Hyundai HB20',7],['Hyundai Creta',4],['Toyota Corolla',3],['Toyota Hilux',2],['Renault Kwid',4],['Renault Sandero',3],['Honda Civic',2],['Honda HR-V',3],['Jeep Renegade',3],['Jeep Compass',3],['Nissan Kicks',3],['Ford Ka',4],['Honda CG 160 (moto)',6],['Yamaha Fazer 250 (moto)',2],['Honda Biz 125 (moto)',2]]);
     set('veiculo',()=>`${v} ${pick(['1.0','1.0','1.3','1.6','2.0'])}`.replace(/ \(moto\) .*$/,' (moto)').replace(/(moto\)) [\d.]+$/,'$1'));
@@ -564,12 +619,10 @@ function clearFields(keepManual){
 
 buildUI();
 $('btnFill').onclick=fill;
-$('btnNew').onclick=()=>{ clearFields(true); fill(); };
 $('btnClear').onclick=()=>{ clearFields(false); };
 $('btnCopy').onclick=()=>navigator.clipboard.writeText(asText()).then(()=>toast('Ficha copiada'));
 $('btnJson').onclick=()=>{ const b=new Blob([JSON.stringify(asObject(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`heteronimo-${slug($('nome').value||'ficha')}.json`; a.click(); };
 document.addEventListener('keydown',e=>{ if(e.ctrlKey&&e.key==='Enter'){ e.preventDefault(); fill(); } });
-fill();
 </script>
 </body>
 </html>
