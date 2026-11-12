@@ -338,6 +338,18 @@ const DDD_UF = {};
 [['SP','11 12 13 14 15 16 17 18 19'],['RJ','21 22 24'],['ES','27 28'],['MG','31 32 33 34 35 37 38'],['PR','41 42 43 44 45 46'],['SC','47 48 49'],['RS','51 53 54 55'],['DF','61'],['GO','62 64'],['TO','63'],['MT','65 66'],['MS','67'],['AC','68'],['RO','69'],['BA','71 73 74 75 77'],['SE','79'],['PE','81 87'],['AL','82'],['PB','83'],['RN','84'],['CE','85 88'],['PI','86 89'],['PA','91 93 94'],['AM','92 97'],['RR','95'],['AP','96'],['MA','98 99']].forEach(([u,l])=>l.split(' ').forEach(d=>DDD_UF[d]=u));
 function signoOf(dob){ const m=dob.getMonth()+1,d=dob.getDate(); const T=[[1,20,'Capricórnio'],[2,19,'Aquário'],[3,21,'Peixes'],[4,20,'Áries'],[5,21,'Touro'],[6,21,'Gêmeos'],[7,23,'Câncer'],[8,23,'Leão'],[9,23,'Virgem'],[10,23,'Libra'],[11,22,'Escorpião'],[12,22,'Sagitário']]; for(const [mm,dd,n] of T) if(m<mm||(m===mm&&d<dd)) return n; return 'Capricórnio'; }
 const chinesOf = dob => ['Rato','Boi','Tigre','Coelho','Dragão','Serpente','Cavalo','Cabra','Macaco','Galo','Cão','Porco'][(((dob.getFullYear()-4)%12)+12)%12];
+// cidades com ruas no ViaCEP por DDD (para casar o telefone digitado com o endereço)
+const DDD_CID = {11:'São Paulo|Guarulhos|Osasco|Santo André',12:'São José dos Campos|Taubaté|Jacareí',13:'Santos|São Vicente|Praia Grande',14:'Bauru|Marília|Jaú',15:'Sorocaba|Itapetininga|Votorantim',16:'Ribeirão Preto|Franca|São Carlos|Araraquara',17:'São José do Rio Preto|Catanduva|Barretos',18:'Presidente Prudente|Araçatuba|Assis',19:'Campinas|Piracicaba|Limeira|Americana',21:'Rio de Janeiro|Niterói|Duque de Caxias|Nova Iguaçu',22:'Campos dos Goytacazes|Macaé|Cabo Frio|Nova Friburgo',24:'Petrópolis|Volta Redonda|Barra Mansa|Resende',27:'Vitória|Vila Velha|Serra|Cariacica',28:'Cachoeiro de Itapemirim',31:'Belo Horizonte|Contagem|Betim',32:'Juiz de Fora|Barbacena',33:'Governador Valadares|Teófilo Otoni',34:'Uberlândia|Uberaba',35:'Poços de Caldas|Pouso Alegre|Varginha',37:'Divinópolis|Itaúna',38:'Montes Claros',41:'Curitiba|São José dos Pinhais|Colombo',42:'Ponta Grossa|Guarapuava',43:'Londrina|Apucarana',44:'Maringá|Umuarama',45:'Cascavel|Foz do Iguaçu',46:'Francisco Beltrão|Pato Branco',47:'Joinville|Blumenau|Itajaí|Balneário Camboriú',48:'Florianópolis|São José|Criciúma|Palhoça',49:'Chapecó|Lages',51:'Porto Alegre|Canoas|Novo Hamburgo|São Leopoldo',53:'Pelotas|Rio Grande',54:'Caxias do Sul|Passo Fundo|Bento Gonçalves',55:'Santa Maria|Uruguaiana|Ijuí',61:'Brasília',62:'Goiânia|Aparecida de Goiânia|Anápolis',64:'Rio Verde|Itumbiara',63:'Palmas|Araguaína',65:'Cuiabá|Várzea Grande',66:'Rondonópolis|Sinop',67:'Campo Grande|Dourados',68:'Rio Branco',69:'Porto Velho|Ji-Paraná',71:'Salvador|Camaçari|Lauro de Freitas',73:'Ilhéus|Itabuna',74:'Juazeiro',75:'Feira de Santana',77:'Vitória da Conquista|Barreiras',79:'Aracaju',81:'Recife|Jaboatão dos Guararapes|Olinda',87:'Petrolina|Garanhuns',82:'Maceió|Arapiraca',83:'João Pessoa|Campina Grande',84:'Natal|Mossoró',85:'Fortaleza|Caucaia',88:'Juazeiro do Norte|Sobral',86:'Teresina|Parnaíba',89:'Picos',91:'Belém|Ananindeua',93:'Santarém',94:'Marabá',92:'Manaus',97:'Tefé|Coari',95:'Boa Vista',96:'Macapá',98:'São Luís',99:'Imperatriz'};
+function sexHint(){ // nome → profissão → palavras com gênero
+  if(S.nome) return sexFromName(S.nome);
+  const p=slug(S.profissao||'');
+  if(p){ const F=[...CURSOS.map(c=>c[2]),...PROF_MEDIO.map(x=>x[1]),...PROF_FUND.map(x=>x[1])].map(slug), M=[...CURSOS.map(c=>c[1]),...PROF_MEDIO.map(x=>x[0]),...PROF_FUND.map(x=>x[0])].map(slug);
+    if(F.includes(p)&&!M.includes(p)) return 'Feminino'; if(M.includes(p)&&!F.includes(p)) return 'Masculino'; if(/a$/.test(p)&&!M.includes(p)) return 'Feminino'; }
+  const t=[S.estadoCivil,S.mao,S.cnh,S.nacionalidade,S.empresa].join(' ').toLowerCase();
+  if(/\b(casada|solteira|divorciada|vi[úu]va|destra|canhota|habilitada|naturalizada|nata|aut[ôo]noma)\b/.test(t)) return 'Feminino';
+  if(/\b(casado|solteiro|divorciado|vi[úu]vo|destro|canhoto|habilitado|naturalizado|nato|aut[ôo]nomo)\b/.test(t)) return 'Masculino';
+  return chance(.5)?'Masculino':'Feminino';
+}
 function sexFromName(n){
   const f=n.trim().split(/\s+/)[0]; if(!f) return null;
   if(NOMES_F.includes(f)||PAISES.some(p=>p.f.includes(f))) return 'Feminino';
@@ -351,7 +363,7 @@ const dddOf = s => { const d=(s||'').replace(/\D/g,''); return d.length>=10 && D
 async function doFill(){
   readAll();
   // sexo / nacionalidade
-  const sx = set('sexo',()=> S.nome ? sexFromName(S.nome) : chance(.5)?'Masculino':'Feminino');
+  const sx = set('sexo',sexHint);
   const nat = set('nacTipo',()=> manual.has('pais')||S.rnm||S.chegada||S.naturalizacao?'naturalizado' : (manual.has('uf')||manual.has('cidade')||!chance(.04)) ? 'nato':'naturalizado');
   const C = nat==='naturalizado' ? PAIS[set('pais',()=>wpick(PAISES.map(p=>[p.n,p.w])))] : null;
   if(!C && !manual.has('pais')) W('pais','');
@@ -402,7 +414,7 @@ async function doFill(){
   if(!uf && S.cidadeUf){ const m=/^(.*) \/ ([A-Z]{2})$/.exec(S.cidadeUf); if(m){ resCity=m[1]; uf=m[2]; resFixed=true; } }
   if(!uf){
     if(C){ uf=fUF; resCity=S.cidade; resFixed=manual.has('cidade'); }
-    else if(hintRes){ uf=hintRes; resCity = uf===fUF&&chance(.75) ? S.cidade : (chance(.5)?UF[uf].capital:pick(await cities(uf))); }
+    else if(hintRes){ uf=hintRes; resCity = wantDDD&&DDD_UF[wantDDD]===uf ? pick(DDD_CID[wantDDD].split('|')) : uf===fUF&&chance(.75) ? S.cidade : (chance(.5)?UF[uf].capital:pick(await cities(uf))); }
     else { const r=R();
       if(r<.6){ uf=fUF; resCity=S.cidade; } else if(r<.8){ uf=fUF; resCity=pick(fList); }
       else { uf=wpick(UFS.filter(u=>u[0]!==fUF).map(u=>[u[0],u[4]])); resCity=chance(.5)?UF[uf].capital:pick(await cities(uf)); } }
@@ -411,9 +423,10 @@ async function doFill(){
     const resList = await cities(uf);
     const okDDD = a => a && (!wantDDD || resFixed || a.ddd===wantDDD) ? a : null; // telefone digitado manda no DDD da cidade
     let addr = okDDD(await viaSearch(uf,resCity));
-    const tries = wantDDD?12:4;
+    const dddCities = wantDDD && DDD_UF[wantDDD]===uf ? DDD_CID[wantDDD].split('|') : null;
+    const tries = dddCities?8:4;
     for(let k=0; !addr && !resFixed && k<tries; k++){
-      resCity = (k===0 && wantDDD && String(UF[uf].ddd)===wantDDD) || k===tries-1 ? UF[uf].capital : pick(resList);
+      resCity = dddCities ? (k<dddCities.length ? dddCities[k] : pick(resList)) : k===tries-1 ? UF[uf].capital : pick(resList);
       addr = okDDD(await viaSearch(uf,resCity)); }
     if(addr){ set('cep',()=>addr.cep); set('logradouro',()=>addr.logradouro); set('bairro',()=>addr.bairro); S._ddd=addr.ddd; }
     else { set('logradouro',()=>`Rua ${pick(['Sete de Setembro','Quinze de Novembro','Tiradentes','Duque de Caxias','Santos Dumont','Getúlio Vargas'])}`); set('bairro',()=>'Centro'); set('cep',()=>'CEP geral do município'); }
