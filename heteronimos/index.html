@@ -645,7 +645,7 @@ async function baixarPDF(){
   const nome=$('nome').value; if(!nome) return toast('Preencha a ficha primeiro');
   try{ await loadJsPDF(); }catch(e){ return toast('Não consegui carregar o gerador de PDF'); }
   const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'});
-  const M=14, PW=210, Wd=PW-2*M, GAP=6, colW=(Wd-GAP)/2, ACC=[122,62,29], TXT=[29,27,24], MUT=[111,106,98];
+  const M=14, PW=210, Wd=PW-2*M, GAP=5, NC=3, colW=(Wd-GAP*(NC-1))/NC, ACC=[122,62,29], TXT=[29,27,24], MUT=[111,106,98];
   let y=M;
   const ensure=h=>{ if(y+h>284){ doc.addPage(); y=M; } };
   // cabeçalho
@@ -659,7 +659,7 @@ async function baixarPDF(){
     doc.setFontSize(9.5); doc.setTextColor(...TXT); doc.text(lines, x, y+4.2);
   };
   for(const [t,fs] of SECTIONS){
-    const items=(t==='Identidade'?[['sexo','Sexo']]:[]).concat(fs).map(([id,lab,wide])=>({lab,wide,v:val(id)})).filter(x=>x.v);
+    const items=(t==='Identidade'?[['sexo','Sexo']]:[]).concat(fs).map(([id,lab,wide])=>({lab,wide:wide&&val(id).length>40,v:val(id)})).filter(x=>x.v&&x.v!=='—');
     if(!items.length) continue;
     ensure(16);
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...ACC); doc.text(t.toUpperCase(), M, y); y+=1.8;
@@ -668,9 +668,10 @@ async function baixarPDF(){
     for(const it of items){
       doc.setFontSize(9.5);
       const lines=doc.splitTextToSize(it.v, it.wide?Wd:colW), h=4.2+lines.length*3.9+2.6;
-      if(it.wide){ if(col){ y+=rowH; col=0; } ensure(h); draw(M,it.lab,lines); y+=h; continue; }
-      if(col===0){ ensure(h); draw(M,it.lab,lines); rowH=h; col=1; }
-      else { draw(M+colW+GAP,it.lab,lines); y+=Math.max(rowH,h); col=0; }
+      if(it.wide){ if(col){ y+=rowH; col=0; rowH=0; } ensure(h); draw(M,it.lab,lines); y+=h; continue; }
+      if(col===0) ensure(h);
+      draw(M+col*(colW+GAP),it.lab,lines); rowH=Math.max(rowH,h); col++;
+      if(col===NC){ y+=rowH; col=0; rowH=0; }
     }
     if(col) y+=rowH; y+=3;
   }
