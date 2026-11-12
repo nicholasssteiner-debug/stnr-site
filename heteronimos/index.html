@@ -92,6 +92,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
       <button class="primary" id="btnFill" title="Ctrl+Enter">Preencher</button>
       <button id="btnClear">Limpar tudo</button>
       <button id="btnCopy">Copiar ficha</button>
+      <button id="btnPdf">Baixar PDF</button>
       <button id="btnJson">JSON</button>
     </div>
   </header>
@@ -635,6 +636,51 @@ $('btnFill').onclick=fill;
 $('btnClear').onclick=()=>{ clearFields(false); };
 $('btnCopy').onclick=()=>navigator.clipboard.writeText(asText()).then(()=>toast('Ficha copiada'));
 $('btnJson').onclick=()=>{ const b=new Blob([JSON.stringify(asObject(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`heteronimo-${slug($('nome').value||'ficha')}.json`; a.click(); };
+// ---------- PDF ----------
+function loadJsPDF(){
+  if(window.jspdf) return Promise.resolve();
+  return new Promise((ok,err)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=ok; s.onerror=err; document.head.appendChild(s); });
+}
+async function baixarPDF(){
+  const nome=$('nome').value; if(!nome) return toast('Preencha a ficha primeiro');
+  try{ await loadJsPDF(); }catch(e){ return toast('Não consegui carregar o gerador de PDF'); }
+  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'});
+  const M=14, PW=210, Wd=PW-2*M, GAP=6, colW=(Wd-GAP)/2, ACC=[122,62,29], TXT=[29,27,24], MUT=[111,106,98];
+  let y=M;
+  const ensure=h=>{ if(y+h>284){ doc.addPage(); y=M; } };
+  // cabeçalho
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...TXT); doc.text(nome, M, y+6);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...MUT);
+  doc.text(doc.splitTextToSize($('heroMeta').textContent, Wd-50), M, y+12);
+  doc.text('Ficha fictícia', PW-M, y+3, {align:'right'}); doc.text(fmtD(new Date()), PW-M, y+7.5, {align:'right'});
+  y+=19; doc.setDrawColor(...ACC); doc.setLineWidth(.6); doc.line(M,y,PW-M,y); y+=7;
+  const draw=(x,lab,lines)=>{
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...MUT); doc.text(lab, x, y);
+    doc.setFontSize(9.5); doc.setTextColor(...TXT); doc.text(lines, x, y+4.2);
+  };
+  for(const [t,fs] of SECTIONS){
+    const items=(t==='Identidade'?[['sexo','Sexo']]:[]).concat(fs).map(([id,lab,wide])=>({lab,wide,v:val(id)})).filter(x=>x.v);
+    if(!items.length) continue;
+    ensure(16);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...ACC); doc.text(t.toUpperCase(), M, y); y+=1.8;
+    doc.setDrawColor(226,222,214); doc.setLineWidth(.2); doc.line(M,y,PW-M,y); y+=4.8;
+    let col=0, rowH=0;
+    for(const it of items){
+      doc.setFontSize(9.5);
+      const lines=doc.splitTextToSize(it.v, it.wide?Wd:colW), h=4.2+lines.length*3.9+2.6;
+      if(it.wide){ if(col){ y+=rowH; col=0; } ensure(h); draw(M,it.lab,lines); y+=h; continue; }
+      if(col===0){ ensure(h); draw(M,it.lab,lines); rowH=h; col=1; }
+      else { draw(M+colW+GAP,it.lab,lines); y+=Math.max(rowH,h); col=0; }
+    }
+    if(col) y+=rowH; y+=3;
+  }
+  const n=doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...MUT);
+    doc.text('Dados fictícios, gerados aleatoriamente para testes — stnr.com.br/heteronimos', M, 292);
+    doc.text(`${i}/${n}`, PW-M, 292, {align:'right'}); }
+  doc.save(`heteronimo-${slug(nome)}.pdf`);
+}
+$('btnPdf').onclick=baixarPDF;
 document.addEventListener('keydown',e=>{ if(e.ctrlKey&&e.key==='Enter'){ e.preventDefault(); fill(); } });
 </script>
 </body>
