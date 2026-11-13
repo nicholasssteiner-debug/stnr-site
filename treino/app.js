@@ -1,7 +1,7 @@
 /* Protocolo V — app de treino (stnr.com.br/treino). Firebase Auth + Firestore (projeto level-up-c3f9b). */
-import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, videoUrl } from './data.js?v=9';
+import { WORKOUTS, CODES, TIPS, ARMSTRONG, GUIDE, FOODS, GROUPS, SWAP_BY_PROTEIN, MEALS, ALTS, ROT, videoUrl } from './data.js?v=10';
 // Os ids taco_N e prep_N gravados nos cardápios apontam para a posição na lista: não reordene essas tabelas
-import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=9';
+import { TACO, TACO_CATS, PREPARADOS, MEDIDAS } from './taco.js?v=10';
 
 const FB_CFG = {
   apiKey: 'AIzaSyCKCIsfFUfPUPTBKwVuYQrVHVgolc2CtsA',
@@ -34,7 +34,6 @@ const fmtShort = k => { const d = parseKey(k); return `${WD[d.getDay()]} ${d.get
 const fmtLong = k => { const d = parseKey(k); return `${WD[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`; };
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const range = (a, b) => { const out = []; for (let k = a; k <= b; k = addDays(k, 1)) out.push(k); return out; };
-const ROT = ['A', 'B', 'C'];
 
 function setPath(obj, path, val) {
   const parts = path.split('.'); let o = obj;
@@ -61,9 +60,28 @@ function rotation(sched, from, end, rest, startIdx) {
   for (const k of range(from, end)) {
     if (k === end) sched[k] = 'AL';
     else if (rest.includes(parseKey(k).getDay())) sched[k] = 'R';
-    else sched[k] = ROT[i++ % 3];
+    else sched[k] = ROT[i++ % ROT.length];
   }
   return sched;
+}
+/* Ficha 2 (16/11/2026): rodízio de cinco treinos (A–E). Um plano criado antes ganha, uma única vez, as semanas novas:
+   se terminava antes de 16/11, é estendido por 15 dias a partir do dia seguinte; senão, os dias a partir de 16/11 (ou de amanhã) são refeitos começando no A. */
+const FICHA2 = '2026-11-16';
+let migrating = false;
+function migrateFicha() {
+  const p = S.profile;
+  if (migrating || !store || !p || p.fichaV2 || !p.settings) return;
+  migrating = true;
+  const st = p.settings, sch = clone(p.schedule || {}), f = { fichaV2: true };
+  if (st.end < FICHA2) {
+    const from = addDays(st.end, 1), end = addDays(from, 14);
+    rotation(sch, from, end, st.rest, 0);
+    Object.assign(f, { schedule: sch, 'settings.end': end });
+  } else {
+    const tomorrow = addDays(todayKey(), 1), from = tomorrow > FICHA2 ? tomorrow : FICHA2;
+    if (from <= st.end) { rotation(sch, from, st.end, st.rest, 0); f.schedule = sch; }
+  }
+  store.setFields(f);
 }
 function defaultProfile() {
   const t = todayKey();
@@ -73,7 +91,7 @@ function defaultProfile() {
   return {
     settings: { start, end, rest, mode: 'gym', kcal: 2750, prot: 120, wheyG: 32, wheyP: 23, wheyK: 125 },
     schedule: rotation({}, start, end, rest, 0),
-    status: {}, measures: { [start]: { peso: 63 } }, customFoods: {}, mealTemplate: null,
+    status: {}, measures: { [start]: { peso: 63 } }, customFoods: {}, mealTemplate: null, fichaV2: true,
     criado: new Date().toISOString()
   };
 }
@@ -193,6 +211,7 @@ function bindLogin(authM, auth) {
 function showLogin() { $('#boot').hidden = true; $('#app').hidden = true; $('#login').hidden = false; }
 function showApp() {
   $('#boot').hidden = true; $('#login').hidden = true; $('#app').hidden = false;
+  migrateFicha();
   render();
 }
 
@@ -205,7 +224,7 @@ const planLen = () => diffDays(ST().start, ST().end) + 1;
 const dayOf = k => S.days[k] || {};
 
 function exercisesOf(code, k) {
-  if (code === 'A' || code === 'B' || code === 'C') return WORKOUTS[code].ex;
+  if (ROT.includes(code)) return WORKOUTS[code].ex;
   if (code === 'AL') return WORKOUTS.A.ex.map(e => ({ ...e, s: Math.max(1, Math.ceil(e.s / 2)) }));
   if (code === 'ARM') {
     const n = armNum(k);
@@ -261,6 +280,14 @@ function sessionsOf(id, k = '9999') {
 function nextTarget(e, k) {
   const rr = repRange(e.r), hist = sessionsOf(e.id, k), last = hist.at(-1);
   if (!rr || /máx|fixo/.test(e.r)) return null;
+  // Exercício por tempo (vacuum, prancha): a meta é segurar mais segundos, sem carga
+  if (e.unit === 's') {
+    if (!last) return { w: null, r: rr.lo, kind: 'novo', txt: `Primeira vez: segure de ${rr.lo} a ${rr.hi} s por série.` };
+    const m = Math.min(...last.sets.map(x => x.r));
+    if (m >= rr.hi) return { w: 0, r: rr.hi, kind: 'up', txt: `Você segurou ${rr.hi} s em todas: deixe mais difícil (mais contração, braços estendidos ou anilha nas costas).` };
+    const r = Math.min(rr.hi, Math.max(rr.lo, m + 5));
+    return { w: 0, r, kind: 'rep', txt: `Meta: ${r} s por série.` };
+  }
   if (!last) return { w: null, r: rr.lo, kind: 'novo', txt: `Primeira vez: escolha uma carga em que a última repetição fique difícil entre ${rr.lo} e ${rr.hi}.` };
   const top = Math.max(...last.sets.map(x => x.w)), atTop = last.sets.filter(x => x.w === top), minR = Math.min(...atTop.map(x => x.r));
   const enough = last.sets.length >= Math.min(e.s, 2);
@@ -290,7 +317,7 @@ function exStatus(id, k) {
 }
 
 // Nome legível de um id de histórico: "a4", "a4__maq" (troca) ou "a4__casa" (sem academia)
-const PLAN_EX = () => ['A', 'B', 'C'].flatMap(c => WORKOUTS[c].ex.map(e => ({ ...e, w: c })));
+const PLAN_EX = () => ROT.flatMap(c => WORKOUTS[c].ex.map(e => ({ ...e, w: c })));
 function exInfo(id) {
   const [slot, alt] = id.split('__'), base = PLAN_EX().find(e => e.id === slot);
   if (!base) return null;
@@ -352,7 +379,7 @@ function viewEvolucao() {
   return `<div class="view-head"><div class="grow"><h2>Evolução</h2><div class="muted small">O app compara cada treino com os anteriores e ajusta a meta: sobe a carga quando você bate o topo da faixa de repetições, pede +1 repetição quando ainda não bateu e reduz quando a carga passou do ponto.</div></div></div>
     <div class="grid two"><div class="grid">
       ${rows.length ? `<div class="card"><div class="stats" style="margin-top:0"><div class="stat"><b>${count('subiu')}</b><span>Evoluindo</span></div><div class="stat"><b>${count('manteve') + count('novo')}</b><span>Mantendo</span></div><div class="stat"><b>${count('estagnado') + count('caiu')}</b><span>Atenção</span></div></div></div>` : '<div class="card"><div class="empty-state">Registre carga e repetições nos treinos (aba Hoje) para a evolução aparecer aqui.</div></div>'}
-      ${card('A')}${card('B')}${card('C')}
+      ${ROT.map(card).join('')}
     </div><div class="grid">
       ${weightCard()}
       <div class="card"><h3>${ended ? 'Bloco encerrado' : 'Próximo bloco'}</h3>
@@ -374,8 +401,8 @@ function eventsOf(k) {
   if (i === 8) ev.push(['Pesar (só para conferir a dieta)', 'medidas']);
   if (i <= 7 && i >= 1) ev.push(['Creatina: fase de carga, 4 × 5 g', null]);
   if (i === 8) ev.push(['Creatina: a partir de hoje, 5 g por dia', null]);
-  if (k === addDays(st.end, -1)) ev.push(['Refeição livre no almoço, não à noite', 'dieta']);
-  if (k === st.end) ev.push(['Medições + fotos de manhã; foto extra após o treino', 'medidas']);
+  if (k === addDays(st.end, -1) || (i > 1 && i % 15 === 14)) ev.push(['Refeição livre no almoço, não à noite', 'dieta']);
+  if (k === st.end || (i > 1 && i % 15 === 0)) ev.push(['Medições + fotos de manhã; foto extra após o treino', 'medidas']);
   if (code === 'B' || code === 'C') ev.push(['Barra GTG ao longo do dia' + (gtgSize() ? ` (séries de ${gtgSize()})` : ''), null]);
   if (code === 'R') ev.push(['Caminhada leve', null]);
   return ev;
@@ -520,7 +547,7 @@ function viewHoje() {
     work = `<div class="card"><div class="card-head"><div><h3>Exercícios</h3><div class="muted small">Toque em ✓ ao terminar a série; o descanso começa sozinho.</div></div>
       <div class="seg"><button class="${mode === 'gym' ? 'on' : ''}" data-act="mode" data-m="gym">Academia</button><button class="${mode === 'home' ? 'on' : ''}" data-act="mode" data-m="home">Sem academia</button></div></div>
       ${exs.map((e, n) => exRow(e, n, k, mode)).join('')}
-      ${code === 'A' || code === 'AL' ? `<div class="ex-tip"><b>Finalizador:</b> ${esc(WORKOUTS.A.finisher)}</div>` : ''}
+      ${(code === 'AL' ? WORKOUTS.A : W).finisher ? `<div class="ex-tip"><b>${code === 'E' ? 'Atenção' : 'Finalizador'}:</b> ${esc((code === 'AL' ? WORKOUTS.A : W).finisher)}</div>` : ''}
       ${code === 'ARM' ? `<div class="ex-tip">Nesta versão, mantenha as elevações laterais com garrafas do Treino A e as pernas do Treino C sem academia, três vezes por semana.</div>` : ''}
     </div>`;
   } else if (code === 'R') {
@@ -563,7 +590,7 @@ function exRow(e, n, k, mode) {
   for (let i = 0; i < rows; i++) {
     // O que aparece apagado no campo é a meta de hoje; ✓ sem digitar registra a meta
     const s = arr[i] || {}, ls = last?.sets?.[i] || {};
-    const pw = (tg?.w || ls.w) || 'kg', pr = tg?.r ?? ls.r ?? 'reps';
+    const pw = (tg?.w || ls.w) || 'kg', pr = tg?.r ?? ls.r ?? (e.unit === 's' ? 'seg' : 'reps');
     sets += `<div class="set"><span class="n">${i + 1}</span>
       <input type="number" inputmode="decimal" step="0.5" min="0" placeholder="${esc(pw)}" value="${esc(s.w ?? '')}" data-ch="set" data-id="${e.id}" data-i="${i}" data-f="w" aria-label="Peso série ${i + 1}">
       <input type="number" inputmode="numeric" min="0" placeholder="${esc(pr)}" value="${esc(s.r ?? '')}" data-ch="set" data-id="${e.id}" data-i="${i}" data-f="r" aria-label="Repetições série ${i + 1}">
@@ -572,7 +599,7 @@ function exRow(e, n, k, mode) {
   return `<div class="ex ${done ? 'done' : ''}">
     <div class="ex-head"><div class="ex-num">${done ? '✓' : n + 1}</div><div class="grow">
       <div class="ex-name">${esc(name)}</div>
-      <div class="ex-meta">${e.s} × ${esc(e.r)}${e.obs ? ' · ' + esc(e.obs) : ''}</div>
+      <div class="ex-meta">${e.s} × ${esc(e.r)}${e.unit === 's' ? ' s' : ''}${e.obs ? ' · ' + esc(e.obs) : ''}</div>
       <div class="ex-alt">${esc(alt)}</div>
       ${e.swapped ? `<div class="ex-alt" style="color:var(--wlivre)">Troca (${e.swapped}) · original: ${esc(e.orig)}</div>` : ''}
       ${lastTxt ? `<div class="last">Última vez (${esc(fmtShort(last.date))}): ${esc(lastTxt)}</div>` : ''}
@@ -580,7 +607,7 @@ function exRow(e, n, k, mode) {
       ${st.kind === 'estagnado' ? `<div class="target t-down">Sem evoluir há 3 treinos. ${ALTS[e.slot] ? 'Vale trocar por uma variação (⇄ Trocar) ou ' : ''}fazer uma semana com 1 série a menos para recuperar.</div>` : ''}
     </div>${e.tip ? `<button class="mini" data-act="tip" data-id="${e.id}" aria-label="Como executar">?</button>` : ''}</div>
     ${e.tip ? `<div class="ex-tip" id="tip-${e.id}" hidden>${esc(TIPS[e.tip])}${e.tip === 'lateral' ? '<br><br>' + esc(TIPS.dor) : ''}</div>` : ''}
-    <div class="sets"><div class="set-head"><span>#</span><span>kg</span><span>reps</span><span></span></div>${sets}</div>
+    <div class="sets"><div class="set-head"><span>#</span><span>kg</span><span>${e.unit === 's' ? 'seg' : 'reps'}</span><span></span></div>${sets}</div>
     <div class="row ex-actions" style="margin-top:6px"><button class="link small" data-act="addset" data-id="${e.id}">+ série</button><span class="grow"></span>
       <a class="btn btn-sm btn-ghost" href="${videoUrl(name)}" target="_blank" rel="noopener" title="Vídeos de execução no YouTube">▶ Exemplo</a>
       ${ALTS[e.slot] ? `<button class="btn btn-sm btn-ghost" data-act="exswap" data-slot="${e.slot}">⇄ Trocar</button>` : ''}
@@ -617,7 +644,7 @@ function viewAgenda() {
     if (!inP) { cells += `<div class="cal-day out"><div class="d">${dnum}</div></div>`; continue; }
     const i = dayIdx(k), marks = [];
     if (i <= 7) marks.push('<span class="mk cr">20g</span>');
-    if (k === st.start || k === st.end) marks.push('<span class="mk">MED</span>');
+    if (k === st.start || k === st.end || i % 15 === 0) marks.push('<span class="mk">MED</span>');
     if (c === 'B' || c === 'C') marks.push('<span class="mk">GTG</span>');
     if (S.days[k]?.note) marks.push('<span class="mk">✎</span>');
     cells += `<button class="cal-day ${k === t ? 'today' : ''} ${status[k] || ''} ${S.swapFrom === k ? 'sel' : ''}" data-act="calday" data-k="${k}" draggable="true">
@@ -639,12 +666,12 @@ function viewAgenda() {
         <div class="card"><h3>Ajustar o plano</h3><div class="actions" style="margin-top:10px">
           <button class="btn" data-act="postpone" data-k="${t >= st.start && t <= st.end ? t : st.start}">Adiar a partir de hoje (+1 dia)</button>
           ${sch[t] === 'R' && t < st.end ? `<button class="btn" data-act="pullfwd" data-k="${t}">Adiantar: treinar hoje o próximo treino</button>` : ''}
-          <button class="btn" data-act="reflow" data-k="${t >= st.start && t <= st.end ? t : st.start}">Refazer rodízio A→B→C a partir de hoje</button>
+          <button class="btn" data-act="reflow" data-k="${t >= st.start && t <= st.end ? t : st.start}">Refazer rodízio A→E a partir de hoje</button>
           <button class="btn" data-act="extend" data-n="7">Estender o plano em 7 dias</button>
           <button class="btn btn-ghost btn-danger" data-act="resetplan">Restaurar calendário original</button></div>
           <p class="muted small" style="margin-bottom:0">Adiar empurra todos os treinos seguintes um dia e põe descanso no dia escolhido. Adiantar faz o contrário: num dia de descanso, traz o próximo treino e puxa os seguintes um dia para trás. Os dias de descanso fixos não mudam. Refazer rodízio continua de onde você parou, respeitando os dias de descanso.</p></div>
         <div class="card"><h3>Legenda</h3><div class="legend" style="margin-top:8px">
-          ${['A', 'B', 'C', 'AL', 'ARM', 'LIVRE', 'R'].map(c => `<span class="chip w-${WORKOUTS[c].color}">${c === 'AL' ? 'A·' : c === 'R' ? '—' : c === 'LIVRE' ? 'L' : c} ${esc(WORKOUTS[c].title)}</span>`).join('')}
+          ${CODES.map(c => `<span class="chip w-${WORKOUTS[c].color}">${c === 'AL' ? 'A·' : c === 'R' ? '—' : c === 'LIVRE' ? 'L' : c} ${esc(WORKOUTS[c].title)}</span>`).join('')}
           <span class="chip">20g creatina (carga)</span><span class="chip">MED medições</span><span class="chip">GTG barra</span></div></div>
       </div></div>`;
 }
@@ -1275,10 +1302,10 @@ function viewFichas() {
   const perm = P().exSwap || {};
   const card = c => { const W = WORKOUTS[c]; return `<div class="card"><div class="row between"><h3>${W.name} — ${esc(W.title)}</h3><span class="chip w-${W.color}">${c}</span></div><div class="muted small">${esc(W.sub)}</div>
     <div class="scroll-x"><table class="mtable" style="margin-top:8px"><tr><th>Exercício</th><th>Séries × reps</th><th>Sem academia</th></tr>
-    ${W.ex.map(e => { const alt = perm[e.id] && perm[e.id] !== 'orig' ? ALTS[e.id]?.find(a => a.k === perm[e.id]) : null; const nm = alt ? alt.n : e.n; return `<tr><td><a href="${videoUrl(nm)}" target="_blank" rel="noopener">${esc(nm)} ▶</a>${alt ? `<br><span class="muted small">no lugar de ${esc(e.n)}</span>` : ''}${ALTS[e.id] ? `<br><span class="muted small">Trocas: ${ALTS[e.id].filter(a => a !== alt).map(a => esc(a.n)).join(' · ')}</span>` : ''}</td><td style="font-family:var(--f-body)">${e.s} × ${esc(e.r)}${e.obs ? `<br><span class="muted small">${esc(e.obs)}</span>` : ''}</td><td style="font-family:var(--f-body)"><a href="${videoUrl(e.home)}" target="_blank" rel="noopener">${esc(e.home)} ▶</a></td></tr>`; }).join('')}</table></div>
+    ${W.ex.map(e => { const alt = perm[e.id] && perm[e.id] !== 'orig' ? ALTS[e.id]?.find(a => a.k === perm[e.id]) : null; const nm = alt ? alt.n : e.n; return `<tr><td><a href="${videoUrl(nm)}" target="_blank" rel="noopener">${esc(nm)} ▶</a>${alt ? `<br><span class="muted small">no lugar de ${esc(e.n)}</span>` : ''}${ALTS[e.id] ? `<br><span class="muted small">Trocas: ${ALTS[e.id].filter(a => a !== alt).map(a => esc(a.n)).join(' · ')}</span>` : ''}</td><td style="font-family:var(--f-body)">${e.s} × ${esc(e.r)}${e.unit === 's' ? ' s' : ''}${e.obs ? `<br><span class="muted small">${esc(e.obs)}</span>` : ''}</td><td style="font-family:var(--f-body)"><a href="${videoUrl(e.home)}" target="_blank" rel="noopener">${esc(e.home)} ▶</a></td></tr>`; }).join('')}</table></div>
     ${W.finisher ? `<div class="ex-tip">${esc(W.finisher)}</div>` : ''}</div>`; };
   return `<div class="view-head"><div class="grow"><h2>Fichas</h2><div class="muted small">Descanse 2 min nos exercícios grandes e 45–60 s nas elevações laterais. A cada treino, +1 repetição ou um pouco mais de peso.</div></div></div>
-    <div class="grid">${card('A')}${card('B')}${card('C')}
+    <div class="grid">${ROT.map(card).join('')}
     <div class="card"><h3>Armstrong — sem academia</h3><ul class="small" style="padding-left:18px;color:var(--text-2)"><li><b>Toda manhã:</b> 3 séries máximas de flexão.</li>${ARMSTRONG.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
       <p class="muted small" style="margin:0">Na agenda, escolha “ARM” no dia: o app avança sozinho do dia 1 ao 5.</p></div></div>`;
 }

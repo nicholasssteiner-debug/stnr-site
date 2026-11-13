@@ -12,13 +12,37 @@ export const WORKOUTS = {
     code: 'A', name: 'Treino A', title: 'Largura', sub: 'Costas e ombro lateral', color: 'a',
     ex: [
       { id: 'a1', n: 'Barra fixa pegada aberta', s: 4, r: '6–10', obs: 'Menos de 5 reps: puxada frente aberta', home: 'Barra fixa ou negativas de 5 s', rest: 120, tip: 'puxada' },
-      { id: 'a2', n: 'Pullover na polia, braço estendido', s: 3, r: '12–15', home: 'Pullover deitado com mochila', rest: 75 },
+      // a7 e a8 substituem o pullover (a2) e a 2ª elevação lateral (a5) desde 16/11/2026; ids novos para não misturar o histórico de cargas
+      { id: 'a7', n: 'Puxada frente com triângulo', s: 3, r: '10–12', obs: 'Estique bem em cima e puxe o triângulo até o peito', home: 'Barra fixa com pegada neutra ou negativas', rest: 90, tip: 'puxada' },
       { id: 'a3', n: 'Remada unilateral com halter', s: 3, r: '10–12', home: 'Remada australiana sob mesa firme', rest: 90 },
       { id: 'a4', n: 'Elevação lateral com halter', s: 4, r: '12–20', obs: 'Drop set na última', home: 'Garrafas de 2 L ou mochila', rest: 50, tip: 'lateral' },
-      { id: 'a5', n: 'Elevação lateral na polia (cabo atrás do corpo)', s: 3, r: '15', home: 'Elevação lateral deitado de lado', rest: 50, tip: 'lateral' },
+      { id: 'a8', n: 'Puxada unilateral na polia alta, ajoelhado', s: 3, r: '10–12', obs: 'Cotovelo desce rente ao corpo; alonga bem a dorsal em cima', home: 'Remada unilateral com mochila, tronco inclinado', rest: 60, tip: 'puxada' },
       { id: 'a6', n: 'Face pull ou crucifixo inverso', s: 3, r: '15–20', home: 'Crucifixo inverso inclinado com garrafas', rest: 60 }
     ],
     finisher: 'Pose de dorsal: 3 × 10 s no espelho — punhos na cintura, ombros para trás, cotovelos para frente, abra as costas.'
+  },
+  D: {
+    code: 'D', name: 'Treino D', title: 'Largura 2', sub: 'Dorsal e ombro por outros ângulos', color: 'd',
+    ex: [
+      { id: 'd1', n: 'Barra fixa pegada neutra ou supinada', s: 3, r: '6–10', obs: 'Menos de 5 reps: barra assistida ou negativas de 5 s', home: 'Barra de porta, negativas de 5 s', rest: 120, tip: 'puxada' },
+      { id: 'd2', n: 'Puxada frente pegada aberta', s: 4, r: '8–12', obs: 'Pegada um pouco mais aberta que os ombros', home: 'Barra fixa aberta com pés apoiados', rest: 90, tip: 'puxada' },
+      { id: 'd3', n: 'Remada sentada pegada aberta, cotovelos abertos', s: 3, r: '10–12', obs: 'Puxe para a linha do peito: dorsal alta e ombro posterior', home: 'Remada australiana pegada aberta', rest: 90 },
+      { id: 'd4', n: 'Elevação lateral unilateral na polia', s: 4, r: '12–15', obs: 'Falha na última', home: 'Elevação lateral deitado de lado no chão', rest: 45, tip: 'lateral' },
+      { id: 'd5', n: 'Crucifixo inverso no peck deck', s: 3, r: '15–20', home: 'Crucifixo inverso inclinado com garrafas', rest: 60 }
+    ],
+    finisher: 'Pose de dorsal: 3 × 10 s no espelho — punhos na cintura, ombros para trás, cotovelos para frente, abra as costas.'
+  },
+  E: {
+    code: 'E', name: 'Treino E', title: 'Cintura', sub: 'Cintura fechada, core firme e manutenção do V', color: 'e',
+    ex: [
+      { id: 'e1', n: 'Vacuum abdominal', s: 4, r: '20–40', unit: 's', obs: 'Solte todo o ar e puxe o umbigo para dentro e para cima', home: 'Vacuum de quatro apoios', rest: 30 },
+      { id: 'e2', n: 'Elevação de joelhos na barra fixa', s: 3, r: '10–15', obs: 'Sem balançar; pendurado também descomprime e alonga a dorsal', home: 'Elevação de joelhos deitado no chão', rest: 60 },
+      { id: 'e3', n: 'Pallof press no cabo', s: 3, r: '10–12', obs: 'Cada lado; o tronco não gira — firma o oblíquo sem engrossar a cintura', home: 'Pallof press com elástico', rest: 45 },
+      { id: 'e4', n: 'Dead bug', s: 3, r: '10–12', obs: 'Cada lado; lombar colada no chão', home: 'Dead bug', rest: 45 },
+      { id: 'e5', n: 'Prancha frontal', s: 3, r: '30–60', unit: 's', obs: 'Contraia glúteo e abdômen; sem deixar o quadril cair', home: 'Prancha frontal', rest: 45 },
+      { id: 'e6', n: 'Elevação lateral com halter', s: 3, r: '15–20', obs: 'Única lateral do dia; carga moderada', home: 'Garrafas de 2 L', rest: 45, tip: 'lateral' }
+    ],
+    finisher: 'Sem peso nos oblíquos (inclinação lateral com halter, abdominal oblíquo com carga): eles engrossam a cintura e fecham o V.'
   },
   B: {
     code: 'B', name: 'Treino B', title: 'Peito superior e braços', sub: 'Peito superior, ombro e braços', color: 'b',
@@ -58,6 +82,18 @@ const LATERAL_ALTS = [
 export const ALTS = {
   a1: [{ k: 'puxada', n: 'Puxada frente pegada aberta' }, { k: 'neutra', n: 'Puxada com pegada neutra (triângulo)' }, { k: 'assist', n: 'Barra fixa assistida (máquina ou elástico)' }, { k: 'unil', n: 'Puxada unilateral na polia' }],
   a2: [{ k: 'halter', n: 'Pullover com halter no banco' }, { k: 'corda', n: 'Pulldown braço estendido com corda' }, { k: 'maq', n: 'Pullover na máquina' }],
+  a7: [{ k: 'vgrip', n: 'Puxada com pegador V (pegada neutra fechada)' }, { k: 'paralela', n: 'Puxada com pegada neutra aberta (barra paralela)' }, { k: 'maq', n: 'Puxada na máquina articulada, pegada neutra' }],
+  a8: [{ k: 'unilmaq', n: 'Puxada unilateral na máquina articulada' }, { k: 'remadaalta', n: 'Remada unilateral na polia alta, sentado' }, { k: 'sup', n: 'Puxada frente pegada supinada' }],
+  d1: [{ k: 'assist', n: 'Barra fixa assistida (máquina ou elástico)' }, { k: 'triang', n: 'Puxada frente com triângulo' }, { k: 'sup', n: 'Puxada frente pegada supinada' }],
+  d2: [{ k: 'maq', n: 'Puxada na máquina articulada, pegada aberta' }, { k: 'barra', n: 'Barra fixa pegada aberta' }, { k: 'unil', n: 'Puxada unilateral na polia' }],
+  d3: [{ k: 'maq', n: 'Remada na máquina articulada, pegada aberta' }, { k: 'curvada', n: 'Remada curvada pegada aberta' }, { k: 'cavalinho', n: 'Remada no cavalinho, pegada aberta' }],
+  d4: [{ k: 'halter', n: 'Elevação lateral com halter' }, ...LATERAL_ALTS.filter(a => a.k !== 'polia')],
+  d5: [{ k: 'cabo', n: 'Crucifixo inverso cruzado no cabo' }, { k: 'halter', n: 'Crucifixo inverso com halteres, inclinado' }, { k: 'face', n: 'Face pull na polia com corda' }],
+  e2: [{ k: 'paralela', n: 'Elevação de joelhos no apoio de paralelas' }, { k: 'reverso', n: 'Abdominal reverso no banco' }, { k: 'chao', n: 'Elevação de pernas deitado' }],
+  e3: [{ k: 'elast', n: 'Pallof press com elástico' }, { k: 'ajoelhado', n: 'Pallof press ajoelhado' }, { k: 'lateral', n: 'Prancha lateral' }],
+  e4: [{ k: 'bird', n: 'Bird dog' }, { k: 'hollow', n: 'Hollow hold (canoa)' }, { k: 'roda', n: 'Rolinho abdominal (ab wheel) curto' }],
+  e5: [{ k: 'rkc', n: 'Prancha RKC (contração máxima, 10–20 s)' }, { k: 'pe', n: 'Prancha com toque no ombro' }],
+  e6: LATERAL_ALTS,
   a3: [{ k: 'sentada', n: 'Remada sentada na polia, pegada neutra' }, { k: 'curvada', n: 'Remada curvada com barra' }, { k: 'cavalinho', n: 'Remada no cavalinho (T-bar)' }, { k: 'maq', n: 'Remada na máquina articulada' }],
   a4: LATERAL_ALTS,
   a5: [{ k: 'halter', n: 'Elevação lateral com halter, apoiado no banco' }, { k: 'maq', n: 'Elevação lateral na máquina' }, { k: 'yraise', n: 'Y-raise no banco inclinado' }],
@@ -79,7 +115,9 @@ export const ALTS = {
 // Link de exemplo: busca no YouTube pelo nome do exercício
 export const videoUrl = name => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name.replace(/\s*\(.*?\)\s*/g, ' ').trim() + ' execução correta');
 
-export const CODES = ['A', 'B', 'C', 'AL', 'ARM', 'LIVRE', 'R'];
+// Rodízio de treinos (desde 16/11/2026: cinco fichas, sábado de descanso)
+export const ROT = ['A', 'B', 'C', 'D', 'E'];
+export const CODES = ['A', 'B', 'C', 'D', 'E', 'AL', 'ARM', 'LIVRE', 'R'];
 
 export const ARMSTRONG = [
   'Dia 1 — 5 séries máximas de barra.',
@@ -101,7 +139,7 @@ export const GUIDE = [
     </ol>
     <p>A largura vem do ombro e da dorsal; peito superior, braços e pernas entram em volume menor para o corpo não ficar desproporcional. Cada exercício tem uma alternativa sem academia.</p>` },
   { id: 'treinos', t: 'Como treinar', html: `
-    <p>O deltoide lateral recebe cerca de 15 séries a cada três treinos e a dorsal cerca de 13 — é a especialização que abre o V. Descanse 2 min nos exercícios grandes e 45–60 s nas elevações laterais. A cada treino, tente +1 repetição ou um pouco mais de peso.</p>
+    <p>São cinco fichas em rodízio: <b>A</b> Largura, <b>B</b> Peito superior e braços, <b>C</b> Pernas, <b>D</b> Largura 2 (dorsal e ombro por outros ângulos) e <b>E</b> Cintura. Nenhum dia tem mais de uma elevação lateral; o volume de largura vem de dois dias inteiros de dorsal (A e D) e de uma lateral em quase todos os treinos. Descanse 2 min nos exercícios grandes e 45–60 s nas elevações laterais. A cada treino, tente +1 repetição ou um pouco mais de peso.</p>
     <ul>
       <li><b>Elevação lateral:</b> ${TIPS.lateral}</li>
       <li><b>Barra e puxada:</b> ${TIPS.puxada}</li>
@@ -130,7 +168,7 @@ export const GUIDE = [
     <p>Em pé ou de quatro apoios, solte todo o ar, puxe o umbigo para dentro e para cima e segure respirando curto. Não queima gordura; treina o músculo que mantém a barriga recolhida.</p>
     <h4>Cintura</h4>
     <ul><li>Nada de inclinação lateral com halter ou oblíquo pesado nesses 15 dias; vacuum e prancha bastam.</li><li>Refrigerante, chiclete e comer rápido aumentam gás e inchaço.</li><li>Mantenha feijão e salada constantes; aumentar fibra de repente incha.</li></ul>
-    <h4>Pose de dorsal — fim do Treino A</h4>
+    <h4>Pose de dorsal — fim dos Treinos A e D</h4>
     <p>3 × 10 s na frente do espelho: punhos na cintura, ombros para trás, empurre os cotovelos para frente e abra as costas.</p>` },
   { id: 'dieta', t: 'Dieta sem carne', html: `
     <p>Meta: cerca de 2.700–2.800 kcal e pelo menos 120 g de proteína por dia (cerca de 1,9 g/kg), para ganhar músculo sem engordar a cintura. O cardápio é ovolactovegetariano: a proteína vem de ovos, laticínios, leguminosas, soja e whey.</p>

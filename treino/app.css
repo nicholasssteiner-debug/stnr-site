@@ -4,7 +4,7 @@
   --border: #2a2f38; --text: #eef0f2; --text-2: #b4bac4; --muted: #7d8592;
   --accent: #c6f432; --accent-ink: #12160a; --accent-soft: rgba(198, 244, 50, .14);
   --danger: #ff6b6b; --ok: #4fd18b; --warn: #ffc24b;
-  --wa: #5b8cff; --wb: #ff8a4c; --wc: #b07cff; --warm: #36c9a0; --wlivre: #e0b341; --wr: #59606c;
+  --wa: #5b8cff; --wb: #ff8a4c; --wc: #b07cff; --wd: #2fb8e6; --we: #ee6fae; --warm: #36c9a0; --wlivre: #e0b341; --wr: #59606c;
   --shadow: 0 10px 30px rgba(0, 0, 0, .35);
   --f-disp: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-body: "Inter", "Segoe UI", system-ui, sans-serif;
@@ -18,7 +18,7 @@
     --bg: #f3f4f1; --surface: #ffffff; --surface-2: #f0f2ee; --surface-3: #e5e8e2;
     --border: #dde0da; --text: #15181c; --text-2: #4a515b; --muted: #7a818b;
     --accent: #6a9a00; --accent-ink: #ffffff; --accent-soft: rgba(106, 154, 0, .12);
-    --wa: #3567e0; --wb: #e0671f; --wc: #8650e0; --warm: #17a07a; --wlivre: #b58a12; --wr: #8a919c;
+    --wa: #3567e0; --wb: #e0671f; --wc: #8650e0; --wd: #0f88b8; --we: #c93d84; --warm: #17a07a; --wlivre: #b58a12; --wr: #8a919c;
     --shadow: 0 10px 30px rgba(20, 30, 10, .12);
   }
 }
@@ -27,7 +27,7 @@
   --bg: #f3f4f1; --surface: #ffffff; --surface-2: #f0f2ee; --surface-3: #e5e8e2;
   --border: #dde0da; --text: #15181c; --text-2: #4a515b; --muted: #7a818b;
   --accent: #6a9a00; --accent-ink: #ffffff; --accent-soft: rgba(106, 154, 0, .12);
-  --wa: #3567e0; --wb: #e0671f; --wc: #8650e0; --warm: #17a07a; --wlivre: #b58a12; --wr: #8a919c;
+  --wa: #3567e0; --wb: #e0671f; --wc: #8650e0; --wd: #0f88b8; --we: #c93d84; --warm: #17a07a; --wlivre: #b58a12; --wr: #8a919c;
   --shadow: 0 10px 30px rgba(20, 30, 10, .12);
 }
 
@@ -143,7 +143,7 @@ textarea { resize: vertical; min-height: 70px; }
 
 /* Chips de treino */
 .chip { --c: var(--wr); display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: .78rem; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); white-space: nowrap; }
-.w-a { --c: var(--wa); } .w-b { --c: var(--wb); } .w-c { --c: var(--wc); } .w-arm { --c: var(--warm); } .w-livre { --c: var(--wlivre); } .w-r { --c: var(--wr); }
+.w-a { --c: var(--wa); } .w-b { --c: var(--wb); } .w-c { --c: var(--wc); } .w-d { --c: var(--wd); } .w-e { --c: var(--we); } .w-arm { --c: var(--warm); } .w-livre { --c: var(--wlivre); } .w-r { --c: var(--wr); }
 
 /* Exercícios */
 .ex { border-top: 1px solid var(--border); padding: 14px 0; }
