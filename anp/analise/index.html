@@ -143,12 +143,43 @@
   .imp-cabecalho .ent { font-size: 11px; color: #778; }
   .imp-rodape { margin-top: 8px; font-size: 10px; color: #99a; }
 
+  /* ---------- cenarios, decisoes e caixa de anotacao ---------- */
+  .in-texto { padding: 6px 10px; border: 1px solid #c9d6e2; border-radius: 3px;
+    font-family: inherit; font-size: 13px; color: #345; background: #fff; }
+  .in-texto:focus { outline: 2px solid var(--azul-claro); outline-offset: 1px; }
+  .btn-mini { border: 1px solid #d7e0e8; background: #fff; color: #678; border-radius: 3px;
+    font-family: inherit; font-size: 11.5px; padding: 2px 7px; margin-left: 4px; cursor: pointer; }
+  .btn-mini:hover { border-color: var(--azul-claro); color: var(--azul-escuro); }
+  .btn-x:hover { border-color: #d8a7a2; color: #b3423a; }
+  .btn-nota.tem { background: #eaf2f8; border-color: #bcd4e6; color: var(--azul-escuro); font-weight: 600; }
+  .btn-nota.atrasada { background: #fbe4e2; border-color: #e8bdb8; color: #b3423a; font-weight: 600; }
+  .cen-sub { font-size: 11.5px; color: #8a9aa8; }
+  .cen-aviso { font-size: 11px; color: #8a7336; background: #fff8e6; border: 1px solid #f0dca8;
+    border-radius: 8px; padding: 1px 7px; white-space: nowrap; }
+  .selo-aberta { background: #eaf2f8; color: #2c5f7c; }
+  table.bp td.nota-texto { white-space: normal; min-width: 280px; max-width: 420px; color: #445; }
+  tr.nota-feita td { opacity: .58; }
+  .modal-fundo { position: fixed; inset: 0; background: rgba(32,48,60,.42); display: flex;
+    align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .modal { background: #fff; border-radius: 6px; padding: 18px 20px; width: 520px; max-width: 100%;
+    box-shadow: 0 12px 40px rgba(20,40,55,.28); }
+  .modal h3 { margin: 0 0 4px; font-size: 16px; color: var(--azul-escuro); font-weight: 600; }
+  .modal .modal-alvo { margin: 0 0 14px; font-size: 12.5px; color: #778; }
+  .modal .modal-alvo span { color: #a0adb8; }
+  .modal label { display: block; font-size: 12px; color: #567; font-weight: 600; margin-bottom: 4px; }
+  .modal textarea { width: 100%; padding: 8px 10px; border: 1px solid #c9d6e2; border-radius: 3px;
+    font-family: inherit; font-size: 13px; color: #345; resize: vertical; }
+  .modal textarea:focus { outline: 2px solid var(--azul-claro); outline-offset: 1px; }
+  .modal-linha { display: flex; align-items: flex-end; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .modal-acoes { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+
   @media print {
     details.porque > summary { display: none; }
     details.porque .desc { display: block !important; }
     @page { size: A4 landscape; margin: 9mm 8mm; }
     body { background: #fff; font-size: 10px; }
     header, .navegacao, #conteudo, #painel-impressao { display: none !important; }
+    .modal-fundo, .btn-mini, #impressao .periodo { display: none !important; }
     #impressao { display: block !important; }
     .bloco-imp { break-inside: avoid-page; break-after: page; }
     .bloco-imp:last-child { break-after: auto; }
@@ -1235,7 +1266,8 @@ registra("simulacao", "Simulação de Resultado", () => {
     </div>`;
 
   return painelSim + cartoes +
-    painel("Resultado: hoje × simulado", "O quanto as premissas mudam o ano.", graf + tab);
+    painel("Resultado: hoje × simulado", "O quanto as premissas mudam o ano.", graf + tab) +
+    painelCenarios(base, atual);
 });
 
 /* 6. DISPONÍVEL E APLICAÇÕES --------------------------------------- */
@@ -1581,7 +1613,7 @@ registra("ranking", "20 Maiores Despesas", () => {
     <th class="num">Valor (12 meses)</th><th class="num">(AV) %</th></tr></thead><tbody>`;
   ord.forEach(([conta, r], i) => {
     const w = maior ? (r.total / maior * 100).toFixed(1) : 0;
-    html += `<tr><td>${i + 1}</td><td>${conta}</td><td>${r.nome || "—"}</td>
+    html += `<tr><td>${i + 1}</td><td>${conta}</td><td>${r.nome || "—"} ${btnNota("conta|" + conta, r.nome || conta, r.total)}</td>
       <td class="num" style="background:linear-gradient(to left, rgba(44,95,124,.16) ${w}%, transparent ${w}%)">${n(r.total)}</td>
       <td class="num">${pct(totGeral ? r.total / totGeral : null)}</td></tr>`;
   });
@@ -1776,7 +1808,8 @@ registra("metas", "Metas", () => {
       '<td class="num">' + n(alvo) + '</td>' +
       '<td>' + (r.margem === null ? '<span style="color:#99a">sem base operacional</span>'
         : dentro ? '<span class="selo selo-ok">na meta</span>'
-                 : '<span class="selo selo-alerta">faltam ' + n(falta) + '</span>') + '</td></tr>';
+                 : '<span class="selo selo-alerta">faltam ' + n(falta) + '</span>') +
+      btnNota("escola|" + r.escola, "Margem de " + r.escola, r.resOp) + '</td></tr>';
   }
   html += '</tbody></table></div>';
 
@@ -1919,11 +1952,340 @@ function ligarMetasComparar(raiz) {
   });
 }
 
+/* =====================================================================
+   CENÁRIOS SALVOS E DECISÕES
+   Duas coisas que transformam a leitura em acompanhamento: guardar um
+   conjunto de premissas com nome para voltar nele depois, e prender uma
+   decisão escrita em cima do número que a motivou. Tudo fica no navegador
+   de quem usa — é decisão de gestão, não dado contábil.
+   ===================================================================== */
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+const dataBR = iso => {
+  if (!iso) return "—";
+  const p = String(iso).slice(0, 10).split("-");
+  return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : iso;
+};
+
+/* ---------------------------------------------------------------------
+   CENÁRIOS
+   Guardo só as PREMISSAS, nunca os valores. Assim, quando a planilha é
+   atualizada, o cenário continua valendo: ele é recalculado sobre a base
+   do momento. Um cenário com valores congelados viraria mentira no mês
+   seguinte.
+   --------------------------------------------------------------------- */
+let cenarios = DB.ler("cenarios", []);
+
+const CEN_ROTULOS = { mensalidade: "mensalidade", alunos: "alunos",
+  pessoal: "pessoal", adm: "adm e gerais", subvencao: "subvenção" };
+
+function cenResumo(p) {
+  const partes = Object.keys(CEN_ROTULOS)
+    .filter(k => p[k])
+    .map(k => CEN_ROTULOS[k] + " " + (p[k] > 0 ? "+" : "") + fmtP.format(p[k]) + "%");
+  return partes.length ? partes.join(" · ") : "sem alteração nenhuma";
+}
+
+function cenIgual(a, b) {
+  return Object.keys(CEN_ROTULOS).every(k => (+a[k] || 0) === (+b[k] || 0));
+}
+
+function painelCenarios(base, atual) {
+  const atualNome = cenarios.find(c => cenIgual(c.premissas, simPremissas));
+  const barra =
+    '<div class="periodo" style="padding:0 0 12px">' +
+      '<input type="text" id="cen-nome" class="in-texto" style="width:230px" maxlength="40" ' +
+        'placeholder="nome do cenário (ex.: reajuste 8%)">' +
+      '<button type="button" class="nav-btn ativa" id="cen-salvar">💾 Salvar premissas atuais</button>' +
+      (atualNome ? '<span class="periodo-dica">as premissas de agora são as do cenário <b>' +
+        esc(atualNome.nome) + '</b></span>' : '') +
+    '</div>';
+
+  if (!cenarios.length)
+    return painel("Cenários salvos",
+      "Mexa nas premissas acima, dê um nome e salve. Dá para guardar quantos quiser e " +
+      "comparar todos de uma vez — útil para levar duas ou três saídas para a reunião em vez de uma.",
+      barra + '<p class="desc" style="margin:0">Nenhum cenário salvo ainda.</p>');
+
+  const aval = cenarios.map(c => ({ c, r: simAplicar(base, c.premissas) }));
+
+  let tab = '<div class="rolagem"><table class="bp"><thead><tr>' +
+    '<th></th><th>Cenário</th><th class="num">Receita</th><th class="num">Despesa</th>' +
+    '<th class="num">Resultado</th><th class="num">vs. hoje</th>' +
+    '<th class="num">Margem op.</th><th></th></tr></thead><tbody>';
+  tab += '<tr class="bp-item"><td></td><td><b>Hoje (realizado)</b><br>' +
+    '<span class="cen-sub">12 meses até ' + NOMES_MESES[mesRef - 1] + '/' + anoRef +
+    (escolaRef ? " — " + escolaRef : "") + '</span></td>' +
+    '<td class="num">' + n(atual.receita) + '</td>' +
+    '<td class="num">' + n(atual.despesa) + '</td>' +
+    '<td class="num ' + sinal(atual.resultado) + '">' + n(atual.resultado) + '</td>' +
+    '<td class="num">–</td>' +
+    '<td class="num">' + (atual.receita - atual.subv ?
+        pct(atual.operacional / (atual.receita - atual.subv)) : "—") + '</td><td></td></tr>';
+
+  for (const { c, r } of aval) {
+    const d = r.resultado - atual.resultado;
+    const fora = c.ano !== anoRef || c.mes !== mesRef || (c.escola || null) !== escolaRef;
+    tab += '<tr class="bp-item"><td></td><td><b>' + esc(c.nome) + '</b>' +
+      (fora ? ' <span class="cen-aviso" title="foi salvo em outro recorte; os números aqui são ' +
+        'recalculados sobre a base atual">salvo em ' + NOMES_MESES[c.mes - 1] + '/' + c.ano +
+        (c.escola ? " — " + esc(c.escola) : "") + '</span>' : '') +
+      '<br><span class="cen-sub">' + esc(cenResumo(c.premissas)) + '</span></td>' +
+      '<td class="num">' + n(r.receita) + '</td>' +
+      '<td class="num">' + n(r.despesa) + '</td>' +
+      '<td class="num ' + sinal(r.resultado) + '">' + n(r.resultado) + '</td>' +
+      '<td class="num ' + sinal(d) + '">' + (d > 0 ? "+" : "") + n(d) + '</td>' +
+      '<td class="num">' + (r.receita - r.subv ? pct(r.operacional / (r.receita - r.subv)) : "—") + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button type="button" class="btn-mini" data-cen-usar="' + c.id + '" title="carregar estas premissas nos controles">aplicar</button>' +
+        btnNota("cenario|" + c.id, "Cenário " + c.nome, r.resultado) +
+        '<button type="button" class="btn-mini btn-x" data-cen-del="' + c.id + '" title="excluir cenário">×</button>' +
+      '</td></tr>';
+  }
+  tab += '</tbody></table></div>';
+
+  const melhor = aval.reduce((a, b) => b.r.resultado > a.r.resultado ? b : a);
+  const graf = grafBarras({
+    rotulos: ["Hoje"].concat(aval.map(x => x.c.nome)),
+    series: [{ nome: "Resultado", valores: [atual.resultado].concat(aval.map(x => x.r.resultado)) }],
+    porSinal: true, altura: 190,
+  });
+
+  const leitura = '<p class="desc">Entre os cenários salvos, <b>' + esc(melhor.c.nome) +
+    '</b> é o que dá o melhor resultado: ' + n(melhor.r.resultado) + ' (' +
+    (melhor.r.resultado - atual.resultado > 0 ? "+" : "") + n(melhor.r.resultado - atual.resultado) +
+    ' em relação ao realizado de hoje).</p>';
+
+  return painel("Cenários salvos",
+    "Guardo as <b>premissas</b>, não os números. Quando a planilha é atualizada, cada cenário é " +
+    "recalculado sobre a base nova — um cenário com valores congelados viraria mentira no mês " +
+    "seguinte. Se um cenário foi salvo em outro mês ou com outra escola em foco, fica avisado na " +
+    "linha, mas o valor mostrado é sempre o da base que está na tela agora.",
+    barra + leitura + graf + tab);
+}
+
+/* ---------------------------------------------------------------------
+   DECISÕES
+   Uma anotação sempre nasce presa a um número: a margem de uma escola,
+   uma conta de despesa, um cenário. Guardo o valor e o período em que a
+   decisão foi tomada, porque daqui a três meses o número muda e a frase
+   sozinha não se explica.
+   --------------------------------------------------------------------- */
+let notas = DB.ler("notas", []);
+let notaEditando = null;   // { ctx, rotulo, valor, id }
+
+const notasDe = ctx => notas.filter(x => x.ctx === ctx);
+const notaVencida = x => !x.feita && x.prazo && x.prazo < hojeISO();
+
+function btnNota(ctx, rotulo, valor) {
+  const lista = notasDe(ctx);
+  const abertas = lista.filter(x => !x.feita).length;
+  const classe = "btn-mini btn-nota" + (lista.length ? (lista.some(notaVencida) ? " atrasada" : " tem") : "");
+  return '<button type="button" class="' + classe + '" data-nota="' + esc(ctx) +
+    '" data-rot="' + esc(rotulo) + '" data-val="' + (valor || 0) +
+    '" title="' + (lista.length ? lista.length + " anotação(ões), " + abertas + " em aberto" : "anotar decisão") +
+    '">💬' + (lista.length ? " " + lista.length : "") + '</button>';
+}
+
+function editorNota() {
+  if (!notaEditando) return "";
+  const e = notaEditando;
+  const a = e.id ? notas.find(x => x.id === e.id) : null;
+  return '<div class="modal-fundo" id="nota-fundo"><div class="modal" role="dialog" aria-modal="true">' +
+    '<h3>' + (a ? "Editar decisão" : "Anotar decisão") + '</h3>' +
+    '<p class="modal-alvo">' + esc(a ? a.rotulo : e.rotulo) +
+      ((a ? a.valor : e.valor) ? ' — <b>' + n(a ? a.valor : e.valor) + '</b>' : '') +
+      ' <span>' + NOMES_MESES[(a ? a.mes : mesRef) - 1] + '/' + (a ? a.ano : anoRef) + '</span></p>' +
+    '<label for="nota-texto">O que fica decidido</label>' +
+    '<textarea id="nota-texto" rows="4" placeholder="Ex.: rever o quadro de pessoal antes da matrícula de 2027.">' +
+      esc(a ? a.texto : "") + '</textarea>' +
+    '<div class="modal-linha">' +
+      '<div><label for="nota-prazo">Prazo</label>' +
+        '<input type="date" id="nota-prazo" class="in-texto" value="' + esc(a && a.prazo ? a.prazo : "") + '"></div>' +
+      '<div style="flex:1; min-width:160px"><label for="nota-resp">Com quem</label>' +
+        '<input type="text" id="nota-resp" class="in-texto" style="width:100%" maxlength="40" ' +
+          'placeholder="quem toca" value="' + esc(a ? a.resp : "") + '"></div>' +
+    '</div>' +
+    '<div class="modal-acoes">' +
+      (a ? '<button type="button" class="nav-btn" id="nota-excluir">Excluir</button>' +
+           '<button type="button" class="nav-btn" id="nota-outra">+ outra sobre este número</button>' : '') +
+      '<span style="flex:1"></span>' +
+      '<button type="button" class="nav-btn" id="nota-cancelar">Cancelar</button>' +
+      '<button type="button" class="nav-btn ativa" id="nota-salvar">Salvar decisão</button>' +
+    '</div></div></div>';
+}
+
+registra("decisoes", "Decisões", () => {
+  const abertas = notas.filter(x => !x.feita);
+  const atrasadas = notas.filter(notaVencida);
+  const feitas = notas.filter(x => x.feita);
+
+  const barra = '<div class="periodo" style="padding:0 0 12px">' +
+    '<button type="button" class="nav-btn ativa" id="nota-nova">✚ Nova anotação</button>' +
+    '<span class="periodo-dica">ou clique no 💬 ao lado de qualquer número, nas Metas, ' +
+      'nas 20 Maiores Despesas ou num cenário salvo.</span></div>';
+
+  const cartoes = '<div class="cartoes" style="grid-template-columns:repeat(3,1fr)">' +
+    '<div class="cartao"><div class="titulo">Em aberto</div>' +
+      '<div class="valor">' + abertas.length + '</div>' +
+      '<div class="faixa">decisões ainda sem baixa</div></div>' +
+    '<div class="cartao"><div class="titulo">Fora do prazo</div>' +
+      '<div class="valor ' + (atrasadas.length ? "negativo" : "") + '">' + atrasadas.length + '</div>' +
+      '<div class="faixa">passaram da data combinada</div></div>' +
+    '<div class="cartao"><div class="titulo">Concluídas</div>' +
+      '<div class="valor ' + (feitas.length ? "positivo" : "") + '">' + feitas.length + '</div>' +
+      '<div class="faixa">já resolvidas</div></div></div>';
+
+  if (!notas.length)
+    return painel("Decisões", "Cada anotação fica presa ao número que a motivou, com o valor e o " +
+      "mês em que foi tomada. É o que separa um relatório de um acompanhamento.",
+      barra + '<p class="desc" style="margin:0">Nada anotado ainda.</p>') ;
+
+  // em aberto e atrasadas primeiro — é o que precisa de ação
+  const ordem = x => (x.feita ? 2 : notaVencida(x) ? 0 : 1);
+  const lista = notas.slice().sort((a, b) =>
+    ordem(a) - ordem(b) ||
+    (a.prazo || "9999") .localeCompare(b.prazo || "9999") ||
+    (b.criada || "").localeCompare(a.criada || ""));
+
+  let tab = '<div class="rolagem"><table class="bp"><thead><tr>' +
+    '<th>Situação</th><th>Sobre</th><th class="num">Valor na época</th>' +
+    '<th>Decisão</th><th>Prazo</th><th>Com quem</th><th></th>' +
+    '</tr></thead><tbody>';
+  for (const x of lista) {
+    const selo = x.feita ? '<span class="selo selo-ok">feita</span>'
+      : notaVencida(x) ? '<span class="selo selo-alerta">atrasada</span>'
+      : '<span class="selo selo-aberta">em aberto</span>';
+    tab += '<tr class="bp-item' + (x.feita ? " nota-feita" : "") + '">' +
+      '<td>' + selo + '</td>' +
+      '<td><b>' + esc(x.rotulo) + '</b><br><span class="cen-sub">' +
+        NOMES_MESES[(x.mes || 1) - 1] + '/' + x.ano + (x.escola ? " — " + esc(x.escola) : "") +
+        ' · anotada em ' + dataBR(x.criada) + '</span></td>' +
+      '<td class="num">' + (x.valor ? n(x.valor) : "—") + '</td>' +
+      '<td class="nota-texto">' + esc(x.texto).replace(/\n/g, "<br>") + '</td>' +
+      '<td' + (notaVencida(x) ? ' class="negativo"' : '') + '>' + dataBR(x.prazo) + '</td>' +
+      '<td>' + (x.resp ? esc(x.resp) : "—") + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button type="button" class="btn-mini" data-nota-feita="' + x.id + '">' +
+          (x.feita ? "reabrir" : "✓ feita") + '</button>' +
+        '<button type="button" class="btn-mini" data-nota-edit="' + x.id + '">editar</button>' +
+        '<button type="button" class="btn-mini btn-x" data-nota-del="' + x.id + '">×</button>' +
+      '</td></tr>';
+  }
+  tab += '</tbody></table></div>';
+
+  return painel("Decisões", "Cada anotação fica presa ao número que a motivou, com o valor e o mês " +
+    "em que foi tomada — daqui a três meses o número muda e a frase sozinha não se explicaria. " +
+    "Fica gravado neste navegador e entra no relatório impresso se você marcar.",
+    barra + cartoes + tab);
+});
+
+/* ---------- interações de cenários e decisões ---------- */
+function abrirNota(ctx, rotulo, valor, id) {
+  notaEditando = { ctx, rotulo, valor: +valor || 0, id: id || null };
+  desenhar();
+  const t = document.getElementById("nota-texto");
+  if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+}
+function fecharNota() { notaEditando = null; desenhar(); }
+
+function ligarCenariosDecisoes(raiz) {
+  /* --- cenários --- */
+  const salvar = raiz.querySelector("#cen-salvar");
+  if (salvar) salvar.addEventListener("click", () => {
+    const campo = raiz.querySelector("#cen-nome");
+    const nome = (campo.value || "").trim() ||
+      ("Cenário " + (cenarios.length + 1));
+    const existente = cenarios.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+    const registro = {
+      id: existente ? existente.id : "c" + Date.now().toString(36),
+      nome, premissas: Object.assign({}, simPremissas),
+      ano: anoRef, mes: mesRef, escola: escolaRef, criado: hojeISO(),
+    };
+    if (existente) cenarios[cenarios.indexOf(existente)] = registro;
+    else cenarios.push(registro);
+    DB.grava("cenarios", cenarios); desenhar();
+  });
+  const campoNome = raiz.querySelector("#cen-nome");
+  if (campoNome) campoNome.addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); raiz.querySelector("#cen-salvar").click(); }
+  });
+  raiz.querySelectorAll("[data-cen-usar]").forEach(el => el.addEventListener("click", () => {
+    const c = cenarios.find(x => x.id === el.dataset.cenUsar);
+    if (c) { simPremissas = Object.assign({}, c.premissas); desenhar(); }
+  }));
+  raiz.querySelectorAll("[data-cen-del]").forEach(el => el.addEventListener("click", () => {
+    cenarios = cenarios.filter(x => x.id !== el.dataset.cenDel);
+    DB.grava("cenarios", cenarios); desenhar();
+  }));
+
+  /* --- abrir o editor de decisão --- */
+  raiz.querySelectorAll("[data-nota]").forEach(el => el.addEventListener("click", () => {
+    /* se o número já tem decisão, abre a última em aberto — é o que se quer ver;
+       para somar outra sobre o mesmo número existe o botão dentro da caixa */
+    const lista = notasDe(el.dataset.nota);
+    const alvo = lista.filter(x => !x.feita).pop() || lista[lista.length - 1];
+    abrirNota(el.dataset.nota, el.dataset.rot, el.dataset.val, alvo ? alvo.id : null);
+  }));
+  const nova = raiz.querySelector("#nota-nova");
+  if (nova) nova.addEventListener("click", () =>
+    abrirNota("livre|" + Date.now().toString(36), escolaRef || "Anotação geral", 0));
+
+  /* --- lista de decisões --- */
+  raiz.querySelectorAll("[data-nota-feita]").forEach(el => el.addEventListener("click", () => {
+    const x = notas.find(i => i.id === el.dataset.notaFeita);
+    if (x) { x.feita = !x.feita; DB.grava("notas", notas); desenhar(); }
+  }));
+  raiz.querySelectorAll("[data-nota-edit]").forEach(el => el.addEventListener("click", () => {
+    const x = notas.find(i => i.id === el.dataset.notaEdit);
+    if (x) abrirNota(x.ctx, x.rotulo, x.valor, x.id);
+  }));
+  raiz.querySelectorAll("[data-nota-del]").forEach(el => el.addEventListener("click", () => {
+    notas = notas.filter(i => i.id !== el.dataset.notaDel);
+    DB.grava("notas", notas); desenhar();
+  }));
+
+  /* --- editor aberto --- */
+  const fundo = raiz.querySelector("#nota-fundo");
+  if (!fundo) return;
+  fundo.addEventListener("mousedown", ev => { if (ev.target === fundo) fecharNota(); });
+  raiz.querySelector("#nota-cancelar").addEventListener("click", fecharNota);
+  const excluir = raiz.querySelector("#nota-excluir");
+  if (excluir) excluir.addEventListener("click", () => {
+    notas = notas.filter(i => i.id !== notaEditando.id);
+    DB.grava("notas", notas); fecharNota();
+  });
+  const outra = raiz.querySelector("#nota-outra");
+  if (outra) outra.addEventListener("click", () =>
+    abrirNota(notaEditando.ctx, notaEditando.rotulo, notaEditando.valor, null));
+  raiz.querySelector("#nota-salvar").addEventListener("click", () => {
+    const texto = raiz.querySelector("#nota-texto").value.trim();
+    if (!texto) { raiz.querySelector("#nota-texto").focus(); return; }
+    const prazo = raiz.querySelector("#nota-prazo").value || "";
+    const resp = raiz.querySelector("#nota-resp").value.trim();
+    const atual = notaEditando.id ? notas.find(i => i.id === notaEditando.id) : null;
+    if (atual) Object.assign(atual, { texto, prazo, resp });
+    else notas.push({
+      id: "n" + Date.now().toString(36), ctx: notaEditando.ctx,
+      rotulo: notaEditando.rotulo, valor: notaEditando.valor,
+      ano: anoRef, mes: mesRef, escola: escolaRef,
+      texto, prazo, resp, feita: false, criada: hojeISO(),
+    });
+    DB.grava("notas", notas); fecharNota();
+  });
+}
+
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && notaEditando) fecharNota();
+});
+
 /* Grupos da barra de navegacao: agrupa os blocos por assunto. */
 const GRUPOS = [
   ["Demonstrações", ["balanco", "balanco-unidade", "dre", "dre-unidade"]],
   ["Posição", ["capital", "disponivel", "imobilizado"]],
-  ["Gestão", ["metas", "comparar", "simulacao"]],
+  ["Gestão", ["metas", "comparar", "simulacao", "decisoes"]],
   ["Operação", ["prestacao", "pessoal", "adm", "ranking"]],
   ["Pessoas", ["funcionarios", "rescisoes"]],
 ];
@@ -2007,11 +2369,12 @@ document.getElementById("imp-demonstracoes").addEventListener("click", () => {
 function desenhar() {
   const bloco = BLOCOS.find(b => b.id === blocoAtivo);
   try {
-    document.getElementById("conteudo").innerHTML = bloco.render();
+    document.getElementById("conteudo").innerHTML = bloco.render() + editorNota();
     ligarDicas(document.getElementById("conteudo"));
     ligarCliquesEscola(document.getElementById("conteudo"));
     ligarSimulacao(document.getElementById("conteudo"));
     ligarMetasComparar(document.getElementById("conteudo"));
+    ligarCenariosDecisoes(document.getElementById("conteudo"));
   } catch (e) {
     document.getElementById("conteudo").innerHTML =
       `<div class="painel"><div class="aviso">Não consegui montar "${bloco.titulo}": ${e.message}</div></div>`;
