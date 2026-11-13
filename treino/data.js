@@ -22,13 +22,14 @@ export const WORKOUTS = {
     finisher: 'Pose de dorsal: 3 × 10 s no espelho — punhos na cintura, ombros para trás, cotovelos para frente, abra as costas.'
   },
   D: {
-    code: 'D', name: 'Treino D', title: 'Largura 2', sub: 'Dorsal e ombro por outros ângulos', color: 'd',
+    code: 'D', name: 'Treino D', title: 'Largura 2 + braços', sub: 'Dorsal com pegadas que também puxam o bíceps, ombro lateral e braços', color: 'd',
     ex: [
-      { id: 'd1', n: 'Barra fixa pegada neutra ou supinada', s: 3, r: '6–10', obs: 'Menos de 5 reps: barra assistida ou negativas de 5 s', home: 'Barra de porta, negativas de 5 s', rest: 120, tip: 'puxada' },
+      { id: 'd1', n: 'Barra fixa pegada supinada', s: 3, r: '6–10', obs: 'Palmas para você: dorsal e bíceps juntos. Menos de 5 reps: barra assistida ou negativas de 5 s', home: 'Barra de porta supinada, negativas de 5 s', rest: 120, tip: 'puxada' },
       { id: 'd2', n: 'Puxada frente pegada aberta', s: 4, r: '8–12', obs: 'Pegada um pouco mais aberta que os ombros', home: 'Barra fixa aberta com pés apoiados', rest: 90, tip: 'puxada' },
       { id: 'd3', n: 'Remada sentada pegada aberta, cotovelos abertos', s: 3, r: '10–12', obs: 'Puxe para a linha do peito: dorsal alta e ombro posterior', home: 'Remada australiana pegada aberta', rest: 90 },
       { id: 'd4', n: 'Elevação lateral unilateral na polia', s: 4, r: '12–15', obs: 'Falha na última', home: 'Elevação lateral deitado de lado no chão', rest: 45, tip: 'lateral' },
-      { id: 'd5', n: 'Crucifixo inverso no peck deck', s: 3, r: '15–20', home: 'Crucifixo inverso inclinado com garrafas', rest: 60 }
+      { id: 'd6', n: 'Tríceps acima da cabeça na polia, com corda', s: 4, r: '10–12', obs: 'Cotovelos apontados para frente; alonga a cabeça longa, a maior parte do tríceps', home: 'Tríceps francês com mochila', rest: 60 },
+      { id: 'd7', n: 'Rosca inclinada com halteres', s: 3, r: '10–12', obs: 'Banco a 45°, braço solto para trás; desça em 2 s', home: 'Rosca com mochila, encostado na parede', rest: 60 }
     ],
     finisher: 'Pose de dorsal: 3 × 10 s no espelho — punhos na cintura, ombros para trás, cotovelos para frente, abra as costas.'
   },
@@ -84,11 +85,12 @@ export const ALTS = {
   a2: [{ k: 'halter', n: 'Pullover com halter no banco' }, { k: 'corda', n: 'Pulldown braço estendido com corda' }, { k: 'maq', n: 'Pullover na máquina' }],
   a7: [{ k: 'vgrip', n: 'Puxada com pegador V (pegada neutra fechada)' }, { k: 'paralela', n: 'Puxada com pegada neutra aberta (barra paralela)' }, { k: 'maq', n: 'Puxada na máquina articulada, pegada neutra' }],
   a8: [{ k: 'unilmaq', n: 'Puxada unilateral na máquina articulada' }, { k: 'remadaalta', n: 'Remada unilateral na polia alta, sentado' }, { k: 'sup', n: 'Puxada frente pegada supinada' }],
-  d1: [{ k: 'assist', n: 'Barra fixa assistida (máquina ou elástico)' }, { k: 'triang', n: 'Puxada frente com triângulo' }, { k: 'sup', n: 'Puxada frente pegada supinada' }],
+  d1: [{ k: 'sup', n: 'Puxada frente pegada supinada' }, { k: 'assist', n: 'Barra fixa assistida, pegada supinada' }, { k: 'neutra', n: 'Barra fixa pegada neutra' }],
   d2: [{ k: 'maq', n: 'Puxada na máquina articulada, pegada aberta' }, { k: 'barra', n: 'Barra fixa pegada aberta' }, { k: 'unil', n: 'Puxada unilateral na polia' }],
   d3: [{ k: 'maq', n: 'Remada na máquina articulada, pegada aberta' }, { k: 'curvada', n: 'Remada curvada pegada aberta' }, { k: 'cavalinho', n: 'Remada no cavalinho, pegada aberta' }],
   d4: [{ k: 'halter', n: 'Elevação lateral com halter' }, ...LATERAL_ALTS.filter(a => a.k !== 'polia')],
-  d5: [{ k: 'cabo', n: 'Crucifixo inverso cruzado no cabo' }, { k: 'halter', n: 'Crucifixo inverso com halteres, inclinado' }, { k: 'face', n: 'Face pull na polia com corda' }],
+  d6: [{ k: 'frances', n: 'Tríceps francês com halter' }, { k: 'testa', n: 'Tríceps testa com barra W' }, { k: 'unil', n: 'Tríceps acima da cabeça unilateral na polia' }],
+  d7: [{ k: 'martelo', n: 'Rosca martelo' }, { k: 'bayesian', n: 'Rosca na polia, de costas para o cabo (bayesian)' }, { k: 'scott', n: 'Rosca Scott' }, { k: 'w', n: 'Rosca direta com barra W' }],
   e2: [{ k: 'paralela', n: 'Elevação de joelhos no apoio de paralelas' }, { k: 'reverso', n: 'Abdominal reverso no banco' }, { k: 'chao', n: 'Elevação de pernas deitado' }],
   e3: [{ k: 'elast', n: 'Pallof press com elástico' }, { k: 'ajoelhado', n: 'Pallof press ajoelhado' }, { k: 'lateral', n: 'Prancha lateral' }],
   e4: [{ k: 'bird', n: 'Bird dog' }, { k: 'hollow', n: 'Hollow hold (canoa)' }, { k: 'roda', n: 'Rolinho abdominal (ab wheel) curto' }],
@@ -139,7 +141,7 @@ export const GUIDE = [
     </ol>
     <p>A largura vem do ombro e da dorsal; peito superior, braços e pernas entram em volume menor para o corpo não ficar desproporcional. Cada exercício tem uma alternativa sem academia.</p>` },
   { id: 'treinos', t: 'Como treinar', html: `
-    <p>São cinco fichas em rodízio: <b>A</b> Largura, <b>B</b> Peito superior e braços, <b>C</b> Pernas, <b>D</b> Largura 2 (dorsal e ombro por outros ângulos) e <b>E</b> Cintura. Nenhum dia tem mais de uma elevação lateral; o volume de largura vem de dois dias inteiros de dorsal (A e D) e de uma lateral em quase todos os treinos. Descanse 2 min nos exercícios grandes e 45–60 s nas elevações laterais. A cada treino, tente +1 repetição ou um pouco mais de peso.</p>
+    <p>São cinco fichas em rodízio: <b>A</b> Largura, <b>B</b> Peito superior e braços, <b>C</b> Pernas, <b>D</b> Largura 2 + braços (puxadas que também trabalham o bíceps, mais tríceps e rosca) e <b>E</b> Cintura. Braço é treinado duas vezes por semana (B e D). Nenhum dia tem mais de uma elevação lateral; o volume de largura vem de dois dias inteiros de dorsal (A e D) e de uma lateral em quase todos os treinos. Descanse 2 min nos exercícios grandes e 45–60 s nas elevações laterais. A cada treino, tente +1 repetição ou um pouco mais de peso.</p>
     <ul>
       <li><b>Elevação lateral:</b> ${TIPS.lateral}</li>
       <li><b>Barra e puxada:</b> ${TIPS.puxada}</li>
