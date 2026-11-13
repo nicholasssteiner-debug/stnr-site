@@ -1076,7 +1076,7 @@ function renderBalanco() {
     <div class="cartao"><div class="titulo">Ativo Total</div>
       <div class="valor" data-tipo="num" data-valor="${totAtivo}"></div></div>
     <div class="cartao"><div class="titulo">Passivo + PL</div>
-      <div class="valor" data-tipo="num" data-valor="${totPassPL}"></div></div>
+      <div class="valor" data-tipo="num" data-valor="${totPassPL + resultado}"></div></div>
     <div class="cartao"><div class="titulo">Resultado do Exercício</div>
       <div class="valor" data-tipo="num" data-valor="${resultado}"></div></div>`;
   document.querySelectorAll("#bp-cartoes .valor").forEach(animaValor);
@@ -1086,18 +1086,24 @@ function renderBalanco() {
   const fecha = Math.abs(diferenca) < 1;
   document.getElementById("bp-check").innerHTML = temBP
     ? `<h3>Conferência do Balanço — posição em ${NOMES_MESES[mFim - 1]}/${ano}</h3>
-       <p>Ativo (${n(totAtivo)}) = Passivo + PL (${n(totPassPL)}) + Resultado do Exercício (${n(resultado)})</p>
+       <p>Ativo (${n(totAtivo)}) = Passivo + PL antes do resultado (${n(totPassPL)})
+          + Resultado do Exercício (${n(resultado)})</p>
+       <p class="fer-desc">O resultado do exercício ainda não foi incorporado ao PL no razão —
+          só vai para lá no encerramento. Por isso ele entra aqui como uma linha do
+          Passivo + PL: é o que faz os dois lados fecharem, e é a mesma
+          <b>Variação Patrimonial</b> que aparece no Balanço da Apresentação.</p>
        <p>${fecha
          ? `<span class="selo-ok">✓ Balanço fechado — diferença de ${n(diferenca)}</span>`
          : `<span class="selo-alerta">⚠ Diferença de ${n(diferenca)} — o balanço NÃO fechou; há lançamento sem contrapartida</span>`}</p>`
     : `<p class="fer-desc">Carregue a planilha completa para conferir o balanço.</p>`;
 
   tabelaBalanco("bp-ativo", ativo, totAtivo, "ATIVO");
-  tabelaBalanco("bp-passivo", passivo, totPassPL, "PASSIVO + PL");
+  tabelaBalanco("bp-passivo", passivo, totPassPL + resultado, "PASSIVO + PL",
+    { rotulo: "Resultado do Exercício (acumulado até " + NOMES_MESES[mFim - 1] + ")", valor: resultado });
 }
 
 /* Tabela hierárquica do balanço: subgrupo -> contas, com Total. */
-function tabelaBalanco(idTabela, contas, totalLado, rotuloTotal) {
+function tabelaBalanco(idTabela, contas, totalLado, rotuloTotal, extra) {
   const el = document.getElementById(idTabela);
   if (!contas.size) {
     el.innerHTML = `<tbody><tr><td class="vazio">Sem dados no recorte</td></tr></tbody>`;
@@ -1122,6 +1128,9 @@ function tabelaBalanco(idTabela, contas, totalLado, rotuloTotal) {
     for (const c of sg.contas.sort((a, b) => Math.abs(b.total) - Math.abs(a.total)))
       html += `<tr class="dre-n3 escondida" data-pai="${id}"><td>${c.conta}</td><td>${c.nome || "—"}</td><td class="num">${n(c.total)}</td></tr>`;
   }
+  if (extra && Math.abs(extra.valor) >= 0.5)
+    html += `<tr class="dre-n1"><td></td><td>${extra.rotulo}</td>` +
+            `<td class="num total-col">${n(extra.valor)}</td></tr>`;
   html += `<tr class="dre-resultado"><td></td><td>TOTAL ${rotuloTotal}</td><td class="num total-col">${n(totalLado)}</td></tr></tbody>`;
   el.innerHTML = html;
 
