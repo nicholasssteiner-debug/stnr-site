@@ -1,6 +1,6 @@
 /* Protocolo V — service worker: app abre offline; arquivos próprios em rede-primeiro, SDK e fontes em cache-primeiro. */
-const VERSION = 'pv-12';
-const SHELL = ['./', 'index.html', 'app.css?v=11', 'app.js?v=11', 'data.js?v=11', 'taco.js?v=11', 'manifest.webmanifest?v=2', 'icons/icon.svg', 'icons/icon-192.png'];
+const VERSION = 'pv-13';
+const SHELL = ['./', 'index.html', 'app.css?v=12', 'app.js?v=12', 'data.js?v=12', 'taco.js?v=12', 'manifest.webmanifest?v=2', 'icons/icon.svg', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

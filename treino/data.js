@@ -62,9 +62,10 @@ export const WORKOUTS = {
       { id: 'c1', n: 'Agachamento livre ou leg press', s: 4, r: '8–10', home: 'Agachamento búlgaro com mochila', rest: 120 },
       { id: 'c2', n: 'Stiff com halteres', s: 3, r: '10', home: 'Stiff unilateral com mochila', rest: 90 },
       { id: 'c3', n: 'Cadeira extensora ou afundo', s: 3, r: '12', home: 'Afundo andando', rest: 75 },
+      // c7 substitui a puxada leve (c6) desde 16/11/2026: as costas já têm A e D, faltava posterior de coxa
+      { id: 'c7', n: 'Mesa flexora', s: 3, r: '10–12', obs: 'Desça em 3 s; não tire o quadril do banco', home: 'Flexão de joelhos deitado, pés deslizando numa toalha', rest: 75 },
       { id: 'c4', n: 'Panturrilha em pé', s: 3, r: '15', home: 'Panturrilha num degrau', rest: 45 },
-      { id: 'c5', n: 'Elevação lateral', s: 3, r: '20', obs: 'Rest-pause na última', home: 'Garrafas', rest: 50, tip: 'lateral' },
-      { id: 'c6', n: 'Puxada frente aberta, leve', s: 3, r: '10–12', obs: 'Foco em sentir a dorsal', home: 'Barra fixa em séries fáceis', rest: 75, tip: 'puxada' }
+      { id: 'c5', n: 'Elevação lateral', s: 3, r: '20', obs: 'Rest-pause na última', home: 'Garrafas', rest: 50, tip: 'lateral' }
     ]
   },
   AL: { code: 'AL', name: 'Treino A leve', title: 'Largura (leve)', sub: 'Metade das séries, sem falha', color: 'a', base: 'A', light: true },
@@ -107,7 +108,8 @@ export const ALTS = {
   b5: [{ k: 'corda', n: 'Tríceps na polia com corda' }, { k: 'frances', n: 'Tríceps francês com halter' }, { k: 'testa', n: 'Tríceps testa com barra W' }, { k: 'paralelas', n: 'Mergulho nas paralelas' }],
   b6: [{ k: 'alternada', n: 'Rosca alternada com halteres' }, { k: 'martelo', n: 'Rosca martelo' }, { k: 'polia', n: 'Rosca na polia' }, { k: 'scott', n: 'Rosca Scott' }],
   c1: [{ k: 'hack', n: 'Agachamento no hack' }, { k: 'smith', n: 'Agachamento no Smith' }, { k: 'goblet', n: 'Agachamento goblet' }, { k: 'leg45', n: 'Leg press 45°' }],
-  c2: [{ k: 'barra', n: 'Stiff com barra' }, { k: 'mesa', n: 'Mesa flexora' }, { k: 'cadeira', n: 'Cadeira flexora' }, { k: 'rdl', n: 'Levantamento terra romeno' }],
+  c2: [{ k: 'barra', n: 'Stiff com barra' }, { k: 'rdl', n: 'Levantamento terra romeno' }, { k: 'bomdia', n: 'Bom-dia com barra (good morning)' }],
+  c7: [{ k: 'cadeira', n: 'Cadeira flexora' }, { k: 'empe', n: 'Flexora em pé, unilateral' }, { k: 'nordic', n: 'Flexão nórdica (nordic curl), só a descida' }],
   c3: [{ k: 'extensora', n: 'Cadeira extensora' }, { k: 'bulgaro', n: 'Agachamento búlgaro' }, { k: 'passada', n: 'Passada com halteres' }, { k: 'stepup', n: 'Subida no banco (step-up)' }],
   c4: [{ k: 'sentado', n: 'Panturrilha sentado' }, { k: 'legpress', n: 'Panturrilha no leg press' }, { k: 'smith', n: 'Panturrilha no Smith' }],
   c5: LATERAL_ALTS,
@@ -156,7 +158,7 @@ export const GUIDE = [
       <li>De 5 a 8 séries no dia, com pelo menos 1 h entre elas.</li>
       <li>Máximo abaixo de 3: troque por negativas — suba com ajuda de uma cadeira e desça em 5 s, 2–3 por série.</li>
     </ol>
-    <p>Uma barra de porta resolve no quarto. A barra diária melhora técnica e força; o músculo cresce mesmo pelas séries pesadas dos treinos A e C.</p>` },
+    <p>Uma barra de porta resolve no quarto. A barra diária melhora técnica e força; o músculo cresce mesmo pelas séries pesadas dos treinos A e D.</p>` },
   { id: 'armstrong', t: 'Programa Armstrong (sem academia)', html: `
     <p>Criado pelo Major Charles Lewis Armstrong, dos Marines, para aumentar o número de barras. Cinco dias de barra por semana e dois de descanso, mais flexões todas as manhãs.</p>
     <ul><li><b>Toda manhã:</b> 3 séries máximas de flexão.</li>${ARMSTRONG.map(t => `<li>${t.replace(/^(Dia \d)/, '<b>$1</b>')}</li>`).join('')}</ul>
