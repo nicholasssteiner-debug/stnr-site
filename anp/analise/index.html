@@ -299,8 +299,8 @@ const MAPA_BP = [
 const ESTRUTURA_BP = [
   { secao: "ATIVO", grupos: [
     { titulo: "ATIVO CIRCULANTE", itens: [
-      ["A111", "Caixa e Equivalentes de Caixa", ["1111", "1112"]],
-      ["A112", "Aplicações Financeiras", ["1113"]],
+      ["A111", "Caixa e Equivalentes de Caixa", ["1111", "1112", "1113"]],
+      ["A112", "Aplicações Financeiras", []],
       ["A113", "Contas a Receber", ["113"]],
       ["A114", "Estoques", ["114"]],
       ["A116", "Despesas Antecipadas", ["116"]],
@@ -807,40 +807,75 @@ const registra = (id, titulo, render) => BLOCOS.push({ id, titulo, render });
 
 /* 1. BALANÇO ------------------------------------------------------- */
 /* ---------- cortes: um ano inteiro, ou uma escola dentro do ano ---------- */
-const cel = x => `<td class="num${x < 0 ? " negativo" : ""}">${x ? n(x) : "–"}</td>`;
+/* abaixo de meio real e centavo de arredondamento, nao numero: evita o "-0" */
+const cel = x => `<td class="num${x <= -0.5 ? " negativo" : ""}">${Math.abs(x) >= 0.5 ? n(x) : "–"}</td>`;
 
 /* Balanço de um corte. escola = null -> consolidado (a entidade inteira). */
+const CACHE_BP = new Map();
 function balancoCorte(ano, mes, escola) {
-  const itens = new Map();
+  const chave = ano + "|" + mes + "|" + (escola || "");
+  if (CACHE_BP.has(chave)) return CACHE_BP.get(chave);
+
+  /* O balancete apresenta cada SUBCONTA do lado do saldo dela: um crédito
+     dentro de "Entidades a Receber" é dívida, não ativo negativo. Por isso o
+     saldo é somado no grão conta+subconta+departamento e só depois jogado
+     para um dos lados. As retificadoras "(-)" ficam onde estão — elas nascem
+     credoras de propósito. */
+  const nomes = new Map(), temSub = new Set(), grao = new Map();
   let plAbertura = 0, plMovimento = 0, verbas = 0, inter = 0;
-  for (const d of dados) {
-    if (d.Subconta) continue;
+
+  const dentro = d => {
+    if (d.Ano !== ano || d.Mes > mes) return false;
     const g = d.Conta[0];
-    if (g !== "1" && g !== "2") continue;
-    if (d.Ano !== ano || d.Mes > mes) continue;
-    if (!ehAnalitica(d.Conta)) continue;
-    if (escola && (!d.Dep || partesDepto(d.Dep, d.DepNome).escola !== escola)) continue;
-    const base = d.Mes === 12 ? d.Ajust : d.Legal;
+    if (g !== "1" && g !== "2") return false;
+    if (!ehAnalitica(d.Conta)) return false;
+    return !escola || (d.Dep && partesDepto(d.Dep, d.DepNome).escola === escola);
+  };
+  const saldoDe = d => d.Mes === 12 ? d.Ajust : d.Legal;
+
+  for (const d of dados) {
+    if (!dentro(d) || !saldoDe(d)) continue;
+    if (!nomes.has(d.Conta) && d.NomeConta) nomes.set(d.Conta, d.NomeConta);
+    if (d.Subconta) temSub.add(d.Conta);
+  }
+  for (const d of dados) {
+    if (!dentro(d)) continue;
+    const base = saldoDe(d);
     if (!base) continue;
+    /* a linha sem subconta carrega o saldo cheio da conta: quando a conta tem
+       subconta, ela é totalizadora e contar as duas dobraria o valor */
+    if (temSub.has(d.Conta) !== !!d.Subconta) continue;
     if (ehPL(d.Conta)) {
       if (d.Conta.startsWith("232")) verbas += -base;
       else if (d.Mes === 0) plAbertura += -base;
       else plMovimento += -base;
       continue;
     }
-    if (ehInterDepto(d.Conta)) {
-      /* no consolidado sai do total e vira linha de memória; na coluna de uma
-         escola segue dentro do balanço dela, como no modelo */
-      if (!escola) { if (d.Conta[0] === "1") inter += base; continue; }
-    }
-    const it = itemBP(d.Conta);
-    const valor = it.secao === "ATIVO" ? base : -base;
-    const k = [it.secao, it.grupo, it.cod, it.nome].join("|");
-    itens.set(k, (itens.get(k) || 0) + valor);
+    const k = d.Conta + "|" + (d.Subconta || "") + "|" + (d.Dep || "");
+    grao.set(k, (grao.get(k) || 0) + base);
   }
+
+  const ehContra = c => /^\(-\)/.test(nomes.get(c) || "");
+  const itens = new Map();
+  for (const [k, v] of grao) {
+    const conta = k.slice(0, k.indexOf("|"));
+    if (ehInterDepto(conta)) {
+      if (!escola) { if (conta[0] === "1") inter += v; continue; }
+    }
+    const invertido = !ehContra(conta) &&
+      ((conta[0] === "1" && v < 0) || (conta[0] === "2" && v > 0));
+    const c = invertido ? (conta[0] === "1" ? "2" : "1") + conta.slice(1) : conta;
+    const it = itemBP(c);
+    const valor = it.secao === "ATIVO" ? v : -v;
+    const kk = [it.secao, it.grupo, it.cod, it.nome].join("|");
+    itens.set(kk, (itens.get(kk) || 0) + valor);
+  }
+
   const resultado = dreCorte(ano, mes, escola).total;
-  return { itens, plAbertura, verbas, inter, variacao: plMovimento + resultado,
-           pl: plAbertura + plMovimento + resultado + verbas };
+  const r = { itens, plAbertura, verbas, inter, variacao: plMovimento + resultado,
+              pl: plAbertura + plMovimento + resultado + verbas };
+  CACHE_BP.set(chave, r);
+  return r;
 }
 
 /* DRE de um corte. */
@@ -970,9 +1005,12 @@ function tabelaBalanco(colunas, porCol) {
 registra("balanco", "Balanço", () => {
   const colunas = colunasAnos();
   return painel("Balanço Patrimonial",
-    "Estrutura do balanço denominacional. O <b>Patrimônio Líquido</b> aparece como no modelo: " +
-    "saldo inicial de 01/01 mais a <b>variação patrimonial</b> do período — é aí que entra o resultado " +
-    "do exercício, e é o que faz os dois lados fecharem.",
+    "Estrutura do balanço denominacional, no mesmo critério do balancete. O <b>Patrimônio Líquido</b> " +
+    "aparece como no modelo: saldo inicial de 01/01 mais a <b>variação patrimonial</b> do período — é aí " +
+    "que entra o resultado do exercício, e é o que faz os dois lados fecharem. Cada <b>subconta</b> entra " +
+    "do lado do saldo dela (um crédito dentro de \"a receber\" é dívida, não ativo negativo), as " +
+    "retificadoras \"(-)\" ficam onde estão, e a conta corrente <b>InterDepartamentos</b> sai do " +
+    "consolidado — o valor eliminado aparece no rodapé.",
     tabelaBalanco(colunas, colunas.map(c => balancoCorte(c.ano, c.mes, escolaRef))));
 });
 

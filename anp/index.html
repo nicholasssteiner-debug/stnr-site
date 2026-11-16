@@ -1047,29 +1047,54 @@ function renderBalanco() {
   const ativo = new Map();    // conta -> { nome, sub, os, total }
   const passivo = new Map();
   let totAtivo = 0, totPassPL = 0, interDep = 0;
-  for (const d of dadosBrutos) {
-    if (d.Subconta) continue;
+  /* O balancete apresenta cada SUBCONTA do lado do saldo dela: um crédito
+     dentro de "a receber" é dívida, não ativo negativo. Por isso o saldo é
+     somado no grão conta+subconta+departamento e só depois vai para um dos
+     lados. Retificadoras "(-)" e patrimônio líquido ficam onde estão. */
+  const nomesBP = new Map(), temSubBP = new Set(), graoBP = new Map();
+  const noCorte = d => {
     const g = d.Conta[0];
-    if (g !== "1" && g !== "2") continue;
-    if (d.Ano !== ano || !f.campos.includes(d.Entidade) || d.Mes > mFim) continue;
-    if (!infoContas.ehAnalitica(d.Conta)) continue;
-    const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+    if (g !== "1" && g !== "2") return false;
+    return d.Ano === ano && d.Mes <= mFim && f.campos.includes(d.Entidade) &&
+           infoContas.ehAnalitica(d.Conta);
+  };
+  const saldoDe = d => d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
+  for (const d of dadosBrutos) {
+    if (!noCorte(d) || !saldoDe(d)) continue;
+    if (!nomesBP.has(d.Conta) && d.NomeConta) nomesBP.set(d.Conta, d.NomeConta);
+    if (d.Subconta) temSubBP.add(d.Conta);
+  }
+  for (const d of dadosBrutos) {
+    if (!noCorte(d)) continue;
+    const base = saldoDe(d);
     if (!base) continue;
+    /* a linha sem subconta carrega o saldo cheio da conta: quando a conta tem
+       subconta, ela é totalizadora e contar as duas dobraria o valor */
+    if (temSubBP.has(d.Conta) !== !!d.Subconta) continue;
+    const k = d.Conta + "|" + (d.Subconta || "") + "|" + (d.Dep || "");
+    graoBP.set(k, (graoBP.get(k) || 0) + base);
+  }
+  for (const [k, v] of graoBP) {
+    const conta = k.slice(0, k.indexOf("|"));
     /* conta corrente InterDepartamentos: o que uma escola tem a receber é o que
        a outra tem a pagar. No campo inteiro os dois lados são a mesma entidade,
        então saem do total — é a eliminação de consolidação. */
-    if (d.Conta.startsWith("1136080") || d.Conta.startsWith("2136080")) {
-      if (d.Conta[0] === "1") interDep += base;
+    if (conta.startsWith("1136080") || conta.startsWith("2136080")) {
+      if (conta[0] === "1") interDep += v;
       continue;
     }
-    const cls = classificaBP(d.Conta);
+    const ehContra = /^\(-\)/.test(nomesBP.get(conta) || "");
+    const invertido = !ehContra && !conta.startsWith("23") &&
+      ((conta[0] === "1" && v < 0) || (conta[0] === "2" && v > 0));
+    const c = invertido ? (conta[0] === "1" ? "2" : "1") + conta.slice(1) : conta;
+    const cls = classificaBP(c);
     const ativoLado = cls.grupo.startsWith("ATIVO");
-    const valor = ativoLado ? base : -base;   // passivo/PL: credor -> exibe positivo
+    const valor = ativoLado ? v : -v;   // passivo/PL: credor -> exibe positivo
     const alvo = ativoLado ? ativo : passivo;
-    const reg = alvo.get(d.Conta) || { nome: d.NomeConta || "", grupo: cls.grupo, og: cls.og, sub: cls.sub, os: cls.os, total: 0 };
+    const reg = alvo.get(c) ||
+      { nome: nomesBP.get(c) || nomesBP.get(conta) || "", grupo: cls.grupo, og: cls.og, sub: cls.sub, os: cls.os, total: 0 };
     reg.total += valor;
-    if (!reg.nome && d.NomeConta) reg.nome = d.NomeConta;
-    alvo.set(d.Conta, reg);
+    alvo.set(c, reg);
     if (ativoLado) totAtivo += valor; else totPassPL += valor;
   }
 
