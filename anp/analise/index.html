@@ -354,6 +354,13 @@ function classificaBP(conta) {
 }
 
 /* ---------- escola/serviço a partir do departamento ---------- */
+/* Conta corrente entre departamentos. Para uma escola é ativo de verdade
+   (ela tem a receber da Sede); no consolidado os dois lados são a mesma
+   entidade e se anulam — é a eliminação que a planilha-modelo faz, e sem ela
+   o balanço do campo inteiro aparece inflado nos dois lados. */
+const CONTAS_INTER = ["1136080", "2136080"];
+const ehInterDepto = conta => CONTAS_INTER.some(p => conta.startsWith(p));
+
 const ESCOLAS = { "3310":"Sede","3311":"CAL","3312":"CAM","3313":"EAM",
                   "3314":"EAC","3315":"EAA","3316":"CALGP","3317":"CAME" };
 /* A escola sai do CÓDIGO do departamento, não do nome: a contabilidade chama
@@ -805,7 +812,7 @@ const cel = x => `<td class="num${x < 0 ? " negativo" : ""}">${x ? n(x) : "–"}
 /* Balanço de um corte. escola = null -> consolidado (a entidade inteira). */
 function balancoCorte(ano, mes, escola) {
   const itens = new Map();
-  let plAbertura = 0, plMovimento = 0, verbas = 0;
+  let plAbertura = 0, plMovimento = 0, verbas = 0, inter = 0;
   for (const d of dados) {
     if (d.Subconta) continue;
     const g = d.Conta[0];
@@ -821,13 +828,18 @@ function balancoCorte(ano, mes, escola) {
       else plMovimento += -base;
       continue;
     }
+    if (ehInterDepto(d.Conta)) {
+      /* no consolidado sai do total e vira linha de memória; na coluna de uma
+         escola segue dentro do balanço dela, como no modelo */
+      if (!escola) { if (d.Conta[0] === "1") inter += base; continue; }
+    }
     const it = itemBP(d.Conta);
     const valor = it.secao === "ATIVO" ? base : -base;
     const k = [it.secao, it.grupo, it.cod, it.nome].join("|");
     itens.set(k, (itens.get(k) || 0) + valor);
   }
   const resultado = dreCorte(ano, mes, escola).total;
-  return { itens, plAbertura, verbas, variacao: plMovimento + resultado,
+  return { itens, plAbertura, verbas, inter, variacao: plMovimento + resultado,
            pl: plAbertura + plMovimento + resultado + verbas };
 }
 
@@ -943,6 +955,9 @@ function tabelaBalanco(colunas, porCol) {
   const totPass = colunas.map((_, i) => soma(pt => pt[0] === "PASSIVO", i) + porCol[i].pl + inter[i]);
   html += `<tr class="bp-total"><td colspan="2">TOTAL DO PASSIVO E PATR. LÍQUIDO</td>` +
     totPass.map(cel).join("") + `</tr>`;
+  if (porCol.some(d => Math.abs(d.inter || 0) >= 1))
+    html += `<tr class="bp-conf"><td colspan="2">InterDepartamentos eliminados na consolidação</td>` +
+      porCol.map(d => `<td class="num">${d.inter ? n(d.inter) : "–"}</td>`).join("") + `</tr>`;
   html += `<tr class="bp-conf"><td colspan="2">Conferência (ativo − passivo)</td>` +
     colunas.map((_, i) => {
       const dif = soma(pt => pt[0] === "ATIVO", i) - totPass[i];
@@ -968,8 +983,10 @@ registra("balanco-unidade", "Balanço Unidades", () => {
   const r = semColunasVazias(colunas, colunas.map(c => balancoCorte(c.ano, c.mes, c.escola)),
     d => [...d.itens.values()].some(v => Math.abs(v) >= 1) || Math.abs(d.pl) >= 1);
   return painel(`Balanço por Unidade — ${colunas[colunas.length - 1].sub}`,
-    "O mesmo balanço, com uma coluna por escola. O <b>Consolidado</b> é a entidade inteira: " +
-    "inclui também o que foi lançado sem departamento, então não é a soma exata das colunas.",
+    "O mesmo balanço, com uma coluna por escola. O <b>Consolidado</b> não é a soma das colunas: " +
+    "a conta corrente <b>InterDepartamentos</b> é ativo de verdade dentro de cada escola (ela tem a " +
+    "receber da Sede), mas no campo inteiro os dois lados são a mesma entidade e se anulam — por isso " +
+    "sai do total consolidado, como na planilha. O valor eliminado aparece no rodapé da tabela.",
     tabelaBalanco(r.colunas, r.porCol));
 });
 

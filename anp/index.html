@@ -1046,7 +1046,7 @@ function renderBalanco() {
   // saldo acumulado (abertura..mFim) por conta analítica de ativo/passivo
   const ativo = new Map();    // conta -> { nome, sub, os, total }
   const passivo = new Map();
-  let totAtivo = 0, totPassPL = 0;
+  let totAtivo = 0, totPassPL = 0, interDep = 0;
   for (const d of dadosBrutos) {
     if (d.Subconta) continue;
     const g = d.Conta[0];
@@ -1055,6 +1055,13 @@ function renderBalanco() {
     if (!infoContas.ehAnalitica(d.Conta)) continue;
     const base = d.Mes === 12 ? d.SaldoAjustado : d.SaldoLegal;
     if (!base) continue;
+    /* conta corrente InterDepartamentos: o que uma escola tem a receber é o que
+       a outra tem a pagar. No campo inteiro os dois lados são a mesma entidade,
+       então saem do total — é a eliminação de consolidação. */
+    if (d.Conta.startsWith("1136080") || d.Conta.startsWith("2136080")) {
+      if (d.Conta[0] === "1") interDep += base;
+      continue;
+    }
     const cls = classificaBP(d.Conta);
     const ativoLado = cls.grupo.startsWith("ATIVO");
     const valor = ativoLado ? base : -base;   // passivo/PL: credor -> exibe positivo
@@ -1088,6 +1095,9 @@ function renderBalanco() {
     ? `<h3>Conferência do Balanço — posição em ${NOMES_MESES[mFim - 1]}/${ano}</h3>
        <p>Ativo (${n(totAtivo)}) = Passivo + PL antes do resultado (${n(totPassPL)})
           + Resultado do Exercício (${n(resultado)})</p>
+       <p class="fer-desc">Não entram no total <b>${n(interDep)}</b> de conta corrente
+          <b>InterDepartamentos</b>: o que uma escola tem a receber é o que a outra tem a pagar,
+          e no campo inteiro os dois lados são a mesma entidade.</p>
        <p class="fer-desc">O resultado do exercício ainda não foi incorporado ao PL no razão —
           só vai para lá no encerramento. Por isso ele entra aqui como uma linha do
           Passivo + PL: é o que faz os dois lados fecharem, e é a mesma
