@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#000000">
+<title>​</title>
+<style>
+  :root{--verde:#33ff66;--verm:#ff3b3b;--amar:#ffd23f;--ok:#2bd46f}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#000}
+  body{color:var(--verde);font-family:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,monospace;overflow:hidden;-webkit-user-select:none;user-select:none}
+  .tela{position:fixed;inset:0}
+  .oculta{display:none!important}
+
+  /* terminal */
+  #term{padding:max(14px,env(safe-area-inset-top)) 12px 14px;font-size:12.5px;line-height:1.5;display:flex;flex-direction:column;justify-content:flex-end;text-shadow:0 0 4px rgba(51,255,102,.55)}
+  #term::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px)}
+  #saida div{white-space:pre-wrap;word-break:break-all}
+  .p{color:#9aa0a6}.p b{color:var(--verde);font-weight:normal}
+  .e{color:var(--verm);text-shadow:0 0 6px rgba(255,59,59,.7)}
+  .w{color:var(--amar);text-shadow:none}
+  .b{color:#fff;text-shadow:none}
+  .cursor{display:inline-block;width:.6em;height:1.1em;background:var(--verde);vertical-align:-.2em;animation:cur 1s steps(1) infinite}
+  @keyframes cur{50%{opacity:0}}
+  #term.glitch{animation:gl .09s steps(2) 8}
+  @keyframes gl{50%{transform:translateX(-3px);filter:hue-rotate(90deg)}}
+
+  /* toque inicial */
+  #inicio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;color:#cfcfcf;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  #inicio .play{width:68px;height:68px;border-radius:50%;border:2px solid #555;display:flex;align-items:center;justify-content:center;font-size:26px;padding-left:5px;animation:pulsa 1.6s ease-in-out infinite}
+  @keyframes pulsa{50%{transform:scale(1.08);border-color:#999}}
+  #inicio span{font-size:15px;opacity:.75}
+
+  /* revelação */
+  #revela{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center;background:#0d1f14;color:#eafff1;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  #revela .emoji{font-size:84px;animation:pula .6s ease-in-out infinite alternate}
+  @keyframes pula{to{transform:translateY(-12px) rotate(-6deg)}}
+  #revela h2{font-size:clamp(34px,11vw,56px);color:var(--ok);margin:10px 0 8px}
+  #revela p{font-size:17px;max-width:380px;line-height:1.45;opacity:.92}
+  #revela .tranq{margin-top:18px;font-size:14px;opacity:.75}
+  .btns{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;justify-content:center}
+  button{font:600 16px system-ui,sans-serif;padding:12px 20px;border-radius:999px;border:0;cursor:pointer}
+  .b1{background:var(--ok);color:#06210f}
+  .b2{background:transparent;color:#eafff1;border:1.5px solid #4c7a5d}
+  #confete{position:fixed;inset:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<section id="inicio" class="tela"><div class="play">▶</div><span>Toque para abrir</span></section>
+<section id="term" class="tela oculta"><div id="saida"></div></section>
+
+<section id="revela" class="tela oculta">
+  <canvas id="confete"></canvas>
+  <div class="emoji">😂</div>
+  <h2>PEGADINHA!</h2>
+  <p>Seu celular está ótimo. Nenhum arquivo foi copiado, nenhum vírus foi instalado: era só uma página com animação.</p>
+  <p class="tranq">Pode respirar. 😅</p>
+  <div class="btns">
+    <button class="b1" id="compartilhar">Pegar outra pessoa</button>
+    <button class="b2" id="denovo">Ver de novo</button>
+  </div>
+</section>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const saida = $('saida');
+  const vibra = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  const hex = n => Array.from({length:n}, () => '0123456789abcdef'[Math.random()*16|0]).join('');
+  const ip = () => [185, Math.random()*255|0, Math.random()*255|0, Math.random()*255|0].join('.');
+  let rodada = 0;
+
+  function linha(txt, cls) {
+    const d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = txt;
+    saida.appendChild(d);
+    while (saida.children.length > 120) saida.firstChild.remove();
+    return d;
+  }
+
+  async function digita(cmd, id) {
+    const d = document.createElement('div');
+    d.className = 'p';
+    d.innerHTML = 'root@device:~# <b></b><span class="cursor"></span>';
+    saida.appendChild(d);
+    const b = d.querySelector('b');
+    for (const ch of cmd) { if (id !== rodada) return; b.textContent += ch; await espera(16 + Math.random()*24); }
+    await espera(150);
+    d.querySelector('.cursor').remove();
+  }
+
+  async function barra(rotulo, ms, id) {
+    const d = linha('');
+    const passos = 24;
+    for (let i = 0; i <= passos; i++) {
+      if (id !== rodada) return;
+      const p = Math.round(i / passos * 100);
+      d.textContent = `${rotulo} [${'#'.repeat(i)}${'.'.repeat(passos - i)}] ${p}%`;
+      await espera(ms / passos);
+    }
+  }
+
+  async function despeja(lista, ms, cls, id) {
+    for (const l of lista) { if (id !== rodada) return; linha(l, cls); await espera(ms); }
+  }
+
+  const arquivos = ['DCIM/Camera/IMG_20260914_183022.jpg','DCIM/Camera/VID_20261021_221318.mp4',
+    'Pictures/Screenshots/Screenshot_conversa.png','contacts/contatos.vcf','data/senhas_salvas.db',
+    'location/historico.json','DCIM/.ocultas/','Audio/recebidos/','Documents/notas_pessoais.txt',
+    'browser/historico.sqlite','calendar/agenda.ics','Download/documento.pdf','DCIM/Selfies/',
+    'DCIM/Camera/IMG_20261111_174402.jpg','DCIM/Camera/IMG_20260801_002311.jpg'];
+
+  // Tela cheia: esconde a barra do navegador e (no Android) a barra de navegação.
+  // Não trava nada: o gesto de voltar e o botão de sair continuam funcionando.
+  async function telaCheia() {
+    const el = document.documentElement;
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch (e) {}
+    try { await screen.orientation.lock('portrait'); } catch (e) {}
+  }
+  function sairTelaCheia() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
+    } catch (e) {}
+  }
+
+  async function roteiro() {
+    const id = ++rodada;
+    saida.innerHTML = '';
+    $('inicio').classList.add('oculta');
+    $('revela').classList.add('oculta');
+    $('term').classList.remove('oculta');
+    document.title = '​';
+
+    await despeja(['[    0.000000] kernel: payload v6.6.6 loaded', `[    0.004121] session ${hex(16)}`,
+      `[    0.009870] connecting ${ip()}:4444 ... OK`], 120, '', id);
+    await digita('./exploit --target=local --stealth', id);
+    await despeja(['[*] Escalando privilégios...', '[+] Acesso root obtido', '[*] Desativando antivírus... OK',
+      '[*] Bloqueando botões físicos... OK', '[*] Bloqueando desligamento... OK'], 170, '', id);
+    if (id !== rodada) return;
+    vibra([200, 100, 200]);
+    await digita('cp -r /sdcard/* /mnt/remoto/', id);
+    for (const a of arquivos) {
+      if (id !== rodada) return;
+      linha(`  -> ${a}  ${(Math.random()*9+0.3).toFixed(1)}MB  ${hex(8)}`, Math.random() < .3 ? 'b' : '');
+      await espera(65);
+    }
+    await barra('upload ', 1100, id);
+    await digita('cat /data/senhas_salvas.db | send', id);
+    await despeja(Array.from({length: 10}, () => `${hex(8)}:${hex(24)}`), 45, '', id);
+    await despeja(['', '!!! SISTEMA COMPROMETIDO !!!', 'Todos os dados foram enviados.',
+      'Tentativas de desligar ou sair serão ignoradas.'], 260, 'e', id);
+    if (id !== rodada) return;
+    $('term').classList.add('glitch'); vibra([400, 150, 400, 150, 800]);
+    await digita('rm -rf / --no-preserve-root', id);
+    await barra('formatando', 1600, id);
+    await despeja(['', 'Formatação concluída. Reiniciando...'], 350, 'w', id);
+    await espera(600);
+    if (id !== rodada) return;
+    // apagão antes da revelação
+    saida.innerHTML = '';
+    $('term').classList.remove('glitch');
+    await espera(1000);
+    if (id === rodada) revelar();
+  }
+
+  // Tocar na tela durante o terminal responde "ACESSO NEGADO"
+  let ultimoToque = 0;
+  $('term').addEventListener('pointerdown', () => {
+    const agora = Date.now();
+    if (agora - ultimoToque < 300) return;
+    ultimoToque = agora;
+    linha('ACESSO NEGADO', 'e');
+    vibra(120);
+  });
+
+  function revelar() {
+    $('inicio').classList.add('oculta');
+    $('term').classList.add('oculta');
+    $('revela').classList.remove('oculta');
+    document.title = '😂 Pegadinha!';
+    vibra(0);
+    sairTelaCheia();
+    setTimeout(confete, 250);
+  }
+
+  function confete() {
+    const c = $('confete'), ctx = c.getContext('2d');
+    const W = c.width = innerWidth, H = c.height = innerHeight;
+    const cores = ['#2bd46f','#ffd23f','#ff5d8f','#3fa7ff','#ffffff'];
+    const ps = Array.from({length: 140}, () => ({
+      x: Math.random()*W, y: -Math.random()*H, r: 4 + Math.random()*5,
+      vy: 2 + Math.random()*3, vx: -1 + Math.random()*2, a: Math.random()*6, c: cores[Math.random()*cores.length|0]
+    }));
+    let f = 0;
+    (function anima() {
+      ctx.clearRect(0, 0, W, H);
+      ps.forEach(p => { p.y += p.vy; p.x += p.vx; p.a += .1;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r); ctx.restore(); });
+      if (++f < 260) requestAnimationFrame(anima); else ctx.clearRect(0, 0, W, H);
+    })();
+  }
+
+  $('inicio').onclick = () => { telaCheia(); roteiro(); };
+  $('denovo').onclick = () => { telaCheia(); roteiro(); };
+  $('compartilhar').onclick = async () => {
+    const url = location.origin + location.pathname;
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Olha isso', url }); return; }
+      await navigator.clipboard.writeText(url);
+      $('compartilhar').textContent = 'Link copiado!';
+    } catch (e) {}
+  };
+
+  // ?ja pula direto para a revelação (para testar)
+  if (new URLSearchParams(location.search).has('ja')) revelar();
+})();
+</script>
+</body>
+</html>
