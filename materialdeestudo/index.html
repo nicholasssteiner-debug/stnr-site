@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Manual Laboratório Contábil II</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: livro-razão — coluna de leitura com índice fixo; códigos em mono como no AASI; D em azul-tinta, C em vermelho-carimbo */
+:root{
+  --paper:#f5f7f6; --sheet:#ffffff; --ink:#15231d; --muted:#5a6b63; --rule:#d5e0da; --rule2:#e9efec;
+  --ledger:#1f6b4f; --ledger-soft:#e3f1ea; --deb:#1d4f91; --deb-soft:#e6eef9; --cred:#b3372b; --cred-soft:#fbe9e6;
+  --warn:#8a6100; --warn-soft:#fff4d6;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1613; --sheet:#16201b; --ink:#e3ece7; --muted:#9bb0a6; --rule:#2b3a33; --rule2:#202c26;
+  --ledger:#5cc79b; --ledger-soft:#173327; --deb:#8db7f2; --deb-soft:#172638; --cred:#f08a7e; --cred-soft:#3a1d1a;
+  --warn:#f0c35a; --warn-soft:#34290e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1613; --sheet:#16201b; --ink:#e3ece7; --muted:#9bb0a6; --rule:#2b3a33; --rule2:#202c26;
+  --ledger:#5cc79b; --ledger-soft:#173327; --deb:#8db7f2; --deb-soft:#172638; --cred:#f08a7e; --cred-soft:#3a1d1a;
+  --warn:#f0c35a; --warn-soft:#34290e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.7rem;font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.12rem;font-weight:600;margin-top:6px}
+p{margin:0}
+code,.mono{font-family:var(--f-mono);font-size:.92em;font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ledger);font-weight:600}
+
+/* cabeçalho */
+.head{display:grid;gap:14px;padding-bottom:24px;border-bottom:2px solid var(--ink)}
+.head .meta{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.92rem}
+.head .lede{max-width:65ch;font-size:1.05rem}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid var(--rule);background:var(--sheet)}
+.chip.d{color:var(--deb);background:var(--deb-soft);border-color:transparent}
+.chip.c{color:var(--cred);background:var(--cred-soft);border-color:transparent}
+.chip.w{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.chip.k{color:var(--ledger);background:var(--ledger-soft);border-color:transparent}
+
+/* grade com índice */
+.grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px;margin-top:28px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start;display:grid;gap:2px;font-size:.92rem}
+nav.toc a{color:var(--muted);text-decoration:none;padding:6px 10px;border-left:2px solid var(--rule);display:flex;gap:8px}
+nav.toc a span{font-family:var(--f-mono);font-size:.8rem;color:var(--ledger);min-width:1.6em}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);border-left-color:var(--ledger);outline:none}
+nav.toc .sep{height:10px}
+@media (max-width:860px){
+  .grid{grid-template-columns:minmax(0,1fr);gap:20px}
+  nav.toc{position:static;display:flex;overflow-x:auto;gap:6px;padding-bottom:6px}
+  nav.toc a{border:1px solid var(--rule);border-radius:999px;white-space:nowrap;background:var(--sheet)}
+  nav.toc .sep{display:none}
+}
+main{display:grid;gap:56px;min-width:0}
+section{display:grid;gap:18px;scroll-margin-top:16px;min-width:0}
+.sec-head{display:grid;gap:6px}
+.sec-head .why{color:var(--muted);max-width:65ch}
+.prose{display:grid;gap:12px;max-width:68ch}
+
+/* tabelas */
+.tw{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--sheet)}
+table{width:100%;border-collapse:collapse;font-size:.94rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule2);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--paper)}
+tr:last-child td{border-bottom:0}
+td.code{font-family:var(--f-mono);font-weight:600;color:var(--ledger);white-space:nowrap;font-variant-numeric:tabular-nums}
+td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nat-d{color:var(--deb);font-weight:600}.nat-c{color:var(--cred);font-weight:600}
+
+/* blocos */
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:640px){.pair{grid-template-columns:minmax(0,1fr)}}
+.box{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;display:grid;gap:6px;min-width:0}
+.box h3{margin:0}
+.box .k{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tip{border-left:3px solid var(--ledger);background:var(--ledger-soft);padding:10px 14px;border-radius:0 6px 6px 0;max-width:68ch}
+.tip b:first-child{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ledger);display:block}
+.check{border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 6px 6px 0;max-width:68ch;font-size:.94rem}
+.check b:first-child{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--warn);display:block}
+ul.clean{margin:0;padding-left:1.2em;display:grid;gap:4px}
+
+/* fluxo DRACMA */
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;counter-reset:st}
+.flow .st{background:var(--sheet);border:1px solid var(--rule);border-right:0;padding:12px 12px 14px;display:grid;gap:4px;align-content:start;position:relative;min-width:0}
+.flow .st:last-child{border-right:1px solid var(--rule);border-radius:0 6px 6px 0}
+.flow .st:first-child{border-radius:6px 0 0 6px}
+.flow .st .n{font-family:var(--f-mono);font-size:.75rem;color:var(--ledger);font-weight:600}
+.flow .st b{font-family:var(--f-display);font-size:1rem}
+.flow .st p{font-size:.86rem;color:var(--muted);line-height:1.45}
+@media (max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}.flow .st{border-right:1px solid var(--rule);border-bottom:0;border-radius:0!important}.flow .st:first-child{border-radius:6px 6px 0 0!important}.flow .st:last-child{border-bottom:1px solid var(--rule);border-radius:0 0 6px 6px!important}}
+
+/* razonetes */
+.ts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.ts{grid-template-columns:minmax(0,1fr)}}
+.t{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:10px 12px 12px}
+.t .tn{font-weight:600;font-size:.9rem;text-align:center;padding-bottom:6px;border-bottom:2px solid var(--ink)}
+.t .tn code{display:block;color:var(--ledger)}
+.t .tb{display:grid;grid-template-columns:1fr 1fr;min-height:46px}
+.t .tb div{padding:6px 8px;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.92rem}
+.t .tb div:first-child{border-right:2px solid var(--ink);text-align:right;color:var(--deb)}
+.t .tb div:last-child{color:var(--cred)}
+.t .tl{display:grid;grid-template-columns:1fr 1fr;font-family:var(--f-mono);font-size:.68rem;color:var(--muted);letter-spacing:.08em}
+.t .tl span:first-child{text-align:right;padding-right:8px}.t .tl span:last-child{padding-left:8px}
+
+/* flashcards */
+.deck-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:.9rem;font-weight:600;padding:8px 14px;border-radius:6px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ledger)}
+.btn:focus-visible,.opt:focus-visible,.card:focus-visible{outline:2px solid var(--ledger);outline-offset:2px}
+.btn.primary{background:var(--ledger);border-color:var(--ledger);color:var(--sheet)}
+.btn.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;min-height:210px;padding:22px;display:grid;align-content:center;gap:10px;cursor:pointer;text-align:center;width:100%;font:inherit;color:inherit}
+.card .side{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.card .q{font-family:var(--f-display);font-size:1.45rem;font-weight:600;text-wrap:balance}
+.card .a{font-size:1.05rem;max-width:52ch;margin:0 auto}
+.card.flipped{background:var(--ledger-soft);border-color:var(--ledger)}
+.counter{font-family:var(--f-mono);font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* simulado */
+.quiz{display:grid;gap:14px}
+.qitem{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:16px;display:grid;gap:10px;min-width:0}
+.qitem .qn{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.qitem .qt{font-weight:600}
+.opts{display:grid;gap:6px}
+.opt{text-align:left;font:inherit;font-size:.95rem;padding:9px 12px;border-radius:6px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;display:flex;gap:10px}
+.opt .l{font-family:var(--f-mono);font-weight:600;color:var(--muted)}
+.opt:hover:not([disabled]){border-color:var(--ledger)}
+.opt[disabled]{cursor:default}
+.opt.right{background:var(--ledger-soft);border-color:var(--ledger)}
+.opt.right .l{color:var(--ledger)}
+.opt.wrong{background:var(--cred-soft);border-color:var(--cred)}
+.opt.wrong .l{color:var(--cred)}
+.expl{font-size:.92rem;color:var(--muted);border-top:1px dashed var(--rule);padding-top:8px}
+.score{position:sticky;bottom:0;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:env(safe-area-inset-bottom,0px)}
+.score b{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--rule2);border-radius:99px;overflow:hidden;flex:1;min-width:120px}
+.bar i{display:block;height:100%;background:var(--ledger);width:0;transition:width .3s}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+
+/* checklist final */
+.list-check{display:grid;gap:6px;max-width:68ch}
+.list-check label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.list-check input{margin-top:5px;accent-color:var(--ledger)}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="head">
+    <span class="eyebrow">Ciências Contábeis · FAP · Ivatuba, 2026</span>
+    <h1>Laboratório Contábil II<br>Manual de Estudos</h1>
+    <div class="meta"><span>Prof. Bruno Rohling Moreira</span><span>Baseado nas Atividades 1 a 8</span><span>Contabilidade da IASD (sistemas AASI, DRACMA, AANS, APS)</span></div>
+    <p class="lede">Resumo de tudo o que caiu nas oito atividades, organizado na ordem das aulas. Leia os módulos, revise os códigos nos flashcards e termine com o simulado. As respostas das atividades foram revisadas e completadas para ficarem prontas para a prova.</p>
+    <div class="legend">
+      <span class="chip d">D · natureza devedora</span>
+      <span class="chip c">C · natureza credora</span>
+      <span class="chip k">Dica de prova</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <nav class="toc" aria-label="Índice">
+      <a href="#m1"><span>1</span>Estrutura da IASD</a>
+      <a href="#m2"><span>2</span>Plano de contas</a>
+      <a href="#m3"><span>3</span>Departamentos e subcontas</a>
+      <a href="#m4"><span>4</span>Ativo imobilizado</a>
+      <a href="#m5"><span>5</span>Cartões</a>
+      <a href="#m6"><span>6</span>Avisos (AANS)</a>
+      <a href="#m7"><span>7</span>DRACMA</a>
+      <div class="sep"></div>
+      <a href="#cartoes"><span>★</span>Flashcards</a>
+      <a href="#simulado"><span>✓</span>Simulado</a>
+      <a href="#vespera"><span>→</span>Véspera da prova</a>
+    </nav>
+
+    <main>
+      <!-- MÓDULO 1 -->
+      <section id="m1">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 1 · Atividade 1</span>
+          <h2>Estrutura da IASD: campos, áreas e sistemas</h2>
+          <p class="why">A base de tudo: quem são as entidades, em que áreas a igreja atua e quais sistemas todas elas usam.</p>
+        </div>
+
+        <h3>Os 9 campos da União Sul Brasileira (USB)</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Código</th><th>Sigla</th><th>Campo</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td class="code">15</td><td><b>ASP</b></td><td>Associação Sul Paranaense</td><td>PR</td></tr>
+            <tr><td class="code">16</td><td><b>ANP</b></td><td>Associação Norte Paranaense</td><td>PR</td></tr>
+            <tr><td class="code">19</td><td><b>ACP</b></td><td>Associação Central Paranaense</td><td>PR</td></tr>
+            <tr><td class="code">20</td><td><b>AOP</b></td><td>Associação Oeste Paranaense</td><td>PR</td></tr>
+            <tr><td class="code">10</td><td><b>ANC</b></td><td>Associação Norte Catarinense</td><td>SC</td></tr>
+            <tr><td class="code">14</td><td><b>ASC</b></td><td>Associação Sul Catarinense</td><td>SC</td></tr>
+            <tr><td class="code">12</td><td><b>ASRS</b></td><td>Associação Sul-Rio-Grandense</td><td>RS</td></tr>
+            <tr><td class="code">13</td><td><b>ANRS</b></td><td>Associação Norte Sul-Rio-Grandense</td><td>RS</td></tr>
+            <tr><td class="code">18</td><td><b>ACRS</b></td><td>Associação Central Sul-Rio-Grandense</td><td>RS</td></tr>
+          </tbody>
+        </table></div>
+        <div class="tip"><b>Para decorar</b>Agrupe por estado. <b>Paraná tem 4</b> (15, 16, 19, 20), <b>Santa Catarina tem 2</b> (10, 14), <b>Rio Grande do Sul tem 3</b> (12, 13, 18). Siglas: A = Associação, depois a posição (Norte, Sul, Central, Oeste) e o estado (P = Paranaense, C = Catarinense, RS = Sul-Rio-Grandense).</div>
+
+        <h3>As 9 áreas de atuação da IASD</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Código</th><th>Área</th></tr></thead>
+          <tbody>
+            <tr><td class="code">11</td><td>Religiosa</td></tr>
+            <tr><td class="code">12 / 15</td><td>Lojas</td></tr>
+            <tr><td class="code">13</td><td>SELS (Serviço Educacional Lar e Saúde)</td></tr>
+            <tr><td class="code">22</td><td>Educação</td></tr>
+            <tr><td class="code">24</td><td>Internatos</td></tr>
+            <tr><td class="code">25</td><td>ADRA</td></tr>
+            <tr><td class="code">41</td><td>Clínicas</td></tr>
+            <tr><td class="code">51</td><td>CATRE</td></tr>
+            <tr><td class="code">93</td><td>Igrejas</td></tr>
+          </tbody>
+        </table></div>
+        <div class="tip"><b>Pegadinha</b>Lojas é a única área com <b>dois códigos</b> (12 e 15). E não confunda: o 12 da área Lojas não tem relação com o 12 da ASRS. São listas diferentes.</div>
+
+        <h3>Os 4 sistemas usados por todas as entidades</h3>
+        <div class="pair">
+          <div class="box"><span class="k">Contábil</span><h3>AASI</h3><p>Sistema de contabilidade. É onde ficam o plano de contas, os lançamentos e os balanços.</p></div>
+          <div class="box"><span class="k">Financeiro / pagamentos</span><h3>DRACMA</h3><p>Cadastro de documentos e pagamentos (contas a pagar). Detalhado no Módulo 7.</p></div>
+          <div class="box"><span class="k">Entre entidades</span><h3>AANS</h3><p>Avisos entre entidades: valores que uma entidade envia ou recebe de outra. Detalhado no Módulo 6.</p></div>
+          <div class="box"><span class="k">Pessoal</span><h3>APS</h3><p>Folha de pagamento e Departamento Pessoal (DP).</p></div>
+        </div>
+      </section>
+
+      <!-- MÓDULO 2 -->
+      <section id="m2">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 2 · Atividades 2 e 3</span>
+          <h2>Plano de contas</h2>
+          <p class="why">Como as contas são organizadas, a natureza de cada grupo e os códigos de restrição usados pela IASD.</p>
+        </div>
+        <div class="prose">
+          <p><b>O que é:</b> uma lista organizada de todas as contas que a entidade usa para registrar suas movimentações. Cada conta tem um código, um nome, uma natureza e uma restrição.</p>
+          <p><b>Para que serve:</b> padronizar os registros, para que todos lancem do mesmo jeito e os relatórios (balanço, resultado) saiam corretos e comparáveis.</p>
+          <p><b>Pode ser o mesmo em todas as áreas?</b> Não. Existe uma estrutura básica padrão, mas o plano precisa ser adaptado à realidade de cada área. Uma escola, uma loja e uma clínica têm receitas e despesas diferentes.</p>
+        </div>
+
+        <h3>Os 4 grupos de contas</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Começa com</th><th>Grupo</th><th>Natureza</th><th>Restrição</th><th>Tipo</th></tr></thead>
+          <tbody>
+            <tr><td class="code">1</td><td><b>Ativo</b> (bens e direitos)</td><td class="nat-d">Devedora</td><td class="code">0A</td><td>Patrimonial</td></tr>
+            <tr><td class="code">2</td><td><b>Passivo</b> (obrigações e patrimônio social)</td><td class="nat-c">Credora</td><td class="code">0A</td><td>Patrimonial</td></tr>
+            <tr><td class="code">3</td><td><b>Receita</b></td><td class="nat-c">Credora</td><td class="code">1 ou 2</td><td>Resultado</td></tr>
+            <tr><td class="code">4</td><td><b>Despesa</b></td><td class="nat-d">Devedora</td><td class="code">0E</td><td>Resultado</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Códigos de restrição</h3>
+        <div class="pair">
+          <div class="box"><span class="k">Restrição 0A</span><h3>Ativo e Passivo</h3><p>Usada nas contas patrimoniais (grupos 1 e 2).</p></div>
+          <div class="box"><span class="k">Restrição 0E</span><h3>Despesas</h3><p>Usada nas contas de despesa (grupo 4).</p></div>
+          <div class="box"><span class="k">Restrição 1</span><h3>Receita de dízimo</h3><p>Receita (grupo 3) que vem de dízimo.</p></div>
+          <div class="box"><span class="k">Restrição 2</span><h3>Receita não dízimo</h3><p>Qualquer outra receita (grupo 3): ofertas, vendas, mensalidades, rendimentos.</p></div>
+        </div>
+        <div class="tip"><b>Para decorar</b><span class="mono">0A</span> = <b>A</b>tivo e P<b>a</b>ssivo · <span class="mono">0E</span> = d<b>E</b>spesa · Receita é a única com número puro: <span class="mono">1</span> é dízimo (o primeiro, o mais importante), <span class="mono">2</span> é todo o resto.</div>
+        <div class="tip"><b>Natureza em uma frase</b>Ativo e Despesa aumentam a <b>débito</b>. Passivo e Receita aumentam a <b>crédito</b>. Pense no par "A-D" (Ativo/Despesa = Devedora).</div>
+
+        <h3>Patrimoniais × Resultado</h3>
+        <div class="pair">
+          <div class="box"><span class="k">Grupos 1 e 2</span><h3>Contas patrimoniais</h3><p>Mostram a situação da entidade num momento: bens, direitos e obrigações. Formam o <b>Balanço Patrimonial</b> e o saldo passa de um ano para o outro.</p></div>
+          <div class="box"><span class="k">Grupos 3 e 4</span><h3>Contas de resultado</h3><p>Mostram o desempenho do período: receitas e despesas. Formam a <b>demonstração do resultado</b> (superávit ou déficit) e são zeradas no encerramento do exercício.</p></div>
+        </div>
+
+        <h3>Sintéticas × Analíticas</h3>
+        <div class="pair">
+          <div class="box"><span class="k">Agrupam</span><h3>Contas sintéticas</h3><p>Contas "mãe", de nível superior, que somam o saldo das contas abaixo delas. <b>Não recebem lançamentos</b>. Ex.: Ativo Circulante.</p></div>
+          <div class="box"><span class="k">Recebem lançamentos</span><h3>Contas analíticas</h3><p>Contas do último nível, onde os lançamentos são feitos de fato. Ex.: <span class="mono">1139008</span> Cartões de Crédito/Débito a Receber.</p></div>
+        </div>
+      </section>
+
+      <!-- MÓDULO 3 -->
+      <section id="m3">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 3 · Atividade 3</span>
+          <h2>Departamentos e subcontas</h2>
+          <p class="why">Duas formas de detalhar a informação: departamento diz <i>onde</i> o dinheiro foi usado; subconta diz <i>com quem</i> ou <i>do quê</i>.</p>
+        </div>
+        <div class="prose">
+          <p><b>Departamento:</b> divide os lançamentos por setor, para que o balanço se aproxime ao máximo da realidade da entidade. Mostra onde a entidade está gastando mais e qual área traz mais retorno. Também é a base do controle de orçamento.</p>
+          <p><b>Subconta:</b> uma subdivisão dentro de uma conta do plano. Em vez de juntar tudo num valor só, cada fornecedor, cliente ou item ganha sua subconta. Assim dá para ver rapidamente a quem pertence cada valor.</p>
+        </div>
+
+        <h3>Raízes de departamento por diretoria (exemplo da FAP)</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Raiz</th><th>Diretoria</th><th>Departamento de exemplo</th></tr></thead>
+          <tbody>
+            <tr><td class="code">1240</td><td>Diretoria Geral</td><td><span class="mono">1240001</span> Lavanderia</td></tr>
+            <tr><td class="code">1241</td><td>Diretoria Administrativa Financeira</td><td><span class="mono">1241001</span> Almoxarifado</td></tr>
+            <tr><td class="code">1242</td><td>Diretoria Acadêmica</td><td><span class="mono">1242001</span> Coordenação da FAP</td></tr>
+            <tr><td class="code">1243</td><td>Diretoria Pós-Graduação</td><td><span class="mono">1243001</span> Identidade Adventista</td></tr>
+            <tr><td class="code">1244</td><td>Diretoria SALT</td><td><span class="mono">1244001</span> Coordenação do SALT</td></tr>
+            <tr><td class="code">1245</td><td>Diretoria Educação Básica</td><td><span class="mono">1245001</span> Coordenação Educação Básica</td></tr>
+            <tr><td class="code">1246</td><td>Diretoria Assuntos Estudantis</td><td><span class="mono">1246001</span> Residencial Masculino</td></tr>
+            <tr><td class="code">1247</td><td>Diretoria ESARTE</td><td><span class="mono">1247001</span> ESARTE Salas de Aula</td></tr>
+          </tbody>
+        </table></div>
+        <div class="tip"><b>Como ler o código</b><span class="mono">1246</span> é a raiz (Diretoria Assuntos Estudantis) e <span class="mono">001</span> é o número do departamento dentro dela. Então <span class="mono">1246001</span> = 1º departamento da Diretoria Assuntos Estudantis.</div>
+
+        <h3>Contas que usam subconta</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Grupo</th><th>Conta</th><th>A subconta separa por</th></tr></thead>
+          <tbody>
+            <tr><td>Ativo</td><td>Adiantamento a Fornecedores / Clientes a Receber</td><td>Cada fornecedor ou cliente</td></tr>
+            <tr><td>Passivo</td><td>Fornecedores a Pagar</td><td>Cada fornecedor</td></tr>
+            <tr><td>Receita</td><td>Rendimentos sobre Aplicações</td><td>Cada aplicação / banco</td></tr>
+            <tr><td>Despesa</td><td>Material de Consumo</td><td>Cada tipo de material</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- MÓDULO 4 -->
+      <section id="m4">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 4 · Atividade 4</span>
+          <h2>Ativo imobilizado</h2>
+          <p class="why">Quando uma compra vira patrimônio em vez de despesa.</p>
+        </div>
+        <div class="prose">
+          <p><b>O que é:</b> o conjunto de bens físicos e duráveis que a entidade usa para realizar sua operação, com vida útil maior que um período (mais de um exercício). Ex.: prédios, veículos, computadores, móveis.</p>
+        </div>
+        <h3>Quando imobilizar um bem: 3 critérios</h3>
+        <div class="pair">
+          <div class="box"><span class="k">1</span><h3>Valor considerável</h3><p>O bem tem valor relevante. Itens baratos vão direto para despesa.</p></div>
+          <div class="box"><span class="k">2</span><h3>Uso na atividade</h3><p>É usado para realizar as atividades da entidade, não para revenda.</p></div>
+          <div class="box"><span class="k">3</span><h3>Controle</h3><p>A entidade precisa controlar o bem (patrimônio, plaqueta, localização).</p></div>
+          <div class="box"><span class="k">+</span><h3>Vida útil</h3><p>Dura mais de um exercício. Por isso perde valor aos poucos pela <b>depreciação</b>.</p></div>
+        </div>
+        <div class="tip"><b>Na prova</b>Se perguntarem "imobilizado ou despesa?", passe pelos critérios: é durável (mais de 1 ano)? Tem valor relevante? É usado na operação? A entidade controla? Se sim para todos, é imobilizado.</div>
+      </section>
+
+      <!-- MÓDULO 5 -->
+      <section id="m5">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 5 · Atividade 5</span>
+          <h2>Movimentação de cartão</h2>
+          <p class="why">Toda venda no cartão se divide em três valores: bruto, taxa e líquido. Cada um vai para uma conta.</p>
+        </div>
+        <div class="tw"><table>
+          <thead><tr><th>Valor</th><th>O que é</th><th>Conta</th></tr></thead>
+          <tbody>
+            <tr><td><b>Bruto</b></td><td>O valor total da venda ou do serviço, que o cliente pagou.</td><td><span class="mono">2139090</span> Prestação de Contas a Pagar</td></tr>
+            <tr><td><b>Taxa</b> (despesa)</td><td>A comissão da operadora (Cielo, Vero…) pela intermediação do recebimento.</td><td><span class="mono">4121089</span> Comissão Operadoras Cartão de Crédito</td></tr>
+            <tr><td><b>Líquido</b></td><td>O que a entidade realmente vai receber: bruto menos a taxa.</td><td><span class="mono">1139008</span> Cartões de Crédito/Débito a Receber</td></tr>
+          </tbody>
+        </table></div>
+        <h3>Exemplo: venda de R$ 200,00 com taxa de 3%</h3>
+        <div class="ts">
+          <div class="t"><div class="tn"><code>1139008</code>Cartões a Receber</div><div class="tb"><div>194,00</div><div></div></div><div class="tl"><span>D</span><span>C</span></div></div>
+          <div class="t"><div class="tn"><code>4121089</code>Comissão Operadoras</div><div class="tb"><div>6,00</div><div></div></div><div class="tl"><span>D</span><span>C</span></div></div>
+          <div class="t"><div class="tn"><code>2139090</code>Prestação de Contas a Pagar</div><div class="tb"><div></div><div>200,00</div></div><div class="tl"><span>D</span><span>C</span></div></div>
+        </div>
+        <div class="tip"><b>Confira a soma</b>Débitos 194,00 + 6,00 = 200,00 = Crédito. Líquido + taxa sempre fecha com o bruto.</div>
+        <div class="tip"><b>Para controlar o "a receber"</b>Cada valor líquido precisa de 3 informações: <b>data da venda</b>, <b>Doc/NSU</b> (número do comprovante) e <b>data de vencimento</b> (quando a operadora vai pagar).</div>
+      </section>
+
+      <!-- MÓDULO 6 -->
+      <section id="m6">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 6 · Atividade 6</span>
+          <h2>Avisos entre entidades (AANS)</h2>
+          <p class="why">Quando um lançamento envolve duas entidades da igreja, uma parte fica em cada uma. O aviso leva essa parte de uma para a outra.</p>
+        </div>
+        <div class="prose">
+          <p><b>Transitar um aviso:</b> concluir uma operação contábil transferindo uma das partidas (o débito ou o crédito) para outra entidade. A operação começa numa entidade e termina na outra.</p>
+          <p><b>Sistema:</b> <b>AANS</b>.</p>
+        </div>
+        <h3>As duas contas dos avisos</h3>
+        <div class="pair">
+          <div class="box"><span class="k mono">1136001</span><h3>Entidades Internas a Receber</h3><p>Valores com entidades que têm a <b>mesma raiz do CNPJ</b>.</p></div>
+          <div class="box"><span class="k mono">1136010</span><h3>Entidades Congêneres a Receber</h3><p>Valores com entidades que têm <b>raiz do CNPJ diferente</b>.</p></div>
+        </div>
+        <div class="tip"><b>Como saber qual usar</b>A raiz do CNPJ são os 8 primeiros dígitos (antes da barra). Raiz igual = <b>Internas</b> (<span class="mono">1136001</span>). Raiz diferente = <b>Congêneres</b> (<span class="mono">1136010</span>).</div>
+
+        <h3>Enviar × Receber</h3>
+        <div class="pair">
+          <div class="box"><span class="k">Origem</span><h3>Aviso a enviar</h3><p>A operação parte da <b>minha</b> entidade e vai para outra.</p></div>
+          <div class="box"><span class="k">Destino</span><h3>Aviso a receber</h3><p>A operação vem de outra entidade e a <b>minha</b> é o destino.</p></div>
+        </div>
+        <h3>Os 2 tipos de aviso a receber</h3>
+        <div class="pair">
+          <div class="box"><h3>Transitório</h3><p>O valor só passa pela entidade e segue para outra.</p></div>
+          <div class="box"><h3>Não transitório</h3><p>A própria entidade é o destino final do valor.</p></div>
+        </div>
+
+        <h3>Avisos pendentes: quem faz o quê</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Função</th><th>Responsabilidade</th></tr></thead>
+          <tbody>
+            <tr><td><b>Contador</b></td><td>Revisar as informações fiscais dos documentos recebidos e conferir se batem com os valores enviados.</td></tr>
+            <tr><td><b>Tesoureiro</b></td><td>Cuidar da parte orçamentária: definir o departamento de destino do aviso, quando aplicável.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="tip"><b>Para decorar</b>Contador = <b>documento</b> (fiscal). Tesoureiro = <b>orçamento</b> (departamento).</div>
+      </section>
+
+      <!-- MÓDULO 7 -->
+      <section id="m7">
+        <div class="sec-head">
+          <span class="eyebrow">Módulo 7 · Atividades 7 e 8</span>
+          <h2>DRACMA: do documento ao pagamento</h2>
+          <p class="why">O sistema de pagamentos usado por todas as entidades. A prova costuma cobrar a ordem do fluxo e o significado de cada campo do cadastro.</p>
+        </div>
+        <h3>O fluxo, em ordem</h3>
+        <div class="flow">
+          <div class="st"><span class="n">1</span><b>Registro</b><p>Cadastra o documento: tipo, emitente, data, valor, finalidade, anexo em PDF, rateio e forma de pagamento.</p></div>
+          <div class="st"><span class="n">2</span><b>Aprovação</b><p>O responsável autoriza a despesa.</p></div>
+          <div class="st"><span class="n">3</span><b>Análise Fiscal</b><p>Confere os dados da nota e aplica as retenções de impostos.</p></div>
+          <div class="st"><span class="n">4</span><b>Análise Contábil</b><p>Define as contas de débito e crédito e confere se o lançamento fecha.</p></div>
+          <div class="st"><span class="n">5</span><b>Pagamento</b><p>Paga o beneficiário e dá baixa: débito no fornecedor, crédito no banco.</p></div>
+        </div>
+        <div class="tip"><b>Para decorar</b><b>R-A-F-C-P</b>: "<b>R</b>egistrei, <b>A</b>provaram, o <b>F</b>iscal e o <b>C</b>ontador conferiram, <b>P</b>aguei."</div>
+        <div class="tip"><b>Detalhe</b>Boletos, guias e faturas de consumo (água, luz) não passam pela análise fiscal, porque não são nota fiscal.</div>
+
+        <h3>Campos do cadastro de documento</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Campo</th><th>O que é / regra</th></tr></thead>
+          <tbody>
+            <tr><td><b>Tipo de documento</b></td><td>NF-e (nota de produto), NFS-e (nota de serviço), NFC-e (nota ao consumidor). Também há boletos, faturas, recibos.</td></tr>
+            <tr><td><b>Emitente</b></td><td>Quem emitiu o documento, ou seja, o <b>fornecedor</b>.</td></tr>
+            <tr><td><b>Data de emissão</b></td><td>A data que <b>consta no documento fiscal</b>. Não é a data da compra nem a do dia do lançamento.</td></tr>
+            <tr><td><b>Valor</b></td><td>Sempre o <b>valor total da nota</b>, mesmo que o pagamento seja maior ou menor (juros, desconto).</td></tr>
+            <tr><td><b>Finalidade</b></td><td>Complementa a informação: diz o que foi comprado, para quê e para quem. Ajuda o fiscal, o contador e o auditor a entender a despesa.</td></tr>
+            <tr><td><b>Anexo</b></td><td>Sempre em <b>PDF</b>. É o comprovante da despesa perante a <b>auditoria</b>.</td></tr>
+            <tr><td><b>Categoria de gasto</b></td><td>A natureza da despesa (material, serviço, viagem…). Direciona em que conta ela será registrada.</td></tr>
+            <tr><td><b>Centro de custo / função / departamento</b></td><td>Organiza a contabilidade pelo orçamento: mostra quanto cada departamento gastou.</td></tr>
+            <tr><td><b>Beneficiário</b></td><td>Quem <b>recebe o dinheiro</b>. Nem sempre é o emitente: se um funcionário pagou a despesa do próprio bolso, o beneficiário é ele (reembolso), não o fornecedor.</td></tr>
+            <tr><td><b>Forma de pagamento</b></td><td>PIX, TED, boleto (também depósito, cartão, entre outros).</td></tr>
+          </tbody>
+        </table></div>
+        <div class="tip"><b>Exemplo de finalidade bem escrita</b>"Locação – Condomínio – Tesouraria": o quê, a referência e o setor ou pessoa.</div>
+        <div class="tip"><b>Pegadinha clássica</b>Emitente ≠ Beneficiário. O emitente é sempre quem emitiu a nota; o beneficiário é quem recebe o pagamento. Na maioria das vezes são o mesmo, mas não automaticamente.</div>
+      </section>
+
+      <!-- FLASHCARDS -->
+      <section id="cartoes">
+        <div class="sec-head">
+          <span class="eyebrow">Revisão rápida</span>
+          <h2>Flashcards</h2>
+          <p class="why">Toque no cartão para ver a resposta. Use as setas do teclado ou os botões para passar.</p>
+        </div>
+        <div class="deck-bar" role="group" aria-label="Filtrar cartões" id="deckFilter"></div>
+        <button class="card" id="card" type="button" aria-live="polite">
+          <span class="side" id="cardSide">Pergunta</span>
+          <span class="q" id="cardQ"></span>
+          <span class="a" id="cardA" hidden></span>
+        </button>
+        <div class="deck-bar">
+          <button class="btn" id="prev" type="button">← Anterior</button>
+          <button class="btn primary" id="flip" type="button">Virar</button>
+          <button class="btn" id="next" type="button">Próximo →</button>
+          <button class="btn" id="shuffle" type="button">Embaralhar</button>
+          <span class="counter" id="counter"></span>
+        </div>
+      </section>
+
+      <!-- SIMULADO -->
+      <section id="simulado">
+        <div class="sec-head">
+          <span class="eyebrow">Teste</span>
+          <h2>Simulado</h2>
+          <p class="why">Questões no estilo da prova. Ao escolher uma alternativa, aparece a correção com a explicação.</p>
+        </div>
+        <div class="quiz" id="quiz"></div>
+        <div class="score">
+          <span>Acertos: <b id="sc">0</b> de <b id="tot">0</b> · respondidas <b id="ans">0</b></span>
+          <div class="bar" aria-hidden="true"><i id="scbar"></i></div>
+          <button class="btn" id="reset" type="button">Refazer</button>
+        </div>
+      </section>
+
+      <!-- VÉSPERA -->
+      <section id="vespera">
+        <div class="sec-head">
+          <span class="eyebrow">Checklist</span>
+          <h2>Véspera da prova</h2>
+          <p class="why">Marque o que você já sabe sem olhar. O que ficar em branco é o que revisar.</p>
+        </div>
+        <div class="list-check" id="checklist"></div>
+      </section>
+    </main>
+  </div>
+  <footer>Material de estudo montado a partir das Atividades 1 a 8 de Laboratório Contábil II (FAP, 2026).</footer>
+</div>
+
+<script>
+(function(){
+  const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+  /* ---------- FLASHCARDS ---------- */
+  const CARDS=[
+    ["Estrutura","Código da ASP","15 – Associação Sul Paranaense"],
+    ["Estrutura","Código da ANP","16 – Associação Norte Paranaense"],
+    ["Estrutura","Código da ACP","19 – Associação Central Paranaense"],
+    ["Estrutura","Código da AOP","20 – Associação Oeste Paranaense"],
+    ["Estrutura","Código da ANC","10 – Associação Norte Catarinense"],
+    ["Estrutura","Código da ASC","14 – Associação Sul Catarinense"],
+    ["Estrutura","Código da ASRS","12 – Associação Sul-Rio-Grandense"],
+    ["Estrutura","Código da ANRS","13 – Associação Norte Sul-Rio-Grandense"],
+    ["Estrutura","Código da ACRS","18 – Associação Central Sul-Rio-Grandense"],
+    ["Estrutura","Área 22","Educação"],["Estrutura","Área 11","Religiosa"],["Estrutura","Áreas 12 / 15","Lojas"],
+    ["Estrutura","Área 93","Igrejas"],["Estrutura","Área 24","Internatos"],["Estrutura","Área 51","CATRE"],
+    ["Estrutura","Área 25","ADRA"],["Estrutura","Área 13","SELS"],["Estrutura","Área 41","Clínicas"],
+    ["Estrutura","APS","Folha de pagamento e Departamento Pessoal"],
+    ["Estrutura","DRACMA","Financeiro / pagamentos (contas a pagar)"],
+    ["Estrutura","AANS","Avisos entre entidades"],
+    ["Estrutura","AASI","Sistema contábil"],
+    ["Plano de contas","Grupo 1","Ativo · natureza devedora · restrição 0A"],
+    ["Plano de contas","Grupo 2","Passivo · natureza credora · restrição 0A"],
+    ["Plano de contas","Grupo 3","Receita · natureza credora · restrição 1 (dízimo) ou 2 (não dízimo)"],
+    ["Plano de contas","Grupo 4","Despesa · natureza devedora · restrição 0E"],
+    ["Plano de contas","Restrição 0E","Contas de despesa"],
+    ["Plano de contas","Restrição 1","Receita de dízimo"],
+    ["Plano de contas","Restrição 2","Receita que não é dízimo"],
+    ["Plano de contas","Conta sintética","Agrupa outras contas e soma seus saldos. Não recebe lançamento."],
+    ["Plano de contas","Conta analítica","Último nível do plano. É onde se faz o lançamento."],
+    ["Plano de contas","Raiz 1246","Diretoria Assuntos Estudantis (ex.: 1246001 Residencial Masculino)"],
+    ["Plano de contas","Raiz 1241","Diretoria Administrativa Financeira (ex.: 1241001 Almoxarifado)"],
+    ["Operações","2139090","Prestação de Contas a Pagar (valor bruto do cartão)"],
+    ["Operações","4121089","Comissão Operadoras Cartão de Crédito (taxa)"],
+    ["Operações","1139008","Cartões de Crédito/Débito a Receber (valor líquido)"],
+    ["Operações","3 dados para controlar cartão a receber","Data da venda, Doc/NSU e data de vencimento"],
+    ["Operações","1136001","Entidades Internas a Receber – mesma raiz do CNPJ"],
+    ["Operações","1136010","Entidades Congêneres a Receber – raiz do CNPJ diferente"],
+    ["Operações","Transitar um aviso","Concluir uma operação transferindo uma das partidas para outra entidade"],
+    ["Operações","Tipos de aviso a receber","Transitório e não transitório"],
+    ["DRACMA","Fluxo do DRACMA","Registro → Aprovação → Análise Fiscal → Análise Contábil → Pagamento"],
+    ["DRACMA","Emitente","O fornecedor, quem emitiu o documento"],
+    ["DRACMA","Data de emissão","A que consta no documento fiscal"],
+    ["DRACMA","Valor a cadastrar","Sempre o valor total da nota"],
+    ["DRACMA","Formato do anexo","PDF – comprova a despesa perante a auditoria"],
+    ["DRACMA","Beneficiário","Quem recebe o dinheiro. Pode ser diferente do emitente (ex.: reembolso a quem pagou antes)"],
+    ["DRACMA","Centro de custo","Mostra quanto cada departamento gastou (orçamento)"]
+  ];
+  const cats=["Todos",...new Set(CARDS.map(c=>c[0]))];
+  let cat="Todos", order=[], idx=0, flipped=false;
+  const fEl=document.getElementById("deckFilter");
+  function build(){order=CARDS.map((c,i)=>i).filter(i=>cat==="Todos"||CARDS[i][0]===cat);idx=0;flipped=false;draw()}
+  function draw(){
+    fEl.innerHTML="";cats.forEach(c=>{const b=document.createElement("button");b.type="button";b.className="btn"+(c===cat?" on":"");b.textContent=c;b.setAttribute("aria-pressed",c===cat);b.onclick=()=>{cat=c;build()};fEl.appendChild(b)});
+    const c=CARDS[order[idx]];
+    document.getElementById("cardQ").textContent=c[1];
+    const a=document.getElementById("cardA");a.textContent=c[2];a.hidden=!flipped;
+    document.getElementById("cardSide").textContent=flipped?"Resposta · "+c[0]:"Pergunta · "+c[0];
+    document.getElementById("card").classList.toggle("flipped",flipped);
+    document.getElementById("counter").textContent=(idx+1)+" / "+order.length;
+  }
+  const flip=()=>{flipped=!flipped;draw()};
+  const move=d=>{idx=(idx+d+order.length)%order.length;flipped=false;draw()};
+  document.getElementById("card").onclick=flip;
+  document.getElementById("flip").onclick=flip;
+  document.getElementById("prev").onclick=()=>move(-1);
+  document.getElementById("next").onclick=()=>move(1);
+  document.getElementById("shuffle").onclick=()=>{for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}idx=0;flipped=false;draw()};
+  document.addEventListener("keydown",e=>{
+    const r=document.getElementById("cartoes").getBoundingClientRect();
+    if(r.top>window.innerHeight||r.bottom<0)return;
+    if(e.target.tagName==="INPUT")return;
+    if(e.key==="ArrowRight")move(1);else if(e.key==="ArrowLeft")move(-1);
+  });
+  build();
+
+  /* ---------- SIMULADO ---------- */
+  const Q=[
+    ["Qual é o código da Associação Norte Paranaense (ANP)?",["15","16","19","20"],1,"ANP = 16. No Paraná: ASP 15, ANP 16, ACP 19, AOP 20."],
+    ["Quantos campos da USB ficam no Rio Grande do Sul?",["2","3","4","9"],1,"Três: ASRS (12), ANRS (13) e ACRS (18)."],
+    ["Qual área da IASD tem dois códigos?",["Educação","ADRA","Lojas","Igrejas"],2,"Lojas usa 12 e 15."],
+    ["Qual sistema cuida da folha de pagamento?",["AASI","APS","AANS","DRACMA"],1,"APS = folha de pagamento e Departamento Pessoal."],
+    ["Uma conta que começa com 3 é:",["Ativo, devedora","Passivo, credora","Receita, credora","Despesa, devedora"],2,"Grupo 3 = Receita, natureza credora."],
+    ["A restrição 0E é usada em contas de:",["Ativo e Passivo","Receita de dízimo","Receita não dízimo","Despesa"],3,"0E = despesas. 0A = ativo e passivo. 1 e 2 = receitas."],
+    ["Uma oferta recebida (receita que não é dízimo) usa qual restrição?",["0A","1","2","0E"],2,"Restrição 2 = receita não dízimo. A 1 é só para dízimo."],
+    ["Sobre contas sintéticas, é correto afirmar:",["Recebem os lançamentos do dia a dia","Agrupam contas e não recebem lançamentos","São sempre de despesa","São o mesmo que subcontas"],1,"Sintéticas somam as contas abaixo delas. Quem recebe lançamento é a analítica."],
+    ["As contas de resultado:",["Compõem o Balanço e passam de um ano para outro","São receitas e despesas, zeradas no encerramento do exercício","São só as contas do Ativo","Não têm natureza"],1,"Resultado = grupos 3 e 4. Patrimoniais = grupos 1 e 2."],
+    ["O mesmo plano de contas deve ser usado igualzinho em todas as áreas?",["Sim, é obrigatório","Não, a base é padrão mas é adaptada a cada área","Sim, só muda o nome da entidade","Não existe plano padrão"],1,"Existe estrutura básica padrão, adaptada à realidade de cada área."],
+    ["O departamento 1246001 pertence a qual diretoria?",["Diretoria Geral","Diretoria Acadêmica","Diretoria Assuntos Estudantis","Diretoria SALT"],2,"Raiz 1246 = Diretoria Assuntos Estudantis (ex.: Residencial Masculino)."],
+    ["Qual é a principal finalidade de uma subconta?",["Substituir o departamento","Detalhar a conta (ex.: um fornecedor por subconta)","Zerar o saldo no fim do ano","Definir a restrição"],1,"A subconta detalha a conta principal para saber a quem pertence cada valor."],
+    ["Qual destes NÃO é critério para imobilizar um bem?",["Valor considerável","Uso nas atividades da entidade","Controle","Ser comprado para revenda"],3,"Bem para revenda é estoque, não imobilizado."],
+    ["Numa venda de R$ 200,00 no cartão com taxa de 3%, quanto vai para 1139008?",["R$ 200,00","R$ 206,00","R$ 194,00","R$ 6,00"],2,"1139008 recebe o líquido: 200 − 6 = 194."],
+    ["A taxa da operadora de cartão é registrada em:",["2139090 Prestação de Contas a Pagar","4121089 Comissão Operadoras Cartão de Crédito","1139008 Cartões a Receber","1136001 Entidades Internas a Receber"],1,"Taxa é despesa: 4121089."],
+    ["Para controlar o cartão a receber, são necessários:",["CNPJ e endereço da operadora","Data da venda, Doc/NSU e data de vencimento","Só o valor bruto","Nome do cliente e telefone"],1,"Data da venda, Doc/NSU e vencimento."],
+    ["\"Transitar um aviso\" significa:",["Cancelar um pagamento","Concluir a operação transferindo uma das partidas para outra entidade","Mudar a conta de despesa","Aprovar um documento no DRACMA"],1,"Uma partida fica na minha entidade, a outra vai para a entidade de destino."],
+    ["Um aviso a receber de uma entidade com raiz do CNPJ diferente da minha vai para qual conta?",["1136001 Entidades Internas a Receber","1136010 Entidades Congêneres a Receber","1139008 Cartões a Receber","2139090 Prestação de Contas a Pagar"],1,"Raiz diferente = Congêneres (1136010). Mesma raiz = Internas (1136001)."],
+    ["Qual sistema movimenta os avisos entre entidades?",["AANS","APS","AASI","DRACMA"],0,"AANS = avisos entre entidades."],
+    ["Nos avisos pendentes, cabe ao tesoureiro:",["Revisar as informações fiscais","A parte orçamentária e o departamento de destino","Emitir a nota fiscal","Fazer a folha"],1,"Tesoureiro = orçamento/departamento. Contador = parte fiscal."],
+    ["Qual é a ordem correta do fluxo do DRACMA?",["Registro → Análise Fiscal → Aprovação → Pagamento → Análise Contábil","Registro → Aprovação → Análise Fiscal → Análise Contábil → Pagamento","Aprovação → Registro → Análise Contábil → Análise Fiscal → Pagamento","Registro → Pagamento → Aprovação → Análise Contábil → Análise Fiscal"],1,"R-A-F-C-P: Registro, Aprovação, Fiscal, Contábil, Pagamento."],
+    ["No DRACMA, a data de emissão a cadastrar é:",["A data em que estou lançando","A data da compra","A data que consta no documento fiscal","A data do pagamento"],2,"Sempre a data impressa no documento fiscal."],
+    ["A nota é de R$ 1.000,00, mas vou pagar R$ 980,00 com desconto. Qual valor cadastro no DRACMA?",["R$ 980,00","R$ 1.000,00","R$ 20,00","Tanto faz"],1,"Sempre o valor total da nota."],
+    ["Um professor pagou um material do próprio bolso e pediu reembolso. Quem é o beneficiário?",["A loja que emitiu a nota","O professor","A operadora do cartão","A Associação"],1,"Beneficiário é quem recebe o dinheiro. Aqui, o professor. O emitente continua sendo a loja."],
+    ["Em que formato deve estar o anexo no DRACMA e para que serve?",["JPG, para o tesoureiro","PDF, para comprovar a despesa perante a auditoria","Word, para editar depois","Qualquer formato, só como registro"],1,"PDF, como comprovante para a auditoria."],
+    ["NFS-e é a nota fiscal de:",["Produto","Serviço","Consumidor","Importação"],1,"NF-e = produto, NFS-e = serviço, NFC-e = consumidor."]
+  ];
+  const quiz=document.getElementById("quiz");
+  let answers=store.get("lc2-quiz",{});
+  function renderQuiz(){
+    quiz.innerHTML="";
+    Q.forEach((q,i)=>{
+      const d=document.createElement("div");d.className="qitem";
+      d.innerHTML='<span class="qn">Questão '+String(i+1).padStart(2,"0")+'</span><div class="qt"></div><div class="opts"></div>';
+      d.querySelector(".qt").textContent=q[0];
+      const opts=d.querySelector(".opts");
+      const picked=answers[i];
+      q[1].forEach((o,j)=>{
+        const b=document.createElement("button");b.type="button";b.className="opt";b.id="q"+i+"o"+j;
+        b.innerHTML='<span class="l">'+"abcd"[j]+')</span><span></span>';b.lastChild.textContent=o;
+        if(picked!==undefined){b.disabled=true;if(j===q[2])b.classList.add("right");else if(j===picked)b.classList.add("wrong")}
+        b.onclick=()=>{answers[i]=j;store.set("lc2-quiz",answers);renderQuiz()};
+        opts.appendChild(b);
+      });
+      if(picked!==undefined){const e=document.createElement("p");e.className="expl";e.textContent=(picked===q[2]?"Correto. ":"Resposta certa: "+"abcd"[q[2]]+"). ")+q[3];d.appendChild(e)}
+      quiz.appendChild(d);
+    });
+    const done=Object.keys(answers).length, ok=Object.keys(answers).filter(k=>answers[k]===Q[k][2]).length;
+    document.getElementById("sc").textContent=ok;document.getElementById("tot").textContent=Q.length;document.getElementById("ans").textContent=done;
+    document.getElementById("scbar").style.width=(ok/Q.length*100)+"%";
+  }
+  document.getElementById("reset").onclick=()=>{answers={};store.set("lc2-quiz",answers);renderQuiz();document.getElementById("simulado").scrollIntoView({behavior:"smooth"})};
+  renderQuiz();
+
+  /* ---------- CHECKLIST ---------- */
+  const CL=["Sei os 9 campos da USB com os códigos","Sei as 9 áreas da IASD com os códigos","Sei para que serve cada sistema: APS, DRACMA, AANS, AASI","Sei grupo, natureza e restrição das contas 1, 2, 3 e 4","Explico patrimoniais × resultado e sintéticas × analíticas","Sei o que é departamento e subconta, com exemplos","Sei os critérios para imobilizar um bem","Monto o lançamento de cartão (bruto, taxa, líquido) com as 3 contas","Explico o que é transitar um aviso e quando usar 1136001 (mesma raiz de CNPJ) ou 1136010 (raiz diferente)","Sei a ordem do fluxo do DRACMA","Sei a regra de cada campo do cadastro no DRACMA (emitente, data, valor, finalidade, anexo, beneficiário)"];
+  const ck=store.get("lc2-check",{});
+  const cEl=document.getElementById("checklist");
+  CL.forEach((t,i)=>{const l=document.createElement("label");l.innerHTML='<input type="checkbox" id="ck'+i+'"><span></span>';l.lastChild.textContent=t;const inp=l.firstChild;inp.checked=!!ck[i];inp.onchange=()=>{ck[i]=inp.checked;store.set("lc2-check",ck)};cEl.appendChild(l)});
+})();
+</script>
+</body>
+</html>
