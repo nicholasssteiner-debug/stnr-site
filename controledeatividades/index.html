@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Atividades 2026</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#ffffff; --ink:#1e293b; --muted:#64748b;
+    --line:#e2e8f0; --accent:#2563eb; --green:#16a34a; --greenbg:#dcfce7;
+    --amber:#d97706; --amberbg:#fef3c7; --red:#dc2626; --rowhead:#f1f5f9;
+    --section:#eef2ff; --sectionink:#3730a3;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"Segoe UI",Arial,sans-serif; color:var(--ink);
+    background:linear-gradient(160deg,#1e293b,#0f172a); min-height:100vh; padding:24px;
+  }
+  .wrap{max-width:1280px; margin:0 auto}
+  h1{color:#fff; font-size:22px; margin:0 0 2px}
+  .sub{color:#94a3b8; font-size:13px; margin:0 0 18px}
+  .badge{display:inline-block; margin-left:8px; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:700; vertical-align:middle}
+  .badge.off{background:#334155; color:#94a3b8}
+  .badge.sync{background:#052e16; color:#4ade80}
+  .badge.wait{background:#422006; color:#fbbf24}
+  .badge.err{background:#450a0a; color:#f87171}
+
+  .card{background:var(--panel); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:18px; margin-bottom:18px}
+
+  /* Painel de resumo */
+  .summary{display:flex; flex-wrap:wrap; gap:14px; align-items:center}
+  .kpi{flex:1 1 150px; background:var(--rowhead); border-radius:10px; padding:12px 14px}
+  .kpi b{display:block; font-size:26px; line-height:1}
+  .kpi span{font-size:12px; color:var(--muted)}
+  .bar{flex:2 1 320px}
+  .bar .track{height:14px; background:var(--line); border-radius:99px; overflow:hidden}
+  .bar .fill{height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); width:0%; transition:width .3s}
+  .bar .lbl{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px}
+
+  /* Toolbar */
+  .tools{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .tools .grow{flex:1}
+  button{font-family:inherit; font-size:13px; cursor:pointer; border:1px solid var(--line);
+    background:#fff; color:var(--ink); padding:8px 12px; border-radius:8px; transition:.15s}
+  button:hover{background:var(--rowhead)}
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+  button.primary:hover{filter:brightness(1.08)}
+  button.danger{color:var(--red); border-color:#fecaca}
+  button.danger:hover{background:#fef2f2}
+  select,input[type=text]{font-family:inherit; font-size:13px; padding:8px 10px; border:1px solid var(--line); border-radius:8px}
+
+  /* Tabela */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px}
+  table{border-collapse:collapse; width:100%; font-size:13px; min-width:900px}
+  th,td{border:1px solid var(--line); padding:0; text-align:center}
+  thead th{position:sticky; top:0; background:var(--rowhead); z-index:2; padding:8px 6px; font-weight:600}
+  th.act,td.act{text-align:left; padding:6px 10px; min-width:230px; position:sticky; left:0; background:#fff; z-index:1}
+  thead th.act{z-index:3; background:var(--rowhead)}
+  tr.section td{background:var(--section); color:var(--sectionink); font-weight:700; text-align:left; padding:6px 10px; letter-spacing:.02em}
+  td.act .name{cursor:text}
+  td.act .del{float:right; border:none; background:none; color:#cbd5e1; padding:0 4px; font-size:15px}
+  td.act .del:hover{color:var(--red)}
+  .grip{float:right; margin-left:6px; color:#cbd5e1; cursor:grab; font-size:15px; line-height:1; user-select:none; letter-spacing:-2px}
+  .grip:hover{color:var(--accent)}
+  tr.dragging{opacity:.45}
+  tr.dragging .grip{cursor:grabbing}
+  tr.drop-before td{box-shadow:inset 0 3px 0 var(--accent)}
+  tr.drop-after td{box-shadow:inset 0 -3px 0 var(--accent)}
+  tr:hover td.act{background:#f8fafc}
+
+  /* Células de marcação */
+  td.cell{cursor:pointer; user-select:none; font-size:16px; font-weight:700; height:34px; width:56px}
+  td.cell:hover{outline:2px solid var(--accent); outline-offset:-2px}
+  td.cell.done{background:var(--greenbg); color:var(--green)}
+  td.cell.na{background:#f1f5f9; color:#94a3b8}
+  td.rowpct{font-weight:700; color:var(--muted); background:#fafafa; min-width:52px}
+  td.rowpct.full{color:var(--green)}
+
+  tfoot td{background:var(--rowhead); font-weight:700; font-size:12px}
+  tfoot td.act{text-align:right}
+  .mini{font-size:10px; color:var(--muted); font-weight:600}
+
+  .hint{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5}
+  .hint b{color:var(--ink)}
+  .legend{display:inline-flex; gap:14px; flex-wrap:wrap; margin-top:6px}
+  .legend span{display:inline-flex; align-items:center; gap:5px}
+  .chip{width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid var(--line)}
+  .chip.done{background:var(--greenbg)} .chip.na{background:#f1f5f9} .chip.pend{background:#fff}
+  /* Abas */
+  .tabs{display:flex; gap:6px; margin:0 0 14px}
+  .tab{background:#1e293b; color:#cbd5e1; border:1px solid #334155; padding:9px 16px; border-radius:10px; font-weight:600}
+  .tab:hover{background:#334155}
+  .tab.on, .tab.on:hover{background:#fff; color:var(--ink); border-color:#fff}
+
+  /* Agenda */
+  .note{background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; border-radius:10px; padding:10px 14px; font-size:12.5px; line-height:1.55; margin-bottom:12px}
+  .note input{font-family:inherit; font-size:12.5px; padding:5px 8px; border:1px solid #bfdbfe; border-radius:6px; min-width:260px}
+  #agTable{min-width:1180px}
+  #agTable thead th{font-size:12px}
+  #agTable td{padding:5px 6px; text-align:left; vertical-align:top}
+  #agTable td.act{padding:6px 10px}
+  #agTable input, #agTable select, #agTable textarea{font-family:inherit; font-size:12px; padding:5px 6px; border:1px solid var(--line); border-radius:6px; width:100%; background:#fff}
+  #agTable input:disabled, #agTable select:disabled{background:#f1f5f9; color:#94a3b8}
+  #agTable textarea{resize:vertical; height:30px; min-height:30px; transition:height .15s}
+  #agTable textarea:focus{height:96px}
+  .everyN{display:flex; align-items:center; gap:4px}
+  .everyN input{width:48px !important}
+  .everyN span{font-size:11px; color:var(--muted)}
+  .resumo{font-size:11px; color:var(--muted); margin-top:3px; font-weight:400}
+  .resumo.warn{color:var(--amber)}
+  .st{display:block; font-size:11px; font-weight:700; margin-top:4px}
+  .st.ok{color:var(--green)} .st.alt{color:var(--amber)}
+  button.gcal{white-space:nowrap; padding:6px 10px; font-size:12px; width:100%}
+  /* Calendário */
+  .calHead{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .calHead h2{margin:0 8px; font-size:18px; min-width:170px; text-align:center}
+  .calHead label{font-size:12.5px; color:var(--muted); display:inline-flex; gap:5px; align-items:center}
+  .cal{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border-top:1px solid var(--line); border-left:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .cal .dow{background:var(--rowhead); font-size:12px; font-weight:600; text-align:center; padding:7px 0; border-right:1px solid var(--line); border-bottom:1px solid var(--line)}
+  .cal .day{min-height:104px; padding:4px 5px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); cursor:pointer; position:relative; min-width:0}
+  .cal .day:hover{background:#f8fafc}
+  .cal .day.out{background:#fafafa; color:#cbd5e1}
+  .cal .day.wknd{background:#fcfcfd}
+  .cal .day .num{font-size:12px; font-weight:700; display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; border-radius:50%}
+  .cal .day.today .num{background:var(--accent); color:#fff}
+  .ferNome{font-size:10.5px; color:var(--red); font-weight:600; margin-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; max-width:calc(100% - 30px); vertical-align:middle}
+  .cal .day.out .ferNome{color:#fca5a5}
+  .chip2{display:block; font-size:11px; line-height:1.3; padding:2px 5px; margin-top:3px; border-radius:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .chip2.av{background:#dbeafe; color:#1e40af; border-left:3px solid var(--accent)}
+  .chip2.av.feito{background:var(--greenbg); color:var(--green); border-left-color:var(--green); text-decoration:line-through}
+  .chip2.rec{background:var(--section); color:var(--sectionink)}
+  .calLeg{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-top:10px}
+  .calLeg i{display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:4px}
+
+  /* Janela da tarefa avulsa */
+  .modalBg{position:fixed; inset:0; background:rgba(15,23,42,.55); display:none; align-items:center; justify-content:center; z-index:50; padding:16px}
+  .modalBg.on{display:flex}
+  .modal{background:#fff; border-radius:14px; width:min(520px,100%); max-height:92vh; overflow:auto; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .modal h3{margin:0 0 12px; font-size:17px}
+  .modal .grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+  .modal label{display:block; font-size:12px; color:var(--muted); font-weight:600}
+  .modal input, .modal select, .modal textarea{display:block; width:100%; margin-top:3px; font-family:inherit; font-size:13px; padding:7px 9px; border:1px solid var(--line); border-radius:8px}
+  .modal textarea{height:90px; resize:vertical}
+  .modal .full{grid-column:1/-1}
+  .chip2.rec.feito{background:var(--greenbg); color:var(--green); text-decoration:line-through}
+  .chip2.atr{background:var(--amberbg); color:#92400e; border-left:3px solid var(--amber)}
+  .ferItem{display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-bottom:1px solid var(--line)}
+  .ferItem.fixo{color:var(--muted)}
+  .ferItem button{border:none; background:none; color:var(--red); padding:0 4px}
+  .modal .chk{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ink)}
+  .modal .chk input{width:auto; margin:0}
+  .modal .acts{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
+  .modal .acts .grow{flex:1}
+  @media print{body{background:#fff;padding:0} .tools,.hint,.toolsrow,.tabs{display:none} .card{box-shadow:none}}
+</style>
+</head>
+<body>
+<!-- ===== Login (só na versão publicada) ===== -->
+<style>
+  html.locked body > .wrap{display:none}
+  #loginGate{display:none; min-height:calc(100vh - 48px); align-items:center; justify-content:center}
+  html.locked #loginGate{display:flex}
+  #loginGate form{background:#fff; border-radius:16px; padding:28px; width:min(360px,100%); box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  #loginGate h2{margin:0 0 4px; font-size:20px}
+  #loginGate p{margin:0 0 18px; color:#64748b; font-size:13px}
+  #loginGate label{display:block; font-size:12px; font-weight:600; color:#64748b; margin-top:12px}
+  #loginGate input{display:block; width:100%; margin-top:4px; font-size:15px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-family:inherit}
+  #loginGate .lembrar{display:flex; align-items:center; gap:6px; font-weight:400; color:#1e293b; font-size:13px}
+  #loginGate .lembrar input{width:auto; margin:0}
+  #loginGate button{width:100%; margin-top:18px; padding:11px; font-size:15px; background:#2563eb; color:#fff; border:none; border-radius:10px; cursor:pointer}
+  #loginErro{color:#dc2626; font-size:13px; min-height:18px; margin-top:10px}
+  #btnSair{position:fixed; top:14px; right:16px; z-index:40; background:#1e293b; color:#cbd5e1; border:1px solid #334155; font-size:12px; padding:6px 12px; border-radius:8px; cursor:pointer}
+  html.locked #btnSair{display:none}
+</style>
+<div id="loginGate">
+  <form onsubmit="return ctrlLogin(event)">
+    <h2>✅ Controle de Atividades</h2>
+    <p>Entre para continuar.</p>
+    <label>Usuário<input type="text" id="lgUser" autocomplete="username" autocapitalize="none" required></label>
+    <label>Senha<input type="password" id="lgPass" autocomplete="current-password" required></label>
+    <label class="lembrar"><input type="checkbox" id="lgLembrar" checked> Manter conectado neste aparelho</label>
+    <button type="submit">Entrar</button>
+    <div id="loginErro"></div>
+  </form>
+</div>
+<button id="btnSair" onclick="ctrlSair()">Sair</button>
+<script>
+(function(){
+  var H="9bdf56522c5696013a776a7714577146a4b59db21fc292852a7461d0f6c3883d", K="ctrlAtivLogin";
+  function lido(){try{return localStorage.getItem(K)===H||sessionStorage.getItem(K)===H;}catch(e){return false;}}
+  if(!lido())document.documentElement.classList.add("locked");
+  window.ctrlLogin=function(ev){
+    ev.preventDefault();
+    var u=document.getElementById("lgUser").value.trim().toLowerCase(), s=document.getElementById("lgPass").value;
+    crypto.subtle.digest("SHA-256",new TextEncoder().encode(u+":"+s)).then(function(buf){
+      var h=Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join("");
+      if(h===H){
+        try{(document.getElementById("lgLembrar").checked?localStorage:sessionStorage).setItem(K,H);}catch(e){}
+        document.documentElement.classList.remove("locked");
+        document.getElementById("lgPass").value="";
+      }else{
+        document.getElementById("loginErro").textContent="Usuário ou senha incorretos.";
+        document.getElementById("lgPass").value="";
+      }
+    });
+    return false;
+  };
+  window.ctrlSair=function(){
+    try{localStorage.removeItem(K);sessionStorage.removeItem(K);}catch(e){}
+    document.getElementById("loginErro").textContent="";
+    document.documentElement.classList.add("locked");
+  };
+})();
+</script>
+
+<div class="wrap">
+  <h1>✅ Controle de Atividades — 2026</h1>
+  <p class="sub">Fechamento contábil · marque cada atividade conforme for concluindo no mês.
+    <span id="syncBadge" class="badge off">● Local</span></p>
+
+  <div class="tabs">
+    <button class="tab on" id="tabBtnControle" onclick="showTab('controle')">✅ Controle mensal</button>
+    <button class="tab" id="tabBtnAgenda" onclick="showTab('agenda')">🔁 Agenda (recorrentes)</button>
+    <button class="tab" id="tabBtnCal" onclick="showTab('cal')">🗓 Calendário</button>
+  </div>
+
+  <!-- ===== ABA CALENDÁRIO ===== -->
+  <div id="tabCal" style="display:none">
+    <div class="card">
+      <div class="calHead">
+        <button onclick="calMove(-1)">‹</button>
+        <h2 id="calTitle"></h2>
+        <button onclick="calMove(1)">›</button>
+        <button onclick="calHoje()">Hoje</button>
+        <span class="grow" style="flex:1"></span>
+        <label><input type="checkbox" id="calRec" checked onchange="renderCal()"> Mostrar recorrentes</label>
+        <button onclick="ferAbrir()">🎌 Feriados</button>
+        <button class="primary" onclick="avNova()">＋ Tarefa avulsa</button>
+      </div>
+      <div class="cal" id="calGrid"></div>
+      <div class="calLeg">
+        <span><i style="background:#dbeafe;border-left:3px solid #2563eb"></i>Avulsa</span>
+        <span><i style="background:#dcfce7"></i>Avulsa concluída</span>
+        <span><i style="background:#eef2ff"></i>Recorrente (aba Agenda)</span>
+        <span>↪ = atrasada, passou para o próximo dia útil</span>
+      </div>
+      <div class="hint">Clique num <b>dia</b> para lançar uma tarefa avulsa nele. Clique numa tarefa para editar, marcar como concluída ou criar no Google Agenda.<br>
+        Tarefa não concluída passa sozinha para o próximo dia útil até você marcar como concluída. Recorrente concluída = marcada no <b>Controle mensal</b> daquele mês.</div>
+    </div>
+  </div>
+
+  <div class="modalBg" id="ferBg" onclick="if(event.target===this)ferFechar()">
+    <div class="modal">
+      <h3>🎌 Feriados</h3>
+      <div class="hint" style="margin:0 0 10px">Os nacionais entram sempre, inclusive a Sexta-feira Santa. Feriado não conta como dia útil.</div>
+      <label class="chk"><input type="checkbox" id="ferCarnaval" onchange="ferSet('carnaval',this.checked)"> Carnaval (segunda e terça)</label>
+      <label class="chk" style="margin-top:6px"><input type="checkbox" id="ferCorpus" onchange="ferSet('corpus',this.checked)"> Corpus Christi</label>
+      <h3 style="font-size:14px;margin:16px 0 8px">Cadastrar feriado</h3>
+      <div class="grid">
+        <label>Data<input type="date" id="ferData"></label>
+        <label style="grid-column:span 2">Nome<input type="text" id="ferNomeIn" placeholder="ex.: Aniversário da cidade"></label>
+        <label class="chk full"><input type="checkbox" id="ferAnual" checked> Repete todo ano</label>
+      </div>
+      <div class="acts" style="margin-top:8px"><button class="primary" onclick="ferAdd()">＋ Cadastrar</button></div>
+      <div id="ferLista" style="margin-top:12px;font-size:13px;max-height:260px;overflow:auto"></div>
+      <div class="acts"><span class="grow"></span><button onclick="ferFechar()">Fechar</button></div>
+    </div>
+  </div>
+
+  <div class="modalBg" id="recBg" onclick="if(event.target===this)recFechar()">
+    <div class="modal">
+      <h3 id="recTitulo"></h3>
+      <div id="recInfo" style="font-size:13px;line-height:1.6;color:var(--muted)"></div>
+      <div class="acts">
+        <button onclick="recFechar();showTab('agenda')">✏ Editar na Agenda</button>
+        <span class="grow"></span>
+        <button onclick="recFechar()">Fechar</button>
+        <button class="primary" id="recBtn" onclick="recMarcar()"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modalBg" id="avBg" onclick="if(event.target===this)avFechar()">
+    <div class="modal">
+      <h3 id="avTitulo">Tarefa avulsa</h3>
+      <div class="grid">
+        <label class="full">Tarefa<input type="text" id="avNome" placeholder="O que precisa ser feito"></label>
+        <label>Data<input type="date" id="avData"></label>
+        <label>Horário<input type="time" id="avHora" title="Vazio = dia inteiro"></label>
+        <label>Duração<select id="avDur"></select></label>
+        <label class="full">Como fazer<textarea id="avComo" placeholder="Quem pediu, passo a passo, onde fica o arquivo…"></textarea></label>
+        <label class="chk full"><input type="checkbox" id="avFeito"> Concluída</label>
+      </div>
+      <div class="acts">
+        <button class="danger" id="avDel" onclick="avExcluir()">🗑 Excluir</button>
+        <span class="grow"></span>
+        <button onclick="avFechar()">Cancelar</button>
+        <button onclick="avSalvar(true)">📅 Salvar e criar no Google</button>
+        <button class="primary" onclick="avSalvar(false)">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ABA AGENDA ===== -->
+  <div id="tabAgenda" style="display:none">
+    <div class="card">
+      <div class="note">
+        <b>Como funciona:</b> preencha a data de início, o horário, como fazer e se a tarefa se repete.
+        Depois clique em <b>📅 Criar no Google Agenda</b>. O Google abre o evento já preenchido, com a repetição. Confira e clique em <b>Salvar</b>.<br>
+        <b>Aviso por e-mail (uma vez só):</b> no Google Agenda, ⚙ Configurações → sua agenda → <i>Notificações de eventos</i> → adicione <b>E-mail</b> com a antecedência que quiser.
+        Também dá para mudar o aviso na tela do evento, antes de salvar.<br>
+        <b>Dia útil</b> = segunda a sexta, sem feriado.
+        <b>Fim de semana/feriado → dia útil</b> (mensal e anual): sábado vai para sexta, domingo para segunda e feriado para o dia útil mais próximo.<br>
+        O Google não conhece feriados nessas regras. Por isso, nas regras de dia útil e nas que têm esse ajuste, o botão baixa um arquivo com as próximas datas já calculadas, e você importa no Google Agenda.<br>
+        <b>Feriados:</b> cadastre no botão <b>🎌 Feriados</b> da aba Calendário.<br>
+        Conta do Google Agenda: <input type="text" id="gAccount" placeholder="seu e-mail @adventistas.org" oninput="saveAccount(this.value)">
+        <span style="color:#64748b">(fica só neste computador; serve para abrir na conta certa)</span>
+      </div>
+      <div class="tablewrap">
+        <table id="agTable">
+          <thead><tr>
+            <th class="act">Atividade</th>
+            <th style="width:128px">Início</th>
+            <th style="width:92px">Horário</th>
+            <th style="width:96px">Duração</th>
+            <th style="width:190px">Repete</th>
+            <th style="width:118px">A cada</th>
+            <th style="width:128px">Até (opcional)</th>
+            <th>Como fazer</th>
+            <th style="width:150px">Google Agenda</th>
+          </tr></thead>
+          <tbody id="agBody"></tbody>
+        </table>
+      </div>
+      <div class="hint">As atividades são as mesmas da aba <b>Controle mensal</b>. Se incluir ou renomear lá, aparece aqui.
+        Depois de enviado, se você mudar algo, a linha mostra <b>⚠ alterado</b>. Aí é só editar o evento no Google ou criar de novo.</div>
+    </div>
+  </div>
+
+  <!-- ===== ABA CONTROLE ===== -->
+  <div id="tabControle">
+  <!-- RESUMO -->
+  <div class="card">
+    <div class="summary">
+      <div class="kpi"><b id="kConcl">0</b><span>Concluídas</span></div>
+      <div class="kpi"><b id="kPend">0</b><span>Pendentes</span></div>
+      <div class="kpi"><b id="kTotal">0</b><span>Aplicáveis</span></div>
+      <div class="bar">
+        <div class="lbl"><span>Progresso geral do ano</span><span id="pctLbl">0%</span></div>
+        <div class="track"><div class="fill" id="pctFill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FERRAMENTAS -->
+  <div class="card toolsrow">
+    <div class="tools">
+      <input type="text" id="newAct" placeholder="Nova atividade…" style="min-width:200px">
+      <button class="primary" onclick="addActivity()">＋ Adicionar</button>
+      <span class="grow"></span>
+      <select id="clearMonth"></select>
+      <button onclick="clearMonth()">🧽 Limpar mês</button>
+      <button onclick="exportCSV()">⬇ Exportar CSV</button>
+      <button onclick="backup()">💾 Backup</button>
+      <button onclick="document.getElementById('imp').click()">📂 Restaurar</button>
+      <input type="file" id="imp" accept=".json" style="display:none" onchange="restore(event)">
+      <button onclick="window.print()">🖨 Imprimir</button>
+      <button class="danger" onclick="clearAll()">🗑 Limpar tudo</button>
+      <button class="danger" onclick="resetAll()">↺ Restaurar padrão</button>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="card">
+    <div class="tablewrap">
+      <table id="grid">
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+        <tfoot><tr id="foot"></tr></tfoot>
+      </table>
+    </div>
+    <div class="hint">
+      <b>Como usar:</b> clique numa célula para alternar entre
+      <span class="legend">
+        <span><i class="chip pend"></i> pendente</span>
+        <span><i class="chip done"></i> concluída ✓</span>
+        <span><i class="chip na"></i> não se aplica (–)</span>
+      </span><br>
+      Dê <b>duplo-clique no nome</b> para renomear a atividade · o <b>🗑</b> ao lado exclui a linha · tudo é salvo automático no navegador.
+    </div>
+  </div>
+  </div><!-- /tabControle -->
+</div>
+
+<!-- ===== Firebase (SDK compat) ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+/* ============================================================
+   >>> COLE AQUI A CONFIG DO SEU PROJETO FIREBASE <<<
+   Console Firebase → engrenagem ⚙ → Configurações do projeto →
+   Seus apps → SDK do Firebase → "Configuração".
+   Enquanto estiver assim (com "SUA_..."), o app roda 100% local.
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDlHIgR3kuTpsugpMjbI1uxLN2G4JlLoTQ",
+  authDomain: "relatorio-cartao-corporativo.firebaseapp.com",
+  projectId: "relatorio-cartao-corporativo",
+  storageBucket: "relatorio-cartao-corporativo.firebasestorage.app",
+  messagingSenderId: "235689060585",
+  appId: "1:235689060585:web:cf07dfd53552bdf6f42878",
+  measurementId: "G-8E5ERY15LZ"
+};
+const DOC_PATH = { col: "apps", doc: "atividades2026" }; // onde os dados ficam guardados
+</script>
+
+<script>
+const MONTHS=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const MONTHS_FULL=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const KEY="ctrlAtividades2026";
+
+// Estrutura padrão (extraída do arquivo Balanços 2026)
+const DEFAULT=[
+  {t:"section",name:"Reconciliação"},
+  {t:"act",name:"Reconciliação Bancária"},
+  {t:"act",name:"Reconciliação Conta Corrente"},
+  {t:"act",name:"Cartões (Cielo)"},
+  {t:"act",name:"Cartão Corporativo"},
+  {t:"section",name:"7Edu"},
+  {t:"act",name:"Devedores"},
+  {t:"act",name:"Receita antecipada"},
+  {t:"act",name:"Receita"},
+  {t:"act",name:"PCLD"},
+  {t:"act",name:"Cobradora"},
+  {t:"act",name:"Caixas"},
+  {t:"act",name:"Encerramento 7Edu"},
+  {t:"section",name:"Outros lançamentos"},
+  {t:"act",name:"Bolsa Confessionais"},
+  {t:"act",name:"Adiantamentos"},
+  {t:"section",name:"Imobilizado"},
+  {t:"act",name:"Aquisições"},
+  {t:"act",name:"Depreciações"},
+  {t:"act",name:"Bens e Formação"},
+  {t:"section",name:"Fornecedores / Folha"},
+  {t:"act",name:"Fornecedores a Pagar"},
+  {t:"act",name:"Folha – VT"},
+  {t:"act",name:"Folha – Mobilidade"},
+  {t:"act",name:"Folha – VA"},
+  {t:"act",name:"Folha – Salário"},
+  {t:"act",name:"Folha – Obrigações Trabalhistas"},
+  {t:"act",name:"Encerramento APS"},
+  {t:"section",name:"Encerramento"},
+  {t:"act",name:"Centralização de Encargos"},
+  {t:"act",name:"Provisão Processos"},
+  {t:"act",name:"DNI"},
+  {t:"act",name:"TI's"},
+  {t:"act",name:"Encerramento DRACMA"},
+  {t:"act",name:"Rateios Enviados"},
+  {t:"act",name:"Rateios Lançados"},
+  {t:"act",name:"Orçamento Importado"},
+];
+
+let state=load();
+
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(KEY));
+    if(s&&s.rows) return s;
+  }catch(e){}
+  return {rows:DEFAULT.map((r,i)=>({id:i+"_"+Date.now(),...r})),
+          marks:{}}; // marks["rowid|m"] = 1(feito) | 2(n/a)
+}
+/* ---------- Persistência: localStorage + Firebase ---------- */
+let db=null, docRef=null, applyingRemote=false, pushTimer=null, lastJSON="";
+
+function badge(kind,txt){
+  const b=document.getElementById("syncBadge");
+  b.className="badge "+kind; b.textContent="● "+txt;
+}
+function save(){
+  const json=JSON.stringify(state);
+  localStorage.setItem(KEY,json);           // cache local sempre
+  if(docRef && !applyingRemote && json!==lastJSON){
+    badge("wait","Salvando…");
+    clearTimeout(pushTimer);
+    pushTimer=setTimeout(()=>{
+      lastJSON=json;
+      docRef.set(state).then(()=>badge("sync","Sincronizado"))
+                       .catch(()=>badge("err","Erro ao salvar"));
+    },700);                                  // debounce
+  }
+}
+function firebaseConfigured(){
+  return FIREBASE_CONFIG && !String(FIREBASE_CONFIG.apiKey).startsWith("SUA_");
+}
+function initFirebase(){
+  if(!firebaseConfigured()){badge("off","Local (sem Firebase)");return;}
+  if(typeof firebase==="undefined"){badge("err","SDK não carregou");return;}
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.firestore();
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); // cache offline
+    badge("wait","Conectando…");
+    firebase.auth().signInAnonymously().catch(e=>badge("err","Falha no login"));
+    firebase.auth().onAuthStateChanged(u=>{
+      if(!u)return;
+      docRef=db.collection(DOC_PATH.col).doc(DOC_PATH.doc);
+      docRef.onSnapshot({includeMetadataChanges:false},snap=>{
+        if(!snap.exists){ lastJSON=""; save(); return; }  // 1ª vez: sobe o local
+        const remote=snap.data();
+        const rjson=JSON.stringify(remote);
+        if(rjson===JSON.stringify(state)){badge("sync","Sincronizado");return;}
+        applyingRemote=true;
+        state=remote; lastJSON=rjson;
+        render();
+        applyingRemote=false;
+        badge("sync","Sincronizado");
+      },err=>badge("err","Sem conexão"));
+    });
+  }catch(e){badge("err","Erro Firebase");}
+}
+function uid(){return "a"+Math.random().toString(36).slice(2,9);}
+
+/* ---------- Render ---------- */
+function render(){
+  // Cabeçalho
+  const head=document.getElementById("head");
+  head.innerHTML='<th class="act">Atividade</th>'+
+    MONTHS.map(m=>`<th>${m}</th>`).join('')+'<th>%</th>';
+
+  // Corpo
+  const body=document.getElementById("body");
+  body.innerHTML="";
+  state.rows.forEach(row=>{
+    const tr=document.createElement("tr");
+    tr.dataset.id=row.id; tr.draggable=true;
+    if(row.t==="section"){
+      tr.className="section";
+      tr.innerHTML=`<td colspan="${MONTHS.length+2}">${esc(row.name)}
+        <button class="del" title="Excluir seção" onclick="delRow('${row.id}')" style="float:right;border:none;background:none;color:#a5b4fc;cursor:pointer">🗑</button>
+        <span class="grip" title="Arraste para reordenar" style="float:left;margin-right:6px;color:#a5b4fc">⠿</span></td>`;
+      body.appendChild(tr); return;
+    }
+    let done=0, applic=0, cells="";
+    for(let m=0;m<12;m++){
+      const st=state.marks[row.id+"|"+m]||0;
+      if(st!==2) applic++;
+      if(st===1) done++;
+      const cls=st===1?"cell done":st===2?"cell na":"cell";
+      const sym=st===1?"✓":st===2?"–":"";
+      cells+=`<td class="${cls}" onclick="toggle('${row.id}',${m})">${sym}</td>`;
+    }
+    const pct=applic?Math.round(done/applic*100):0;
+    tr.innerHTML=`<td class="act">
+        <button class="del" title="Excluir" onclick="delRow('${row.id}')">🗑</button>
+        <span class="grip" title="Arraste para reordenar">⠿</span>
+        <span class="name" ondblclick="renameRow('${row.id}',this)">${esc(row.name)}</span>
+      </td>${cells}
+      <td class="rowpct ${pct===100?'full':''}">${pct}%</td>`;
+    body.appendChild(tr);
+  });
+
+  // Rodapé (totais por mês)
+  const foot=document.getElementById("foot");
+  let cols='<td class="act">Concluídas / aplicáveis no mês</td>';
+  for(let m=0;m<12;m++){
+    let d=0,a=0;
+    state.rows.forEach(row=>{
+      if(row.t!=="act")return;
+      const st=state.marks[row.id+"|"+m]||0;
+      if(st!==2)a++; if(st===1)d++;
+    });
+    const pct=a?Math.round(d/a*100):0;
+    cols+=`<td>${d}/${a}<br><span class="mini">${pct}%</span></td>`;
+  }
+  cols+='<td></td>';
+  foot.innerHTML=cols;
+
+  // Seletor de mês
+  const sel=document.getElementById("clearMonth");
+  if(sel.options.length===0)
+    sel.innerHTML=MONTHS_FULL.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+
+  updateKPIs();
+  if(typeof rolarAvulsas==="function")rolarAvulsas();
+  renderAgenda();
+  if(typeof renderCal==="function")renderCal();
+  save();
+}
+
+function updateKPIs(){
+  let done=0,applic=0;
+  state.rows.forEach(row=>{
+    if(row.t!=="act")return;
+    for(let m=0;m<12;m++){
+      const st=state.marks[row.id+"|"+m]||0;
+      if(st!==2)applic++; if(st===1)done++;
+    }
+  });
+  const pct=applic?Math.round(done/applic*100):0;
+  document.getElementById("kConcl").textContent=done;
+  document.getElementById("kPend").textContent=applic-done;
+  document.getElementById("kTotal").textContent=applic;
+  document.getElementById("pctFill").style.width=pct+"%";
+  document.getElementById("pctLbl").textContent=pct+"%";
+}
+
+/* ---------- Ações ---------- */
+function toggle(id,m){
+  const k=id+"|"+m;
+  const cur=state.marks[k]||0;
+  const next=(cur+1)%3;           // 0→1→2→0
+  if(next===0) delete state.marks[k]; else state.marks[k]=next;
+  render();
+}
+function addActivity(){
+  const inp=document.getElementById("newAct");
+  const name=inp.value.trim();
+  if(!name)return;
+  state.rows.push({id:uid(),t:"act",name});
+  inp.value="";
+  render();
+}
+document.getElementById("newAct").addEventListener("keydown",e=>{if(e.key==="Enter")addActivity();});
+
+function delRow(id){
+  const row=state.rows.find(r=>r.id===id);
+  if(!row)return;
+  if(!confirm(`Excluir "${row.name}"?`))return;
+  state.rows=state.rows.filter(r=>r.id!==id);
+  for(let m=0;m<12;m++)delete state.marks[id+"|"+m];
+  render();
+}
+/* ---------- Arrastar e soltar (reordenar) ---------- */
+let dragId=null;
+function clearDropMarks(){
+  document.querySelectorAll("tr.drop-before,tr.drop-after")
+    .forEach(t=>t.classList.remove("drop-before","drop-after"));
+}
+function setupDnD(){
+  const body=document.getElementById("body");
+  body.addEventListener("dragstart",e=>{
+    const tr=e.target.closest("tr"); if(!tr)return;
+    dragId=tr.dataset.id; tr.classList.add("dragging");
+    e.dataTransfer.effectAllowed="move";
+    try{e.dataTransfer.setData("text/plain",dragId);}catch(_){}
+  });
+  body.addEventListener("dragend",e=>{
+    const tr=e.target.closest("tr"); if(tr)tr.classList.remove("dragging");
+    clearDropMarks(); dragId=null;
+  });
+  body.addEventListener("dragover",e=>{
+    const tr=e.target.closest("tr"); if(!tr||!dragId||tr.dataset.id===dragId)return;
+    e.preventDefault();
+    const r=tr.getBoundingClientRect();
+    const after=(e.clientY-r.top)>r.height/2;
+    clearDropMarks();
+    tr.classList.add(after?"drop-after":"drop-before");
+  });
+  body.addEventListener("drop",e=>{
+    const tr=e.target.closest("tr"); if(!tr||!dragId||tr.dataset.id===dragId)return;
+    e.preventDefault();
+    const r=tr.getBoundingClientRect();
+    const after=(e.clientY-r.top)>r.height/2;
+    const from=state.rows.findIndex(x=>x.id===dragId);
+    const item=state.rows.splice(from,1)[0];
+    let to=state.rows.findIndex(x=>x.id===tr.dataset.id);
+    if(after)to++;
+    state.rows.splice(to,0,item);
+    clearDropMarks(); dragId=null;
+    render();
+  });
+}
+function renameRow(id,el){
+  const row=state.rows.find(r=>r.id===id);
+  const val=prompt("Renomear atividade:",row.name);
+  if(val&&val.trim()){row.name=val.trim();render();}
+}
+function clearMonth(){
+  const m=+document.getElementById("clearMonth").value;
+  if(!confirm(`Limpar todas as marcações de ${MONTHS_FULL[m]}?`))return;
+  state.rows.forEach(r=>delete state.marks[r.id+"|"+m]);
+  render();
+}
+function clearAll(){
+  if(!confirm("Limpar TODAS as marcações (mantendo as atividades)?"))return;
+  state.marks={};render();
+}
+function resetAll(){
+  if(!confirm("Restaurar a lista de atividades padrão e apagar tudo?"))return;
+  localStorage.removeItem(KEY);state=load();
+  document.getElementById("clearMonth").innerHTML="";
+  render();
+}
+
+/* ---------- Exportar / Backup ---------- */
+function exportCSV(){
+  let rows=[["Atividade",...MONTHS,"%"]];
+  state.rows.forEach(row=>{
+    if(row.t==="section"){rows.push(["["+row.name+"]"]);return;}
+    let line=[row.name],done=0,ap=0;
+    for(let m=0;m<12;m++){
+      const st=state.marks[row.id+"|"+m]||0;
+      line.push(st===1?"Concluído":st===2?"N/A":"");
+      if(st!==2)ap++; if(st===1)done++;
+    }
+    line.push((ap?Math.round(done/ap*100):0)+"%");
+    rows.push(line);
+  });
+  const csv="﻿"+rows.map(r=>r.map(c=>`"${(c||"").replace(/"/g,'""')}"`).join(";")).join("\n");
+  dl(new Blob([csv],{type:"text/csv"}),"Atividades_2026.csv");
+}
+function backup(){
+  dl(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),"backup_atividades_2026.json");
+}
+function restore(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const s=JSON.parse(r.result);if(s.rows){state=s;render();alert("Backup restaurado!");}}
+    catch(err){alert("Arquivo inválido.");}};
+  r.readAsText(f);e.target.value="";
+}
+function dl(blob,name){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function esc(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+/* ============================================================
+   AGENDA — data, horário, como fazer e repetição de cada atividade,
+   enviadas ao Google Agenda pelo link de "novo evento" (com RRULE).
+   Fica em state.agenda[idDaAtividade] e sincroniza junto com o resto.
+   ============================================================ */
+const REP=[
+  ["nao","Não se repete"],
+  ["diario","Diariamente"],
+  ["uteis","Todo dia útil (seg–sex)"],
+  ["semanal","Semanalmente"],
+  ["mensal","Mensalmente (mesmo dia)"],
+  ["mensalUtil","Mensalmente (Nº dia útil)"],
+  ["mensalUltUtil","Mensalmente (último dia útil)"],
+  ["anual","Anualmente"],
+];
+const UNID={diario:["dia","dias"],semanal:["semana","semanas"],mensal:["mês","meses"],
+  mensalUtil:["mês","meses"],mensalUltUtil:["mês","meses"],anual:["ano","anos"]};
+const WD=["SU","MO","TU","WE","TH","FR","SA"];
+const WDN=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+const AG_DEF={data:"",hora:"09:00",dur:60,rep:"mensal",n:1,ate:"",como:"",ajuste:true};
+
+/* ---- Fim de semana → dia útil mais próximo (sábado→sexta, domingo→segunda,
+        sem sair do mês: dia 1 no sábado vai para segunda, último dia no domingo vai para sexta) ---- */
+function addD(dt,k){return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+k);}
+// Dia não útil (fim de semana ou feriado) → dia útil mais próximo dentro do mês; empate vai para o anterior
+function ajustaFDS(dt){
+  if(isUtil(dt))return dt;
+  for(let k=1;k<=10;k++){
+    const p=addD(dt,-k), f=addD(dt,k);
+    if(p.getMonth()===dt.getMonth()&&isUtil(p))return p;
+    if(f.getMonth()===dt.getMonth()&&isUtil(f))return f;
+  }
+  return dt;
+}
+function usaAjuste(a){return a.ajuste!==false&&(a.rep==="mensal"||a.rep==="anual");}
+// Data "pura" da regra no mês (y,m); dia 29–31 vira o último dia do mês quando o ajuste está ligado
+function baseNoMes(a,y,m){
+  const d0=parseD(a.data).getDate(), last=new Date(y,m+1,0).getDate();
+  if(d0>last&&!usaAjuste(a))return null;
+  return new Date(y,m,Math.min(d0,last));
+}
+// Próximas ocorrências já ajustadas (para enviar ao Google)
+// Usa a mesma regra do calendário (occursOn), varrendo dia a dia
+function ocorrenciasAjustadas(a){
+  const s=parseD(a.data), out=[];
+  const meses=a.rep==="uteis"?6:a.rep==="anual"?60:24;
+  let fim=new Date(s.getFullYear(),s.getMonth()+meses,0);
+  if(a.ate){const at=addD(parseD(a.ate),10); if(at<fim)fim=at;}
+  for(let dt=addD(s,-10);dt<=fim&&out.length<600;dt=addD(dt,1)){
+    if(occursOn(a,dt))out.push(dt);
+  }
+  return out;
+}
+
+function agGet(id){ return Object.assign({},AG_DEF,(state.agenda||{})[id]||{}); }
+function agSet(id,field,val){
+  state.agenda=state.agenda||{};
+  const a=agGet(id); a[field]=val;
+  state.agenda[id]=a;
+  save();
+  agRefreshRow(id);
+}
+function parseD(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);}
+function br(s){return s?s.split("-").reverse().join("/"):"";}
+function ymd(dt){return dt.getFullYear()+String(dt.getMonth()+1).padStart(2,"0")+String(dt.getDate()).padStart(2,"0");}
+/* ---- Feriados: nacionais sempre; Carnaval e Corpus Christi opcionais; extras (dd/mm ou dd/mm/aaaa) ---- */
+const FER_DEF={carnaval:true,corpus:true,extras:"",lista:[]}; // lista: [{d:"MM-DD" (todo ano) | "AAAA-MM-DD", nome}]
+let ferCache={};
+function ferCfg(){return Object.assign({},FER_DEF,state.feriados||{});}
+function ferSet(campo,val){
+  state.feriados=ferCfg(); state.feriados[campo]=val; ferCache={};
+  save(); renderAgenda(); renderCal(); ferRender();
+}
+function pascoa(y){ // algoritmo de Meeus/Jones/Butcher
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+    h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+    mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  return new Date(y,mes-1,dia);
+}
+function feriadosAno(y){
+  if(ferCache[y])return ferCache[y];
+  const cfg=ferCfg(), F={};
+  const put=(dt,nome)=>{F[isoD(dt)]=F[isoD(dt)]?F[isoD(dt)]+" / "+nome:nome;};
+  [["01-01","Confraternização Universal"],["04-21","Tiradentes"],["05-01","Dia do Trabalho"],["09-07","Independência"],
+   ["10-12","N. Sra. Aparecida"],["11-02","Finados"],["11-15","Proclamação da República"],["11-20","Consciência Negra"],["12-25","Natal"]]
+   .forEach(([md,n])=>put(parseD(y+"-"+md),n));
+  const p=pascoa(y);
+  put(addD(p,-2),"Sexta-feira Santa");
+  if(cfg.carnaval){put(addD(p,-48),"Carnaval");put(addD(p,-47),"Carnaval");}
+  if(cfg.corpus)put(addD(p,60),"Corpus Christi");
+  (cfg.lista||[]).forEach(f=>{
+    const iso=f.d.length===5?y+"-"+f.d:f.d;
+    if(iso.slice(0,4)!==String(y))return;
+    const dt=parseD(iso); if(isoD(dt)!==iso)return; // 29/02 em ano comum
+    put(dt,f.nome||"Feriado");
+  });
+  String(cfg.extras||"").split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>{
+    const m=s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\s*(.*)$/); if(!m)return;
+    if(m[3]&&+m[3]!==y)return;
+    const dt=new Date(y,+m[2]-1,+m[1]); if(dt.getMonth()!==+m[2]-1)return;
+    put(dt,m[4]||"Feriado local");
+  });
+  return ferCache[y]=F;
+}
+function feriado(dt){return feriadosAno(dt.getFullYear())[isoD(dt)]||"";}
+function isUtil(dt){const w=dt.getDay();return w>0&&w<6&&!feriado(dt);}
+function nthUtil(dt){ // qual dia útil do mês é esta data (null se fim de semana)
+  if(!isUtil(dt))return null;
+  let k=0;for(let d=1;d<=dt.getDate();d++){if(isUtil(new Date(dt.getFullYear(),dt.getMonth(),d)))k++;}
+  return k;
+}
+function isUltUtil(dt){
+  if(!isUtil(dt))return false;
+  const last=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
+  for(let d=dt.getDate()+1;d<=last;d++){if(isUtil(new Date(dt.getFullYear(),dt.getMonth(),d)))return false;}
+  return true;
+}
+// Regra de repetição (RFC 5545) + aviso quando a data de início não combina com a regra
+function agRule(a){
+  if(!a.data||a.rep==="nao")return {rr:"",warn:""};
+  if(usaAjuste(a))return {rr:"",ics:true,warn:a.ate&&a.ate<a.data?"A data “até” é antes do início.":""};
+  const d=parseD(a.data), n=Math.max(1,parseInt(a.n)||1);
+  let rr="",warn="";
+  switch(a.rep){
+    case "diario": rr=`FREQ=DAILY;INTERVAL=${n}`;break;
+    case "uteis": rr=`FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR`;
+      if(!isUtil(d))warn="O início cai em fim de semana.";break;
+    case "semanal": rr=`FREQ=WEEKLY;INTERVAL=${n};BYDAY=${WD[d.getDay()]}`;break;
+    case "mensal": rr=`FREQ=MONTHLY;INTERVAL=${n};BYMONTHDAY=${d.getDate()}`;
+      if(d.getDate()>28)warn=`Meses sem dia ${d.getDate()} ficam sem o evento.`;break;
+    case "mensalUtil":{
+      const k=nthUtil(d);
+      if(!k){warn="Escolha um início em dia útil.";return {rr:"",warn};}
+      rr=`FREQ=MONTHLY;INTERVAL=${n};BYDAY=MO,TU,WE,TH,FR;BYSETPOS=${k}`;break;}
+    case "mensalUltUtil": rr=`FREQ=MONTHLY;INTERVAL=${n};BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1`;
+      if(!isUltUtil(d))warn="O início não é o último dia útil do mês.";break;
+    case "anual": rr=`FREQ=YEARLY;INTERVAL=${n}`;break;
+  }
+  if(a.ate){
+    if(a.ate<a.data)warn="A data “até” é antes do início.";
+    rr+=`;UNTIL=${a.ate.replace(/-/g,"")}T235959Z`;
+  }
+  // Regras de dia útil dependem dos feriados, que o Google não conhece → vão por arquivo com as datas
+  return {rr,warn,ics:["uteis","mensalUtil","mensalUltUtil"].includes(a.rep)};
+}
+function agResumo(a){
+  if(!a.data)return "Defina a data de início.";
+  const d=parseD(a.data), n=Math.max(1,parseInt(a.n)||1);
+  const cada=(u)=>n>1?`A cada ${n} ${UNID[a.rep][1]}`:u;
+  let s;
+  switch(a.rep){
+    case "nao": s=`Uma vez, em ${br(a.data)}`;break;
+    case "diario": s=cada("Todo dia");break;
+    case "uteis": s="De segunda a sexta";break;
+    case "semanal": s=cada(d.getDay()%6===0?"Todo":"Toda")+(n>1?", ":" ")+WDN[d.getDay()];break;
+    case "mensal": s=`${cada("Todo mês")}, dia ${d.getDate()}`;break;
+    case "mensalUtil": s=`${cada("Todo mês")}, ${nthUtil(d)||"?"}º dia útil`;break;
+    case "mensalUltUtil": s=`${cada("Todo mês")}, último dia útil`;break;
+    case "anual": s=`${cada("Todo ano")} em ${br(a.data).slice(0,5)}`;break;
+  }
+  if(usaAjuste(a))s+=" (fim de semana/feriado → dia útil mais próximo)";
+  s+=a.hora?` · ${a.hora}`:" · dia inteiro";
+  if(a.rep!=="nao"){s+=` · começa ${br(a.data)}`; if(a.ate)s+=` · até ${br(a.ate)}`;}
+  return s;
+}
+function agSig(row,a){return JSON.stringify([row.name,a.data,a.hora,a.dur,a.rep,a.n,a.ate,a.como,usaAjuste(a)]);}
+function agStatus(row,a){
+  if(!a.enviado)return "";
+  return a.enviado.sig===agSig(row,a)
+    ? `<span class="st ok">✓ enviado em ${br(a.enviado.em)}</span>`
+    : `<span class="st alt">⚠ alterado depois do envio</span>`;
+}
+
+function renderAgenda(){
+  const body=document.getElementById("agBody");
+  if(!body)return;
+  if(body.contains(document.activeElement))return; // não atrapalha quem está digitando
+  ferCache={}; // dados podem ter vindo do Firebase
+  const rep=REP.map(([v,t])=>`<option value="${v}">${t}</option>`).join("");
+  const durs=[15,30,45,60,90,120,180,240].map(m=>`<option value="${m}">${m<60?m+" min":(m/60)+" h"}</option>`).join("");
+  body.innerHTML=state.rows.map(row=>{
+    if(row.t==="section")
+      return `<tr class="section"><td colspan="9">${esc(row.name)}</td></tr>`;
+    const id=row.id, a=agGet(id);
+    return `<tr data-ag="${id}">
+      <td class="act"><b style="font-weight:600">${esc(row.name)}</b><div class="resumo" data-f="resumo"></div></td>
+      <td><input type="date" data-f="data" value="${a.data}" onchange="agSet('${id}','data',this.value)"></td>
+      <td><input type="time" data-f="hora" value="${a.hora}" onchange="agSet('${id}','hora',this.value)" title="Deixe vazio para dia inteiro"></td>
+      <td><select data-f="dur" onchange="agSet('${id}','dur',+this.value)">${durs}</select></td>
+      <td><select data-f="rep" onchange="agSet('${id}','rep',this.value)">${rep}</select>
+        <label class="resumo" style="display:flex;gap:4px;align-items:center;cursor:pointer" title="Sábado vai para sexta, domingo para segunda; feriado vai para o dia útil mais próximo"><input type="checkbox" data-f="aj" style="width:auto" onchange="agSet('${id}','ajuste',this.checked)"> fim de semana/feriado → dia útil</label></td>
+      <td><div class="everyN"><input type="number" min="1" max="99" data-f="n" value="${a.n}" oninput="agSet('${id}','n',Math.max(1,parseInt(this.value)||1))"><span data-f="unid"></span></div></td>
+      <td><input type="date" data-f="ate" value="${a.ate}" onchange="agSet('${id}','ate',this.value)"></td>
+      <td><textarea data-f="como" placeholder="Passo a passo, onde fica o arquivo…" oninput="agSet('${id}','como',this.value)">${esc(a.como)}</textarea></td>
+      <td><button class="primary gcal" onclick="agEnviar('${id}')">📅 Criar no Google Agenda</button><span data-f="st"></span></td>
+    </tr>`;
+  }).join("");
+  state.rows.forEach(r=>{ if(r.t==="act"){
+    const tr=body.querySelector(`tr[data-ag="${r.id}"]`), a=agGet(r.id);
+    tr.querySelector('[data-f="dur"]').value=String(a.dur);
+    tr.querySelector('[data-f="rep"]').value=a.rep;
+    agRefreshRow(r.id);
+  }});
+}
+// Atualiza só o resumo/estado da linha (sem redesenhar, para não perder o foco)
+function agRefreshRow(id){
+  const tr=document.querySelector(`#agBody tr[data-ag="${id}"]`);
+  const row=state.rows.find(r=>r.id===id);
+  if(!tr||!row)return;
+  const a=agGet(id), {warn}=agRule(a);
+  const res=tr.querySelector('[data-f="resumo"]');
+  res.textContent=agResumo(a)+(warn?"  ⚠ "+warn:"");
+  res.className="resumo"+(warn||!a.data?" warn":"");
+  tr.querySelector('[data-f="dur"]').disabled=!a.hora;
+  const aj=tr.querySelector('[data-f="aj"]');
+  aj.checked=a.ajuste!==false; aj.disabled=!(a.rep==="mensal"||a.rep==="anual");
+  aj.parentElement.style.opacity=aj.disabled?".45":"1";
+  const semN=a.rep==="nao"||a.rep==="uteis";
+  tr.querySelector('[data-f="n"]').disabled=semN;
+  tr.querySelector('[data-f="ate"]').disabled=a.rep==="nao";
+  const u=UNID[a.rep];
+  tr.querySelector('[data-f="unid"]').textContent=semN||!u?"":(Math.max(1,parseInt(a.n)||1)>1?u[1]:u[0]);
+  tr.querySelector('[data-f="st"]').innerHTML=agStatus(row,a);
+}
+
+function agURL(row,a){
+  const {rr}=agRule(a);
+  const sec=(()=>{let s="";for(const r of state.rows){if(r.t==="section")s=r.name;if(r.id===row.id)return s;}return "";})();
+  return gcalURL(row.name,a,rr,a.como,sec);
+}
+// Link de "novo evento" do Google Agenda (a: {data,hora,dur}; rr: RRULE sem o prefixo)
+function gcalURL(titulo,a,rr,como,origem){
+  const d=parseD(a.data);
+  let dates;
+  if(a.hora){
+    const [h,m]=a.hora.split(":").map(Number);
+    const ini=new Date(d.getFullYear(),d.getMonth(),d.getDate(),h,m);
+    const fim=new Date(ini.getTime()+(+a.dur||60)*60000);
+    const t=dt=>ymd(dt)+"T"+String(dt.getHours()).padStart(2,"0")+String(dt.getMinutes()).padStart(2,"0")+"00";
+    dates=t(ini)+"/"+t(fim);
+  }else{
+    const prox=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);
+    dates=ymd(d)+"/"+ymd(prox);
+  }
+  const details=(como?como.trim()+"\n\n":"")+"— Controle de Atividades 2026"+(origem?" · "+origem:"");
+  const p=new URLSearchParams({action:"TEMPLATE",text:titulo,dates,details,ctz:"America/Sao_Paulo"});
+  if(rr)p.set("recur","RRULE:"+rr);
+  const acc=loadAccount();
+  if(acc)p.set("authuser",acc);
+  return "https://calendar.google.com/calendar/render?"+p.toString();
+}
+function agEnviar(id){
+  const row=state.rows.find(r=>r.id===id), a=agGet(id);
+  if(!a.data){alert("Defina a data de início de “"+row.name+"”.");return;}
+  const {rr,warn,ics}=agRule(a);
+  if(a.rep!=="nao"&&!rr&&!ics){alert(warn||"Revise a repetição.");return;}
+  if(warn&&!confirm("Atenção: "+warn+"\n\nCriar assim mesmo?"))return;
+  if(ics){
+    // O Google não conhece fins de semana/feriados nessas regras: vai um arquivo com cada data já calculada
+    const datas=ocorrenciasAjustadas(a);
+    const sec=(()=>{let s="";for(const r of state.rows){if(r.t==="section")s=r.name;if(r.id===row.id)return s;}return "";})();
+    baixarICS(row.name,a,datas,"rec-"+id,sec);
+    alert(`Baixei o arquivo “${row.name}.ics” com ${datas.length} datas (${br(isoD(datas[0]))} a ${br(isoD(datas[datas.length-1]))}), já calculadas com fins de semana e feriados.\n\n`+
+      `Vou abrir a tela de importação do Google Agenda: em “Importar”, escolha esse arquivo (na pasta Downloads) e clique em Importar.\n\n`+
+      `O aviso por e-mail vem da configuração de notificações da sua agenda.`);
+    window.open("https://calendar.google.com/calendar/r/settings/export"+(loadAccount()?"?authuser="+encodeURIComponent(loadAccount()):""),"_blank");
+  }else{
+    window.open(agURL(row,a),"_blank");
+  }
+  const hoje=new Date();
+  agSet(id,"enviado",{em:hoje.getFullYear()+"-"+String(hoje.getMonth()+1).padStart(2,"0")+"-"+String(hoje.getDate()).padStart(2,"0"),sig:agSig(row,a)});
+}
+
+/* Arquivo .ics com um evento por data (importa no Google Agenda) */
+function baixarICS(titulo,a,datas,uidBase,origem){
+  const escI=s=>String(s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+  const fold=l=>{let o="";while(l.length>73){o+=l.slice(0,73)+"\r\n ";l=l.slice(73);}return o+l;};
+  const agora=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const desc=(a.como?a.como.trim()+"\n\n":"")+"— Controle de Atividades 2026"+(origem?" · "+origem:"");
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Controle de Atividades 2026//PT-BR","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+  datas.forEach(d=>{
+    L.push("BEGIN:VEVENT",`UID:${uidBase}-${ymd(d)}@controle-atividades`,`DTSTAMP:${agora}`);
+    if(a.hora){
+      const [h,m]=a.hora.split(":").map(Number);
+      const ini=new Date(d.getFullYear(),d.getMonth(),d.getDate(),h,m), fim=new Date(ini.getTime()+(+a.dur||60)*60000);
+      const t=dt=>ymd(dt)+"T"+String(dt.getHours()).padStart(2,"0")+String(dt.getMinutes()).padStart(2,"0")+"00";
+      L.push(`DTSTART;TZID=America/Sao_Paulo:${t(ini)}`,`DTEND;TZID=America/Sao_Paulo:${t(fim)}`);
+    }else{
+      L.push(`DTSTART;VALUE=DATE:${ymd(d)}`,`DTEND;VALUE=DATE:${ymd(addD(d,1))}`);
+    }
+    L.push("SUMMARY:"+escI(titulo),"DESCRIPTION:"+escI(desc),"END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  const nome=titulo.replace(/[\\/:*?"<>|]/g,"-")+".ics";
+  dl(new Blob([L.map(fold).join("\r\n")+"\r\n"],{type:"text/calendar"}),nome);
+}
+
+/* Conta Google (só neste computador) */
+const ACC_KEY="ctrlAtividadesConta";
+function loadAccount(){try{return localStorage.getItem(ACC_KEY)||"";}catch(e){return "";}}
+function saveAccount(v){try{localStorage.setItem(ACC_KEY,v.trim());}catch(e){}}
+
+/* Abas */
+function showTab(t){
+  const abas={controle:["tabControle","tabBtnControle"],agenda:["tabAgenda","tabBtnAgenda"],cal:["tabCal","tabBtnCal"]};
+  if(!abas[t])t="controle";
+  for(const k in abas){
+    document.getElementById(abas[k][0]).style.display=k===t?"":"none";
+    document.getElementById(abas[k][1]).classList.toggle("on",k===t);
+  }
+  if(t==="cal")renderCal();
+  try{localStorage.setItem("ctrlAtividadesAba",t);}catch(e){}
+}
+
+/* ============================================================
+   CALENDÁRIO — tarefas avulsas (state.avulsas) + recorrentes da Agenda
+   ============================================================ */
+let calRef=new Date(); calRef.setDate(1);
+let avEditId=null, avNovaData="";
+function isoD(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+
+// A atividade recorrente cai nesta data?
+function occursOn(a,dt){
+  if(!a.data)return false;
+  const s=parseD(a.data), iso=isoD(dt);
+  if(usaAjuste(a)){ // calcula a data "pura" deste mês e vê se, ajustada, cai hoje
+    const n=Math.max(1,parseInt(a.n)||1);
+    let base=null;
+    if(a.rep==="mensal"){
+      const meses=(dt.getFullYear()-s.getFullYear())*12+dt.getMonth()-s.getMonth();
+      if(meses>=0&&meses%n===0)base=baseNoMes(a,dt.getFullYear(),dt.getMonth());
+    }else{
+      const anos=dt.getFullYear()-s.getFullYear();
+      if(dt.getMonth()===s.getMonth()&&anos>=0&&anos%n===0)base=baseNoMes(a,dt.getFullYear(),dt.getMonth());
+    }
+    if(!base||isoD(base)<a.data||(a.ate&&isoD(base)>a.ate))return false;
+    return isoD(ajustaFDS(base))===iso;
+  }
+  if(iso<a.data)return false;
+  if(a.rep!=="nao"&&a.ate&&iso>a.ate)return false;
+  const n=Math.max(1,parseInt(a.n)||1);
+  const meses=(dt.getFullYear()-s.getFullYear())*12+dt.getMonth()-s.getMonth();
+  switch(a.rep){
+    case "nao": return iso===a.data;
+    case "diario": return Math.round((dt-s)/864e5)%n===0;
+    case "uteis": return isUtil(dt);
+    case "semanal": return dt.getDay()===s.getDay()&&Math.round((dt-s)/864e5/7)%n===0;
+    case "mensal": return dt.getDate()===s.getDate()&&meses%n===0;
+    case "mensalUtil": return meses%n===0&&nthUtil(dt)!==null&&nthUtil(dt)===nthUtil(s);
+    case "mensalUltUtil": return meses%n===0&&isUltUtil(dt);
+    case "anual": return dt.getDate()===s.getDate()&&dt.getMonth()===s.getMonth()&&(dt.getFullYear()-s.getFullYear())%n===0;
+  }
+  return false;
+}
+function calMove(k){calRef=new Date(calRef.getFullYear(),calRef.getMonth()+k,1);renderCal();}
+function calHoje(){calRef=new Date();calRef.setDate(1);renderCal();}
+
+function renderCal(){
+  const grid=document.getElementById("calGrid");
+  if(!grid||document.getElementById("tabCal").style.display==="none")return;
+  const y=calRef.getFullYear(), m=calRef.getMonth();
+  document.getElementById("calTitle").textContent=MONTHS_FULL[m]+" "+y;
+  const comRec=document.getElementById("calRec").checked;
+  const hoje=isoD(new Date());
+  const ini=new Date(y,m,1-new Date(y,m,1).getDay()); // domingo da 1ª semana
+  const semanas=Math.ceil((new Date(y,m,1).getDay()+new Date(y,m+1,0).getDate())/7);
+  const recs=comRec?state.rows.filter(r=>r.t==="act").map(r=>({row:r,a:agGet(r.id)})).filter(x=>x.a.data):[];
+  const avs=state.avulsas||[];
+  let h=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<semanas*7;i++){
+    const dt=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+i), iso=isoD(dt);
+    const cls=["day"]; if(dt.getMonth()!==m)cls.push("out"); else if(!isUtil(dt))cls.push("wknd"); if(iso===hoje)cls.push("today");
+    const itens=[];
+    avs.filter(t=>t.data===iso).forEach(t=>itens.push({h:t.hora||"",html:
+      `<span class="chip2 av${t.feito?" feito":""}" title="${esc(t.titulo)}${t.desde?"\nAtrasada desde "+br(t.desde):""}${t.como?"\n\n"+esc(t.como):""}" onclick="event.stopPropagation();avAbrir('${t.id}')">${t.desde&&!t.feito?"↪ ":""}${t.hora?t.hora+" ":""}${esc(t.titulo)}${t.enviado?" 📅":""}</span>`}));
+    recs.filter(x=>occursOn(x.a,dt)).forEach(x=>{const ok=recFeito(x.row.id,dt);itens.push({h:x.a.hora||"",html:
+      `<span class="chip2 rec${ok?" feito":""}" title="Recorrente: ${esc(x.row.name)}\n${esc(agResumo(x.a))}" onclick="event.stopPropagation();recAbrir('${x.row.id}','${iso}')">🔁 ${x.a.hora?x.a.hora+" ":""}${esc(x.row.name)}</span>`});});
+    if(iso===hoje&&comRec) recAtrasadas(dt).forEach(x=>itens.push({h:"",html:
+      `<span class="chip2 atr" title="Recorrente atrasada: era para ${br(isoD(x.dt))}" onclick="event.stopPropagation();recAbrir('${x.row.id}','${isoD(x.dt)}')">↪ ${esc(x.row.name)} (${br(isoD(x.dt)).slice(0,5)})</span>`}));
+    itens.sort((p,q)=>p.h.localeCompare(q.h));
+    const fer=feriado(dt);
+    h+=`<div class="${cls.join(" ")}" onclick="avNova('${iso}')"><span class="num">${dt.getDate()}</span>${fer?`<span class="ferNome" title="${esc(fer)}">${esc(fer)}</span>`:""}${itens.map(x=>x.html).join("")}</div>`;
+  }
+  grid.innerHTML=h;
+}
+
+/* Janela da tarefa avulsa */
+function avPreencher(t){
+  const dur=document.getElementById("avDur");
+  if(!dur.options.length)dur.innerHTML=[15,30,45,60,90,120,180,240].map(m=>`<option value="${m}">${m<60?m+" min":(m/60)+" h"}</option>`).join("");
+  document.getElementById("avNome").value=t.titulo||"";
+  document.getElementById("avData").value=t.data||"";
+  document.getElementById("avHora").value=t.hora||"";
+  dur.value=String(t.dur||60);
+  document.getElementById("avComo").value=t.como||"";
+  document.getElementById("avFeito").checked=!!t.feito;
+}
+function avNova(iso){
+  avEditId=null;
+  document.getElementById("avTitulo").textContent="Nova tarefa avulsa";
+  document.getElementById("avDel").style.display="none";
+  avPreencher({data:iso||isoD(new Date()),hora:"09:00",dur:60});
+  document.getElementById("avBg").classList.add("on");
+  setTimeout(()=>document.getElementById("avNome").focus(),30);
+}
+function avAbrir(id){
+  const t=(state.avulsas||[]).find(x=>x.id===id); if(!t)return;
+  avEditId=id;
+  document.getElementById("avTitulo").textContent="Tarefa avulsa"+(t.enviado?" · 📅 criada no Google em "+br(t.enviado):"");
+  document.getElementById("avDel").style.display="";
+  avPreencher(t);
+  document.getElementById("avBg").classList.add("on");
+}
+function avFechar(){document.getElementById("avBg").classList.remove("on");avEditId=null;}
+function avSalvar(google){
+  const t={
+    titulo:document.getElementById("avNome").value.trim(),
+    data:document.getElementById("avData").value,
+    hora:document.getElementById("avHora").value,
+    dur:+document.getElementById("avDur").value||60,
+    como:document.getElementById("avComo").value,
+    feito:document.getElementById("avFeito").checked,
+  };
+  if(!t.titulo){alert("Escreva o nome da tarefa.");return;}
+  if(!t.data){alert("Escolha a data.");return;}
+  state.avulsas=state.avulsas||[];
+  let alvo=state.avulsas.find(x=>x.id===avEditId);
+  if(alvo)Object.assign(alvo,t); else {alvo={id:uid(),...t};state.avulsas.push(alvo);}
+  if(google){
+    window.open(gcalURL(t.titulo,t,"",t.como,"Tarefa avulsa"),"_blank");
+    alvo.enviado=isoD(new Date());
+  }
+  avFechar(); save(); renderCal();
+}
+function avExcluir(){
+  const t=(state.avulsas||[]).find(x=>x.id===avEditId); if(!t)return;
+  if(!confirm(`Excluir "${t.titulo}"?`+(t.enviado?"\n\nO evento no Google Agenda não é apagado.":"")))return;
+  state.avulsas=state.avulsas.filter(x=>x.id!==avEditId);
+  avFechar(); save(); renderCal();
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){avFechar();ferFechar();recFechar();}});
+
+/* ---- Atrasadas: avulsa não concluída anda sozinha para o próximo dia útil ---- */
+const ROLA=["nao","mensal","mensalUtil","mensalUltUtil","anual"]; // recorrentes que "atrasam" (diárias/semanais não)
+function proxUtil(dt){let d=dt;for(let i=0;i<30&&!isUtil(d);i++)d=addD(d,1);return d;}
+function rolarAvulsas(){
+  const hoje=isoD(new Date()), alvo=isoD(proxUtil(new Date()));
+  (state.avulsas||[]).forEach(t=>{
+    if(!t.feito&&t.data<hoje){t.desde=t.desde||t.data;t.data=alvo;}
+  });
+}
+// Recorrente concluída = marcada (✓ ou n/a) no Controle mensal do mês da ocorrência
+function recFeito(rowId,dt){const st=state.marks[rowId+"|"+dt.getMonth()];return st===1||st===2;}
+// Ocorrências recorrentes do mês passado até ontem que ainda não foram concluídas
+function recAtrasadas(hojeDt){
+  const out=[], ini=new Date(hojeDt.getFullYear(),hojeDt.getMonth()-1,1);
+  if(ini.getFullYear()!==hojeDt.getFullYear())ini.setFullYear(hojeDt.getFullYear(),0,1); // marcas são do ano
+  state.rows.forEach(r=>{
+    if(r.t!=="act")return;
+    const a=agGet(r.id); if(!a.data||!ROLA.includes(a.rep))return;
+    let ult=null;
+    for(let d=new Date(ini);isoD(d)<isoD(hojeDt);d=addD(d,1)) if(occursOn(a,d)&&!recFeito(r.id,d))ult=new Date(d);
+    if(ult)out.push({row:r,a,dt:ult});
+  });
+  return out;
+}
+
+/* ---- Janela da recorrente ---- */
+let recSel=null;
+function recAbrir(rowId,iso){
+  const row=state.rows.find(r=>r.id===rowId); if(!row)return;
+  recSel={rowId,dt:parseD(iso)};
+  const a=agGet(rowId), ok=recFeito(rowId,recSel.dt);
+  document.getElementById("recTitulo").textContent="🔁 "+row.name;
+  document.getElementById("recInfo").innerHTML=`<b>Data:</b> ${br(iso)}${a.hora?" às "+a.hora:""}<br><b>Regra:</b> ${esc(agResumo(a))}`+
+    (a.como?`<br><b>Como fazer:</b><br><span style="white-space:pre-wrap;color:var(--ink)">${esc(a.como)}</span>`:"")+
+    `<br><b>Situação em ${MONTHS_FULL[recSel.dt.getMonth()]}:</b> ${ok?"✓ concluída":"pendente"}`;
+  document.getElementById("recBtn").textContent=ok?"↺ Voltar para pendente":"✓ Marcar como concluída";
+  document.getElementById("recBg").classList.add("on");
+}
+function recFechar(){document.getElementById("recBg").classList.remove("on");recSel=null;}
+function recMarcar(){
+  if(!recSel)return;
+  const k=recSel.rowId+"|"+recSel.dt.getMonth();
+  if(recFeito(recSel.rowId,recSel.dt))delete state.marks[k]; else state.marks[k]=1;
+  recFechar(); render();
+}
+
+/* ---- Janela de feriados ---- */
+function ferAbrir(){ferRender();document.getElementById("ferAnual").checked=true;document.getElementById("ferBg").classList.add("on");}
+function ferFechar(){document.getElementById("ferBg").classList.remove("on");}
+function ferAdd(){
+  const d=document.getElementById("ferData").value, nome=document.getElementById("ferNomeIn").value.trim();
+  if(!d){alert("Escolha a data do feriado.");return;}
+  const anual=document.getElementById("ferAnual").checked;
+  const lista=(ferCfg().lista||[]).slice();
+  lista.push({d:anual?d.slice(5):d,nome:nome||"Feriado"});
+  document.getElementById("ferData").value=""; document.getElementById("ferNomeIn").value="";
+  ferSet("lista",lista);
+}
+function ferDel(i){
+  const lista=(ferCfg().lista||[]).slice(), f=lista[i];
+  if(!f||!confirm(`Excluir o feriado "${f.nome}"?`))return;
+  lista.splice(i,1); ferSet("lista",lista);
+}
+function ferRender(){
+  const box=document.getElementById("ferLista"); if(!box)return;
+  const cfg=ferCfg(), y=calRef.getFullYear();
+  document.getElementById("ferCarnaval").checked=cfg.carnaval;
+  document.getElementById("ferCorpus").checked=cfg.corpus;
+  const meus=(cfg.lista||[]).map((f,i)=>`<div class="ferItem"><span><b>${f.d.length===5?f.d.split("-").reverse().join("/"):br(f.d)}</b> · ${esc(f.nome)} <span class="mini">${f.d.length===5?"todo ano":"só nesse ano"}</span></span><button title="Excluir" onclick="ferDel(${i})">🗑</button></div>`).join("");
+  const todos=Object.entries(feriadosAno(y)).sort().map(([d,n])=>`<div class="ferItem fixo"><span>${br(d).slice(0,5)} · ${["dom","seg","ter","qua","qui","sex","sáb"][parseD(d).getDay()]} · ${esc(n)}</span></div>`).join("");
+  box.innerHTML=(meus?`<b>Cadastrados por você</b>${meus}<br>`:"")+`<b>Todos os feriados de ${y}</b>${todos}`;
+}
+
+render();
+setupDnD();
+initFirebase();
+document.getElementById("gAccount").value=loadAccount();
+try{ if(localStorage.getItem("ctrlAtividadesAba")==="agenda") showTab("agenda"); }catch(e){}
+</script>
+</body>
+</html>
