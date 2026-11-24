@@ -144,6 +144,17 @@
   .modal .full{grid-column:1/-1}
   .chip2.rec.feito{background:var(--greenbg); color:var(--green); text-decoration:line-through}
   .chip2.atr{background:var(--amberbg); color:#92400e; border-left:3px solid var(--amber)}
+  .diaItem{display:flex; gap:10px; align-items:flex-start; padding:10px 8px; border-bottom:1px solid var(--line)}
+  .diaItem:last-child{border-bottom:none}
+  .diaItem input[type=checkbox]{width:20px; height:20px; margin:2px 0 0; flex:none; cursor:pointer; accent-color:var(--green)}
+  .diaItem .hr{flex:none; width:46px; font-weight:700; color:var(--muted); font-size:13px; padding-top:2px}
+  .diaItem .tx{flex:1; min-width:0}
+  .diaItem .nm{font-size:14px; font-weight:600; cursor:pointer}
+  .diaItem .nm:hover{color:var(--accent); text-decoration:underline}
+  .diaItem.ok .nm{color:var(--green); text-decoration:line-through}
+  .diaItem .tp{font-size:11px; color:var(--muted); margin-top:1px}
+  .diaItem .cm{font-size:12px; color:#475569; margin-top:4px; white-space:pre-wrap}
+  .diaVazio{padding:18px 8px; color:var(--muted); font-size:13px}
   .ferItem{display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-bottom:1px solid var(--line)}
   .ferItem.fixo{color:var(--muted)}
   .ferItem button{border:none; background:none; color:var(--red); padding:0 4px}
@@ -246,6 +257,20 @@
       </div>
       <div class="hint">Clique num <b>dia</b> para lançar uma tarefa avulsa nele. Clique numa tarefa para editar, marcar como concluída ou criar no Google Agenda.<br>
         Tarefa não concluída passa sozinha para o próximo dia útil até você marcar como concluída. Recorrente concluída = marcada no <b>Controle mensal</b> daquele mês.</div>
+    </div>
+  </div>
+
+  <div class="modalBg" id="diaBg" onclick="if(event.target===this)diaFechar()">
+    <div class="modal" style="width:min(680px,100%)">
+      <h3 id="diaTitulo"></h3>
+      <div id="diaFer" style="color:var(--red);font-size:13px;font-weight:600;margin:-6px 0 10px"></div>
+      <div id="diaLista"></div>
+      <div class="acts">
+        <button onclick="diaNova()">＋ Tarefa avulsa neste dia</button>
+        <span class="grow"></span>
+        <button onclick="diaFechar()">Fechar</button>
+        <button class="primary" id="diaTodas" onclick="diaConcluirTodas()">✓ Concluir todas</button>
+      </div>
     </div>
   </div>
 
@@ -1110,9 +1135,10 @@ function renderCal(){
       `<span class="chip2 atr" title="Recorrente atrasada: era para ${br(isoD(x.dt))}" onclick="event.stopPropagation();recAbrir('${x.row.id}','${isoD(x.dt)}')">↪ ${esc(x.row.name)} (${br(isoD(x.dt)).slice(0,5)})</span>`}));
     itens.sort((p,q)=>p.h.localeCompare(q.h));
     const fer=feriado(dt);
-    h+=`<div class="${cls.join(" ")}" onclick="avNova('${iso}')"><span class="num">${dt.getDate()}</span>${fer?`<span class="ferNome" title="${esc(fer)}">${esc(fer)}</span>`:""}${itens.map(x=>x.html).join("")}</div>`;
+    h+=`<div class="${cls.join(" ")}" onclick="diaAbrir('${iso}')"><span class="num">${dt.getDate()}</span>${fer?`<span class="ferNome" title="${esc(fer)}">${esc(fer)}</span>`:""}${itens.map(x=>x.html).join("")}</div>`;
   }
   grid.innerHTML=h;
+  if(typeof diaRender==="function")diaRender();
 }
 
 /* Janela da tarefa avulsa */
@@ -1169,7 +1195,62 @@ function avExcluir(){
   state.avulsas=state.avulsas.filter(x=>x.id!==avEditId);
   avFechar(); save(); renderCal();
 }
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){avFechar();ferFechar();recFechar();}});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;
+  // fecha só a janela de cima (a do dia fica por último)
+  for(const [id,fn] of [["avBg",avFechar],["recBg",recFechar],["ferBg",ferFechar],["diaBg",diaFechar]])
+    if(document.getElementById(id).classList.contains("on")){fn();return;}
+});
+
+/* ---- Janela do dia: lista tudo do dia e conclui direto ---- */
+let diaSel=null;
+function itensDoDia(iso){
+  const dt=parseD(iso), hoje=isoD(new Date()), out=[];
+  (state.avulsas||[]).filter(t=>t.data===iso).forEach(t=>out.push({k:"av",id:t.id,nome:t.titulo,hora:t.hora||"",como:t.como||"",feito:!!t.feito,
+    tipo:"Avulsa"+(t.desde?" · atrasada, era para "+br(t.desde):"")}));
+  let sec="";
+  state.rows.forEach(r=>{
+    if(r.t==="section"){sec=r.name;return;}
+    const a=agGet(r.id); if(!a.data||!occursOn(a,dt))return;
+    out.push({k:"rec",id:r.id,iso,nome:r.name,hora:a.hora||"",como:a.como||"",feito:recFeito(r.id,dt),tipo:"Recorrente"+(sec?" · "+sec:"")});
+  });
+  if(iso===hoje) recAtrasadas(dt).forEach(x=>out.push({k:"rec",id:x.row.id,iso:isoD(x.dt),nome:x.row.name,hora:"",como:x.a.como||"",feito:false,
+    tipo:"Recorrente atrasada · era para "+br(isoD(x.dt))}));
+  return out.sort((p,q)=>(p.hora||"99").localeCompare(q.hora||"99"));
+}
+function diaAbrir(iso){diaSel=iso;document.getElementById("diaBg").classList.add("on");diaRender();}
+function diaFechar(){document.getElementById("diaBg").classList.remove("on");diaSel=null;}
+function diaNova(){const iso=diaSel;avNova(iso);}
+function diaRender(){
+  if(!diaSel||!document.getElementById("diaBg").classList.contains("on"))return;
+  const dt=parseD(diaSel), DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+  const itens=itensDoDia(diaSel), feitos=itens.filter(x=>x.feito).length;
+  document.getElementById("diaTitulo").textContent=`${DIAS[dt.getDay()]}, ${br(diaSel)} — ${feitos}/${itens.length} concluída${itens.length===1?"":"s"}`;
+  document.getElementById("diaFer").textContent=feriado(dt)?"🎌 "+feriado(dt):"";
+  document.getElementById("diaLista").innerHTML=itens.length?itens.map((x,i)=>`
+    <div class="diaItem${x.feito?" ok":""}">
+      <input type="checkbox" ${x.feito?"checked":""} title="Concluída" onchange="diaMarcar(${i},this.checked)">
+      <span class="hr">${x.hora||"—"}</span>
+      <div class="tx">
+        <div class="nm" onclick="${x.k==="av"?`avAbrir('${x.id}')`:`recAbrir('${x.id}','${x.iso}')`}">${x.k==="rec"?"🔁 ":""}${esc(x.nome)}</div>
+        <div class="tp">${esc(x.tipo)}</div>
+        ${x.como?`<div class="cm">${esc(x.como)}</div>`:""}
+      </div>
+    </div>`).join(""):`<div class="diaVazio">Nenhuma tarefa neste dia.</div>`;
+  const bt=document.getElementById("diaTodas");
+  bt.disabled=!itens.length||feitos===itens.length; bt.style.opacity=bt.disabled?".5":"1";
+}
+function diaSetFeito(x,ok){
+  if(x.k==="av"){const t=(state.avulsas||[]).find(a=>a.id===x.id); if(t)t.feito=ok;}
+  else{const k=x.id+"|"+parseD(x.iso).getMonth(); if(ok)state.marks[k]=1; else delete state.marks[k];}
+}
+function diaMarcar(i,ok){
+  const x=itensDoDia(diaSel)[i]; if(!x)return;
+  diaSetFeito(x,ok); render();
+}
+function diaConcluirTodas(){
+  itensDoDia(diaSel).forEach(x=>{if(!x.feito)diaSetFeito(x,true);});
+  render();
+}
 
 /* ---- Atrasadas: avulsa não concluída anda sozinha para o próximo dia útil ---- */
 const ROLA=["nao","mensal","mensalUtil","mensalUltUtil","anual"]; // recorrentes que "atrasam" (diárias/semanais não)
