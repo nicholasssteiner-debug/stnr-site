@@ -256,7 +256,7 @@
         <span>↪ = atrasada, passou para o próximo dia útil</span>
       </div>
       <div class="hint">Clique num <b>dia</b> para lançar uma tarefa avulsa nele. Clique numa tarefa para editar, marcar como concluída ou criar no Google Agenda.<br>
-        Tarefa não concluída passa sozinha para o próximo dia útil até você marcar como concluída. Recorrente concluída = marcada no <b>Controle mensal</b> daquele mês.</div>
+        Tarefa não concluída passa sozinha para o próximo dia útil até você marcar como concluída. Recorrente mensal/anual concluída = marcada no <b>Controle mensal</b> daquele mês; diária, de dia útil ou semanal é concluída só no dia.</div>
     </div>
   </div>
 
@@ -1241,7 +1241,7 @@ function diaRender(){
 }
 function diaSetFeito(x,ok){
   if(x.k==="av"){const t=(state.avulsas||[]).find(a=>a.id===x.id); if(t)t.feito=ok;}
-  else{const k=x.id+"|"+parseD(x.iso).getMonth(); if(ok)state.marks[k]=1; else delete state.marks[k];}
+  else recSetFeito(x.id,parseD(x.iso),ok);
 }
 function diaMarcar(i,ok){
   const x=itensDoDia(diaSel)[i]; if(!x)return;
@@ -1262,7 +1262,22 @@ function rolarAvulsas(){
   });
 }
 // Recorrente concluída = marcada (✓ ou n/a) no Controle mensal do mês da ocorrência
-function recFeito(rowId,dt){const st=state.marks[rowId+"|"+dt.getMonth()];return st===1||st===2;}
+// Concluída: regras que se repetem várias vezes no mês (diária, dia útil, semanal) são concluídas POR DIA
+// (state.feitos["id|AAAA-MM-DD"]); as mensais/anuais/únicas usam a marca do Controle mensal daquele mês.
+const POR_DIA=["diario","uteis","semanal"];
+function porDia(rowId){return POR_DIA.includes(agGet(rowId).rep);}
+function recFeito(rowId,dt){
+  if(porDia(rowId))return !!(state.feitos||{})[rowId+"|"+isoD(dt)];
+  const st=state.marks[rowId+"|"+dt.getMonth()];return st===1||st===2;
+}
+function recSetFeito(rowId,dt,ok){
+  if(porDia(rowId)){
+    state.feitos=state.feitos||{};
+    const k=rowId+"|"+isoD(dt); if(ok)state.feitos[k]=1; else delete state.feitos[k];
+  }else{
+    const k=rowId+"|"+dt.getMonth(); if(ok)state.marks[k]=1; else delete state.marks[k];
+  }
+}
 // Ocorrências recorrentes do mês passado até ontem que ainda não foram concluídas
 function recAtrasadas(hojeDt){
   const out=[], ini=new Date(hojeDt.getFullYear(),hojeDt.getMonth()-1,1);
@@ -1286,15 +1301,14 @@ function recAbrir(rowId,iso){
   document.getElementById("recTitulo").textContent="🔁 "+row.name;
   document.getElementById("recInfo").innerHTML=`<b>Data:</b> ${br(iso)}${a.hora?" às "+a.hora:""}<br><b>Regra:</b> ${esc(agResumo(a))}`+
     (a.como?`<br><b>Como fazer:</b><br><span style="white-space:pre-wrap;color:var(--ink)">${esc(a.como)}</span>`:"")+
-    `<br><b>Situação em ${MONTHS_FULL[recSel.dt.getMonth()]}:</b> ${ok?"✓ concluída":"pendente"}`;
+    `<br><b>Situação ${porDia(rowId)?"neste dia":"em "+MONTHS_FULL[recSel.dt.getMonth()]}:</b> ${ok?"✓ concluída":"pendente"}`;
   document.getElementById("recBtn").textContent=ok?"↺ Voltar para pendente":"✓ Marcar como concluída";
   document.getElementById("recBg").classList.add("on");
 }
 function recFechar(){document.getElementById("recBg").classList.remove("on");recSel=null;}
 function recMarcar(){
   if(!recSel)return;
-  const k=recSel.rowId+"|"+recSel.dt.getMonth();
-  if(recFeito(recSel.rowId,recSel.dt))delete state.marks[k]; else state.marks[k]=1;
+  recSetFeito(recSel.rowId,recSel.dt,!recFeito(recSel.rowId,recSel.dt));
   recFechar(); render();
 }
 
